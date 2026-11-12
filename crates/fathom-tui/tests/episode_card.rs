@@ -1129,7 +1129,7 @@ fn the_three_absences_read_as_themselves() {
     let (_, unranked) = &cards[1];
     let (_, neither) = &cards[2];
     assert!(
-        ranked.contains("spine-1"),
+        ranked.contains("spine-2"),
         "the ranked card prints the vector:\n{ranked}"
     );
     assert!(

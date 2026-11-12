@@ -16,6 +16,75 @@ fails CI if the version in `Cargo.toml` has no dated section here, because the s
 body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
+### The ranking learned to count decision points, and the corpus had to be read again because of it (`reco-l9bz.7`)
+
+`e8.3` measured V(G) per function, `e8.4` filled the column, `e8.5` wrote the episode roll-up into the delta
+model, `e8.6`/`e8.7` put it on the rail and in the tree. Every one of those surfaces *displayed* the figure.
+None of them *used* it: the ordering that decides what a reviewer opens first — `spine-1`, five components,
+all of them shape — had no way to say "this change is +2 lines and twelve new branches" and
+`features-1`'s twelve axes had the same hole, so an episode that added a decision point every 50 lines and
+one that re-emitted a lockfile could arrive at the same number and print the same reasons.
+[ADR-007 §6](docs/adr/0007-complexity.md) asked for exactly this wiring and
+[§7.10](docs/adr/0001-product-thesis.md) insisted there be only one figure to wire. Both halves are done
+here, and neither half invents a second calculation.
+
+* **The ranking grew a sixth component and a new name.** `spine-1` → `spine-2`: `surfaces 50`,
+  `complexity 12`, `size 12`, `deletions 10`, `breadth 8`, `author 8`. `surfaces` and `author` were left
+  alone because the case studies keep saying they dominate; `size` and `deletions` paid most of the new
+  component because complexity is what they stand in for when a change's difficulty is not its length. The
+  12-point ceiling is filled by **+20 added decision points**, measured on this corpus rather than chosen:
+  the added figure is a long-tailed count — median 2 in `flask`, 8 in `ruff`, 12 in `cli` among episodes that
+  add any — and a ceiling of 20 spreads that middle instead of saturating it at the first refactor.
+* **The vector grew a thirteenth axis, and the axis is the same figure.** `features-1` → `features-2`,
+  `complexity` at weight `0.07` of a denominator that still sums to `1.00`. `risk::collect` reads
+  `Store::episode_complexity` — the one roll-up ADR-001 §7.10 allows — and the ranking reads the same
+  column, so `fathom why`, the episode card, the delta document and `--plain` cannot disagree about what an
+  episode added. A change that touches only files the indexer refused a figure for leaves the axis out of the
+  denominator rather than claiming zero; a floor — some paths counted, some refused — prints its tally, its
+  coverage, its worst unit and the word "floor", and is scored on the floor it states.
+* **`spine-2` says what complexity is not, in the same breath.** The ceiling bullet now states that the axis
+  counts decision points, not wrong branches and not complexity that was only moved, and `deletions` is
+  still the only thing that notices a function being pruned. The blind spot `spine-1` printed as "harder to
+  follow" is closed; the one beside it — a 40-branch function whose branches are all wrong — is stated
+  rather than papered over.
+* **The G3 harness moved, and it had to be made honest before it could be measured.** Two things. It was
+  running without the grammars, so the new axis would have been silently absent on every episode it
+  measured; it now runs `--features sqlite-bundled,langs-all` here and in CI. And the complexity fill is
+  budgeted — `extract.complexity.max_run_ms`, 60 s by default, exists so one pathological file cannot hold
+  a scan open — which on a corpus parsed from scratch per run meant *machine speed* decided which rows had a
+  figure. The same commit produced `G3` 0.625 on one run and 0.667 on the next. The harness now runs the
+  pass at the policy ceiling, refuses to certify a report where the scan budget refused any row, and prints
+  the pass's per-repository rows/written/refused under `complexity_axis.pass` so the promise is in the
+  artefact. Two runs later, the report is byte-identical to itself.
+* **Re-measured, with four new hand readings, and two gates moved for the reviewer and one against them.**
+  `G3` at the published τ went **0.660 → 0.608** and at the corpus cut **0.683 → 0.642**, because four
+  promoted episodes were worth the flag (three `accepted`: a telemetry-lifecycle rewrite, a solver change to
+  which generic solutions may be inferred, a new `flake8-type-checking` notion) and five long-dismissed bot
+  bumps fell under the threshold. The miss rate at τ went **0.792 → 0.833**: one `accepted`, later-reworked
+  `cli` episode sat at exactly 40 and landed at 37, because the weight the new axis earned came off the axes
+  that episode was scoring on. That is the price of the change and it is written into
+  `thresholds.json` at the gate it moved, not in a footnote. No bar moved; five of nine gates still fail;
+  the axis did not make the ranking's claims truer (`blamed_on_score` held at 24) and it did not re-enable a
+  disabled detector.
+* **Two honesty notes the harness owed and now prints.** The 40-case calibration corpus cannot fit this axis
+  — no case in it turns on added decision points — so `fathom why --calibrate` says **`not fitted by this
+  set: blast, complexity`** instead of presenting thirteen weights as though thirteen were measured. And
+  the vendored-typeshed sync the new term carried over τ was dismissed `low-stakes` and blamed on the
+  ranking, in the corpus, by a label: 926 changed lines of `turtle.pyi` is a worst-unit V(G) of 874 and
+  nothing to read. That is a real limit of a branch count, recorded where the measurement will keep
+  repeating it.
+
+* **Two generated artefacts were regenerated, and one of them was not this ticket's to find.**
+  `schemas/episode-delta.schema.json` moved because the delta model's own description strings name the
+  ranking, and they now name `spine-2`. `schemas/fathom.schema.json` had been stale since `e8.4`: the two
+  complexity-run budget keys (`extract.complexity.max_run_ms`, `.max_run_bytes`) were in the config schema's
+  source and had never been written into the committed artefact, which is the same pair of keys that made the
+  corpus nondeterministic two bullets up. Regenerated here because the same CI job that gates this ticket
+  reads the artefact — not as a fix to `e8.4`, which owes its own note if anyone wants one.
+
+`docs/concepts/risk-ranking.md`, `risk-scoring.md`, `risk-score.md` and
+`false-positive-calibration.md` (§3d) carry the new vectors and the re-measured numbers; the blessed report
+is `benchmarks/reports/e4-3a-g3-calibration.json`.
 ### Complexity became a column you can glance at, a row that says its coverage, and a tree you can sort by it (`reco-l9bz.6`)
 
 `e8.3` built the columns and `e8.4` filled them; `e8.5` carried the figure into the delta model. The review

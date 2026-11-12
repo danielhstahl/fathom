@@ -381,5 +381,5 @@ Three smaller things came out of the same ticket, because a gate that is debugga
   is the only thing that loads `tests/test_x.py`, so renaming a test is maintenance and the gate declines to
   read it — with the declined count named in the run's notes, because "no API change" has to say how much of
   the repository it did not look at.
-* **the risk model is features-1** and does not yet use the co-change lane, so `sign-off` flags what looks
+* **the risk model is `features-2`** and does not yet use the co-change lane, so `sign-off` flags what looks
   risky by shape rather than what this repository's history says is risky.

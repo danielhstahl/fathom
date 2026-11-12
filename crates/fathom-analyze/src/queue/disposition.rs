@@ -752,7 +752,7 @@ mod tests {
             actor: "ada <ada@example.com>".to_owned(),
             utc: at(NOW - 3_600),
             risk: Some(77),
-            risk_model: "spine-1".to_owned(),
+            risk_model: "spine-2".to_owned(),
         }
     }
 

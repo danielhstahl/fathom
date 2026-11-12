@@ -100,6 +100,7 @@ fn episode(id: &str, first_utc: i64, summary: &str) -> EpisodeInput {
             n_commits: 2,
             author: "human",
             partial_files: false,
+            complexity: None,
         }),
         Some(1),
         Some(2),

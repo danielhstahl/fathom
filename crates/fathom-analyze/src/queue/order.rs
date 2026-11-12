@@ -57,7 +57,7 @@ use super::disposition::Disposition;
 /// The ordering's name, printed wherever one of its numbers appears.
 ///
 /// [`crate::risk::MODEL`] names the *score*; this names the *order*. A row therefore carries two model
-/// strings and prints both when it is asked why it is where it is: `spine-1` is how the risk was scored,
+/// strings and prints both when it is asked why it is where it is: `spine-2` is how the risk was scored,
 /// `queue-1` is how the queue was ordered. Collapsing them into one name is how a ranking stops being
 /// auditable one level up.
 pub const QUEUE_MODEL: &str = "queue-1";
@@ -91,11 +91,11 @@ pub const BLAST_UNMEASURED: &str =
 
 /// A score at or above this is `high`.
 ///
-/// This buckets the score the queue is *handed*, which is the delta's `spine-1` number, and it is
+/// This buckets the score the queue is *handed*, which is the delta's `spine-2` number, and it is
 /// deliberately **not** `risk.tau`. The two were the same number until `reco-6co` measured τ against real
-/// history: `risk.tau` is now 40 because that is the `features-1` floor three real repositories support
-/// (`features-1`'s ceiling on that corpus was 63, so 70 flagged nothing), and this constant still buckets
-/// `spine-1`, a different model with its own range. "Flagged" is what `fathom why` says about the score it
+/// history: `risk.tau` is now 40 because that is the `features-2` floor three real repositories support
+/// (`features-2`'s ceiling on that corpus was 63, so 70 flagged nothing), and this constant still buckets
+/// `spine-2`, a different model with its own range. "Flagged" is what `fathom why` says about the score it
 /// prints; "high" is what the queue says about the score in the delta. A repository that wants one number
 /// for both sets `[risk] tau` and the queue's policy (`QueuePolicy::high_floor`) to agree — what is not
 /// allowed is a document that quotes one as the other.
@@ -228,7 +228,7 @@ pub struct QueueRow {
     pub episode: String,
     /// Its risk score, or `None` when nothing has ranked it. `None` is never scored as zero.
     pub risk: Option<u8>,
-    /// Which scoring model produced it (`spine-1` today), printed beside the number.
+    /// Which scoring model produced it (`spine-2` today), printed beside the number.
     pub risk_model: String,
     /// When the episode began, which is what staleness measures from.
     pub created: Timestamp,
@@ -542,7 +542,7 @@ impl QueueRanking {
     /// 2. `product` descending — the whole ordering;
     /// 3. risk descending — so a tie between a 90×1.00 and a 60×1.50 reads as the riskier change first;
     /// 4. staleness descending, then blast descending — the tie broken by the factor that moved;
-    /// 5. size descending, then recency descending — the `spine-1` tie-breaks, kept so a queue tie and a
+    /// 5. size descending, then recency descending — the `spine-2` tie-breaks, kept so a queue tie and a
     ///    rail tie are the same tie;
     /// 6. episode id ascending — the last resort, and the reason two runs cannot differ.
     #[must_use]

@@ -222,7 +222,7 @@ index is missing, and the TUI says it too rather than guessing.
 The second untidy row is not about the index at all, and it earns the same class for the same reason: nothing
 the binary answers is wrong, and what the finding asks for is a line edited. `[risk.weights]` is an open map
 in the key spec (`risk.weights.<weight>`), so the config layer resolves *any* name under it and only
-`features-1` knows what a real one is — which is how `new_dependency = 0.2` sat in this repository's own
+`features-2` knows what a real one is — which is how `new_dependency = 0.2` sat in this repository's own
 `fathom.toml` alongside a vector that has never carried that name, configuring nothing while looking like a
 decision, noticed only in the last three lines of a score nobody re-reads (**reco-gna**). `fathom doctor`
 says the sentence on its own now: the key, that it is not a feature, the twelve that are, and the remedy — and

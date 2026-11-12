@@ -24,8 +24,8 @@
 //! what lets every number here be a golden test rather than a screenshot of this afternoon.
 //!
 //! **No scoring.** [`QueueRow::risk`] is a number this module is handed, produced by
-//! [`crate::risk`](crate::risk) (`spine-1` today) or by [`crate::risk::score`](crate::risk::score)
-//! (`features-1`) the day a caller computes it for a whole page. Computing `features-1` costs a corpus
+//! [`crate::risk`](crate::risk) (`spine-2` today) or by [`crate::risk::score`](crate::risk::score)
+//! (`features-2`) the day a caller computes it for a whole page. Computing `features-2` costs a corpus
 //! read plus a detector run *per episode*, which is why the queue page does not do it inside a
 //! four-query frame budget — and why the queue prints the score's model name on every row instead of
 //! implying that the queue scored it.

@@ -653,9 +653,9 @@ fn compose_delta(episode: &Episode, complexity: Option<ComplexityView>) -> Episo
         findings: vec![],
     };
     input.risk = Some(RiskView {
-        model: "spine-1".to_owned(),
+        model: "spine-2".to_owned(),
         score: 62,
-        vector: "spine-1 62 = surfaces 50 + size 8 + author 4".to_owned(),
+        vector: "spine-2 62 = surfaces 50 + size 8 + author 4".to_owned(),
         components: vec![RiskComponent {
             name: "surfaces".to_owned(),
             points: 50,

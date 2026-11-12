@@ -3,7 +3,7 @@
  "authoring": {
   "annotated_by": "looprs (agent), reading `git show` in the pinned clones plus the blessed report's receipts (score, the three features that moved it, every finding message). Protocol: crates/fathom-analyze/calibration/g3/README.md §2–§4. An agent wrote these labels; README §5 states in plain terms what an agent-authored label can certify and what it cannot.",
   "protocol": "crates/fathom-analyze/calibration/g3/README.md §2 (what each act means) and §3 (how blame is assigned)",
-  "annotated_on": "2026-10-19 (e4.9, 60-episode window), 2026-10-20 (reco-dyt, the same pins re-fetched at a 180-episode window), 2026-10-20 (reco-6co, the labels the re-scored cut promoted) and 2026-11-02 (reco-0zi, the one episode the re-measured cut promoted)",
+  "annotated_on": "2026-10-19 (e4.9, 60-episode window), 2026-10-20 (reco-dyt, the same pins re-fetched at a 180-episode window), 2026-10-20 (reco-6co, the labels the re-scored cut promoted) and 2026-11-02 (reco-0zi, the one episode the re-measured cut promoted) and 2026-11-12 (reco-l9bz.7, the episodes the `complexity` axis and a complete complexity column promoted)",
   "meaning": "One row per flagged episode: what the reviewer would have done with the flag, and what they read to decide it. `accepted` means the flag earned the read — the episode was worth stopping for, whatever the findings said. `dismissed` names a code from the closed vocabulary `e4.6` ships, and `blame` names which part of the flag was the false alarm: `score` when the ranking raised a flag no finding justified, a detector id when that detector's claim is what did not hold. A dismissal with no `blame` charges every detector that spoke on the episode, which is ADR-001 §5.4's own rule — an unwanted flag charges whatever raised it."
  },
  "labels": [
@@ -84,7 +84,9 @@
    "commit": "45250aec8ba977669c62384bacaaed290c2460ad",
    "decision": "dismissed",
    "reason": "low-stakes",
-   "blame": ["score"],
+   "blame": [
+    "score"
+   ],
    "note": "Three Dependabot bumps grouped as one episode: a patch bump of `klauspost/compress`, and two GitHub Action bumps that re-emitted `deployment.yml` and two `*.lock.yml` agentic workflow locks. The flag's first feature is the workflow axis, `permissions and secrets travel with the artefact`, and nothing here moves a permission or a secret: six `uses:` lines changed a version suffix. Reading it cost more than it could have paid.",
    "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
    "evidence": "`git show 45250aec8b` go.mod 2/go.sum 4; members `d73d3d8537` (`deployment.yml` 1, `dependabot-triage.lock.yml` 2, `issue-triage.lock.yml` 2, `acceptance.yml` 1) and `26034fa194` (`deployment.yml` 3 `uses:` lines)."
@@ -102,7 +104,9 @@
    "commit": "2d3d20f04058f7b598e41c237105cb85c585c24b",
    "decision": "dismissed",
    "reason": "low-stakes",
-   "blame": ["score"],
+   "blame": [
+    "score"
+   ],
    "note": "`go-runewidth` v0.0.30 builds its 2.2 MB width table lazily instead of in `init()`, which is why the bump is worth having; it is not something a reviewer can check in a 3-line lockfile diff. No finding spoke, so the flag is the lockfile path class alone, and it cannot tell this bump from the nine others in the window.",
    "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
    "evidence": "`git show 2d3d20f040`: go.mod 1 + go.sum 2; body `v0.0.27 eagerly built a 2.2MB width lookup table in init(), adding ~12ms to every gh invocation`."
@@ -111,7 +115,9 @@
    "commit": "863766c17abb27104597dfb30a06072cc79a0a33",
    "decision": "dismissed",
    "reason": "low-stakes",
-   "blame": ["score"],
+   "blame": [
+    "score"
+   ],
    "note": "A patch bump of `charm.land/bubbletea/v2` and a codeql-action group bump, in one episode. The workflow axis charged 1 441 points — the highest feature the episode got — for a file whose only change is three `uses:` version suffixes, and the dependency axis charged the go.mod/go.sum pair. Both axes are reading the path class, not the change.",
    "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
    "evidence": "`git show 863766c17a --stat`: go.mod 2, go.sum 4; episode members re-emit `.github/workflows/codeql.yml` 3 `uses:` lines."
@@ -120,7 +126,9 @@
    "commit": "40459292dbd0e23baed636634740f31e6262e26d",
    "decision": "dismissed",
    "reason": "intentional",
-   "blame": ["test_weakening"],
+   "blame": [
+    "test_weakening"
+   ],
    "note": "All three `test_weakening` claims are the same act: this commit made a font mandatory for rendering, and moved font selection out of the execution contract, so the native-rendering cases now skip with `Supply an explicit font for native rendering.` instead of failing where no font was selected. The cases are still in the file and still run when a font is supplied. Gating a case on a precondition it cannot meet is exactly what was wanted here.",
    "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
    "evidence": "`git show 40459292dbd0`: `t.Skip(\"Supply an explicit font for native rendering.\")` and `\"Select an explicit font for native presentation checks.\"` added in `tool/internal/evidence/{evidence,presentation,session_inspection_native}_test.go`; `engine/contract.go` now rejects a contract that names a font."
@@ -138,7 +146,9 @@
    "commit": "9b6f66363f51a8265f1bb07f8fc3746017859cf1",
    "decision": "dismissed",
    "reason": "intentional",
-   "blame": ["test_weakening"],
+   "blame": [
+    "test_weakening"
+   ],
    "note": "Three `skipped, no longer runs` claims on an episode that added 880 lines, more than half of them tests. Every skip is a deliberate guard: `Owned process-group cleanup requires Unix.` in the `_other` build of the terminal tests, and a `CLI_EXERCISE_SESSION_MEDIA_RECEIPT` environment gate on the native cases. The detector counted a case that stopped running and did not see that it stopped running on the machine that cannot run it.",
    "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
    "evidence": "`git show 9b6f66363f51`: `tool/internal/terminal/cleanup_other_test.go` `t.Skip(\"Owned process-group cleanup requires Unix.\")`, `session_inspection_native_test.go` +196 gated on `CLI_EXERCISE_SESSION_MEDIA_RECEIPT`, `output_unix_test.go` +222."
@@ -156,7 +166,9 @@
    "commit": "e4dc24104f760f87d59bd597d350e01a7fcf48b5",
    "decision": "dismissed",
    "reason": "low-stakes",
-   "blame": ["score"],
+   "blame": [
+    "score"
+   ],
    "note": "Two Dependabot minor bumps, `golang.org/x/crypto` and `golang.org/x/text`, 18 lines of go.mod and go.sum between them and no finding of any kind. The flag is the lockfile axis and the generated-path share — 30 of 30 churn lines on lockfile paths, which is a description of the file list and not of the change.",
    "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
    "evidence": "`git show e4dc24104f76 --stat`: go.mod 6, go.sum 12; member `28a47f46a` the same 12 lines for `golang.org/x/text` 0.42.0."
@@ -165,7 +177,9 @@
    "commit": "17659961c1197840c818ca6a8239a4536f3d1fc3",
    "decision": "dismissed",
    "reason": "low-stakes",
-   "blame": ["score"],
+   "blame": [
+    "score"
+   ],
    "note": "`golang.org/x/term`, the codeql-actions group and `azure/login`, all Dependabot, all one episode. The workflow axis again reads highest on the episode — `permissions and secrets travel with the artefact` — for three `uses:` lines in `codeql.yml`, one in `govulncheck.yml` and one in `deployment.yml`. No permission, no secret, no operator action.",
    "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
    "evidence": "`git show 17659961c119 --stat` go.mod 2/go.sum 4; members `be5f9acf5` (`codeql.yml` 3, `govulncheck.yml` 1) and `617bbcfb4` (`deployment.yml` 1)."
@@ -174,7 +188,9 @@
    "commit": "a4f0de06871af76fc43bbbfaa13874258c590436",
    "decision": "dismissed",
    "reason": "false-positive",
-   "blame": ["todo_debt"],
+   "blame": [
+    "todo_debt"
+   ],
    "note": "`todo_debt` charged six unfinished-work markers, and every one of them is `Add: []string{\"feature\", \"TODO\", \"bug\"}` — a fixture listing GitHub label names in the tests for `gh issue edit` and `gh pr edit`. TODO is the name of a label, not a marker of unfinished work. The rest of the flag is one toolchain sweep: go 1.27.1, the linter and govulncheck version files, and the re-indentation those tools did to the same two test files, which is what `the test surface shrank −373` was counting. `shotgun_edit`'s ten clusters are that same `go fmt`, seen ten times.",
    "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
    "evidence": "`git show a4f0de06871a`: go.mod `go 1.26.0 → 1.27.0`, `toolchain go1.27.1`; `.github/golangci-lint-version` v2.12.2 → v2.13.2; the quoted markers are `Add: []string{\"feature\", \"TODO\", \"bug\"}` in `pkg/cmd/{issue,pr}/edit/edit_test.go`, whose 276/318-line churn is indentation."
@@ -183,7 +199,9 @@
    "commit": "9a779be4f6a3522e68cc8b648ec50f35abf8aca7",
    "decision": "dismissed",
    "reason": "low-stakes",
-   "blame": ["score"],
+   "blame": [
+    "score"
+   ],
    "note": "`golang.org/x/sys` 0.47.0 → 0.48.0: three lines of go.mod and go.sum, no finding, and 6 of 6 churn lines on lockfile paths. The flag says the supply chain is part of the diff, which is true of the path and empty of content for a bot patch bump.",
    "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
    "evidence": "`git show 9a779be4f6a3 --stat`: go.mod 2, go.sum 4."
@@ -192,7 +210,9 @@
    "commit": "07e906502a08dd18174cf3badb8eb3819242acee",
    "decision": "dismissed",
    "reason": "intentional",
-   "blame": ["test_weakening"],
+   "blame": [
+    "test_weakening"
+   ],
    "note": "The high-severity claim is accurate as far as it goes — `pkg/cmd/repo/garden/http_test.go` was deleted, 9 assertion lines — and the deletion is the point of the episode: the same commit removes `gh repo garden`, the Konami-code garden game, its command registration and all 619 lines of it. The coverage did not go missing; the code it covered left the repository beside it. The other member of the episode is a three-line acceptance-test wait.",
    "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
    "evidence": "`git show 5448cdc20 --stat`: `pkg/cmd/repo/garden/garden.go` −508, `http.go` −111, `http_test.go` −55, `pkg/cmd/repo/repo.go` −2; member `07e906502` adds `wait-for-repository-ready` to `acceptance/testdata/repo/repo-archive-unarchive.txtar`."
@@ -228,7 +248,9 @@
    "commit": "46e09a5485d04153eccfaac238c389ffaaebf43c",
    "decision": "dismissed",
    "reason": "false-positive",
-   "blame": ["untested_new_logic"],
+   "blame": [
+    "untested_new_logic"
+   ],
    "note": "`untested_new_logic` charged `internal/telemetry/fake.go` for 42 new lines and one public declaration, and that declaration is `type InvocationRecorderSpy struct` — the package's test double, in a file called `fake.go`, renamed in the same commit from `CommandRecorderSpy` and pinned to the interface by a `var _ ghtelemetry.Invocation = (*InvocationRecorderSpy)(nil)` assertion. A spy is not untested new logic. `shotgun_edit`'s seven clusters are the mechanical half of the same rename, one call site at a time; nothing the flag claimed described this change.",
    "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
    "evidence": "`git show 46e09a5485d0 -- internal/telemetry/fake.go`: `_ ghtelemetry.EventRecorder = (*EventRecorderSpy)(nil)`, `_ ghtelemetry.Invocation = (*InvocationRecorderSpy)(nil)` added, `CommandRecorderSpy` removed; whole episode 36 files +114 −101."
@@ -237,7 +259,9 @@
    "commit": "20c599bb3e8acf889c86d35b2ed9889a663f1a49",
    "decision": "dismissed",
    "reason": "low-stakes",
-   "blame": ["score"],
+   "blame": [
+    "score"
+   ],
    "note": "`golang.org/x/sync` 0.22.0 → 0.23.0 — go.mod 2, go.sum 4, no finding, and the flag is the same lockfile axis that flagged six other bump episodes in this window. Nothing distinguishes it from them and nothing in it needs a reader.",
    "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
    "evidence": "`git show 20c599bb3 --stat`: go.mod 2, go.sum 4."
@@ -246,7 +270,9 @@
    "commit": "145d839ab5e774c3a46295f80f16b75037a8a23b",
    "decision": "dismissed",
    "reason": "low-stakes",
-   "blame": ["score"],
+   "blame": [
+    "score"
+   ],
    "note": "Four Dependabot minor bumps in one episode — `dev-tunnels`, `klauspost/compress`, `go-containerregistry`, `goldmark` — six lines each in go.mod and go.sum, 24 of 24 churn lines on lockfile paths and no finding. The ranking flagged the file class; there is no claim in the flag about the four packages that a reviewer could check.",
    "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
    "evidence": "`git show 145d839ab --stat`: go.mod 2/go.sum 4; members `2091aae79`, `123c1e72c`, `5a7c407d1` each go.mod 2/go.sum 4."
@@ -264,10 +290,21 @@
    "commit": "e09f1b1ca1176d8cef524adb8dfad0872d4b5620",
    "decision": "dismissed",
    "reason": "low-stakes",
-   "blame": ["score"],
+   "blame": [
+    "score"
+   ],
    "note": "Promoted into `cli`'s cut by `reco-0er`, which took the guessed-`human` authorship axis out of the score's denominator and renormalised every measured term upward — this went from under `cli`'s cut to exactly at it (34, the cut itself). What it is: one semver-patch bump of `go-gh/v2` by a human author, go.mod 1 line and go.sum 2, 6 of 6 churn lines on lockfile paths, no finding at all. The flag is the dependency and lockfile axes describing a pin change accurately and then calling it something a reviewer must stop for; nothing in it is a decision anyone had to make. Same reading as `38c8ba5c51` and `20c599bb3e` in this file, which are the same six lines.",
    "actor": "looprs (agent) — pi, reco-0zi re-measure, 2026-11-02",
    "evidence": "`git show e09f1b1ca1`: go.mod −1 +1 (`github.com/cli/go-gh/v2 v2.16.0` → `v2.16.1`), go.sum −2 +2 (that module's two hash lines); author `Markus Olsson`, 2 files, 3 insertions / 3 deletions."
+  },
+  {
+   "commit": "5e078edf27c40d9f861c010843155b3b13bbcbbb",
+   "decision": "accepted",
+   "reason": "",
+   "blame": [],
+   "note": "Promoted across `cli`'s own cut by the axis this commit added: +36 decision points is the largest term on the row and no finding is. It earned the read. A copilot-co-authored rewrite of when a telemetry payload is finalized — a new 241-line `invocation.go` state machine, a new mutex-guarded `delivery.go` buffer, and the catalogue saying two things (a medium `untested_new_logic` on that buffer and a medium `shotgun_edit` on a cluster repeated across the rewrite), with a 599-line rewrite of `telemetry_test.go` that is where the old guarantees moved to — is exactly the shape of agent-written infrastructure change the flag exists to surface, and the decision points are the honest way to describe why 29 files of it is not a bump.",
+   "actor": "looprs (agent) — pi, reco-l9bz.7 re-measure, 2026-11-12",
+   "evidence": "`git show 5e078edf27c4 --numstat`: `internal/telemetry/invocation.go` +241 (new), `internal/telemetry/delivery.go` +34 (new — `Delivery` holding `sync.Mutex` and a payload buffer, with no test file beside it), `invocation_test.go` +172, `telemetry_test.go` 599 lines changed, `pkg/cmdutil/telemetry_test.go` +197 −100; author kind `agent` (declared, 0.95); receipts: `complexity` the largest term at full value — “+36 V(G) across the 29 path(s) this episode touched, of which 29 could be counted on both sides · the worst single unit at head is V(G) 110” — and 2 findings, 2 medium: `untested_new_logic` on `internal/telemetry/delivery.go`, `shotgun_edit` on a cluster repeated across files."
   }
  ]
 }

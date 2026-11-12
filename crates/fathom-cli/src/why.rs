@@ -28,9 +28,9 @@
 //! ```text
 //! $ fathom why ep-7f2a
 //! ep-7f2a  "fix: drop the stale backup column"  ·  agent 0.95  ·  +340 −0  ·  3 files
-//! features-1 49 · below τ 40
+//! features-2 49 · below τ 40
 //!   9 of 12 features measured · weight denominator 0.76 · total 49.04 of 100.00 points
-//!   features-1 49 = surface 17.11 + migration 11.84 + findings 7.89 + …
+//!   features-2 49 = surface 17.11 + migration 11.84 + findings 7.89 + …
 //! ```
 
 use crate::output;
@@ -435,7 +435,8 @@ pub fn print_weights(as_json: bool) -> eyre::Result<ExitCode> {
         return Ok(ExitCode::Ok);
     }
     output::line(format_args!(
-        "features-1 — the weight sum is the denominator, so relative weight is the whole knob"
+        "{} — the weight sum is the denominator, so relative weight is the whole knob",
+        fathom_analyze::risk::feature::MODEL
     ));
     for spec in SPECS {
         output::line(format_args!(

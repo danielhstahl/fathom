@@ -88,6 +88,7 @@ fn corpus() -> Vec<(&'static str, EpisodeDelta)> {
         n_commits: 4,
         author: "agent",
         partial_files: false,
+        complexity: None,
     });
     corpus.push((
         "ranked",

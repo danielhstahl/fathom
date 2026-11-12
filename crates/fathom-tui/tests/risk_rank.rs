@@ -35,9 +35,9 @@ const SIZE: (u16, u16) = (110, 34);
 /// fixture that wants the printed rank has to say what set it came from.
 fn risk(score: u64, rank: Option<u64>, ranked: u64, why: &str) -> RiskView {
     RiskView {
-        model: "spine-1".to_owned(),
+        model: "spine-2".to_owned(),
         score: i64::try_from(score).unwrap_or(0),
-        vector: format!("spine-1 {score} = surfaces {score}"),
+        vector: format!("spine-2 {score} = surfaces {score}"),
         components: vec![RiskComponent {
             name: "surfaces".to_owned(),
             points: i64::try_from(score).unwrap_or(0),
@@ -319,7 +319,7 @@ fn w_expands_the_ranking_band_in_place_and_w_folds_it_again() {
     assert!(
         app.toast
             .as_ref()
-            .is_some_and(|toast| toast.contains("spine-1 88")),
+            .is_some_and(|toast| toast.contains("spine-2 88")),
         "the toast carries the arithmetic, for a reader who will not open the card: {:?}",
         app.toast
     );
@@ -333,7 +333,7 @@ fn w_expands_the_ranking_band_in_place_and_w_folds_it_again() {
         .collect::<Vec<_>>()
         .join(" ");
     assert!(
-        said.contains("spine-1 88 = surfaces 88"),
+        said.contains("spine-2 88 = surfaces 88"),
         "the arithmetic is on the screen, never a bare number:\n{card:?}"
     );
     assert!(

@@ -3,7 +3,7 @@
  "authoring": {
   "annotated_by": "looprs (agent), reading `git show` in the pinned clones plus the blessed report's receipts (score, the three features that moved it, every finding message). Protocol: crates/fathom-analyze/calibration/g3/README.md §2–§4. An agent wrote these labels; README §5 states in plain terms what an agent-authored label can certify and what it cannot.",
   "protocol": "crates/fathom-analyze/calibration/g3/README.md §2 (what each act means) and §3 (how blame is assigned)",
-  "annotated_on": "2026-10-19 (e4.9, 60-episode window) and 2026-10-20 (reco-dyt, head re-pinned and the window widened to 180 episodes); reco-0zi added the three dispositions the re-measured cut promoted, 2026-11-02",
+  "annotated_on": "2026-10-19 (e4.9, 60-episode window) and 2026-10-20 (reco-dyt, head re-pinned and the window widened to 180 episodes); reco-0zi added the three dispositions the re-measured cut promoted, 2026-11-02 and 2026-11-12 (reco-l9bz.7, the episodes the `complexity` axis and a complete complexity column promoted)",
   "meaning": "One row per flagged episode: what the reviewer would have done with the flag, and what they read to decide it. `accepted` means the flag earned the read — the episode was worth stopping for, whatever the findings said. `dismissed` names a code from the closed vocabulary `e4.6` ships, and `blame` names which part of the flag was the false alarm: `score` when the ranking raised a flag no finding justified, a detector id when that detector's claim is what did not hold. A dismissal with no `blame` charges every detector that spoke on the episode, which is ADR-001 §5.4's own rule — an unwanted flag charges whatever raised it."
  },
  "labels": [
@@ -78,7 +78,9 @@
    "commit": "8e768d1fbb19e5f21f7dde643a31c2466083e63a",
    "decision": "dismissed",
    "reason": "low-stakes",
-   "blame": ["score"],
+   "blame": [
+    "score"
+   ],
    "note": "Four lockfile-only bumps grouped as one episode: transitive `rand`, `anyio` and `urllib3`, and a newer Wrangler for the playground deployment. 619 of 619 churn lines sit on lockfile paths, no finding spoke, and the flag is the dependency axis reading the file class of `Cargo.lock`, `uv.lock` and `playground/deploy/package-lock.json`.",
    "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
    "evidence": "`git show 8e768d1f --stat`: `Cargo.lock` 6; members `24bba096` (uv.lock 8), `34266aa4` (uv.lock 6), `355cda38` (`playground/deploy/package-lock.json` 597, `package.json` 2)."
@@ -87,7 +89,9 @@
    "commit": "d298e5155a1318e865d3179988429ad8152ac5d7",
    "decision": "dismissed",
    "reason": "low-stakes",
-   "blame": ["score"],
+   "blame": [
+    "score"
+   ],
    "note": "A renovate NPM development group for the playground workers — `@cloudflare/workers-types`, the React types, oxlint. 1 192 of 1 192 churn lines are lockfile paths, no finding spoke, and the playground is not the shipped artefact. The flag is the supply-chain axis naming `playground/api/package-lock.json`.",
    "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
    "evidence": "`git show d298e515 --stat`: 4 files +906 −286 — `playground/api/package-lock.json`, `playground/deploy/package-lock.json` + `package.json`, `playground/package-lock.json`."
@@ -96,7 +100,9 @@
    "commit": "518d03e3790cdd1d6c34c513b2d451c30a99a770",
    "decision": "dismissed",
    "reason": "low-stakes",
-   "blame": ["score"],
+   "blame": [
+    "score"
+   ],
    "note": "`pyrefly` 1.3.0 in the ty benchmark harness: a manifest line and 30 lines of its lockfile, nothing that ships and no finding. It reached the top decile on the lockfile axis alone, which flags it identically to the release bumps and the playground groups in the same window.",
    "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
    "evidence": "`git show 518d03e3 --stat`: `scripts/ty_benchmark/pyproject.toml` 2, `scripts/ty_benchmark/uv.lock` 30."
@@ -105,7 +111,10 @@
    "commit": "5b27c1ccfaa230fb195855f5cf3404a21e3379cd",
    "decision": "dismissed",
    "reason": "low-stakes",
-   "blame": ["generated_edit", "shotgun_edit"],
+   "blame": [
+    "generated_edit",
+    "shotgun_edit"
+   ],
    "note": "The release bot cutting 0.17.0: 97 files, 44 manifests, `Cargo.lock`, forty regenerated crate READMEs, and the changelog rolled into `changelogs/0.16.x.md` with `BREAKING_CHANGES.md` opened for the next cycle. `generated_edit`'s three claims are the version string inside READMEs the release act regenerates, and `shotgun_edit`'s 42 clusters are one mechanical act seen forty-two times — the same reading `4683270c69` got in the e4.9 pass, one minor release later.",
    "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
    "evidence": "`git show 5b27c1cc --stat`: 97 files +983 −759 — `Cargo.toml` 80 version lines, `CHANGELOG.md` −625 beside `changelogs/0.16.x.md` +585 and `BREAKING_CHANGES.md` +78, `crates/*/README.md` 4 lines each, `crates/ruff_command_line/README.md` 12."
@@ -114,7 +123,9 @@
    "commit": "3ac6b4c31229664cde21edc4f49949450f8f8e08",
    "decision": "dismissed",
    "reason": "false-positive",
-   "blame": ["untested_new_logic"],
+   "blame": [
+    "untested_new_logic"
+   ],
    "note": "`untested_new_logic` says the episode `touched no test file at all (0 test paths)`, and it touched six: `mdtest/expression/boolean.md` +37, `if.md` +16, `redundant_condition.md` +51, `statically_known_branches.md` +95, `type_properties/truthiness.md` +11 and `types/infer/tests.rs` +64. mdtest is how ty asserts type-checker behaviour, and the `Truthiness::Uninhabited` variant the finding calls untested is what those resources pin (both branches of a `Never` condition now unreachable). The detector looks for `test`-shaped paths and does not see the project's real test surface; that is a catalogue blind spot, not an untested change.",
    "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
    "evidence": "`git show 3ac6b4c3 --stat`: `crates/ty_python_core/src/lib.rs` 144 (`pub const fn is_uninhabited`, `pub fn union`), `crates/ty_python_semantic/resources/mdtest/expression/boolean.md` +37 and four more mdtest resources, `types/infer/tests.rs` +64, 30 files +864 −296."
@@ -123,7 +134,9 @@
    "commit": "fbbe89dc715c70b2fdde2324334b2b3d460302d3",
    "decision": "dismissed",
    "reason": "false-positive",
-   "blame": ["lint_escape"],
+   "blame": [
+    "lint_escape"
+   ],
    "note": "The `#[expect(deprecated)]` `lint_escape` named carries its own reason two lines above it: `We've asked the upstream maintainers to reconsider the deprecation`, with a link to the icu4x issue. The finding's claim is that the reason is not in the diff, and here it is, in the diff, on the lines above the directive. The change itself is the correct handling of `NfcInert` going deprecated in icu_properties 2.3 — a scoped `#[expect]` at the one call site, not a blanket allow.",
    "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
    "evidence": "`git show fbbe89dc -- crates/ruff_python_literal/src/escape.rs`: the two comment lines then `#[expect(deprecated)] let inert = CodePointSetData::new::<icu_properties::props::NfcInert>();`; rest of the episode is `Cargo.lock` 55."
@@ -132,7 +145,9 @@
    "commit": "7857566b3d0415013d6263f3d0fa0ad74bb43120",
    "decision": "dismissed",
    "reason": "low-stakes",
-   "blame": ["score"],
+   "blame": [
+    "score"
+   ],
    "note": "Seven renovate NPM development bumps for the playground in one episode — workers-types, react-dom types, oxlint, wrangler — and 154 insertions against 154 deletions of lockfile in its last member. No finding spoke; the flag is the dependency axis on the playground's own lockfiles, which are not the shipped artefact.",
    "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
    "evidence": "`git show 7857566b --stat`: 4 files +154 −154 (`playground/package-lock.json` 166, `playground/deploy/package.json` 2); episode members are seven renovate bump commits."
@@ -141,7 +156,9 @@
    "commit": "db2a4a9216db7cf756350a15f4f527f16af3f2f9",
    "decision": "dismissed",
    "reason": "low-stakes",
-   "blame": ["score"],
+   "blame": [
+    "score"
+   ],
    "note": "Hyperfine 2.0.0-alpha.2 for the benchmark scripts: `scripts/benchmarks/run_formatter.sh` reshuffled, a CONTRIBUTING note, `pyproject.toml` and its lock. Nothing ships, nothing is tested, no finding spoke, and the flag is the lockfile axis on a benchmark harness.",
    "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
    "evidence": "`git show db2a4a92 --stat`: `CONTRIBUTING.md` 3, `pyproject.toml` 4, `scripts/benchmarks/run_formatter.sh` 56, `uv.lock` 18."
@@ -150,7 +167,9 @@
    "commit": "57a6e86342a46844dfbc8f039273abbc718f2502",
    "decision": "dismissed",
    "reason": "false-positive",
-   "blame": ["untested_new_logic"],
+   "blame": [
+    "untested_new_logic"
+   ],
    "note": "The second time in this window that `untested_new_logic` claimed `no test file at all` about a ty change that is tested in mdtest: `escape_for_display` is new in `crates/ruff_python_literal/src/escape.rs` and its behaviour — `Literal['a\"b']` rather than `Literal[\"a\\\"b\"]`, NFC-normalised versus raw text — is pinned by 94 added lines of `mdtest/literal/string.md`, which is the suite ty's display behaviour is written in. Same blind spot as `3ac6b4c312`, one crate over.",
    "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
    "evidence": "`git show 57a6e863 --stat`: `crates/ruff_python_literal/src/escape.rs` +244 (`pub fn escape_for_display`), `crates/ruff_python_literal/src/char.rs` 14, `crates/ty_python_semantic/resources/mdtest/literal/string.md` +94, `types/display.rs` 36."
@@ -159,7 +178,10 @@
    "commit": "c79d773317a48b215697cf28c3687961de6733f4",
    "decision": "dismissed",
    "reason": "false-positive",
-   "blame": ["debug_leftover", "untested_new_logic"],
+   "blame": [
+    "debug_leftover",
+    "untested_new_logic"
+   ],
    "note": "Two findings, both about the fuzzer script rather than about the change. `untested_new_logic` charged `python/py-fuzzer/fuzz.py` for 166 lines including `class Bug`, `RenderableReproducer` and `render_issue_body` — a standalone script in a directory with no test suite, by this repository's design — and `debug_leftover` charged `print(self.maybe_bug.source)`, which is the fuzzer's report and the point of the program. e4.9 dismissed `2e34f5ba22` for the same `debug_leftover` claim on the same file; the second time is evidence of a rule, not a coincidence. What the episode actually does — put minimized reproducers into the daily fuzz issue, `daily_fuzz.yaml` +33 and a new `.jinja` template — is not what either finding described.",
    "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
    "evidence": "`git show c79d7733 --stat`: `python/py-fuzzer/fuzz.py` 175, `.github/workflows/daily_fuzz.yaml` 33, `python/py-fuzzer/daily_fuzz_issue.md.jinja` +35, `python/py-fuzzer/uv.lock` 77; finding quotes `print(self.maybe_bug.source)`."
@@ -177,7 +199,10 @@
    "commit": "3265ed1f944c98bb4c04d632fbefb1257cdb583d",
    "decision": "dismissed",
    "reason": "low-stakes",
-   "blame": ["generated_edit", "shotgun_edit"],
+   "blame": [
+    "generated_edit",
+    "shotgun_edit"
+   ],
    "note": "The release bot again, three patch versions earlier: 89 files for 0.16.10, forty `Cargo.toml` version lines, `Cargo.lock`, and the crate READMEs regenerated around them. `generated_edit` charges two hand-written-looking lines in `crates/ruff_python_codegen/README.md` that are the regenerated badge, and `shotgun_edit`'s 40 clusters are the same mechanical act counted forty times.",
    "actor": "looprs (agent) — pi, reco-dyt window-widening pass, 2026-10-20",
    "evidence": "`git show 3265ed1f --stat`: 89 files +240 −206 — `Cargo.toml`/`Cargo.lock`, ~40 `crates/*/Cargo.toml` at 2 lines, `crates/*/README.md` at 4, the `crates/ruff_python_codegen/README.md` 2 the finding quotes."
@@ -195,7 +220,9 @@
    "commit": "ef1dfb18ac4fa4b3c1aa3e4ec4f3db8c65155727",
    "decision": "dismissed",
    "reason": "low-stakes",
-   "blame": ["score"],
+   "blame": [
+    "score"
+   ],
    "note": "Crossed the published τ 40 for the first time when `reco-0er` took the guessed-`human` authorship axis out of the score's denominator — one of five `ruff` episodes now sitting between τ and `ruff`'s own cut of 43. `black` moves from a Git source to the released 26.10.0 wheel for typeshed formatting, so the `[tool.uv.sources]` git entry, the `no-binary-package` exception and eleven `build-constraint-dependencies` pins that existed to make the from-Git build work all go away, and `uv.lock` follows. Dev toolchain plumbing with no finding on it: the flag is the lockfile and dependency axes, accurate about the files and wrong that a reader was owed one.",
    "actor": "looprs (agent) — pi, reco-0zi re-measure, 2026-11-02",
    "evidence": "`git show ef1dfb18ac --stat`: pyproject.toml +1 −16 (`black` → `black>=26.10.0` in `typeshed-formatting`; `black` out of `no-binary-package`; `hatch-fancy-pypi-readme`, `hatch-vcs`, `hatchling`, `pathspec`, `pluggy`, `setuptools-scm`, `tomli`, `tomlkit`, `trove-classifiers`, `typing-extensions`, `vcs-versioning` out of `build-constraint-dependencies`), uv.lock +46 −18; PR #29115."
@@ -204,7 +231,9 @@
    "commit": "d1d6a5d4ae2845e40f33c9f4af4706dba314a359",
    "decision": "dismissed",
    "reason": "low-stakes",
-   "blame": ["score"],
+   "blame": [
+    "score"
+   ],
    "note": "Benchmark harness, 26 lines: `astral-dev-toolchain-hyperfine` 2.0.0a2 → 2.0.0 with its `exclude-newer-package` stamp moved with it, and the single-threaded formatter benchmark drops its `env RAYON_NUM_THREADS=1` prefix for hyperfine's own `--env` so the run stops timing `env` (~5 ms) as well as the thing under test. Nothing shipped, no finding, and the flag is the lockfile axis again — the same class `reco-0er`'s renormalisation lifted over τ.",
    "actor": "looprs (agent) — pi, reco-0zi re-measure, 2026-11-02",
    "evidence": "`git show d1d6a5d4ae --stat`: pyproject.toml +2 −2, `scripts/benchmarks/run_formatter.sh` +2 −2 (`hyperfine --ignore-failure --env RAYON_NUM_THREADS=1` over the two single-threaded cases), uv.lock +18 −18; PR #29219."
@@ -213,10 +242,42 @@
    "commit": "0a7f89cdd87955e7ea53f3b201f91cf6f262b50e",
    "decision": "dismissed",
    "reason": "false-positive",
-   "blame": ["debug_leftover", "untested_new_logic"],
+   "blame": [
+    "debug_leftover",
+    "untested_new_logic"
+   ],
    "note": "Third time on this file, so it is a rule and not a coincidence: `untested_new_logic` charged `python/py-fuzzer/fuzz.py` 119 new logic lines with `0 test paths`, and `debug_leftover` charged `print(f\"Could not minimize seed {seed}: {e}\", file=sys.stderr, flush=True)`. The directory has no test suite and never had one — `git ls-tree` at this commit lists README, a `.jinja` template, `fuzz.py`, `pyproject.toml` and `uv.lock` — and what exercises it is the `fuzz-ty` job this same commit doubles the timeout of. The print is guarded by `if not args.quiet`, like the three reporting lines beside it; `e4.9` dismissed the same claim on `2e34f5ba22` and `reco-dyt` on `c79d77331`. What the episode actually does — a 60-second minimisation budget, and a `run_executable` that kills the child's whole process group on timeout so a hung `ty` cannot leave `uv` behind — is not what either finding described, and nothing in it needed a reader the PR did not already have.",
    "actor": "looprs (agent) — pi, reco-0zi re-measure, 2026-11-02",
    "evidence": "`git show 0a7f89cdd8 --stat`: `python/py-fuzzer/fuzz.py` +119 −41 (`MINIMIZATION_BUDGET_SECONDS: Final = 60`, `class MinimizationTimedOut(Exception)`, `run_executable` with `start_new_session=os.name == \"posix\"` and `os.killpg(process.pid, signal.SIGKILL)`, `bounded_callback`), `.github/workflows/ci.yaml` +3 −3 (`fuzz-ty` `timeout-minutes` 10 → 20, `git checkout --detach \"$GITHUB_SHA\"`); `git ls-tree -r --name-only ef1dfb18ac python/py-fuzzer` — five files, none of them a test."
+  },
+  {
+   "commit": "df1b77aebe85a3cba3f5f45192e47147e168c1b8",
+   "decision": "dismissed",
+   "reason": "low-stakes",
+   "blame": [
+    "score"
+   ],
+   "note": "The vendored-typeshed sync, and the new axis is what pushed it over τ 40: +41 decision points with a worst unit of V(G) 874 is not a function anybody wrote — the largest row is `stdlib/turtle.pyi`, 926 changed lines of the 1 695 of churn, re-written by typeshedbot. Nothing in the catalogue spoke at all, `noise` had already said the honest thing (1 632 of 1 695 churn lines on generated, lockfile, vendored or binary paths, 47 files) — the reviewable remainder is eight hand-written lines in `ty_ide/src/type_hierarchy.rs` plus the stubs themselves. The axis is right that those stubs gained branches and wrong that anyone has to read them: this is the shape `size` discounts through noise classes and `complexity` currently does not, which is why the blame is the ranking's and not the catalogue's.",
+   "actor": "looprs (agent) — pi, reco-l9bz.7 re-measure, 2026-11-12",
+   "evidence": "`git show df1b77aebe85 --numstat`: 56 files, +932 −765; the largest row is `crates/ty_vendored/vendor/typeshed/stdlib/turtle.pyi` at 418 −508, and the only hand-maintained row is `crates/ty_ide/src/type_hierarchy.rs` at 4 −4; author `github-actions[bot]`, trailer `Co-authored-by: typeshedbot`; receipts: no findings, and “1632 of 1695 churn lines sit on generated, lockfile, vendored or binary paths (47 file(s)) · classified by path, not by token comparison”, plus “+41 V(G) across the 56 path(s) this episode touched, of which 47 could be counted on both sides · the worst single unit at head is V(G) 874”."
+  },
+  {
+   "commit": "30c4b67ae0af8ec2e5eed5b4a6a1c60192de2cb9",
+   "decision": "accepted",
+   "reason": "",
+   "blame": [],
+   "note": "A change to which generic solutions the type solver is allowed to infer: every inferred lower bound is now checked against the declared upper bound for each specialization a caller could pick, which is a correctness rule and not a refactoring, and the message names the two inference limitations it exposes. The flag's largest term is `test_ratio` reading the change as untested logic, which is wrong in kind — 523 lines of mdtest and 240 of Rust tests arrived with the first commit alone — but the episode belongs in front of a reviewer for the reason the new axis gives: +49 decision points, a floor counted on 8 of the episode's 22 paths, in the files where the solver decides what a valid solution is. Read it, and the mdtest is where the argument is.",
+   "actor": "looprs (agent) — pi, reco-l9bz.7 re-measure, 2026-11-12",
+   "evidence": "`git show 30c4b67ae0af --numstat` (first of three commits, 11 files +927 −13): `types/constraints/solutions.rs` +158 −4, `constraints/projection/tests.rs` +240 −4, eight `resources/mdtest/**` files at +523 −4, `call/bind.rs` touched; the message names astral-sh/ty#4508 and #26680 as the limitations the stricter check exposes; receipts: `complexity` at full value — “+49 V(G) across the 22 path(s) this episode touched, of which 8 could be counted on both sides … a floor” — `test_ratio` at full inverted value (“of +567 on logic, +0 was tests (0% covered)” — the tests are mdtest markdown, not `*_tests.rs`), and 4 findings, all low: 3 `todo_debt` and 1 `copy_paste_growth`."
+  },
+  {
+   "commit": "5409291eb1a5c861aea0a804788736f4587d42b9",
+   "decision": "accepted",
+   "reason": "",
+   "blame": [],
+   "note": "A new linter behaviour with a new setting behind it: references become runtime-ambiguous, so TC001-003 and TC004 both have to stop firing on them, and the definition of that notion lives in `model.rs` and `helpers.rs` where every other rule reads it. The flag's own reasons are thin — two medium findings and `complexity` at full value for +32 decision points across 30 paths, which the receipt itself calls a floor because only 14 of them could be counted on both sides — but the thing they point at is the right thing: a semantic-model change that changes what users' existing `select` configurations report, with the option surface (`options.rs` +83, `ruff.schema.json` regenerated, 14 snapshots re-baselined) travelling with it. Stopping for this is the job.",
+   "actor": "looprs (agent) — pi, reco-l9bz.7 re-measure, 2026-11-12",
+   "evidence": "`git show 5409291eb1a5 --numstat`: 30 files, +482 −164, of which `crates/ruff_python_semantic/src/model.rs` +59 −29, `flake8_type_checking/helpers.rs` +74 −39, `flake8_type_checking/settings.rs` +55 −6, `ruff_workspace/src/options.rs` +83 −17, plus `ruff.schema.json` regenerated and 14 `.snap` files re-baselined; receipts: `complexity` — “+32 V(G) across the 30 path(s) this episode touched, of which 14 could be counted on both sides · the worst single unit at head is V(G) 616 … a floor” — `test_ratio` “of +471 on logic, +48 was tests (9% covered)”, and 2 findings, 2 medium: `untested_new_logic` on `model.rs` and `shotgun_edit` on a cluster repeated across files."
   }
  ]
 }

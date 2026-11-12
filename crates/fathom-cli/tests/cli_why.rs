@@ -265,13 +265,14 @@ fn code(out: &Output) -> Option<i32> {
     out.status.code()
 }
 
-/// The twelve feature names the verb has to account for, in the order it prints them.
-const FEATURES: [&str; 12] = [
+/// The thirteen feature names the verb has to account for, in the order it prints them.
+const FEATURES: [&str; 13] = [
     "findings",
     "surface",
     "migration",
     "blast",
     "test_ratio",
+    "complexity",
     "size",
     "dependency",
     "deletions",
@@ -319,11 +320,11 @@ fn why_prints_every_feature_its_weight_and_its_contribution() {
 
     // The header: which episode, and from which model.
     assert!(
-        text.contains("features-1"),
+        text.contains("features-2"),
         "the line says which model produced the number:\n{text}"
     );
     assert!(
-        text.contains("features-1 ") && text.contains(" = "),
+        text.contains("features-2 ") && text.contains(" = "),
         "the arithmetic is printed as a sum a human can check:\n{text}"
     );
     assert!(
@@ -348,7 +349,7 @@ fn why_prints_every_feature_its_weight_and_its_contribution() {
     expected.sort_unstable();
     assert_eq!(
         names, expected,
-        "every one of the twelve is on the page, scored or declared absent:\n{text}"
+        "every one of the thirteen is on the page, scored or declared absent:\n{text}"
     );
     for (name, row) in &rows {
         let fields: Vec<&str> = row.split_whitespace().collect();
@@ -464,14 +465,14 @@ fn the_same_episode_scores_the_same_way_twice_and_says_so_in_the_same_words() {
         Some("fathom.cli.why/1"),
         "the envelope carries a contract id, as every published verb's does"
     );
-    assert_eq!(payload["model"].as_str(), Some("features-1"));
+    assert_eq!(payload["model"].as_str(), Some("features-2"));
     let terms = payload["terms"].as_array().expect("a term list");
     let total = payload["total"].as_i64().expect("a total");
     let weights = payload["weights"].as_array().expect("the weight set");
     assert_eq!(
         weights.len(),
         FEATURES.len(),
-        "the payload names all twelve weights"
+        "the payload names all thirteen weights"
     );
     for weight in weights {
         assert!(

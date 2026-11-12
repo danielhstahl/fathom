@@ -700,7 +700,7 @@
           "type": "array"
         },
         "model": {
-          "description": "Which ranking produced the number (`spine-1` today).",
+          "description": "Which ranking produced the number (`spine-2` today).",
           "type": "string"
         },
         "rank": {
@@ -740,7 +740,7 @@
           "type": "array"
         },
         "vector": {
-          "description": "`spine-1 88 = surfaces 50 + size 12 + …` — the arithmetic, checkable from the row.",
+          "description": "`spine-2 88 = surfaces 50 + size 12 + …` — the arithmetic, checkable from the row.",
           "type": "string"
         }
       },

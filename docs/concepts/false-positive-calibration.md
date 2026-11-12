@@ -4,14 +4,16 @@
   §5.4 promised when it wrote that `e4.3` and `m1` defer to "the threshold agreed in `e0.12`": the numbers
   are `e0.12`'s, and this is what they do when something measures them. One input to the measurement — τ,
   §5.4's own default — moved in `reco-6co` because this page said it was inert. A second input — the score's
-  own denominator — moved in `reco-0er`, and §3c is what that did. The bars did not move in either.
+  own denominator — moved in `reco-0er`, and §3c is what that did. A third — the number of axes the score
+  divides by — moved in `reco-l9bz.7`, and §3d is what that did. The bars did not move in any of them.
 - **Ticket / plan key**: `reco-mkl.1` (`e4.9`, scheduled by `e0.12` as `e4.3a`), re-pinned and re-labelled at
-  three times the window by `reco-dyt` so the miss-rate denominator stopped being seven episodes, and
+  three times the window by `reco-dyt` so the miss-rate denominator stopped being seven episodes,
   re-measured by `reco-6co` after the ranking stopped charging a machine's regenerated artefact and a bot's
-  pin bump the operator weight, and re-measured a third time by `reco-0zi` after the authorship axis stopped
-  scoring a guess — see
+  pin bump the operator weight, re-measured a second time by `reco-0zi` after the authorship axis stopped
+  scoring a guess, and re-measured a third time by `reco-l9bz.7` after the ranking grew a
+  cyclomatic-complexity axis — see
   [the corpus README §6](../../crates/fathom-analyze/calibration/g3/README.md) for what a re-pin costs and
-  §3b and §3c below for what a re-score and a re-measure cost.
+  §3b, §3c and §3d below for what a re-score and a re-measure cost.
 - **Implements**: ADR-001 §5.4 verbatim — `G3`, its companion miss rate, and the dismiss vocabulary that is
   §5.4's labelling mechanism. Consumes `e4.3`'s catalogue, `e4.4`'s score, and `e4.6`'s vocabulary and
   closed reason list, which is the dependency the ticket states: the harness gates `e4.3`, so it may not
@@ -25,8 +27,13 @@
 
 ```text
 python3 tools/fetch_g3_corpus.py                       # clone the three pinned repositories
-cargo run -p fathom-analyze --features sqlite-bundled --example g3_calibration -- --check
+cargo run -p fathom-analyze --features sqlite-bundled,langs-all \
+       --example g3_calibration -- --check
 ```
+
+The `langs-all` is load-bearing since `reco-l9bz.7`: the complexity axis is measured from parsed source, and
+a build without the grammars measures a corpus in which no repository has any — silently, with every axis
+present that does not need a parser.
 
 ---
 
@@ -69,23 +76,30 @@ Five things about the construction are load-bearing, not decorative:
 540 episodes (180 newest per repository), 525 of them mature against §5.3's rule — five successors on the
 lineage or seven days old against the pins' clock, which is a field in the corpus and never a read.
 
-| Repository | Median score | Max | Top-decile cut | Agent-attributed episodes | Mature reworked |
-| --- | --: | --: | --: | --: | --: |
-| `cli/cli` | 11 | 61 | 34 | 71 / 180 | 10 |
-| `pallets/flask` | 6 | 66 | 42 | 0 / 180 | 12 |
-| `astral-sh/ruff` | 22 | 59 | 43 | 21 / 180 | 2 |
-| **corpus** | — | 66 | — | 92 / 540 | **24** |
+| Repository | Median score | Max | Top-decile cut | Agent-attributed episodes | Mature reworked | Complexity measured |
+| --- | --: | --: | --: | --: | --: | --: |
+| `cli/cli` | 10 | 64 | 33 | 71 / 180 | 10 | 60 / 180 episodes, +4 045 V(G) |
+| `pallets/flask` | 6 | 60 | 39 | 0 / 180 | 12 | 59 / 180 episodes, +66 V(G) |
+| `astral-sh/ruff` | 22 | 61 | 42 | 21 / 180 | 2 | 137 / 180 episodes, +1 548 V(G) |
+| **corpus** | — | 64 | — | 92 / 540 | **24** | 256 / 540 episodes, +5 659 V(G) |
+
+The last column is `reco-l9bz.7`'s, and it is the first thing a reader should notice about it: the axis is
+**absent on more than half the corpus**. Absence is not a missing measurement of a change that added no
+decision points — those exist too and are counted at zero — it is that most episodes in all three
+repositories touch no source whose V(G) can be compared against its parent: workflow YAML, generated
+schemata, vendored stubs, markdown, lockfiles, and in `flask`'s case a great deal of Python that sits
+beside a template tree. `flask` adds a median of one decision point across a whole episode.
 
 | Gate | §5.4 bar | Measured | Declared |
 | --- | --- | --- | --- |
-| `g3-alpha-at-published-tau` | `G3 ≤ 0.30` at τ 40 | **0.660** (35 / 53 labelled flags) | **fail** — a real flag population now, and over the bar |
-| `g3-alpha-at-corpus-cut` | `G3 ≤ 0.30` across every flag the corpus raised | **0.683** (43 / 63) | **fail** |
-| `g3-1-0-at-corpus-cut` | `G3 ≤ 0.15` on the same population | 0.683 | **fail** |
-| `miss-rate-at-published-tau` | `miss_rate ≤ 0.20` at τ 40 | **0.792** (19 of 24 reworked episodes scored under τ) | **fail** |
+| `g3-alpha-at-published-tau` | `G3 ≤ 0.30` at τ 40 | **0.608** (31 / 51 labelled flags) | **fail** — a real flag population now, and over the bar |
+| `g3-alpha-at-corpus-cut` | `G3 ≤ 0.30` across every flag the corpus raised | **0.642** (43 / 67) | **fail** |
+| `g3-1-0-at-corpus-cut` | `G3 ≤ 0.15` on the same population | 0.642 | **fail** |
+| `miss-rate-at-published-tau` | `miss_rate ≤ 0.20` at τ 40 | **0.833** (20 of 24 reworked episodes scored under τ) | **fail** |
 | `miss-rate-at-decile-cut` | `miss_rate ≤ 0.20` at each repo's top-decile cut | 0.750 (18 of 24) | **fail** |
 | `miss-rate-denominator-is-big-enough` | ≥ 20 mature reworked episodes | 24 of 525 mature | pass |
-| `every-flagged-episode-is-labelled` | 0 unlabelled flags | 0 (63 flags, 63 labels) | pass |
-| `flag-population-is-large-enough-to-gate` | ≥ 20 flagged episodes | 63 of 540 | pass |
+| `every-flagged-episode-is-labelled` | 0 unlabelled flags | 0 (67 flags, 67 labels) | pass |
+| `flag-population-is-large-enough-to-gate` | ≥ 20 flagged episodes | 67 of 540 | pass |
 | `shipped-defaults-agree-with-measurement` | 0 enabled detectors breaching α with ≥ 8 flags | 0 — read §4: the metric cannot see it | pass |
 
 Every gate declares its own `expected` in `thresholds.json` and the run fails if one comes out differently
@@ -94,37 +108,40 @@ below are what they cost.
 
 ## 3. What the five `fail`s say
 
-**At the published default τ the flag arm fires now, and `G3` is 0.660 against a bar of 0.30.** τ 40 flags
-53 of 540 episodes — 9.8 %, the queue a reviewer reads first — and all 53 carry a hand-authored
+**At the published default τ the flag arm fires now, and `G3` is 0.608 against a bar of 0.30.** τ 40 flags
+51 of 540 episodes — 9.4 %, the queue a reviewer reads first — and all 51 carry a hand-authored
 disposition. That is a different sentence from the one this page used to print: at τ 70 the flag arm was
 inert, six episodes in 540 got there and every one of them through a high-severity finding, because
 `features-1`'s ceiling on real history is 66. `G3` "0.333 on six flags" was not a rate over what a
-reviewer is shown; 0.660 on 53 is. **The gate moved from barely-measurable to measured, and it fails.**
+reviewer is shown; 0.608 on 51 is. **The gate moved from barely-measurable to measured, and it fails.**
 
-**At a cut that actually flags things, `G3` is 0.683 against a bar of 0.30.** 63 episodes across the three
-repositories landed in the top decile or carried a high finding; all 63 were labelled against the diff, and
+**At a cut that actually flags things, `G3` is 0.642 against a bar of 0.30.** 67 episodes across the three
+repositories landed in the top decile or carried a high finding; all 67 were labelled against the diff, and
 43 of them cost a reviewer something that did not need paying:
 
 | Dismissal | Count | What it was |
 | --- | --: | --- |
-| `low-stakes` | 30 | Dependabot, renovate and release-bot bumps (Go modules, `Cargo.lock`, `uv.lock`, forty regenerated crate READMEs), and maintenance `update dev dependencies` episodes that re-emit the CI workflow templates and a 1 000-line lockfile. The workflow and dependency axes raised these; no finding justified them. `reco-0zi` added four readings of its own and lost three older ones to a moved cut (§3c): a two-line human-authored `go-gh` patch bump, an `update dev dependencies` refresh, a switch from a Git `black` to the released wheel and a benchmark-tool pin bump — none of which did anything but cross a threshold. |
-| `false-positive` | 10 | `untested_new_logic` charging a test spy in `internal/telemetry/fake.go`, and twice more claiming a ty change had "no test file at all" when the tests are mdtest resources; `lint_escape` naming a `#[expect(deprecated)]` whose reason is written on the two lines above it; `todo_debt` reading `[]string{"feature", "TODO", "bug"}` — a GitHub label fixture — as six unfinished-work markers; `debug_leftover` charging a fuzzer's own bug report as left-behind `print`s — three labels now, the third added by `reco-0zi` on the same file and the same claim. |
-| `intentional` | 3 | Dropping Python 3.10 and the other end-of-life Pythons, and the `gh repo garden` deletion that took its own test file with it. §5.4's `expected`, which is a false positive *by definition* — the reviewer did not need the prompt. The two `test_weakening` platform-and-receipt-guard readings that made this row five in `reco-6co` now sit below `cli`'s raised cut (§3c), which is why the count shrank while the corpus flagged more. |
-| (true positives) | 20 | 20 episodes `accepted` — a 15 945-line new agent-authored skill tool with new public API and no suite named for it, the Flask app/request-context merge with nine new `# type: ignore` directives, the uv migration of the release pipeline, a new CI gate that decides what fails a pull request, the new typed attachment-telemetry API — plus 5 dismissed episodes that §5.4 also counts as `TP(e)` because the episode was later reworked, for a `TP(e)` total of 25. The CVE-fixing `golang.org/x/net` bump that used to head this list is now one of the nine readings sitting below `cli`'s cut (§6). |
+| `low-stakes` | 30 | Dependabot, renovate and release-bot bumps (Go modules, `Cargo.lock`, `uv.lock`, forty regenerated crate READMEs), and maintenance `update dev dependencies` episodes that re-emit the CI workflow templates and a 1 000-line lockfile. The workflow and dependency axes raised these; no finding justified them. `reco-l9bz.7` lost one row and gained one to its own axis (§3d): a `ruff` vendored-typeshed sync the new complexity term carried over τ — 926 changed lines of `turtle.pyi`, a worst unit of V(G) 874, nothing hand-written in it but eight lines — dismissed again and blamed on the ranking, which is the honest reading of an axis that counts branches in a stub nobody reads. |
+| `false-positive` | 9 | `untested_new_logic` charging a test spy in `internal/telemetry/fake.go`, and more than once claiming a ty change had "no test file at all" when the tests are mdtest resources; `lint_escape` naming a `#[expect(deprecated)]` whose reason is written on the two lines above it; `todo_debt` reading `[]string{"feature", "TODO", "bug"}` — a GitHub label fixture — as six unfinished-work markers; `debug_leftover` charging a fuzzer's own bug report as left-behind `print`s — three labels now, the third added by `reco-0zi` on the same file and the same claim. |
+| `intentional` | 4 | Dropping Python 3.10 and the other end-of-life Pythons, the `gh repo garden` deletion that took its own test file with it, and a `cli` recorder-buffering fix whose three skipped tests in a vendored skill tool were the point of the change. §5.4's `expected`, which is a false positive *by definition* — the reviewer did not need the prompt. The fourth row is new to this pass: `reco-l9bz.7`'s axis carried it over `cli`'s cut with +134 V(G) (§3d). |
+| (true positives) | 24 | 24 episodes `accepted` — a 15 945-line new agent-authored skill tool with new public API and no suite named for it, the Flask app/request-context merge with nine new `# type: ignore` directives, the uv migration of the release pipeline, a new CI gate that decides what fails a pull request, a `cli` telemetry-lifecycle rewrite that moved when a payload is finalized, a ty solver change to which generic solutions may be inferred — plus 4 dismissed episodes that §5.4 also counts as `TP(e)` because the episode was later reworked, for a `TP(e)` total of 28. |
 
 24 of the forty-three false positives were blamed on the **ranking** rather than on any
 detector (`aggregate.coverage.blamed_on_score`): a routine bump scored into the top decile with nothing
 suspicious about it. That number is the shape of the finding, and it is a routing result — `e4.4`'s weights
-and τ decided it — not a defect in the catalogue. §3b is what happened when someone went and changed the
-routing, and §3c what happened when a different part of the same arithmetic moved.
+and τ decided it — not a defect in the catalogue. It did not move when `reco-l9bz.7` added a thirteenth
+axis to that same ranking, which is the most useful thing about it: the axis redistributed *which*
+maintenance got flagged and left the count alone. §3b is what happened when someone went and changed the
+routing, §3c what happened when a different part of the same arithmetic moved, and §3d what happened when
+the arithmetic grew a term.
 
-**The miss rate is 0.792 at τ, and 0.750 at the per-repository cut.** 19 of the 24 episodes that were
+**The miss rate is 0.833 at τ, and 0.750 at the per-repository cut.** 20 of the 24 episodes that were
 mature and later needed rework fell below the published τ, and 18 fell below their repository's own
 top-decile cut — the queue a reviewer would actually have read first. What got reworked in these windows
 was ordinary-looking source edits, not lockfiles, so tightening the threshold trades the first problem for
-the second rather than solving it: the sweep says τ 25 would reach 13 of the 24 (miss 0.458) by flagging
-139 episodes — 25.7 % of the corpus, 67 of them unread. That is the sentence §5.4's companion metric
-exists to make unavoidable.
+the second rather than solving it: the sweep says τ 35 reaches 18 of the 24 (miss 0.750) by flagging 68
+episodes — 12.6 % of the corpus, 7 of them unlabelled, which is a rate over 61 of them. That is the
+sentence §5.4's companion metric exists to make unavoidable.
 
 ### 3b. What `reco-6co` changed, and what it cost
 
@@ -257,6 +274,65 @@ What it changed outside the two `G3` gates is in §4: `test_weakening` fell unde
 its five attributed false positives were on `cli` episodes that fell out of the cut, which is a denominator
 moving and not a detector improving.
 
+### 3d. What a thirteenth axis moved, and what it cost — `reco-l9bz.7`
+
+The axis is cyclomatic complexity: how many decision points a change adds, measured by the same
+`fathom-analyze::structure` parser that fills the index, summed to the episode, and handed to the score as
+one figure rather than recomputed inside it (`spine-1` → `spine-2`, `features-1` → `features-2`). It went
+into both the spine ranking — 12 points of 100, filled at 20 added decision points — and the explainable
+vector, at weight 0.07 of a denominator that still sums to 1.00, paid for by taking a little off the shape
+axes it competes with (`size`, `dependency`, `deletions`, `noise`, `breadth`, `attribution`, `authorship`).
+What it measured, against the report it replaced:
+
+| | before | after | what happened |
+| --- | --: | --: | --- |
+| episodes flagged at the published τ | 53 | 51 | six fell below 40 (five of them the bot-maintenance band), four came in |
+| episodes flagged at the corpus cut | 63 | **67** | nine promotions, five demotions, 12.4 % of the corpus |
+| dispositions in the three truth files | 72 | **76** | four episodes had never been flagged and so had never been read; four diffs read, four rows written |
+| `G3` at τ / at the corpus cut | 0.660 / 0.683 | **0.608** / **0.642** | four promotions were `accepted` reads that used to be missed, and five long-dismissed bumps fell out of τ's flag set |
+| false positives blamed on the ranking | 24 | 24 | **did not move**: an axis added to the ranking did not make the ranking's claims truer |
+| miss rate at τ / at the deciles | 0.792 / 0.750 | **0.833** / 0.750 | one `accepted`, later-reworked `cli` episode sat at exactly 40 and landed at 37 |
+| scores that changed among previously-flagged episodes | — | 51 of 58 | mean −1.28 points, and the corpus ceiling fell 66 → 64 |
+
+Two of those rows are the reviewer being charged less for the same reading, and one is the reviewer being
+shown less. The one that moved **against** reading is named in `thresholds.json` under
+`miss-rate-at-published-tau` and is not smoothed here: `cli`'s
+`start attachment telemetry before asset validation` (`ep-859df55bc1cfcaf5735e`, `accepted`, later
+reworked) scored exactly 40 under `features-1` and 37 under `features-2`, because the weight the new axis
+earned came off the axes that episode was scoring on. It is one episode out of 24 on the miss-rate
+denominator and it is the whole price of the change, stated at the gate it moved.
+
+The four episodes the axis promoted, and what reading them came to:
+
+* `cli` `5e078edf27c4` — a telemetry-lifecycle rewrite with a copilot co-author: new `invocation.go` state
+  machine, new mutex-guarded `delivery.go` buffer the catalogue did flag, a 599-line rewrite of the test
+  file that the old guarantees moved into. `accepted`: +36 decision points is the largest term on the row
+  and no finding is, and that is the correct reason to stop.
+* `ruff` `df1b77aebe85` — the vendored-typeshed sync. `dismissed`, `low-stakes`, blamed on the ranking: the
+  +41 V(G) that carried it over τ is 926 changed lines of `turtle.pyi` and a worst unit of V(G) 874 in a
+  stub, with eight hand-written lines of `ty_ide` beside it. `noise` had already discounted the same churn
+
+  at 0.96; the complexity axis counted branches in generated files and was the difference between a flag
+  and none. That is this corpus telling a scoring change where it is wrong, in the reason code §5.4
+  invented for exactly that.
+* `ruff` `30c4b67ae0af` — validating inferred generic solutions against declared upper bounds.
+  `accepted`: a solver correctness rule, +49 decision points in `solutions.rs` and `bind.rs`, and a
+  `test_ratio` term at full inverted value that is simply wrong about a repository whose test surface is
+  mdtest.
+* `ruff` `5409291eb1a5` — a new `flake8-type-checking` notion with a new setting and 14 re-baselined
+  snapshots. `accepted`: it changes what users' existing `select` configurations report.
+
+Two things outside the gates came out of this pass and both are in the harness now. The first is a real
+nondeterminism, found because the numbers would not reproduce: the complexity column is filled by a
+budgeted index pass (`extract.complexity.max_run_ms`, 60 s by default), so which rows had a figure
+depended on how busy the machine was — the same commit gave `G3` 0.625 on one run and 0.667 on the next.
+The harness now runs that pass to completion at the policy ceiling, panics if the scan budget refused any
+row, and prints the pass's coverage into the report under `complexity_axis.pass`. The second is that the
+calibration corpus in `fathom why --calibrate` cannot fit this axis at all — no case in it turns on added
+decision points — so the retune report now says **`not fitted by this set`: `blast`, `complexity`** instead
+of letting thirteen weights look measured when eleven are.
+
+
 ## 4. Per detector, and the defaults the measurement does *not* flip
 
 Attributed with `blame` (see the corpus README §3): a detector is in a denominator only when the
@@ -266,19 +342,19 @@ one.
 
 | Detector | Ships | Spoke on | Answerable for | `G3` | Verdict |
 | --- | --- | --: | --: | --: | --- |
-| `test_weakening` | enabled | 11 | 11 | 0.273 | **under α now**, on 11 flags — and not because it got better: two of its five attributed false positives were on `cli` episodes that fell out of the cut (§3c). Half of what is left are deliberate skips and deletions-of-deleted-code; the in-place-rewrite miss is real |
+| `test_weakening` | enabled | 12 | 12 | 0.333 | **still under α, on one flag more than before** — `reco-l9bz.7`'s axis promoted a `cli` episode that was dismissed `intentional` over three skipped tests in a vendored skill tool, and all three of its findings are chargeable here: 0.273/11 → 0.333/12. Half of what it is answerable for are deliberate skips and deletions-of-deleted-code; the in-place-rewrite miss is real |
 | `lint_escape` | enabled | 9 | 9 | 0.667 | over α on 9. Two of the nine were suppressions whose reason is in the diff next to them |
-| `shotgun_edit` | **disabled** | 11 | 9 | 0.444 | over α on 9 flags, so it does not earn re-enabling; every case was one mechanical act seen N clusters times |
-| `untested_new_logic` | enabled | 10 | 9 | 0.556 | over α on 9. Five of the nine are one blind spot in three shapes: a Go test spy, ty tests that are mdtest resources, and a fuzzer directory with no test suite to name |
+| `shotgun_edit` | **disabled** | 12 | 11 | 0.364 | **under α now, on 11 flags** — 4 false positives where `reco-0er`'s population had 4 in 9. Nothing about the detector changed; the axis added flags whose labels were `accepted`. This is the first time this corpus has measured a disabled detector *under* α with 8+ answerable flags, and it changes no shipped default: re-enabling is a `risk.detectors` edit with its own evidence, and every one of these cases is still one mechanical act seen N clusters times |
+| `untested_new_logic` | enabled | 11 | 10 | 0.400 | **exactly at α on 10** — down from 0.556/9 because the promoted `accepted` episodes it spoke on were worth the read. Five of its four false positives are one blind spot in three shapes: a Go test spy, ty tests that are mdtest resources, and a fuzzer directory with no test suite to name |
 | `generated_edit` | enabled | 4 | 4 | 1.000 | 4 flags, all of them a release bump's regenerated README — the same claim `e4.9` made on 2 |
 | `debug_leftover` | enabled | 3 | 3 | 1.000 | 3 flags, all the fuzzer's own report, three labels and three different tickets; not a verdict, and treated as none |
-| `todo_debt` | enabled | 3 | 3 | 0.333 | 3 flags; one is a GitHub label named `TODO` |
-| `copy_paste_growth` | **disabled** | 2 | 2 | 0.000 | fired twice, earned both times (a new tool with two 15-line runs in common with itself) |
+| `todo_debt` | enabled | 4 | 4 | 0.250 | 4 flags; one is a GitHub label named `TODO` |
+| `copy_paste_growth` | **disabled** | 3 | 3 | 0.000 | fired three times, earned all three (a new tool with two 15-line runs in common with itself) |
 | `scope_creep`, `secret_string`, `churn_loop`, `rework_loop` | mixed | 0 | 0 | — | **raised nothing in the corpus.** No evidence, not a clean bill of health |
 
 "Answerable for" is `G3`'s denominator under the rule above, and the report prints it as one note for all
 of them (`aggregate.detectors_note`) rather than as an asterisk per row: these denominators do not sum to
-the corpus's 63, because a flag with several speakers charges several detectors and a flag blamed on the
+the corpus's 67, because a flag with several speakers charges several detectors and a flag blamed on the
 ranking charges none.
 
 `generated_edit` is the row `reco-6co` had to read hardest, because the obvious fix — classify the
@@ -295,37 +371,39 @@ where the catalogue put it. That is a trade made with the measurement in hand, a
 `expected` is `pass`, and the mechanism behind the 0 has to be read before the 0 is believed: the rule asks
 each detector's *pooled* `g3`, and the harness's pooling step sums counts without ever filling that field,
 so every detector that spoke is reported in `aggregate.defaults.under_measured` ("under the 8 a default
-flip needs", printed even for a detector with 11 flags — that is the tell) and the breach count is
+flip needs", printed even for a detector with 12 flags — that is the tell) and the breach count is
 structurally zero. Scored against `aggregate.detectors_corpus`, which does recompute the rate from the
-pooled counts, this corpus **does** have two default-enabled detectors over α with at least 8 answerable
-flags: `lint_escape` 0.667/9 and `untested_new_logic` 0.556/9. `test_weakening` used to be the third of them
-at 0.385/13; it is 0.273/11 now, and §3c says why — two of its false positives were readings of `cli`
-episodes that fell below a moved cut, so they left the denominator rather than being overturned.
+pooled counts, exactly one default-enabled detector is over α with at least 8 answerable flags: `lint_escape`
+at 0.667 on 9. `untested_new_logic` sits at 0.400 on 10 — on the line, not over it — where `reco-0er`'s run
+had it over at 0.556/9, and `test_weakening` is under at 0.333/12 where an earlier run had it over at
+0.385/13. One breach, one boundary case and one clean, on denominators of 9, 10 and 12.
 
-So this harness flips no shipped default in either direction — `e4.3`'s four disabled detectors stay
-disabled, `shotgun_edit` is measured at 0.444 on 9 and does not earn re-enabling, `copy_paste_growth` is
-the one disabled detector that earned every flag it raised, and `DEFAULT_FLIP_MIN_LABELLED` is still the
-bar — while the question "`e0.12`'s rule says a detector over α on 8+ flags ships disabled: which of these
-two does that disqualify?" is now *measurable and unanswered*. Answering it means deciding how much
-weight to give a labelling pass that is one agent's read (below), and probably fixing the two catalogue
-blind spots (mdtest, and a `# type: ignore` that quotes its own reason) first. That is its own ticket,
-with the weights and the catalogue in it; it is not something a threshold edit in a corpus ticket should be
-allowed to decide. The corpus README's rule is the one being obeyed either way: an unmeasured detector is a
-stated gap, not a zero (ADR-001 §7.7).
+So this harness flips no shipped default: `e4.3`'s four disabled detectors stay disabled — including
+`shotgun_edit`, which the corpus now measures *under* α on 11 answerable flags and which this pass does not
+re-enable on the strength of a population that moved for reasons other than its own accuracy —
+`copy_paste_growth` is the disabled detector that earned every flag it raised, and
+`DEFAULT_FLIP_MIN_LABELLED` is still the bar. Meanwhile the question "`e0.12`'s rule says a detector over α
+on 8+ flags ships disabled: does `lint_escape` disqualify itself?" is now *measurable and unanswered*.
+Answering it means deciding how much weight to give a labelling pass that is one agent's read (below), and
+probably fixing the two catalogue blind spots (mdtest, and a `# type: ignore` that quotes its own reason)
+first. That is its own ticket, with the weights and the catalogue in it; it is not something a threshold
+edit in a corpus ticket should be allowed to decide. The corpus README's rule is the one being obeyed
+either way: an unmeasured detector is a stated gap, not a zero (ADR-001 §7.7).
 
 ## 5. What this licenses, and what it forbids
 
 * **`e4.3` and `m1`'s deferred criteria now point here.** The command is
-  `cargo run -p fathom-analyze --features sqlite-bundled --example g3_calibration -- --check`; the number
-  is in the blessed report; §5.4's *bars* are unchanged because §5.4's bars were never the problem — its
-  τ was, and §5.4 itself said to go and confirm it.
-* **Nobody may cite `G3 = 0.683` as a reason to relax §5.4.** It is a measurement on 63 flags, most of them
+  `cargo run -p fathom-analyze --features sqlite-bundled,langs-all --example g3_calibration -- --check`; the
+  number is in the blessed report; §5.4's *bars* are unchanged because §5.4's bars were never the problem —
+  its τ was, and §5.4 itself said to go and confirm it.
+* **Nobody may cite `G3 = 0.642` as a reason to relax §5.4.** It is a measurement on 67 flags, most of them
   routine bot and maintenance commits in three repositories, and the aggregate that produced it is still
   dominated by flags the ranking raised, not the catalogue. The change stays where `reco-6co` put it: on
-  what gets flagged, never on the bar — and `reco-0zi` re-blessed this page without touching a bar either.
+  what gets flagged, never on the bar — and `reco-0zi` and `reco-l9bz.7` re-blessed this page without
+  touching a bar either.
 * **`m1`'s beta criterion is not met by this corpus, and the shortfall is quantified.** `G3 ≤ 0.30` at
-  alpha on three pinned repositories is measured, not refused: **0.660** on the 53 episodes the published
-  τ flags, **0.683** across everything the corpus flagged, and a miss rate of 0.792 on a denominator of
+  alpha on three pinned repositories is measured, not refused: **0.608** on the 51 episodes the published τ
+  flags, **0.642** across everything the corpus flagged, and a miss rate of 0.833 on a denominator of
   24. The honest statement for the milestone is the report's, not a paraphrase.
 * **The labels are agent-authored and say so.** The corpus README §5 states what that buys — every row names
   the file and line it was decided on, so a person can re-derive or overturn it — and what it does not buy:

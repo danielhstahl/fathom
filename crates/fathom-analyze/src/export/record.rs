@@ -661,7 +661,7 @@ pub struct Summary {
     pub high_findings: usize,
     /// Checklist items still open.
     pub open_actions: usize,
-    /// The highest-risk episode, as `ep-… · spine-1 88 = …`, when anything was ranked.
+    /// The highest-risk episode, as `ep-… · spine-2 88 = …`, when anything was ranked.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub top_risk: Option<String>,
     /// The one-line verdict a reader acts on.

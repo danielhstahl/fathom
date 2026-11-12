@@ -179,7 +179,7 @@ jobs:
         # and `--check` refuses a byte of difference in the committed report or a gate that came out
         # other than its declared `expected`. See docs/concepts/false-positive-calibration.md.
         run: >
-          cargo run --locked -p fathom-analyze --features sqlite-bundled --example g3_calibration --
+          cargo run --locked -p fathom-analyze --features sqlite-bundled,langs-all --example g3_calibration --
           --root . --check
 
   deny:

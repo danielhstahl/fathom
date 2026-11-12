@@ -284,12 +284,12 @@ pub fn document() -> Value {
                     },
                     "type": "array"
                 },
-                "model": {"description": "Which ranking produced the number (`spine-1` today).", "type": "string"},
+                "model": {"description": "Which ranking produced the number (`spine-2` today).", "type": "string"},
                 "rank": {"minimum": 1, "type": "integer"},
                 "ranked": {"minimum": 0, "type": "integer"},
                 "score": {"maximum": 100, "minimum": 0, "type": "integer"},
                 "surfaces": {"items": {"enum": surface_names(), "type": "string"}, "type": "array"},
-                "vector": {"description": "`spine-1 88 = surfaces 50 + size 12 + …` — the arithmetic, checkable from the row.", "type": "string"}
+                "vector": {"description": "`spine-2 88 = surfaces 50 + size 12 + …` — the arithmetic, checkable from the row.", "type": "string"}
             },
             "required": ["blind_spots", "components", "model", "score", "surfaces", "vector"],
             "type": "object"

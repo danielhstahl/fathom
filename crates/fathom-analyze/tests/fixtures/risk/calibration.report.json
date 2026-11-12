@@ -6,15 +6,15 @@
     "flagged": 4,
     "flagged_ids": [
       "cal-06",
-      "cal-02",
       "cal-01",
-      "cal-04"
+      "cal-02",
+      "cal-05"
     ],
-    "mean_positive_rank": 3.5,
+    "mean_positive_rank": 4.833333333333333,
     "missed": 2,
     "missed_ids": [
       "cal-03",
-      "cal-05"
+      "cal-04"
     ],
     "positives": 6,
     "precision": 1.0,
@@ -22,67 +22,72 @@
     "scores": [
       [
         "cal-06",
-        47,
-        true
-      ],
-      [
-        "cal-02",
-        45,
+        48,
         true
       ],
       [
         "cal-01",
-        41,
+        46,
         true
       ],
       [
-        "cal-04",
-        38,
-        true
-      ],
-      [
-        "cal-03",
-        36,
+        "cal-02",
+        44,
         true
       ],
       [
         "cal-05",
-        36,
+        43,
         true
       ],
       [
-        "cal-40",
-        35,
+        "cal-09",
+        43,
         false
       ],
       [
         "cal-18",
+        41,
+        false
+      ],
+      [
+        "cal-40",
+        40,
+        false
+      ],
+      [
+        "cal-03",
+        38,
+        true
+      ],
+      [
+        "cal-21",
+        37,
+        false
+      ],
+      [
+        "cal-26",
+        35,
+        false
+      ],
+      [
+        "cal-04",
         34,
-        false
+        true
       ],
       [
-        "cal-31",
-        33,
-        false
-      ],
-      [
-        "cal-34",
+        "cal-17",
         33,
         false
       ],
       [
         "cal-07",
-        33,
-        false
-      ],
-      [
-        "cal-26",
-        33,
-        false
-      ],
-      [
-        "cal-09",
         32,
+        false
+      ],
+      [
+        "cal-33",
+        31,
         false
       ],
       [
@@ -91,37 +96,42 @@
         false
       ],
       [
-        "cal-17",
+        "cal-38",
+        31,
+        false
+      ],
+      [
+        "cal-31",
         30,
         false
       ],
       [
-        "cal-21",
+        "cal-34",
         29,
-        false
-      ],
-      [
-        "cal-15",
-        29,
-        false
-      ],
-      [
-        "cal-38",
-        28,
-        false
-      ],
-      [
-        "cal-24",
-        27,
-        false
-      ],
-      [
-        "cal-33",
-        26,
         false
       ],
       [
         "cal-11",
+        28,
+        false
+      ],
+      [
+        "cal-27",
+        27,
+        false
+      ],
+      [
+        "cal-15",
+        26,
+        false
+      ],
+      [
+        "cal-28",
+        26,
+        false
+      ],
+      [
+        "cal-24",
         25,
         false
       ],
@@ -131,33 +141,38 @@
         false
       ],
       [
-        "cal-12",
+        "cal-14",
         24,
         false
       ],
       [
-        "cal-28",
+        "cal-12",
         23,
         false
       ],
       [
-        "cal-29",
+        "cal-30",
         23,
         false
       ],
       [
-        "cal-27",
-        22,
+        "cal-23",
+        23,
+        false
+      ],
+      [
+        "cal-39",
+        20,
         false
       ],
       [
         "cal-20",
-        19,
+        20,
         false
       ],
       [
         "cal-32",
-        19,
+        20,
         false
       ],
       [
@@ -166,58 +181,43 @@
         false
       ],
       [
-        "cal-16",
-        17,
+        "cal-19",
+        19,
+        false
+      ],
+      [
+        "cal-29",
+        19,
         false
       ],
       [
         "cal-22",
-        17,
+        19,
         false
       ],
       [
-        "cal-39",
-        17,
-        false
-      ],
-      [
-        "cal-14",
-        16,
-        false
-      ],
-      [
-        "cal-30",
-        15,
-        false
-      ],
-      [
-        "cal-19",
-        15,
-        false
-      ],
-      [
-        "cal-23",
-        15,
+        "cal-16",
+        18,
         false
       ],
       [
         "cal-36",
-        12,
+        15,
         false
       ],
       [
         "cal-10",
-        9,
+        11,
         false
       ],
       [
         "cal-35",
-        4,
+        8,
         false
       ],
       [
         "cal-08",
-        2,
+        6,
         false
       ]
     ],
@@ -233,12 +233,12 @@
       "cal-05",
       "cal-09",
       "cal-01",
-      "cal-03"
+      "cal-06"
     ],
-    "mean_positive_rank": 5.333333333333333,
+    "mean_positive_rank": 5.166666666666667,
     "missed": 3,
     "missed_ids": [
-      "cal-06",
+      "cal-03",
       "cal-02",
       "cal-04"
     ],
@@ -248,27 +248,27 @@
     "scores": [
       [
         "cal-05",
-        45,
+        44,
         true
       ],
       [
         "cal-09",
-        45,
+        44,
         false
       ],
       [
         "cal-01",
-        41,
+        42,
+        true
+      ],
+      [
+        "cal-06",
+        42,
         true
       ],
       [
         "cal-03",
         41,
-        true
-      ],
-      [
-        "cal-06",
-        40,
         true
       ],
       [
@@ -278,47 +278,32 @@
       ],
       [
         "cal-07",
-        39,
-        false
-      ],
-      [
-        "cal-18",
-        35,
+        38,
         false
       ],
       [
         "cal-02",
+        36,
+        true
+      ],
+      [
+        "cal-18",
+        36,
+        false
+      ],
+      [
+        "cal-04",
         34,
         true
       ],
       [
-        "cal-04",
-        33,
-        true
-      ],
-      [
-        "cal-14",
-        32,
-        false
-      ],
-      [
         "cal-26",
-        32,
+        33,
         false
       ],
       [
         "cal-37",
         32,
-        false
-      ],
-      [
-        "cal-30",
-        31,
-        false
-      ],
-      [
-        "cal-11",
-        31,
         false
       ],
       [
@@ -328,11 +313,11 @@
       ],
       [
         "cal-17",
-        30,
+        31,
         false
       ],
       [
-        "cal-23",
+        "cal-14",
         30,
         false
       ],
@@ -342,7 +327,22 @@
         false
       ],
       [
+        "cal-11",
+        30,
+        false
+      ],
+      [
         "cal-34",
+        30,
+        false
+      ],
+      [
+        "cal-30",
+        29,
+        false
+      ],
+      [
+        "cal-38",
         29,
         false
       ],
@@ -352,13 +352,13 @@
         false
       ],
       [
-        "cal-25",
+        "cal-23",
         28,
         false
       ],
       [
-        "cal-38",
-        28,
+        "cal-25",
+        27,
         false
       ],
       [
@@ -367,12 +367,12 @@
         false
       ],
       [
-        "cal-24",
-        26,
+        "cal-33",
+        27,
         false
       ],
       [
-        "cal-33",
+        "cal-24",
         26,
         false
       ],
@@ -388,12 +388,12 @@
       ],
       [
         "cal-39",
-        23,
+        22,
         false
       ],
       [
         "cal-19",
-        23,
+        21,
         false
       ],
       [
@@ -412,18 +412,18 @@
         false
       ],
       [
-        "cal-16",
-        20,
-        false
-      ],
-      [
         "cal-13",
         20,
         false
       ],
       [
+        "cal-16",
+        19,
+        false
+      ],
+      [
         "cal-29",
-        17,
+        18,
         false
       ],
       [
@@ -433,7 +433,7 @@
       ],
       [
         "cal-10",
-        13,
+        12,
         false
       ],
       [
@@ -456,15 +456,13 @@
   "labelled_by": "hand-authored for e4.4 (reco-884): the shapes a reviewer said they would stop for, drawn from the e1.12 acceptance fixture and the e4.3 detector catalogue; one reviewer, dispositions written before any weight was set",
   "moves": [
     "findings 0.16 → 0.25",
-    "size 0.07 → 0.00",
-    "deletions 0.07 → 0.02",
-    "noise 0.07 → 0.02",
-    "breadth 0.07 → 0.04"
+    "surface 0.13 → 0.25",
+    "test_ratio 0.08 → 0.10"
   ],
   "notices": [],
   "proposal": {
     "notices": [],
-    "tau": 36,
+    "tau": 34,
     "weights": [
       {
         "feature": "findings",
@@ -473,8 +471,8 @@
       },
       {
         "feature": "surface",
-        "origin": "default",
-        "value": 0.13
+        "origin": "repo",
+        "value": 0.25
       },
       {
         "feature": "migration",
@@ -488,48 +486,57 @@
       },
       {
         "feature": "test_ratio",
-        "origin": "default",
-        "value": 0.08
-      },
-      {
-        "feature": "size",
         "origin": "repo",
-        "value": 0.0
+        "value": 0.1
       },
       {
-        "feature": "dependency",
+        "feature": "complexity",
         "origin": "default",
         "value": 0.07
       },
       {
+        "feature": "size",
+        "origin": "default",
+        "value": 0.06
+      },
+      {
+        "feature": "dependency",
+        "origin": "default",
+        "value": 0.06
+      },
+      {
         "feature": "deletions",
-        "origin": "repo",
-        "value": 0.02
+        "origin": "default",
+        "value": 0.06
       },
       {
         "feature": "noise",
-        "origin": "repo",
-        "value": 0.02
+        "origin": "default",
+        "value": 0.06
       },
       {
         "feature": "breadth",
-        "origin": "repo",
-        "value": 0.04
+        "origin": "default",
+        "value": 0.06
       },
       {
         "feature": "attribution",
         "origin": "default",
-        "value": 0.05
+        "value": 0.04
       },
       {
         "feature": "authorship",
         "origin": "default",
-        "value": 0.05
+        "value": 0.04
       }
     ]
   },
-  "tau_proposed": 36,
-  "tau_proposed_flags": 6,
+  "tau_proposed": 34,
+  "tau_proposed_flags": 11,
   "tau_shipped": 40,
-  "tau_shipped_flags": 6
+  "tau_shipped_flags": 6,
+  "unfitted": [
+    "blast",
+    "complexity"
+  ]
 }

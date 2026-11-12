@@ -457,7 +457,7 @@ mod tests {
             actor: actor.to_owned(),
             utc: at(NOW - age_hours * 3_600),
             risk,
-            risk_model: "spine-1".to_owned(),
+            risk_model: "spine-2".to_owned(),
         }
     }
 

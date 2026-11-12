@@ -49,6 +49,9 @@ fn ranked(files: &[(&str, u64, u64)], author: &str) -> Risk {
         n_commits: 1,
         author,
         partial_files: false,
+        // The spine's complexity figure is handed over by the caller that has a delta document; this
+        // fixture describes the file rows only, so the axis is absent here and says so.
+        complexity: None,
     };
     rank(&signals)
 }
@@ -589,13 +592,14 @@ fn an_episode_with_no_files_is_answered_rather_than_crashed() {
         n_commits: 0,
         author: "unknown",
         partial_files: false,
+        complexity: None,
     };
     let risk = rank(&empty);
     assert_eq!(
         risk.score, 6,
         "only the attribution signal fires, and it is 6"
     );
-    assert_eq!(risk.vector(), "spine-1 6 = author 6".to_owned());
+    assert_eq!(risk.vector(), "spine-2 6 = author 6".to_owned());
 }
 
 #[test]

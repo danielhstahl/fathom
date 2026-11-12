@@ -405,7 +405,7 @@ fn the_queue_answers_which_three_episodes_are_the_riskiest() {
     // What the rows are ordered by changed in `e4.5`: the queue orders by risk × staleness × blast, so
     // the risk numbers down the pane are close to descending and no longer exactly so — a stale medium
     // belongs above a fresh high, which is the whole ticket. The queue's own column is the invariant now,
-    // and the risk number each row carries is still `spine-1`'s, unchanged and printed beside it.
+    // and the risk number each row carries is still `spine-2`'s, unchanged and printed beside it.
     let points: Vec<u32> = text
         .lines()
         .filter(|line| line.contains(" risk "))

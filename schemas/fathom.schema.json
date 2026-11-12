@@ -1850,6 +1850,16 @@
           "additionalProperties": false,
           "description": "Nodes one definition's complexity walk may visit before it stops counting. The complexity numbers are proxies for risk, not a metric with a definition, so the walk is bounded per definition and a truncated count is a note rather than a wrong number. `e3.1`.",
           "properties": {
+            "max_file_bytes": {
+              "default": 2000000,
+              "description": "Largest blob the index-time complexity pass will inflate for one file row. The size is read from the object header, so a file over this cap is refused without being inflated at all and comes back `too_large` - a stated absence, not a lost file. It is its own key rather than a borrow of `ingest.size_cap_mib` because that cap (8 MiB) is what a line count is worth inflating, and past 2 MiB the structural extractor refuses the file anyway. `e8.4`.",
+              "minimum": 1,
+              "type": "integer",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e8.4",
+              "x-fathom-units": "bytes"
+            },
             "max_nodes": {
               "default": 20000,
               "description": "Nodes one definition's complexity walk may visit before it stops counting. The complexity numbers are proxies for risk, not a metric with a definition, so the walk is bounded per definition and a truncated count is a note rather than a wrong number. `e3.1`.",
@@ -1860,6 +1870,28 @@
               "x-fathom-scope": "any",
               "x-fathom-ticket": "e3.1",
               "x-fathom-units": "syntax nodes"
+            },
+            "max_run_bytes": {
+              "default": 128000000,
+              "description": "How many bytes of file content one index run may read to count decision points. Bytes, not files, because a parse costs what a file weighs: spike `s1` priced the six grammars at 0.6-16 MiB/s, so this is also the run's parse-time budget in machine-independent units. The default is measured, not round: reading 512 MB for one cold index of a 5 501-commit generated-Go history cost the pass 60.9 s of its own clock \u2014 8.4 MB/s, about spike `s1`'s worst grammar \u2014 so half that shipped, which puts the byte ceiling's worst case at about 30 s added to that run and leaves `max_run_ms` to catch a slower machine. Spent, every remaining row prints `?` with `scan_budget` and stays owed, so raising this key and re-indexing fills what the earlier run declined. `0` declines the whole pass \u2014 the baseline arm of `tools/complexity_cost.py` asks for it that way, which is the only honest way to price what the pass costs. `e8.4`.",
+              "maximum": 4294967296,
+              "minimum": 0,
+              "type": "integer",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e8.4",
+              "x-fathom-units": "bytes per run"
+            },
+            "max_run_ms": {
+              "default": 60000,
+              "description": "How long one index run may spend counting complexity, whatever its byte budget still has room for. It is the pass's own clock, summed over the commits it filled: time the run spends on other analyzers is not charged to it, because a budget that bounds somebody else's work is a budget nobody can reproduce. Two minutes is the longest wait a first index should add to a run a person is watching; the time ceiling sits beside the byte one because bytes bound the work and time bounds the wait, and on a loaded machine only one of the two is what the reviewer felt. Spent, the outcome is the byte budget's \u2014 `?` with `scan_budget`, owed, fillable by raising the key. `0` declines the whole pass, which is what `tools/complexity_cost.py` measures against. `e8.4`.",
+              "maximum": 3600000,
+              "minimum": 0,
+              "type": "integer",
+              "x-fathom-merge": "replace",
+              "x-fathom-scope": "any",
+              "x-fathom-ticket": "e8.4",
+              "x-fathom-units": "milliseconds per run"
             }
           },
           "type": "object"

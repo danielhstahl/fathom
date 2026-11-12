@@ -115,7 +115,8 @@ pub use crate::structure::model::{
 pub use crate::structure::policy::{
     DEFAULT_JAVA_SAME_PACKAGE_SCAN, DEFAULT_MAX_COMPLEXITY_NODES, DEFAULT_MAX_FILE_BYTES,
     DEFAULT_MAX_RESOLUTION_HOPS, DEFAULT_MAX_RESOLUTION_PASSES, DEFAULT_RUBY_MAX_BYTES_PER_RUN,
-    DEFAULT_RUBY_MAX_FILES_PER_RUN, DEFAULT_RUBY_PRIORITY, ExtractPolicy, ScanBudget, ScanScope,
+    DEFAULT_RUBY_MAX_FILES_PER_RUN, DEFAULT_RUBY_PRIORITY, ExtractPolicy, MAX_COMPLEXITY_RUN,
+    ScanBudget, ScanScope,
 };
 pub use crate::structure::query::Loads;
 pub use crate::structure::query::{declaring_files, dependents_of, loads};

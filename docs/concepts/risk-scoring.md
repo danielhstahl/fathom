@@ -1,9 +1,10 @@
-# Episode risk scoring: `features-1`, the twelve axes, and the calibration set that tunes them
+# Episode risk scoring: `features-2`, the thirteen axes, and the calibration set that tunes them
 
-- **Status**: Accepted, and implemented (`e4.4`, `reco-884`). One model, `features-1`; one command,
+- **Status**: Accepted, and implemented (`e4.4`, `reco-884`; `e8.7` added the `complexity` axis and
+  renamed the model). One model, `features-2`; one command,
   `fathom why`; one calibration set, checked in; and no opaque model anywhere in the path.
 - **Ticket / plan key**: `reco-884` (`e4.4`). It replaces the *inputs* of
-  [risk-ranking.md](risk-ranking.md) (`spine-1`), and leaves that document's shape — rank, reason,
+  [risk-ranking.md](risk-ranking.md) (`spine-2`), and leaves that document's shape — rank, reason,
   ceiling — standing, because `e4.5` (`reco-wsj`) is the ticket that replaced the ordering function: the
   score computed here is `queue-1`'s first factor, printed the same way in both.
 - **Implements**: ADR-001 §7.10 (*"every score is explainable: features, weights, and the contribution
@@ -41,26 +42,29 @@ The answer is a number `0..=100` and an ordered list of sentences. Three refusal
 The score is a *ranking aid with its arithmetic shown*, not a verdict. It is not a claim about code
 quality, and `flagged` (score ≥ `risk.tau`) is a routing decision, never a judgement — `thesis.md`.
 
-## 2. The twelve features
+## 2. The thirteen features
 
 Every axis is `0.0..=1.0` after its ruler, and every axis names the row or analysis it came from. The
 `weight` column is the built-in; the sum is `1.00`, and the sum is also the denominator (§3), so **only
 relative weight matters** — doubling everything changes nothing, which is what makes the knob safe.
 
-| Feature | Weight | Asks | Unit, and what fills the axis | Source (owner) |
-|---|--:|---|---|---|
-| `findings` | 0.16 | what did the detectors find, and how bad was each one | severity-points; 8 fills it (high 3, medium 2, low 1) | `e4.3` detectors (`e4.3`) |
-| `surface` | 0.13 | what kind of file did this touch | the top surface weight; a migration (50) fills it, source is 10, prose 3 | `git_commit_file.path` via `risk::classify` (`e4.4`) |
-| `migration` | 0.09 | does this change schema history, and does it say something irreversible | exposure 0–1: a migration file 0.55, a `DROP`/`DELETE`/`TRUNCATE` in the added lines 1.0 | path class + added lines of `*.sql` (`e4.4`) |
-| `blast` | 0.09 | what depends on the code this touched | dependent paths; 40 fills it | a dependent count from the module graph, **when a caller hands it over** (the caller) |
-| `test_ratio` | 0.08 | how much new logic arrived without a test beside it | inverted coverage share; 0 tests beside new logic fills it, a shrunken test surface floors it at 0.75 | per-path `add`/`del` by surface (`e4.4`) |
-| `size` | 0.07 | how much does a reviewer have to read | reviewable lines, log scale; 20 000 fills it | `episode.n_add`, `n_del`, noise classes (`e4.4`) |
-| `dependency` | 0.07 | what changed about what the build depends on | exposure 0–1: lockfile 0.55, manifest 0.35, a supplied direct add 0.8, a major move 1.0 | path class, `e2.6`'s delta when supplied (`e2.6`) |
-| `deletions` | 0.07 | how much is removal, and did the cover go with it | removal shape 0–1: three-fifths removal is 0.6, a shrunken test surface floors it at 0.75 | per-path `add`/`del` by surface (`e4.4`) |
-| `noise` | 0.07 | how much of the churn is text a review does not read | the share itself: all-generated churn fills it | `episode.noise_share`, else path class (`e2.2`) |
-| `breadth` | 0.07 | how far did this spread | spread: five surfaces past the first, or thirty files, fills it | `n_files`, distinct surfaces, `n_commits` (`e4.4`) |
-| `attribution` | 0.05 | how sure are we who wrote this | inverted confidence: 1 − confidence, floored at 0.8 when nobody is credited | `episode.author_confidence` (`e4.1`) |
-| `authorship` | 0.05 | is the thing that wrote this a program | agent 0.7, uncredited 1.0, a person *named* by evidence 0; a person inferred from no evidence at all does not measure | `episode.author_kind`, `attribution_source` (`e4.1`) |
+**This table is generated, not typed**: it is `risk::feature::SPECS`, one row per spec, in the order the
+code prints them (`fathom why --weights` prints the same rows out of the binary). A weight that moves in
+the source moves here in the same commit, or the two are checked against each other rather than trusted.
+
+| `findings` | 0.16 | what did the detectors find, and how bad was each one | severity-points; 8 severity-points fill the axis (a high finding is 3, a medium 2, a low 1) | `e4.3` detectors (`e4.3`) |
+| `surface` | 0.13 | what kind of file did this touch | surface weight; a migration (50) fills the axis; source is 10 and prose is 3 | `git_commit_file.path` via `risk::classify` (`e4.4`) |
+| `migration` | 0.09 | does this change schema history, and does it say something irreversible | exposure; one migration file is 0.55; a `DROP`/`DELETE`/`TRUNCATE` in the added lines is 1.0 | path class plus the added lines of `*.sql` (`e4.4`) |
+| `blast` | 0.09 | what depends on the code this touched | dependents; 40 dependent paths fill the axis | a dependent count handed over by the caller (`the caller`) |
+| `test_ratio` | 0.08 | how much of the new logic arrived without a test alongside it | coverage share; inverted: 0 tests beside new logic fills the axis, and a suite that shrank floors it at 0.75 | per-path `add`/`del` split by surface (`e4.4`) |
+| `complexity` | 0.07 | did this make the code harder to follow, not just bigger | V(G) added; 20 added decision points fill the axis; a change that removed complexity reads 0 and says so | the episode's complexity roll-up — the same figure the card prints (`the index`) |
+| `size` | 0.06 | how much does a reviewer have to read | reviewable lines; 20 000 reviewable lines fill the axis, on a log scale | `episode.n_add`, `n_del`, per-path noise classes (`e4.4`) |
+| `dependency` | 0.06 | what does this change about what the build depends on | exposure; one lockfile is 0.55, a manifest 0.35, a supplied direct add 0.8 and a major move 1.0 | path class, and `e2.6`'s delta when a caller supplies it (`e2.6`) |
+| `deletions` | 0.06 | how much of the change is removal, and did the cover go with it | removal shape; a change that is three-fifths removal is 0.6; a test surface that shrank while source grew floors it at 0.75 | per-path `add`/`del` split by surface (`e4.4`) |
+| `noise` | 0.06 | how much of the churn is text a review does not read | share of churn; the share itself: all-generated churn fills the axis | `episode.noise_share` when measured, path classes otherwise (`e2.2`) |
+| `breadth` | 0.06 | how far did this spread | spread; five surfaces past the first, or thirty files, fills the axis | `episode.n_files`, distinct surfaces, `n_commits` (`e4.4`) |
+| `attribution` | 0.04 | how sure are we who wrote this | confidence; inverted: 1 − the attribution confidence, floored at 0.8 when nobody is credited | `episode.author_confidence`, `author_kind` (`e4.1`) |
+| `authorship` | 0.04 | is the thing that wrote this a program | authorship; an agent is 0.7, an uncredited author is 1.0, a person named by evidence is 0, and a person inferred from no evidence at all does not measure | `episode.author_kind`, `attribution_source` (`e4.1`) |
 
 `fathom why --weights` prints this table out of the binary, so the table and the build cannot drift
 apart. Two inversions are worth noticing: `test_ratio` and `attribution` *risk on the absence* of the
@@ -120,8 +124,8 @@ flagged   = score ≥ risk.tau
 Four things are deliberate in those four lines:
 
 * **The denominator is the measured weight sum.** Absent axes are divided out, not zero-filled, so an
-  episode missing `blast` is scored on what is known about it and printed as `9 of 12 features measured
-  · weight denominator 0.83`. This is also why relative weight is the whole knob.
+  episode missing `blast` is scored on what is known about it and printed as `11 of 13 features measured
+  · weight denominator 0.84`. This is also why relative weight is the whole knob.
 * **Arithmetic is integer after one division.** Every term is rounded to hundredths once, and the printed
   total *is* the printed terms summed — a reviewer adding the column with a calculator gets the number on
   the header line. (`risk_score.rs` asserts this, and a hand-worked example agrees with the code.)
@@ -133,27 +137,32 @@ Four things are deliberate in those four lines:
 
 ## 4. A worked example
 
-Eleven axes measured, `blast` absent, from `crates/fathom-analyze/tests/risk_score.rs`'s hand-checked
-case — a migration that drops a column, 4 severity-points of findings, a full test suite beside it:
+Eleven axes measured, `blast` and `complexity` absent, from
+`crates/fathom-analyze/tests/risk_score.rs`'s hand-checked case — a migration that drops a column,
+4 severity-points of findings, a full test suite beside it:
 
 ```text
-features-1 33 · below τ 70
-  11 of 12 features measured · weight denominator 0.91 · total 32.97 of 100.00 points
-  features-1 33 = surface 14.29 + migration 9.89 + findings 8.79 + test_ratio 0.00 + size 0.00 + …
+features-2 36 · below τ 40
+  11 of 13 features measured · weight denominator 0.84 · total 35.71 of 100.00 points
+  features-2 36 = surface 15.48 + migration 10.71 + findings 9.52 + test_ratio 0.00 + size 0.00 + …
 ```
 
-By hand: `W = 1.00 − 0.09 = 0.91`. `migration` is at full value, so `100 · 0.09 · 1.00 / 0.91 = 9.89`;
-`surface` is a migration path (50, which fills its axis) so `100 · 0.13 · 1.00 / 0.91 = 14.29`;
-`findings` at 4 of the 8 that fill the axis is `100 · 0.16 · 0.50 / 0.91 = 8.79`. The rest came in at
+By hand: `W = 1.00 − 0.09 − 0.07 = 0.84`. `migration` is at full value, so `100 · 0.09 · 1.00 / 0.84 =
+10.71`; `surface` is a migration path (50, which fills its axis) so `100 · 0.13 · 1.00 / 0.84 = 15.48`;
+`findings` at 4 of the 8 that fill the axis is `100 · 0.16 · 0.50 / 0.84 = 9.52`. The rest came in at
 zero — a full test suite makes `test_ratio` 0 by inversion, and nothing arrived that the detectors flag.
-Sum: `32.97`, which rounds to `33`.
+Sum: `35.71`, which rounds to `36`.
+
+The case carries no complexity figure on purpose. An episode the index has no V(G) delta for is divided
+out of the denominator exactly like a missing `blast` — it is not scored as having made the code no
+harder to follow. That distinction is what lets the axis ship before every grammar is compiled in.
 
 `fathom why <episode>` prints all of this for a live episode, in five blocks:
 
 1. **the header** — score, model, and whether it clears `risk.tau`;
-2. **the vector line** — `features-1 33 = surface 14.29 + …`, the same shape `spine-1` prints, so the
+2. **the vector line** — `features-2 36 = surface 15.48 + …`, the same shape `spine-2` prints, so the
    strip, the card's `w` and this command say one kind of sentence (ADR-006 §5.1);
-3. **the feature table** — one row per feature, always all twelve: raw in its unit, value, weight,
+3. **the feature table** — one row per feature, always all thirteen: raw in its unit, value, weight,
    `points/max-points`, and the sentence that justifies it, or `—` plus who owns the missing input;
 4. **why, in order** — the reasons, largest contribution first, each naming a path, a finding or a row;
 5. **what this score cannot see** — §7, printed with the score rather than in a document nobody opens.
@@ -182,7 +191,7 @@ The rules, all of them asserted in `risk_score.rs`:
   `1.0`, and the score prints `config: risk.weights.findings = 4 is outside 0.0..=1.0, and was clamped
   to 1.00`. `-1` likewise becomes `0`. The value as written is kept in `clamped_from` for the JSON.
 * **Unknown keys are refused, and the run continues.** `finding = 0.4` (a typo) is a printed notice
-  naming the key and the twelve real names, never a silent default. A `fathom.toml` that is not valid
+  naming the key and the thirteen real names, never a silent default. A `fathom.toml` that is not valid
   TOML is a notice too: a reviewer should still get their queue.
 * **Provenance is carried, not implied.** Every weight knows whether it came from the build (`default`),
   the repository or user file (`repo`), the environment (`env`), or a `--weight` flag (`flag`), and
@@ -218,25 +227,30 @@ As shipped, on the shipped corpus:
 
 ```text
 calibration: 40 cases · 6 labelled must-read · the top 10% is 4 episodes
-      shipped    0.750   0.500   0.600        4       3         1         5.3
-      retuned    1.000   0.667   0.800        4       2         0         3.5
-       change   +0.250  +0.167  +0.200                             1.8 earlier
-   threshold  `risk.tau` 40 flags 6 of 40 as shipped; the proposal sets it to 36, which flags 6
+      shipped    0.750  0.500  0.600     4    3         1      5.2
+     retuned    1.000  0.667  0.800     4    4         0      4.8
+       change   +0.250  +0.167  +0.200                          0.5 earlier
+   threshold  `risk.tau` 40 flags 6 of 40 as shipped; the proposal sets it to 34, which flags 11
+    not fitted  blast, complexity
 ```
 
-The retune moved five weights — `findings 0.16 → 0.25`, `size 0.07 → 0.00`, `deletions 0.07 → 0.02`,
-`noise 0.07 → 0.02`, `breadth 0.07 → 0.04` — and the report prints the `[risk.weights]` block to paste,
-plus the `risk.tau` it proposes. It never writes the file: adopting a retune is a human edit made after
-reading a report.
+The retune moved three weights — `findings 0.16 → 0.25`, `surface 0.13 → 0.25`, `test_ratio 0.08 → 0.10`
+— and the report prints the `[risk.weights]` block to paste, plus the `risk.tau` it proposes. It never
+writes the file: adopting a retune is a human edit made after reading a report. And it prints **`not
+fitted`**: two of the thirteen axes — `blast` and `complexity` — are not moved by this corpus in either
+direction, because no case in it turns on an exported symbol breaking or on decision points being added.
+That is stated rather than hidden in the totals: 11 of 13 weights have a measurement behind them here and
+2 do not, which is also true of the shipped defaults and is why `--weight` exists.
 
 Read the numbers as the finding, not the decoration:
 
 * the shipped weights were **not** crazy — half the labelled cases were already in the top decile;
-* the wins came from listening to the detectors more (`findings` up) and to raw line counts less
-  (`size` to zero), which is the argument this corpus was built to be able to make;
+* the wins came from listening to the detectors and the change's own shape more (`findings` and `surface`
+  up) and to the test-shape axis a little more (`test_ratio`), which is the argument this corpus was built
+  to be able to make;
 * **the shipped threshold was a knob nobody had measured.** At `e2.10`'s 70 this corpus flagged nothing;
   `reco-6co` confirmed the default against three real repositories and it is 40 now, so the shipped line
-  flags 6 of 40 here and the proposal still moves it to this corpus's own decile floor (36). That is the
+  flags 6 of 40 here and the proposal still moves it to this corpus's own decile floor (34). That is the
   ticket's purpose in one line: a knob change, evaluated rather than felt — including this one.
 
 Two honesty rules are enforced by the retune itself: it **refuses to move a weight** on a corpus with no
@@ -267,6 +281,10 @@ are limits of the model itself:
 * whether a finding is already known and accepted: the vector reads the catalogue and nothing else, so a
   dismissal recorded in the review ledger is not an input to it and every visible finding counts;
 * whether the tests that arrived *assert* anything: coverage shape is measurable, coverage quality is not;
+* whether the complexity the `complexity` axis counted is the complexity that matters: it adds decision
+  points up, so a change that is hard to follow without adding any — a lock order, a lifetime, a cache that is
+  now stale — scores nothing on it, and complexity that was only moved from one file to another scores nothing
+  either;
 * whether a dependency is stale or vulnerable: advisory age is behind `net-advisories`, an opt-in feature
   this binary was not built with — and the vector refuses the axis either way, because a score that moved
   with the network would not be reproducible (ADR-001 §8.2);
@@ -284,7 +302,7 @@ One consequence worth saying plainly: in a repository with no harness in it, thi
 than it was, and the score above it is computed over fewer axes. That is the trade the vector makes
 wherever an axis cannot be measured — a hole with a name and a door, not a zero that reads as safe.
 
-Compare with `spine-1`'s seven blind spots ([risk-ranking.md](risk-ranking.md) §6). What changed is that
+Compare with `spine-2`'s seven blind spots ([risk-ranking.md](risk-ranking.md) §6). What changed is that
 two of the axes — dependency exposure and migration exposure — are now measured rather than assumed, and
 the ones still missing are missing by name, with a weight and a door.
 
@@ -336,7 +354,7 @@ Not done, on purpose:
 * `blast` and `e2.6`'s dependency delta arrive as *inputs*, from `Supply`, the moment a caller hands them
   over — the graph exists to be walked; what is missing is a caller that pays for the walk per episode.
   Until then the axes are absent and the denominator says so, with the index's own answer as the reason.
-* The TUI's `w` still prints `spine-1`'s vector. Wiring `features-1` into the queue pane, `e4.5`'s
+* The TUI's `w` still prints `spine-2`'s vector. Wiring `features-2` into the queue pane, `e4.5`'s
   ordering function and the `fathom export` artefact is that ticket's work; `risk::score::render` is the
   one renderer they are all meant to call.
 * `fathom why --json` carries its contract id (`fathom.cli.why/1`) and is asserted field by field in

@@ -127,7 +127,7 @@ fn act(disposition: ReviewState, reason: &str, actor: &str, at: i64) -> TriageEv
         until: String::new(),
         actor: actor.to_owned(),
         risk: Some(81),
-        risk_model: "spine-1".to_owned(),
+        risk_model: "spine-2".to_owned(),
         utc: T0 + at,
     }
 }

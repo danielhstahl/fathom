@@ -710,7 +710,7 @@ pub struct Totals {
     pub n_binary: i64,
     /// Churn, `n_add + n_del`. Filled by [`compose`].
     pub churn: i64,
-    /// Churn discounted as noise, by the same rule `spine-1` prices size with. Filled by [`compose`].
+    /// Churn discounted as noise, by the same rule `spine-2` prices size with. Filled by [`compose`].
     pub discounted_churn: i64,
     /// Churn a reviewer is expected to read: `churn - discounted_churn`. Filled by [`compose`].
     pub reviewable_churn: i64,
@@ -726,6 +726,13 @@ pub struct Totals {
 
 impl Totals {
     /// The discount rule's name, printed beside any figure that used it.
+    ///
+    /// It names `spine-1` and keeps naming it after `spine-2` arrived (`reco-l9bz.7`), on purpose. The
+    /// token is *data*, not a version stamp: it is written into every delta document this build has
+    /// already emitted, into the gap sentence beside it and into the goldens that recorded it, and the
+    /// rule it cites — three quarters of noisy churn discounted, by path class — did not change when a
+    /// sixth component joined the ranking. Renaming it would make two documents describe one discount
+    /// under two names, and a reader could not tell that apart from the discount changing.
     pub const DISCOUNT_RULE: &'static str = "spine-1/noisy-path";
 
     /// The fraction of noisy churn still counted, as a percent — printed so the discount is checkable.
@@ -1212,6 +1219,30 @@ fn settle_complexity(view: &mut ComplexityView) {
     };
 }
 
+/// Hand the document's complexity figure to the ranking (`reco-l9bz.7`).
+///
+/// A translation, not a recomputation: every field comes from the same roll-up the card prints, because
+/// ADR-001 §7.10 allows one figure of an episode's complexity and not one per surface. The ranking's
+/// [`risk::Complexity`] is the same numbers with the ranking's own field names, and the reason codes
+/// arrive tally-ordered so the printed sentence is stable.
+fn risk_complexity(view: &ComplexityView) -> risk::Complexity {
+    let mut reasons: Vec<(String, usize)> = view
+        .reasons
+        .iter()
+        .map(|(code, paths)| (code.clone(), usize::try_from(*paths).unwrap_or(usize::MAX)))
+        .collect();
+    reasons.sort_by(|a, b| b.1.cmp(&a.1).then(a.0.cmp(&b.0)));
+    risk::Complexity {
+        delta: view.delta,
+        absolute: view.absolute,
+        max: view.max,
+        measured: usize::try_from(view.measured_paths.max(0)).unwrap_or(usize::MAX),
+        touched: usize::try_from(view.touched.max(0)).unwrap_or(usize::MAX),
+        reasons,
+        mixed_basis: view.basis.len() > 1,
+    }
+}
+
 /// One term of the ranking, with the sentence that justifies it.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RiskComponent {
@@ -1232,11 +1263,11 @@ pub struct RiskComponent {
 /// than four close approximations of it.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RiskView {
-    /// Which ranking produced the number (`spine-1` today; `e4.4`'s scorer replaces the inputs, not this).
+    /// Which ranking produced the number (`spine-2` today; `e4.4`'s scorer replaces the inputs, not this).
     pub model: String,
     /// 0..=100.
     pub score: i64,
-    /// `spine-1 88 = surfaces 50 + size 12 + deletions 14 + breadth 8 + author 4`.
+    /// `spine-2 88 = surfaces 50 + size 12 + deletions 14 + breadth 8 + author 4`.
     pub vector: String,
     /// The components that contributed, largest first — the feature vector, in order.
     pub components: Vec<RiskComponent>,
@@ -1281,7 +1312,7 @@ impl RiskView {
                 .collect(),
             rank,
             ranked,
-            caveat: ranking.caveat().map(str::to_owned),
+            caveat: ranking.caveat(),
             blind_spots: risk::BLIND_SPOTS
                 .iter()
                 .map(|spot| (*spot).to_owned())
@@ -1855,7 +1886,7 @@ pub fn compose(input: &Input) -> EpisodeDelta {
     let mut totals = input.totals.clone();
     totals.churn = input.totals.n_add.saturating_add(input.totals.n_del);
 
-    // The discount is `spine-1`'s, applied the same way, so "reviewable churn" means one thing in the score
+    // The discount is `spine-2`'s, applied the same way, so "reviewable churn" means one thing in the score
     // and in the card. A noisy path still counts a quarter of its churn: noise is a view, never a deletion.
     let noisy: i64 = files
         .iter()
@@ -3745,6 +3776,7 @@ mod store_bridge {
                 n_commits: u64::try_from(row.n_commits()).unwrap_or(u64::MAX),
                 author: &row.author_kind,
                 partial_files: self.truncated,
+                complexity: self.complexity.as_ref().map(super::risk_complexity),
             });
             Input {
                 episode,

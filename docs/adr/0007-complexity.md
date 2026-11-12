@@ -784,7 +784,7 @@ decision about a consequence*, and consequences belong to owners who can print t
 
 | Consumer | What it may decide | Where it must print it |
 |---|---|---|
-| risk ranking (`e8.7`) | a cap for the complexity axis, its weight, and the model string that carries them | the printed vector string, exactly as `spine-1 …` and `hotspots-1 …` do today |
+| risk ranking (`e8.7`) | a cap for the complexity axis, its weight, and the model string that carries them | the printed vector string, exactly as `spine-2 …` and `hotspots-1 …` do today |
 | the ratchet (`e3.10`) | a baseline and an expiry per entry | `.fathom/ratchet.toml`, committed and reviewable |
 | `fathom check` | a score at or over which an episode wants a sign-off, and `--fail-on` escalation | its config key and its own output line naming the threshold, as it does today |
 | hotspots | its axis knee (today `complexity 120`, on the *proxy* — §10.3) | its published knee, which `fathom architecture` prints |
@@ -1141,8 +1141,14 @@ the existing contract suites, not a new idea:
   the number does and `e8.6` fills a defined row instead of inventing one. With no figure in the document
   the row is absent; it does not print "not measured" under every episode in the language (§7's unknown
   is a per-episode answer, not a standing caption).
-* `e8.7`: `fathom why`, the card's ranking section and the `--plain` frame print one identical vector
-  string containing the axis name, which is that ticket's existing acceptance criterion.
+* `e8.7` (shipped by `reco-l9bz.7`): `fathom why`, the card's ranking section and the `--plain` frame print
+  one identical vector string containing the axis name, which was that ticket's existing acceptance
+  criterion. What it chose, in the open: the axis reads the §5.5 roll-up and nothing else, the spine spends
+  12 of its 100 points on it and the vector `0.07` of its weights, both filled by **+20 added decision
+  points** measured on the G3 corpus rather than picked, and an episode with no figure leaves the axis out of
+  the denominator instead of scoring `±0`. The model strings moved — `spine-1` → `spine-2`, `features-1` →
+  `features-2` — and [the measurement](../concepts/false-positive-calibration.md) says what the new axis
+  bought and what it cost.
 * `docs`: `tools/check_docs.py` already fails a docs page that cites a plan key the plan does not have;
   the vocabulary check here is one assertion in the structure-complexity contract suite: no page under
   `docs/` uses the word for a quantity that is not this one, with the two §10.3 exceptions listed in the
@@ -1336,7 +1342,7 @@ follows is what each named child must make true, and the command that shows it:
 | `e8.4` | every §7.1 code that a budget can produce is produced, counted and reported; ceilings declared as config keys; the cost measured on a real repository | its committed `benchmarks/reports/` artefact + `fathom doctor` |
 | `e8.5` | a `complexity` figure in the `what` section, built through the evidence constructor; additive at the unchanged delta-document version | `python3 tools/check_delta_compat.py check`, `cargo test -p fathom-cli --test delta_schema`, `fathom analyze --schema --write` diffing clean |
 | `e8.6` | the rail column (`+7 (4/5)`, `?` with its reason), the card row, the diff-tree sort, ADR-006 §5.2 regenerated together with the layouts | `PYTHONPATH=src python3 -m recommender.tui layout …` + `cargo test -p fathom-tui --test timeline_golden --test diff_golden`, every changed golden line named in the commit message |
-| `e8.7` | the axis, its cap, its printed model string, and an honest G3 report in whichever direction it lands | `cargo run -p fathom-analyze --features sqlite-bundled --example g3_calibration -- --check`, `PYTHONPATH=src python3 -m pytest -q tests/test_g3_calibration_contract.py` |
+| `e8.7` | the axis, its cap, its printed model string, and an honest G3 report in whichever direction it lands | `cargo run -p fathom-analyze --features sqlite-bundled,langs-all --example g3_calibration -- --check`, `PYTHONPATH=src python3 -m pytest -q tests/test_g3_calibration_contract.py` — `langs-all` because an axis measured from parsed source is silently absent in a build without the grammars, which is the one thing a byte-exact `--check` must not be able to miss |
 | all of them | one word, everywhere (§10) | the structure-complexity contract suite, plus `python3 tools/check_docs.py` |
 
 And this document's own two checks, run before it was committed:

@@ -76,9 +76,9 @@ impl Ledger for Recorder {
 
 fn risk(score: u64, why: &str) -> RiskView {
     RiskView {
-        model: "spine-1".to_owned(),
+        model: "spine-2".to_owned(),
         score: i64::try_from(score).unwrap_or(0),
-        vector: format!("spine-1 {score} = surfaces {score}"),
+        vector: format!("spine-2 {score} = surfaces {score}"),
         components: vec![RiskComponent {
             name: "surfaces".to_owned(),
             points: i64::try_from(score).unwrap_or(0),

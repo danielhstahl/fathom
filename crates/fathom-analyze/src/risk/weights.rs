@@ -74,7 +74,7 @@ pub struct Weight {
     pub clamped_from: Option<f64>,
 }
 
-/// The twelve effective weights, and everything this build could not use.
+/// The thirteen effective weights, and everything this build could not use.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct Weights {
     /// One per feature, in [`Feature::ALL`]'s order.
@@ -129,7 +129,7 @@ impl Weights {
     pub fn set(&mut self, name: &str, value: f64, origin: Origin) -> Result<(), String> {
         let Some(feature) = Feature::parse(name) else {
             return Err(format!(
-                "`{name}` is not a feature of this vector; the twelve are {}",
+                "`{name}` is not a feature of this vector; the thirteen are {}",
                 Feature::ids().join(", ")
             ));
         };
@@ -158,7 +158,7 @@ impl Weights {
                 slot.origin = origin;
             }
             // Only reachable from a `Weights` built by hand with a feature missing; `defaults()` always
-            // fills all twelve, and a hand-built one gets the feature appended rather than losing it.
+            // fills all thirteen, and a hand-built one gets the feature appended rather than losing it.
             None => self.weights.push(Weight {
                 feature,
                 value: clamped,
@@ -182,7 +182,7 @@ impl Weights {
             .fold(0.0_f64, |total, weight| total + weight)
     }
 
-    /// How many of the twelve still carry their built-in value.
+    /// How many of the thirteen still carry their built-in value.
     #[must_use]
     pub fn untouched(&self) -> usize {
         self.weights
@@ -239,9 +239,9 @@ impl Weights {
 ///
 /// The key is one key shared by three readers, and all three moved in the same commit: this constant,
 /// `thresholds.json`'s `tau_alpha` / `tau_1_0`, ADR-001 §5.4, `fathom.toml`, and the reference policy
-/// in `src/recommender/card/policy.py`. `spine-1` reads the same key and its scores run higher; the
+/// in `src/recommender/card/policy.py`. `spine-2` reads the same key and its scores run higher; the
 /// queue's own `high`/`medium` buckets are [`super::super::queue`'s] severity floors, which are stated
-/// against `spine-1`'s range and deliberately not this number.
+/// against `spine-2`'s range and deliberately not this number.
 pub const DEFAULT_TAU: u8 = 40;
 
 /// `fathom.toml`'s `[risk]` and `[risk.weights]`, read.
@@ -276,7 +276,7 @@ impl Resolved {
 /// then analyses like an empty one is a silent behaviour change. A table with one bad value is a notice
 /// and the rest of the table.
 ///
-/// Keys outside the twelve are *not* an error to the config layer (the key spec declares
+/// Keys outside the thirteen are *not* an error to the config layer (the key spec declares
 /// `risk.weights.<weight>` as a deep open map, so `e2.9`'s `comms` still resolves); they are a notice
 /// here, because this is the layer that knows what a feature is.
 #[must_use]

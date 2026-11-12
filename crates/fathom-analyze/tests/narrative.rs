@@ -272,6 +272,7 @@ fn ranking() -> fathom_analyze::risk::Risk {
         n_commits: 4,
         author: "agent",
         partial_files: false,
+        complexity: None,
     })
 }
 

@@ -39,7 +39,7 @@ x dependencies 1 added (… · +1 more
 ~ surface source 9f +338… · +1 more
 x tests  1 file(s)… · +3 more      
 x blast  2 direct, 1 one… · +1 more
-~ attention spine-1 62 = surfaces  
+~ attention spine-2 62 = surfaces  
             50 + size 8 + author 4 
             · rank 1 of 7 · +2 more
 surfaces ci-config                 

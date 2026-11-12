@@ -1,4 +1,4 @@
-//! `features-1`: the explainable score, its arithmetic, its tunable weights and its calibration set
+//! `features-2`: the explainable score, its arithmetic, its tunable weights and its calibration set
 //! (`e4.4`, `reco-884`).
 //!
 //! The acceptance criteria this file is built around:
@@ -918,6 +918,16 @@ fn calibration_meets_its_bar() {
     if let Some(notice) = comparison.notices.first() {
         panic!("the calibration set refused something: {notice}");
     }
+    // A feature no case measures cannot have its weight fitted, and the report names the ones it could not
+    // fit instead of printing a proposal that implies thirteen tested weights (`reco-l9bz.7`). `blast` has
+    // never been carried by a case in this set; `complexity` arrived with the axis and this 40-case corpus
+    // has not been re-authored to measure it. That is a fact about the corpus, not about the axis: what
+    // measures the axis is the G3 corpus over real history, and its numbers are blessed elsewhere.
+    assert_eq!(
+        comparison.unfitted,
+        vec!["blast".to_owned(), "complexity".to_owned()],
+        "these are the weights this corpus cannot fit, and the report has to name them"
+    );
 }
 
 #[test]
@@ -1076,18 +1086,28 @@ fn a_worked_example_adds_up_by_hand() {
         .collect(),
     );
     let scored = score::score(&vector, &Weights::defaults());
-    // Eleven of the twelve are measured, so the denominator is the shipped sum without `blast`:
-    // 1.00 − 0.09 = 0.91, and every term is `100 · w · x / 0.91`.
+    // Eleven of the thirteen are measured, so the denominator is the shipped sum without `blast` and
+    // without the `complexity` axis this fixture has no figure for: 1.00 − 0.09 − 0.07 = 0.84, and every
+    // term is `100 · w · x / 0.84`. An episode the index has no complexity figure for is not scored as
+    // having added no complexity — it is divided out, exactly like a missing `blast`.
     assert!(
-        (scored.denominator - 0.91).abs() < 1e-9,
+        (scored.denominator - 0.84).abs() < 1e-9,
         "denominator {} is not the eleven measured weights' sum",
         scored.denominator
     );
+    for absent in [Feature::Blast, Feature::Complexity] {
+        assert!(
+            !scored.terms.iter().any(|term| term.feature == absent),
+            "{:?} is not measured here and must not be a term",
+            absent
+        );
+    }
     assert!(
-        !scored
-            .terms
+        scored
+            .absent
             .iter()
-            .any(|term| term.feature == Feature::Blast)
+            .any(|entry| entry.name == "complexity"),
+        "and the absence is printed, with who owns the input"
     );
     let migration = scored
         .terms
@@ -1096,15 +1116,15 @@ fn a_worked_example_adds_up_by_hand() {
         .unwrap();
     assert_eq!(
         migration.points,
-        Points((10_000.0_f64 * 0.09 / 0.91).round() as i64),
-        "a 0.09 weight at full value is 9.89 points once the missing axis is divided out"
+        Points((10_000.0_f64 * 0.09 / 0.84).round() as i64),
+        "a 0.09 weight at full value is 10.71 points once the two missing axes are divided out"
     );
     let expected: i64 = Feature::ALL
         .iter()
-        .filter(|feature| feature.id() != "blast")
+        .filter(|feature| feature.id() != "blast" && feature.id() != "complexity")
         .map(|feature| {
             (10_000.0 * feature.default_weight() * feature.normalise(value_of(&vector, *feature))
-                / 0.91)
+                / 0.84)
                 .round() as i64
         })
         .sum();
@@ -1117,10 +1137,15 @@ fn a_worked_example_adds_up_by_hand() {
     assert!(
         scored
             .vector()
-            .starts_with(&format!("features-1 {} = ", scored.score))
+            .starts_with(&format!("features-2 {} = ", scored.score))
     );
-    // …and the number itself, quoted by `docs/concepts/risk-scoring.md` §4.
-    assert_eq!(scored.score, 33, "\n{}", score::render(&scored).join("\n"));
+    // …and the number itself, quoted by `docs/concepts/risk-scoring.md` §4. The axis arrived and the
+    // denominator fell, so the same eleven measurements now add to 35.71 rather than 32.97.
+    assert_eq!(
+        scored.total.0, 3_571,
+        "the hand sum, in hundredths: 15.48 + 10.71 + 9.52"
+    );
+    assert_eq!(scored.score, 36, "\n{}", score::render(&scored).join("\n"));
 }
 
 fn value_of(vector: &Vector, feature: Feature) -> f64 {
@@ -1130,7 +1155,7 @@ fn value_of(vector: &Vector, feature: Feature) -> f64 {
         .unwrap_or(0.0)
 }
 
-/// The façade re-exports what `spine-1` published; this says so loudly if it ever stops.
+/// The façade re-exports what `spine-2` published; this says so loudly if it ever stops.
 #[test]
 fn the_spine_ranking_is_still_the_one_the_queue_reads() {
     use fathom_analyze::risk::{Risk, Signals, rank};
@@ -1143,10 +1168,11 @@ fn the_spine_ranking_is_still_the_one_the_queue_reads() {
         n_commits: 1,
         author: "unknown",
         partial_files: false,
+        complexity: None,
     });
-    // Nothing was measured except authorship, and an uncredited author is worth 6 in `spine-1`.
-    assert_eq!(ranking.score, 6, "spine-1's own arithmetic changed");
-    assert_eq!(fathom_analyze::risk::MODEL, "spine-1");
+    // Nothing was measured except authorship, and an uncredited author is worth 6 in `spine-2`.
+    assert_eq!(ranking.score, 6, "spine-2's own arithmetic changed");
+    assert_eq!(fathom_analyze::risk::MODEL, "spine-2");
     let _ = BTreeMap::<u8, u8>::new();
     let _: Option<Score> = None;
 }

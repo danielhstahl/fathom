@@ -99,7 +99,7 @@ where the run handed it no document it prints the verb that would fill the row (
 | `+412 −90` | `n_add`/`n_del`, compacted | a rename or a mode change — those are the diff pane's |
 | `●●●●●●` | `Scale::spark`, a log scale over the loaded corpus | a size comparison across epochs; the scale is what *this* rail holds |
 | `+7` / `~+7 (4/5)` / `?` | `delta.complexity` — `EpisodeDelta::complexity`, the roll-up `e8.5` put in the document and `fathom-store` computed at the path grain | a line count: it is a **delta**, signed for exactly that reason, and the sparkline cell between it and `−90` is what keeps ADR-007 §10.1's warning from being true of this row. A floor prints its tilde and its denominator; nothing counted prints `?`, never a `0` |
-| `?` / `82` | `Episode::risk`, `Some` from the spine-only ranking (`surfaces`, `size`, `deletions`, `breadth`, `author`) and `None` when the read never reached that episode | a number the reviewer can interrogate with `w`, or `?` — never a `0` standing in for "nobody ranked this" |
+| `?` / `82` | `Episode::risk`, `Some` from the spine-only ranking (`surfaces`, `complexity`, `size`, `deletions`, `breadth`, `author`) and `None` when the read never reached that episode | a number the reviewer can interrogate with `w`, or `?` — never a `0` standing in for "nobody ranked this" |
 | `⚑` | `ReviewState::glyph`: `⚑ ⚐ ✓ ✔ × z ?`, or `gone` | colour: under `NO_COLOR` the glyph is the whole state, which is why it is the last column to go |
 
 The complexity column is `e8.6` (**reco-l9bz.6**), and it is the sixth in the sense that ADR-006 §5.2 counts
@@ -333,7 +333,7 @@ cannot fill:
 
 ```
 delta    no document was handed to this card — `fathom analyze <episode>` is the one source
-risk     spine-1 82 = surfaces 50 + author 8 + size 24 · rank 1 of 21
+risk     spine-2 82 = surfaces 50 + size 12 + complexity 12 + author 8 · rank 1 of 21
 ```
 
 That is the whole design constraint in two lines: a pane whose data has not been handed to it says which

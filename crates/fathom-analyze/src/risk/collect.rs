@@ -14,6 +14,7 @@
 //! | `surface`, `breadth`, `size`, `noise` | the episode's own per-path rows (`episode_member ⋈ git_commit_file`) |
 //! | `migration` | those paths, plus the added lines of any file that reads as a migration |
 //! | `test_ratio`, `deletions` | those paths, split by surface |
+//! | `complexity` | the episode's complexity roll-up — `Store::episode_complexity`, the same join the card's `complexity` figure is built from |
 //! | `dependency` | those paths, split into lockfiles and manifests, plus anything a caller supplies |
 //! | `attribution`, `authorship` | the `episode` row's attribution columns (`e4.1`) |
 //! | `blast` | whatever a caller hands over, and otherwise a *question asked of the index* — see below |
@@ -58,6 +59,7 @@ use std::collections::BTreeMap;
 
 use fathom_ingest::record::Limits;
 use fathom_ingest::repo::Repository;
+use fathom_store::complexity::{Completeness, EpisodeComplexity};
 use fathom_store::episode::{EpisodeQuery, EpisodeRow};
 use fathom_store::spine::Store;
 
@@ -112,7 +114,7 @@ impl Supply {
 /// One episode read, and everything the vector is built from.
 #[derive(Debug)]
 pub struct Read {
-    /// The vector: twelve measurements, all of them accounted for.
+    /// The vector: thirteen measurements, all of them accounted for.
     pub vector: Vector,
     /// The detector report behind the `findings` measurement, kept so a surface can print the findings
     /// themselves beside the number they produced.
@@ -127,7 +129,7 @@ pub struct Read {
 /// # Errors
 ///
 /// [`fathom_store::error::Error`] when a read fails. A read that *partly* failed is not an error: it is a
-/// caveat on a measurement, because half a score with a stated hole beats no score at all.
+/// caveat on a measurement, because half a score with a stated hole beats no score all.
 pub fn read(
     store: &Store,
     repo: &Repository,
@@ -149,7 +151,12 @@ pub fn read(
     // Asked of the index, on the paths of the episode being scored, so that the reason printed beside a
     // missing `blast` is an answer about this store rather than a sentence about a plan (`reco-j1o`).
     let blast = Availability::probe(store, episode.files.iter().map(|file| file.path.as_str()))?;
-    let vector = vector(&row, &episode, &report, supply, &blast);
+    // The same join the card reads, so the score's complexity axis and the card's complexity figure are
+    // one figure (ADR-001 §7.10). One episode, one id, one query.
+    let complexity = store
+        .episode_complexity(&[row.id.clone()])?
+        .remove(&row.id);
+    let vector = vector(&row, &episode, &report, supply, &blast, complexity.as_ref());
     Ok(Some(Read { vector, report }))
 }
 
@@ -202,13 +209,19 @@ fn corpus(store: &Store) -> Result<Vec<DetectorEpisode>, fathom_store::error::Er
 /// `blast` is what the index answered when the read asked it whether the module graph could say who
 /// depends on this episode's paths ([`Availability::probe`]); a caller that has no store to ask passes
 /// [`Availability::NotProbed`] and gets a reason that says exactly that.
+///
+/// `complexity` is the episode's roll-up from [`Store::episode_complexity`], or `None` when the caller
+/// read none — which is a different claim from a roll-up whose figure is `None`, and the two print
+/// differently ([`complexity_measurement`]).
 #[must_use]
+#[allow(clippy::too_many_arguments)]
 pub fn vector(
     row: &EpisodeRow,
     episode: &DetectorEpisode,
     report: &Report,
     supply: &Supply,
     blast: &Availability,
+    complexity: Option<&EpisodeComplexity>,
 ) -> Vector {
     let mut measurements = Vec::with_capacity(Feature::ALL.len());
     let mut caveats: Vec<String> = Vec::new();
@@ -255,6 +268,7 @@ pub fn vector(
     ));
     measurements.push(blast_measurement(supply, blast));
     measurements.push(test_ratio(&sum, churn));
+    measurements.push(complexity_measurement(complexity));
     measurements.push(size(row, &sum, churn));
     measurements.push(dependency(episode, &sum, supply));
     measurements.push(deletions(&sum, churn, row));
@@ -567,6 +581,75 @@ fn size(
         )
     };
     Measurement::measured(Feature::Size, discounted as f64, "episode rollup", detail)
+}
+
+/// The complexity axis, from the same join the card prints (`reco-l9bz.7`).
+///
+/// Three states, and they are not the same claim:
+///
+/// * **no roll-up at all** (`None`) — this read did not ask, or the store has no complexity columns; the
+///   axis leaves the denominator and says so;
+/// * **a roll-up with no figure** ([`EpisodeComplexity::delta`] is `None`) — paths were in scope and
+///   nothing could be subtracted from them. ADR-007 §5.4: that is `?` with its reason codes, never a 0;
+/// * **a figure** — signed, and a floor whenever [`Completeness::Partial`] says some of its paths were
+///   refused. A floor enters the arithmetic as the smaller claim it is, with its coverage printed beside
+///   it (ADR-007 §5.4).
+fn complexity_measurement(figure: Option<&EpisodeComplexity>) -> Measurement {
+    let Some(figure) = figure else {
+        return Measurement::missing(
+            Feature::Complexity,
+            "this read took no complexity roll-up for the episode, so the axis has no figure to weigh \
+             and leaves the arithmetic with its weight still printed; `fathom index` fills the column",
+            "e8.2",
+        );
+    };
+    let Some(delta) = figure.delta else {
+        let mut why = format!(
+            "{} of {} path(s) this episode touched carried no complexity figure",
+            figure.unmeasured,
+            figure.paths_total()
+        );
+        if !figure.reasons.is_empty() {
+            let codes: Vec<String> = figure
+                .reasons
+                .iter()
+                .map(|(code, paths)| format!("{paths} {code}"))
+                .collect();
+            why.push_str(&format!(" ({})", codes.join(", ")));
+        }
+        if figure.bases.len() > 1 {
+            why.push_str(&format!(
+                " · the episode carries {} basis tokens ({}), which are not one unit",
+                figure.bases.len(),
+                figure.bases.iter().cloned().collect::<Vec<_>>().join(", ")
+            ));
+        }
+        return Measurement::missing(Feature::Complexity, why, "the index");
+    };
+    let mut detail = format!(
+        "{delta:+} V(G) across the {} path(s) this episode touched, of which {} could be counted on \
+         both sides",
+        figure.paths_total(),
+        figure.measured
+    );
+    if let Some(max) = figure.max {
+        detail.push_str(&format!(" · the worst single unit at head is V(G) {max}"));
+    }
+    if figure.absolute.is_some() {
+        detail.push_str(" · counted over this episode's paths, not the repository");
+    }
+    if figure.state == Completeness::Partial {
+        detail.push_str(" · a floor: some paths refused a figure, so the true delta is at least this");
+    }
+    if delta <= 0 {
+        detail.push_str(" · nothing was added, so this axis contributes nothing");
+    }
+    Measurement::measured(
+        Feature::Complexity,
+        f64::from(i32::try_from(delta).unwrap_or(i32::MAX)),
+        "episode complexity roll-up (`mccabe-1`)",
+        detail,
+    )
 }
 
 /// Lockfiles and manifests, told apart because they ask for different attention: a lockfile records what
