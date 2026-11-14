@@ -1,6 +1,7 @@
-//! `queue` — the store-backed triage ledger and the queue's review identity (`e4.5`, `reco-wsj`).
+//! `triage` — the store-backed review ledger and the reviewer's identity (`e4.5`, `reco-wsj`;
+//! renamed by `e10.3`, which deleted the Queue view this module was named for).
 //!
-//! `fathom_tui::queue::Ledger` is a trait object for the reason every other byte source in this binary is
+//! `fathom_tui::review::Ledger` is a trait object for the reason every other byte source in this binary is
 //! one: the shell may not open the store (ADR-002 §3, lint `E01`), so the composition root hands it
 //! something that can. `patches.rs` is the same shape for the same reason, and so is this module — a
 //! struct holding the repository root, opening the store per call.
@@ -36,7 +37,7 @@ use fathom_core::time::Timestamp;
 #[cfg(all(feature = "tui", feature = "sqlite-bundled"))]
 use fathom_store::episode::{ReviewState, TriageEvent};
 #[cfg(feature = "tui")]
-use fathom_tui::queue::{Ledger, LedgerHandle, Setup};
+use fathom_tui::review::{Ledger, LedgerHandle, Setup};
 
 #[cfg(all(feature = "tui", feature = "sqlite-bundled"))]
 use fathom_store::spine::Store;
@@ -182,7 +183,6 @@ pub fn setup(root: &Path, actor: &str, extra_reasons: &[String], total: usize) -
     }
     Setup {
         vocabulary,
-        policy: fathom_analyze::insight::QueuePolicy::default(),
         actor: actor.to_owned(),
         ledger: handle,
         history,

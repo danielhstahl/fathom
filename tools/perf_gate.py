@@ -290,7 +290,8 @@ def measurement_plan() -> list[dict]:
         {"id": "query.queue.ms.small", "budget": "query.queue.ms.small",
          "how": "`j` written to the grid changed, through the pty"},
         {"id": "query.queue.ms.visible.small", "budget": None,
-         "how": "`q` to the ranked worklist printing `order: ` (trend only; `e1.12` gates that budget)"},
+         "how": "`t` to the rail repainting with its `order: ` strip (trend only; the letter was `q` "
+                "and the worklist until `e10.3` deleted them, ADR-006 §5.1.2)"},
         {"id": "query.diff_open.ms.small", "budget": "query.diff_open.ms.small",
          "how": "`d` written to the diff pane painting its tree, through the pty"},
         {"id": "query.diff_first_hunk.ms.small", "budget": "query.diff_first_hunk.ms.small",
@@ -766,14 +767,20 @@ TREND_ONLY = {"write.batch_rows": "throughput at the §7.3 write cap"}
 TUI_PROBE = {
     "title": "e0.11 — the budget probe (`tools/perf_gate.py`)",
     "comment": [
-        "The keystroke-path numbers: open, rail, queue, diff. Every one of them is a pty measurement",
+        "The keystroke-path numbers: open, rail, diff. Every one of them is a pty measurement",
         "of the shipped binary, because the budgets are about what a reviewer waits for.",
+        "`q` left this list with the Queue view (`e10.3`, ADR-006 §5.1.2 §1): the rail is the home list",
+        "now, so the probe that used to wait for a pane to open now waits for the home list to repaint",
+        "with its `order: ` strip on it. That is a *narrower* question than the one the budget key was",
+        "named for, and it is written down here rather than smoothed over — renaming the key to match the",
+        "claim is a perf ticket's job, with the re-bless and the trend discontinuity in the same commit.",
     ],
     "steps": [
         {"keys": "", "note": "open the TUI: time to the first frame", "hold": 0.8},
         {"keys": "t", "note": "the timeline rail", "settle": 0.5},
         {"keys": "j", "note": "walk one row: the rail's own read", "settle": 0.4},
-        {"keys": "q", "note": "the attention queue", "until": "order: ", "hold": 3.0},
+        {"keys": "t", "note": "the rail repaints: its strip printing `order: `", "until": "order: ",
+         "hold": 3.0},
         {"keys": "d", "note": "open the diff: pane painted, first hunk `@@`", "until": "@@", "hold": 3.0},
         {"keys": "<C-c>", "note": "quit", "settle": 0.3},
     ],
@@ -1012,9 +1019,9 @@ def measure_end_to_end(harness: Harness) -> list[Measurement]:
                   "`t` written to the grid changed: one page of the rail")
         keystroke("query.queue.ms.small", "j", "query.queue.ms.small", "visible_ms",
                   "`j` written to the grid changed: the rail's ordering read")
-        keystroke("query.queue.ms.visible.small", "q", None, "until_ms",
-                  "`q` to the ranked worklist printing `order: ` (trend only: `e1.12` gates the "
-                  "queue's own budget)")
+        keystroke("query.queue.ms.visible.small", "t", None, "until_ms",
+                  "`t` to the rail repainting with its `order: ` strip (trend only; the letter was "
+                  "`q` and the worklist until `e10.3` deleted them, ADR-006 §5.1.2)")
         keystroke("query.diff_open.ms.small", "d", "query.diff_open.ms.small", "visible_ms",
                   "`d` written to the diff pane painting its tree")
         keystroke("query.diff_first_hunk.ms.small", "d", "query.diff_first_hunk.ms.small", "until_ms",

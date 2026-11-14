@@ -55,10 +55,15 @@ use crate::risk::{self, Surface};
 ///
 /// Same spelling as `e2.10`'s `fathom-card/1` for the same reason — a consumer switches on the shape it got
 /// rather than the shape it hoped for.
-pub const CONTRACT: &str = "fathom-delta/1";
+pub const CONTRACT: &str = "fathom-delta/2";
 
 /// The version of this structure. Bump it in the same commit as a breaking schema change, and no earlier.
-pub const VERSION: u32 = 1;
+///
+/// `e10.3` (`reco-ydek.3`) is v2: the queue's placement figures — `risk.rank` and `risk.ranked`, the
+/// `rank N of M` a ranked set produced — left the document with the pane that printed them. A removal is
+/// breaking under the policy above, however few readers used it, so the number moves and the baseline is
+/// re-blessed in the same commit (`python3 tools/check_delta_compat.py bless`).
+pub const VERSION: u32 = 2;
 
 /// How many figures one section may carry before the remainder is named.
 ///
@@ -1258,9 +1263,13 @@ pub struct RiskComponent {
 
 /// The ranking, in the form every surface prints.
 ///
-/// `reco-c05` computes the number; this is the same feature vector with its place in a ranked set and its
-/// blind spots attached, so the card, the queue, the artefact and the MCP tool print one ranking rather
-/// than four close approximations of it.
+/// `reco-c05` computes the number; this is the same feature vector with its blind spots attached, so the
+/// card, the rail, the artefact and the MCP tool print one ranking rather than four close approximations
+/// of it.
+///
+/// It carries no *place* in a ranking. `risk.rank`/`risk.ranked` — the `rank N of M` a card row used to
+/// print — went with the ranked set in `e10.3` (ADR-006 §5.1.2 §5): the CLI scores one episode and a pane
+/// that no longer ranks a set cannot cite a place in one. That removal is why the contract is v2.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RiskView {
     /// Which ranking produced the number (`spine-2` today; `e4.4`'s scorer replaces the inputs, not this).
@@ -1273,12 +1282,6 @@ pub struct RiskView {
     pub components: Vec<RiskComponent>,
     /// The surfaces touched, most consequential first.
     pub surfaces: Vec<String>,
-    /// This episode's place, and the size of the set it was ranked in, when a set was ranked.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub rank: Option<i64>,
-    /// See [`RiskView::rank`].
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub ranked: Option<i64>,
     /// The caveat when the file list was capped.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub caveat: Option<String>,
@@ -1287,10 +1290,9 @@ pub struct RiskView {
 }
 
 impl RiskView {
-    /// The ranking [`crate::risk`] computed, plus the two things only the caller knows: which set it was
-    /// ranked within, and how many rows that set held.
+    /// The ranking [`crate::risk`] computed, in the shape every surface prints.
     #[must_use]
-    pub fn of(ranking: &risk::Risk, rank: Option<i64>, ranked: Option<i64>) -> Self {
+    pub fn of(ranking: &risk::Risk) -> Self {
         RiskView {
             model: risk::MODEL.to_owned(),
             score: i64::from(ranking.score),
@@ -1310,8 +1312,6 @@ impl RiskView {
                 .iter()
                 .map(|surface| surface.as_str().to_owned())
                 .collect(),
-            rank,
-            ranked,
             caveat: ranking.caveat(),
             blind_spots: risk::BLIND_SPOTS
                 .iter()
@@ -2603,19 +2603,8 @@ fn attention_section(risk_view: Option<&RiskView>, supplied: &Supplied) -> Secti
     let mut figures = Vec::new();
     if let Some(risk_view) = risk_view {
         figures.push(
-            Figure::new(
-                "risk",
-                format!(
-                    "{}{}",
-                    risk_view.vector,
-                    risk_view
-                        .rank
-                        .map(|rank| format!(" · rank {rank} of {}", risk_view.ranked.unwrap_or(0)))
-                        .unwrap_or_default()
-                ),
-                Evidence::inside("#/risk"),
-            )
-            .with_raw(&[("score", risk_view.score)]),
+            Figure::new("risk", risk_view.vector.clone(), Evidence::inside("#/risk"))
+                .with_raw(&[("score", risk_view.score)]),
         );
         for component in &risk_view.components {
             figures.push(Figure::new(
@@ -3783,7 +3772,7 @@ mod store_bridge {
                 files: self.files.clone(),
                 totals,
                 complexity: self.complexity.clone(),
-                risk: Some(RiskView::of(&ranking, None, None)),
+                risk: Some(RiskView::of(&ranking)),
                 provenance: Provenance {
                     source: "store".to_owned(),
                     store: None,
@@ -4050,8 +4039,6 @@ impl RiskView {
             vector: String::new(),
             components: Vec::new(),
             surfaces: Vec::new(),
-            rank: None,
-            ranked: None,
             caveat: None,
             blind_spots: Vec::new(),
         }
@@ -4100,17 +4087,6 @@ impl RiskView {
             format!("{} +{rest}", shown.join("+"))
         } else {
             shown.join("+")
-        }
-    }
-
-    /// `rank 3 of 212`, or the model name when no set was ranked.
-    #[must_use]
-    pub fn place(&self) -> String {
-        match (self.rank, self.ranked) {
-            (Some(rank), Some(ranked)) => format!("rank {rank} of {ranked}"),
-            (Some(rank), None) => format!("rank {rank}"),
-            (None, _) if self.model.is_empty() => "unranked".to_owned(),
-            (None, _) => self.model.clone(),
         }
     }
 

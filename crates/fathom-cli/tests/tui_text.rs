@@ -90,7 +90,7 @@ fn the_plain_render_writes_no_escape_sequences_to_stdout() {
         "ADR-006 §6.7: the text render writes no escape sequences at all:\n{text:?}"
     );
     assert!(
-        text.contains("worklist") || text.contains("Queue"),
+        text.contains("rail") || text.contains("Timeline"),
         "it is still the frame, not an apology:\n{text}"
     );
     // ...and the two sequences it would have written went nowhere near stdout.
@@ -155,7 +155,7 @@ fn the_line_mode_prints_the_same_frame_in_reading_order() {
         flow.contains("complete") || flow.contains("degraded") || flow.contains("single"),
         "the line mode says which layout state this frame is in:\n{flow}"
     );
-    for fact in ["epoch", "queue"] {
+    for fact in ["epoch", "unread"] {
         assert!(
             flow.contains(fact),
             "the status line's facts survive into the line mode ({fact:?}):\n{flow}"
@@ -164,14 +164,14 @@ fn the_line_mode_prints_the_same_frame_in_reading_order() {
 
     // And the order is reading order: the panes come one after another, in the order the frame rings
     // them, each named by its own header.
-    let worklist = flow
-        .find("worklist")
-        .expect("the line mode names the worklist pane");
+    let rail = flow
+        .find("rail")
+        .expect("the line mode names the rail pane");
     let card = flow
         .find("card")
         .expect("the line mode names the card pane");
     assert!(
-        worklist < card,
+        rail < card,
         "the primary pane is read before the secondary one:\n{flow}"
     );
     assert!(
@@ -184,7 +184,7 @@ fn the_line_mode_prints_the_same_frame_in_reading_order() {
 /// otherwise have to read three columns at once.
 ///
 /// Deliberately not every row of the grid. The tab bar, the footer strips and the hint line are chrome,
-/// and the line mode re-renders chrome as labelled lines (`fathom · Queue · complete · 80×24`,
+/// and the line mode re-renders chrome as labelled lines (`fathom · Timeline · complete · 80×24`,
 /// `hint · …`) rather than as the clipped grid row — which is the point of the mode, not a deviation
 /// from it. Pane content is what must survive unchanged.
 fn grid_rows(grid: &str) -> Vec<String> {
@@ -222,7 +222,7 @@ fn a_redirected_stdout_says_which_contract_it_is_in() {
         stderr(&out)
     );
     assert!(
-        stdout(&out).contains("worklist") || stdout(&out).contains("Queue"),
+        stdout(&out).contains("rail") || stdout(&out).contains("Timeline"),
         "and it still draws the frame:\n{}",
         stdout(&out)
     );

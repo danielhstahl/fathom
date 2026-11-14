@@ -492,20 +492,25 @@ def measure(binary: Path, fixture: Path, budgets_path: Path, tui_script: Path) -
     # after the session, before any other TUI run can overwrite it.
     shell_report = read_shell_frame_report(fixture)
     # The queue's own numbers. `cold.queue_visible.ms.small` was blocked on the pane painting an
-    # empty list, and the note said so; since the worklist ranks the episodes the shell was given
-    # (`reco-c05`), asking for the queue is enough to get an answer. The probe asks for it with `q`
-    # rather than trusting the view the session left pinned — three probe runs share one store, and a
-    # probe that measured whichever pane happened to be up would measure nothing.
+    # empty list, and the note said so; since the worklist ranked the episodes the shell was given
+    # (`reco-c05`) an asking keystroke was enough to get an answer. `e10.3` deleted that pane, and the
+    # asking keystroke is `t` now: the rail is the home view, and the strip that arrives with it names
+    # its order and the model each row's figure came from (ADR-006 §5.1.2 §3). The **budget keys keep
+    # their names** — what they measure is first paint of the home list and one keystroke on it, which
+    # did not change, only the letter that reached them; renaming a published key is a perf ticket's job
+    # with the re-bless in the same commit. The probe asks rather than trusting the view the session left
+    # pinned — three probe runs share one store, and a probe that measured whichever pane happened to be
+    # up would measure nothing.
     paint, walk, explains = [], [], []
     queue_script = Path("/tmp") / f"e1-12-queue-{os.getpid()}.json"
     queue_steps_file = Path("/tmp") / f"e1-12-queue-steps-{os.getpid()}.json"
     queue_script.write_text(json.dumps({
-        "title": "e1.12 — the queue probe (reco-c05)",
+        "title": "e1.12 — the home-list probe (reco-c05, retargeted by reco-ydek.3)",
         "steps": [
-            {"keys": "q", "note": "ask for the queue: until it prints a ranking", "until": "order: ",
+            {"keys": "t", "note": "ask for the rail: until it prints its order", "until": "order: ",
              "hold": 3.0},
-            {"keys": "j", "note": "next riskiest: frame on the redraw", "settle": 0.4},
-            {"keys": "w", "note": "explain the ranking: frame on the vector",
+            {"keys": "j", "note": "next row: frame on the redraw", "settle": 0.4},
+            {"keys": "w", "note": "explain the row's figure: frame on the vector",
              "until": "cannot see", "hold": 3.0},
             {"keys": "<C-c>", "note": "quit", "settle": 0.3},
         ],
@@ -516,10 +521,11 @@ def measure(binary: Path, fixture: Path, budgets_path: Path, tui_script: Path) -
                         "--steps", str(queue_steps_file)],
                        check=True, stdout=subprocess.DEVNULL)
         probe = json.loads(queue_steps_file.read_text())
-        first = next((step for step in probe["steps"] if step.get("keys") == "q"), None)
-        # The strip's own line and a row's number, not a paint: a frame that drew an empty pane is
-        # not an answer, and the budget is the time to the answer.
-        if first and first.get("until_ms") is not None and "risk " in first.get("screen", ""):
+        first = next((step for step in probe["steps"] if step.get("keys") == "t"), None)
+        # The strip's own line, not a paint: a frame that drew an empty pane is not an answer, and the
+        # budget is the time to the answer. The strip is what proves the list answered — it names the
+        # order and, since `e10.3`, the model the rows' figures came from.
+        if first and first.get("until_ms") is not None and "order: " in first.get("screen", ""):
             paint.append(first["until_ms"])
         for step in probe["steps"]:
             if step.get("keys") == "j" and step.get("visible_ms") is not None:
@@ -529,32 +535,32 @@ def measure(binary: Path, fixture: Path, budgets_path: Path, tui_script: Path) -
     queue_steps_file.unlink(missing_ok=True)
     queue_script.unlink(missing_ok=True)
     if paint:
-        record("TUI: the queue answers with a ranked worklist", "cold.queue_visible.ms.small",
-               round(p95(paint), 1), unit="ms", samples=paint,
-               note="`q` until the screen printed `order: …` and a `risk` number — the queue's first "
-                    "frame is the answer now, so this is the time to the first useful answer and not "
-                    "to a paint (`reco-c05` wired the queue). On a cold store the queue is the "
-                    f"default view, where the same instant is the first paint at "
-                    f"{tui.get('first_paint_ms')} ms")
+        record("TUI: the rail answers with a chronology that scores its rows",
+               "cold.queue_visible.ms.small", round(p95(paint), 1), unit="ms", samples=paint,
+               note="`t` until the screen printed `order: …` — the home view's first frame is the "
+                    "answer, so this is the time to the first useful answer and not to a paint "
+                    "(`reco-c05` wired the queue, `reco-ydek.3` moved the keystroke onto the rail). On "
+                    "a cold store the rail is the default view, where the same instant is the first "
+                    f"paint at {tui.get('first_paint_ms')} ms")
     else:
-        record("TUI: the queue answers with episodes", "cold.queue_visible.ms.small", None,
+        record("TUI: the rail answers with episodes", "cold.queue_visible.ms.small", None,
                unit="ms",
-               blocked_by="the queue printed no ranking on the probe fixture: no `order: ` strip and "
-                          "no `risk` number arrived after `q`",
+               blocked_by="the rail printed no order on the probe fixture: no `order: ` strip arrived "
+                          "after `t`",
                note=f"time to first frame was {tui.get('first_paint_ms')} ms, which is not the same "
                     "question: the budget is time to the first useful answer")
     if walk:
-        record("TUI: `j` walks the ranked queue", "query.queue.ms.small",
+        record("TUI: `j` walks the rail", "query.queue.ms.small",
                round(p95(walk), 1), unit="ms", samples=walk,
-               note="keystroke written until the grid changed: the worklist redraws the ranked rows "
-                    "from the values the composition root handed it, and orders by them")
+               note="keystroke written until the grid changed: the rail redraws its rows from the "
+                    "chronology the composition root handed it, newest first")
     else:
-        record("TUI: queue query", "query.queue.ms.small", None, unit="ms",
-               blocked_by="`j` in the queue drew no visible change on the probe fixture")
+        record("TUI: rail query", "query.queue.ms.small", None, unit="ms",
+               blocked_by="`j` on the rail drew no visible change on the probe fixture")
     if explains:
-        record("TUI: `w` explains why the selected episode ranks where it does",
+        record("TUI: `w` explains where the selected row's figure came from",
                "query.card.ms.small", round(p95(explains), 1), unit="ms", samples=explains,
-               note="keystroke until the card first printed what the ranking cannot see: the "
+               note="keystroke until the card first printed what the score cannot see: the "
                     "explanation arrives with its ceiling, not after it (`reco-c05`)")
     else:
         record("TUI: episode card query", "query.card.ms.small", None, unit="ms",

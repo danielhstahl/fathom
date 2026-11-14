@@ -51,9 +51,10 @@ FRAME_BUDGET_MS = 16.0
 
 #: The chords the registry binds to a `view.*` action — every key that changes which pane is on the
 #: screen, read off `keymap.rs` (`a` ambient · `d` diff · `g` graph · `o` artefact · `p` deps ·
-#: `q` queue · `s` structure · `t` timeline). `g` is in the list precisely because it is the one
-#: that used to be 250 ms late.
-VIEW_KEYS = "adgopqst"
+#: `s` structure · `t` timeline). `g` is in the list precisely because it is the one that used to be
+#: 250 ms late. `q` left the list with the Queue view (`e10.3`, ADR-006 §5.1.2 §1): an unbound byte
+#: paints nothing, so there is no frame to time.
+VIEW_KEYS = "adgopst"
 
 #: The wait the shell holds an ambiguous chord for, in ms (`keymap::CHORD_TIMEOUT`).
 CHORD_TIMEOUT_MS = 250
@@ -188,7 +189,7 @@ def test_g_marks_the_frame_the_keystroke_lands_on(tmp_path):
     binary = _binary()
     tty = Tty(binary, _fixture(tmp_path))
     try:
-        assert "▣ Queue" in tty.head(), f"the shell opens on the queue: {tty.head()}"
+        assert "▣ Timeline" in tty.head(), f"the shell opens on the timeline: {tty.head()}"
         before = tty.lines()
         visible = tty.press("g")
 

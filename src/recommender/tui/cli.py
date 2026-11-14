@@ -233,7 +233,7 @@ def build(parser: argparse.ArgumentParser) -> None:
 
     p = sub.add_parser("press")
     p.add_argument("sequence")
-    p.add_argument("--view", default="queue")
+    p.add_argument("--view", default="timeline")
     p.add_argument("--mode", default="list")
     p.set_defaults(func=cmd_press)
 

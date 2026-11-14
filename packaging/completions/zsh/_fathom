@@ -2070,7 +2070,7 @@ _fathom_commands() {
 'export:Write a review artefact for a pull request or an audit' \
 'mcp:Speak MCP to a coding agent' \
 'watch:Watch the repository and index as it changes' \
-'ambient:The glance pane for the terminal beside the agent\: latest episode, queue, index, one reason (\`reco-8bx\`)' \
+'ambient:The glance pane for the terminal beside the agent\: latest episode, open work, index, one reason (\`reco-8bx\`)' \
 'hooks:Report on the harness event stream\: lag, offset, rejections, replay (\`e6.1\`)' \
 'daemon:The one process per repository that watches, tails the harness stream and indexes (\`e6.3\`)' \
 'status:Who is keeping this index current, what it costs, and what is left (\`e6.3\`)' \
@@ -2344,7 +2344,7 @@ _fathom__subcmd__help_commands() {
 'export:Write a review artefact for a pull request or an audit' \
 'mcp:Speak MCP to a coding agent' \
 'watch:Watch the repository and index as it changes' \
-'ambient:The glance pane for the terminal beside the agent\: latest episode, queue, index, one reason (\`reco-8bx\`)' \
+'ambient:The glance pane for the terminal beside the agent\: latest episode, open work, index, one reason (\`reco-8bx\`)' \
 'hooks:Report on the harness event stream\: lag, offset, rejections, replay (\`e6.1\`)' \
 'daemon:The one process per repository that watches, tails the harness stream and indexes (\`e6.3\`)' \
 'status:Who is keeping this index current, what it costs, and what is left (\`e6.3\`)' \

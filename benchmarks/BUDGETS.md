@@ -126,7 +126,7 @@ gated twice: against its budget, and against `benchmarks/baselines/perf-gate.jso
 | `cold.queue_visible.ms.small` | `cold.queue_visible.ms.small` | TUI spawn to first frame through the pty, median of 3 probes |
 | `query.timeline.ms.small` | `query.timeline.ms.small` | `t` written to the grid changed, through the pty |
 | `query.queue.ms.small` | `query.queue.ms.small` | `j` written to the grid changed, through the pty |
-| `query.queue.ms.visible.small` | — | `q` to the ranked worklist printing `order: ` (trend only; `e1.12` gates that budget) |
+| `query.queue.ms.visible.small` | — | `t` to the rail repainting with its `order: ` strip (trend only; the letter was `q` and the worklist until `e10.3` deleted them, ADR-006 §5.1.2) |
 | `query.diff_open.ms.small` | `query.diff_open.ms.small` | `d` written to the diff pane painting its tree, through the pty |
 | `query.diff_first_hunk.ms.small` | `query.diff_first_hunk.ms.small` | `d` written to the first `@@` on screen — the streaming rule, timed as it is written |
 | `rss.tui.mib.small` | `rss.tui.mib.small` | `VmHWM` of the TUI child, sampled after every keystroke, worst probe |

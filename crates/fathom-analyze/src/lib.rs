@@ -59,9 +59,10 @@ pub mod narrative;
 /// markdown under `.fathom/reviews/notes.md`, re-linked by the same ladder the ledger rides and mirrored
 /// into `decision_note` (`e6.5`, `reco-552`).
 pub mod notes;
-/// The attention queue (`e4.5`, `reco-wsj`): the ordering, the four triage acts and the retrospective.
-/// Its types reach the surfaces through [`insight`], which is the only door `fathom-tui` may open.
-pub mod queue;
+/// The review ledger's analysis (`e4.5` `reco-wsj`, renamed by `e10.3` `reco-ydek.3`): the four triage
+/// acts, the open-work counts and the retrospective. Its types reach the surfaces through [`insight`],
+/// which is the only door `fathom-tui` may open.
+pub mod review;
 /// The spine-only risk ranking (`reco-c05`), and the ordering `e4.4`'s scorer replaces.
 pub mod risk;
 /// The declared scope of an episode, measured against the paths the change touched (`e4.2`). The

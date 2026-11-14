@@ -24,7 +24,7 @@
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
-use fathom_analyze::insight::{EpisodeDelta, QueuePolicy, ReasonVocabulary, TriageRecord};
+use fathom_analyze::insight::{EpisodeDelta, ReasonVocabulary, TriageRecord};
 use fathom_analyze::search::{Corpus, Entry, Index};
 use fathom_core::time::Timestamp;
 use fathom_tui::ambient::{Glance, Latest};
@@ -32,7 +32,7 @@ use fathom_tui::app::{App, Model, Overlay};
 use fathom_tui::compare::{CompareProvider, Provider as CompareShell};
 use fathom_tui::diff::{BytesSource, PatchProvider, PatchSource, Provider, Unavailable};
 use fathom_tui::keymap::Keymap;
-use fathom_tui::queue::{Ledger, LedgerHandle, Setup};
+use fathom_tui::review::{Ledger, LedgerHandle, Setup};
 use fathom_tui::render::frame_lines;
 use fathom_tui::timeline::{AuthorKind, Batch, Episode, ReviewState};
 use fathom_tui::views::ViewId;
@@ -199,9 +199,8 @@ fn session() -> (App, Arc<Recorder>) {
     );
     app.timeline.set_now(NOW);
     app.load_episodes(Batch::new("fixture index", rows()));
-    app.queue = Setup {
+    app.review = Setup {
         vocabulary: ReasonVocabulary::shipped(),
-        policy: QueuePolicy::default(),
         actor: "ada <ada@example.com>".to_owned(),
         ledger: Some(LedgerHandle(Arc::clone(&recorder) as Arc<dyn Ledger>)),
         history: Vec::new(),
@@ -209,7 +208,7 @@ fn session() -> (App, Arc<Recorder>) {
         total: 2,
     }
     .state();
-    app.queue.sessions = fathom_tui::queue::State::sessions_of(&rows());
+    app.review.sessions = fathom_tui::review::State::sessions_of(&rows());
     app.patches = Some(Provider(Arc::new(Fixture) as Arc<dyn PatchProvider>));
     app.search = Some(Arc::new(Index::build(&corpus())));
     app.compare = Some(CompareShell::new(Counted));
@@ -393,7 +392,7 @@ fn the_palette_reaches_every_step_of_the_arc() {
     let (mut app, _recorder) = session();
     for (query, wanted) in [
         ("ambent", "view.ambient"),
-        ("queue", "view.queue"),
+        ("t", "view.timeline"),
         ("dif", "view.diff"),
         ("artefact", "view.artefact"),
     ] {

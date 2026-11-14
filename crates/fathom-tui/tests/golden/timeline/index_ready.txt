@@ -15,7 +15,7 @@
                                           
 
 ## rail strip
-filter: area=any state=any group=day (F edits) · index epoch 1 ready · 500 commits · 412 eps — `t` opens the timeline, which lists them as the index knows them; `fathom show <episode>` prints one in full
+order: newest first · filter: area=any state=any group=day (F edits) · index epoch 1 ready · 500 commits · 412 eps — `t` opens the timeline, which lists them as the index knows them; `fathom show <episode>` prints one in full
 
 ## card (35 columns × 14 rows)
 no episode selected                

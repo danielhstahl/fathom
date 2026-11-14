@@ -288,7 +288,7 @@ are limits of the model itself:
 * whether a dependency is stale or vulnerable: advisory age is behind `net-advisories`, an opt-in feature
   this binary was not built with — and the vector refuses the axis either way, because a score that moved
   with the network would not be reproducible (ADR-001 §8.2);
-* whether the human reading this has already read it: review state is the queue's ordering input, not a
+* whether the human reading this has already read it: review state is the rail's unread count, not a
   feature of this vector.
 
 Nothing in that list names a ticket, and that is the rule. The version of this list that shipped with
@@ -354,9 +354,10 @@ Not done, on purpose:
 * `blast` and `e2.6`'s dependency delta arrive as *inputs*, from `Supply`, the moment a caller hands them
   over — the graph exists to be walked; what is missing is a caller that pays for the walk per episode.
   Until then the axes are absent and the denominator says so, with the index's own answer as the reason.
-* The TUI's `w` still prints `spine-2`'s vector. Wiring `features-2` into the queue pane, `e4.5`'s
-  ordering function and the `fathom export` artefact is that ticket's work; `risk::score::render` is the
-  one renderer they are all meant to call.
+* The TUI's `w` still prints `spine-2`'s vector. Wiring `features-2` into the `fathom export` artefact is
+  that ticket's work — `e4.5`'s ordering function and the pane it ordered are gone (`e10.3`), so the list
+  of callers shrank rather than grew — and `risk::score::render` is the one renderer they are all meant to
+  call.
 * `fathom why --json` carries its contract id (`fathom.cli.why/1`) and is asserted field by field in
   `cli_why.rs`, but has no `schemas/why.schema.json` yet — the payload is documented here and in
   §4 until a schema is published with the other verbs'.

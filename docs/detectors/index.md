@@ -680,8 +680,8 @@ M src/billing/ledger.rs  +24 −0
 ## Where a finding shows up
 
 The same `Finding` value, four doors: the attention section of
-[the episode card](../concepts/summary-card.md); the ranked queue, whose risk model consumes severities
-([risk score](../concepts/risk-score.md)); the delta document's `findings` section, evidence pointers and
+[the episode card](../concepts/summary-card.md); the rail's risk column, whose model consumes
+severities ([risk score](../concepts/risk-score.md)); the delta document's `findings` section, evidence pointers and
 all ([the delta model](../concepts/delta-model.md)); and the export, where a finding travels with its
 suppression key so the person reading a PR can act on it. A finding that arrives in a pane also carries a
 jump target, which is the mechanism behind "every figure is a button".
@@ -699,7 +699,7 @@ Four edits, and the module's own documentation
 4. silence on the clean corpus in the same directory.
 
 No registry call at runtime, no `main` to touch, no surface to teach: the delta document, the card's
-attention section and the queue pick up a new row because they iterate over the table. This catalogue
+attention section and the rail pick up a new row because they iterate over the table. This catalogue
 page, `catalogue.json` and the Rust `CATALOGUE` are then checked against each other
 (`tests/test_pathology_contract.py`), so a new detector without a documentation entry is a red build rather
 than a documentation debt.

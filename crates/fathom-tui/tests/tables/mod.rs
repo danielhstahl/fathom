@@ -19,7 +19,6 @@ use fathom_tui::keymap::Mode;
 #[rustfmt::skip]
 #[allow(clippy::type_complexity)]
 pub const EXPECTED_ACTIONS: &[(&str, &str, &str, &str, &[Mode], bool)] = &[
-    ("view.queue", "Go to: Queue", "view", "e4.5", &[Mode::Global], true),
     ("view.timeline", "Go to: Timeline", "view", "e1.6", &[Mode::Global], true),
     ("view.diff", "Go to: Diff", "view", "e1.7", &[Mode::Global], true),
     ("view.structure", "Go to: Structure", "view", "e2.3", &[Mode::Global], true),
@@ -61,7 +60,7 @@ pub const EXPECTED_ACTIONS: &[(&str, &str, &str, &str, &[Mode], bool)] = &[
     ("review.flag", "Flag for attention, with a note", "review", "e4.5", &[Mode::Global], true),
     ("review.dismiss", "Dismiss with a reason", "review", "e4.5", &[Mode::Global], true),
     ("review.snooze", "Snooze until a condition", "review", "e4.5", &[Mode::Global], true),
-    ("risk.explain", "Why this rank: every reason and the whole ceiling", "review", "e4.4", &[Mode::Global], true),
+    ("risk.explain", "Why this score: every reason and the whole ceiling", "review", "e4.4", &[Mode::Global], true),
     ("review.retrospect", "Rail: what you skipped, and why", "review", "e4.5", &[Mode::Global], true),
     ("pick.choose", "Choose this entry", "overlay", "e4.5", &[Mode::Pick], false),
     ("prompt.submit", "Submit", "overlay", "e5.2", &[Mode::Prompt], false),
@@ -123,7 +122,6 @@ pub const EXPECTED_ACTIONS: &[(&str, &str, &str, &str, &[Mode], bool)] = &[
 /// The default binding table, chord by chord, exactly as `keymap.DEFAULTS` reads.
 #[rustfmt::skip]
 pub const EXPECTED_DEFAULT_BINDINGS: &[(&str, &str, &str)] = &[
-    ("global", "q", "view.queue"),
     ("global", "t", "view.timeline"),
     ("global", "d", "view.diff"),
     ("global", "s", "view.structure"),
@@ -259,8 +257,6 @@ pub const EXPECTED_DEFAULT_BINDINGS: &[(&str, &str, &str)] = &[
 #[rustfmt::skip]
 #[allow(clippy::type_complexity)]
 pub const EXPECTED_PANES: &[(&str, &str, &str, u8, &str, u16, u16, u16, u16, u16, bool, &str, &[&str])] = &[
-    ("queue", "worklist", "Primary", 1, "List", 48, 36, 18, 32, 0, true, "e4.5", &["episode.identity", "episode.created_at", "risk.score", "risk.reasons[]", "blast_radius.direct_count", "review.state", "noise.share"]),
-    ("queue", "card", "Secondary", 2, "Body", 29, 24, 16, 20, 0, true, "e2.10", &["delta.structure.*", "delta.dependencies.*", "delta.non_code.*", "delta.tests.*", "blast_radius.*", "findings[].severity", "intent.*", "review.state"]),
     ("timeline", "rail", "Primary", 1, "List", 42, 32, 18, 28, 0, true, "e1.6", &["episode.identity", "episode.created_at", "delta.structure.*", "delta.complexity.*", "review.state", "episode.members[].sha"]),
     ("timeline", "card", "Secondary", 2, "Body", 35, 26, 16, 22, 0, true, "e2.10", &["delta.structure.*", "delta.dependencies.*", "delta.architecture.*", "findings[].{detector_id,severity}", "risk.*", "blast_radius.*"]),
     ("diff", "tree", "Primary", 1, "List", 28, 20, 16, 18, 0, true, "e1.7", &["delta.structure.* (file list)", "path taxonomy class", "noise class", "per-file +/- counts", "review state"]),
@@ -271,7 +267,7 @@ pub const EXPECTED_PANES: &[(&str, &str, &str, u8, &str, u16, u16, u16, u16, u16
     ("graph", "detail", "Secondary", 2, "Body", 23, 20, 16, 18, 0, true, "e3.4", &["node/edge evidence ids", "delta.architecture.*", "cycle debt", "layering rules", "public API delta"]),
     ("deps", "manifest", "Primary", 1, "Table", 40, 32, 18, 28, 0, true, "e2.6", &["delta.dependencies.*", "licence set delta", "advisory hits (opt-in)", "manifest/lockfile evidence"]),
     ("deps", "tree", "Secondary", 2, "List", 37, 26, 16, 22, 0, true, "e2.6", &["resolved dependency graph", "reverse dependencies", "lockfile line ids"]),
-    ("ambient", "glance", "Primary", 1, "Body", 80, 40, 40, 40, 5, false, "e5.1", &["episode.identity", "risk.score", "review.state", "queue counts", "index epoch (ADR-004 §6.3)", "caught-up state"]),
+    ("ambient", "glance", "Primary", 1, "Body", 80, 40, 40, 40, 5, false, "e5.1", &["episode.identity", "risk.score", "review.state", "review.state counts", "index epoch (ADR-004 §6.3)", "caught-up state"]),
     ("search", "query", "Query", 1, "Field", 72, 48, 0, 20, 0, false, "e5.2", &["(input) free text plus filter tokens author: since: risk> kind: path: dep:"]),
     ("search", "results", "Primary", 2, "List", 46, 30, 18, 26, 0, true, "e5.2", &["episode summaries", "paths", "symbol names", "dependency names", "finding types"]),
     ("search", "preview", "Secondary", 3, "Body", 23, 20, 16, 18, 0, true, "e5.2", &["episode card excerpt", "match explanation", "evidence locator"]),
@@ -282,7 +278,6 @@ pub const EXPECTED_PANES: &[(&str, &str, &str, u8, &str, u16, u16, u16, u16, u16
 /// The view registry: id, global key, title, kind, owner, ideal size, floors, chrome.
 #[rustfmt::skip]
 pub const EXPECTED_VIEWS: &[(&str, &str, &str, &str, &str, u16, u16, u16, u16, &[&str])] = &[
-    ("queue", "q", "Queue", "view", "e4.5", 80, 24, 18, 3, &["frame", "hint", "status", "strips", "tabs"]),
     ("timeline", "t", "Timeline", "view", "e1.6", 80, 24, 16, 3, &["frame", "hint", "status", "strips", "tabs"]),
     ("diff", "d", "Diff", "view", "e1.7", 80, 24, 15, 3, &["frame", "hint", "status", "strips", "tabs"]),
     ("structure", "s", "Structure", "view", "e2.3", 80, 24, 15, 3, &["frame", "hint", "status", "strips", "tabs"]),
@@ -296,13 +291,12 @@ pub const EXPECTED_VIEWS: &[(&str, &str, &str, &str, &str, u16, u16, u16, u16, &
 /// The named drill edges, from ADR-006 §5's per-view tables.
 #[rustfmt::skip]
 pub const EXPECTED_DRILL: &[(&str, &[(&str, &str, &str)])] = &[
-    ("queue", &[("worklist · <Enter>", "card", "drill in: the episode card, pane 2"), ("worklist · x f - z", "ledger", "disposition; the worklist advances"), ("anywhere · d s g p", "that view", "same scope, different question"), ("card · <Esc>", "worklist", "pop back; the selection is preserved")]),
-    ("timeline", &[("rail · <Enter>", "card", "drill in: card for the selected episode"), ("card · <Enter>", "Diff", "a second drill opens the diff at that episode"), ("<Esc>", "rail / previous view", "pop one level, then pop out")]),
+    ("timeline", &[("rail · <Enter>", "card", "drill in: card for the selected episode"), ("card · <Enter>", "Diff", "a second drill opens the diff at that episode"), ("rail · x f - z", "ledger", "the four acts, on the row under the cursor"), ("rail · r", "acts", "the same pane listing *acts*: what was dismissed, by whom, under which reason (`e10.2`)"), ("<Esc>", "rail / previous view", "pop one level, then pop out")]),
     ("diff", &[("tree · <Enter>", "hunks", "read that file's hunks (focus moves)"), ("hunks · [ ]", "hunks", "previous / next hunk"), ("hunks · E", "$EDITOR", "hand off at file:line (ADR-001 §8 non-goal 2)"), ("tree · b", "noise view", "the suppressed files, with the rule printed"), ("<Esc>", "tree / previous view", "one level up, then pop out")]),
     ("structure", &[("treemap · <Enter>", "deeper", "drill one directory level (focus stays)"), ("[ / ]", "level", "aggregate up / down — this view's shrink mechanism"), ("<", "sort", "cycle churn · size · delta"), ("<Esc>", "level up", "one level out, then pop to the previous view")]),
     ("graph", &[("canvas · <Enter> node", "detail", "focus the detail pane on that node"), ("canvas · <Enter> edge", "Diff", "the file-and-line that produced the edge"), ("[ / ]", "aggregation", "module level up/down (3 000 nodes → legible)"), ("< / >", "hops", "blast-radius hop limit"), ("!", "overlay", "show only this episode's delta overlay"), ("<Esc>", "up", "one level out of the selection")]),
     ("deps", &[("manifest · <Enter>", "tree", "why is this dependency here"), ("[ / ]", "ecosystem", "next / previous ecosystem in scope"), ("u", "filter", "show transitive-only changes only"), ("<Esc>", "manifest", "one level up")]),
-    ("ambient", &[("<Enter>", "card", "the one keypress ADR-001 §4.1 promises"), ("q / t", "view", "leave glance mode")]),
+    ("ambient", &[("<Enter>", "card", "the one keypress ADR-001 §4.1 promises"), ("t", "view", "leave glance mode for the rail, where the episode is selected")]),
     ("search", &[("<C-n> / <C-p>", "results", "walk results without leaving the field"), ("<Enter>", "target view", "deep link: right view, right selection"), ("<Esc>", "dismiss", "the view behind keeps its selection")]),
     ("artefact", &[("<Enter>", "write", "write the file; the path is printed, not guessed"), ("[ / ]", "range", "narrow / widen the episode range"), ("=", "format", "cycle md / html / json"), ("<Esc>", "up", "leave the preview")]),
 ];
@@ -312,7 +306,7 @@ pub const EXPECTED_DRILL: &[(&str, &[(&str, &str, &str)])] = &[
 #[allow(clippy::type_complexity)]
 pub const EXPECTED_TASKS: &[(&str, &str, &str, &[(&str, &str, &str)])] = &[
     ("T1", "Triage the top of the rail and sign it off", "What is the next thing I have to look at, and am I happy with it?", &[("t", "view.timeline", "The rail — the chronology `e10.1` made home — newest first, focused (pane 1). No filter on entry: the strip's unread count is the signal."), ("j", "list.down", "Move down the rail. `H`/`M`/`L` and `<C-d>`/`<C-u>` too."), ("<Enter>", "drill.in", "Drill into the episode card (pane 2): what changed, where, blast radius, every figure a button."), ("d", "view.diff", "Same scope, diff view: file tree first, `j` then `<Enter>` to read a file's hunks."), ("x", "review.accept", "Mark reviewed: disposition `accepted` + identity + time are written first, and only then does the row's glyph go `⚑`→`✔` and the strip's count drop — same frame, cursor where it was.")]),
-    ("T2", "Read what the newest turn did, and whether the shape moved", "The agent has been busy: what landed, and did the architecture get worse?", &[("a", "view.ambient", "Glance mode: latest episode, its risk, queue count, index state."), ("<Enter>", "drill.in", "Drill into that episode's card: one keypress, per ADR-001 §4.1."), ("s", "view.structure", "Where it landed: treemap with churn heat; `[`/`]` move the aggregation level."), ("g", "view.graph", "Module graph with this episode's delta overlay; `!` shows only the delta, `[`/`]` aggregate, `<`/`>` set the hop limit."), ("<Esc>", "drill.out", "Up one level, then again to ambient. Nothing was lost on the way.")]),
+    ("T2", "Read what the newest turn did, and whether the shape moved", "The agent has been busy: what landed, and did the architecture get worse?", &[("a", "view.ambient", "Glance mode: latest episode, its risk, the unread count, index state."), ("<Enter>", "drill.in", "Drill into that episode's card: one keypress, per ADR-001 §4.1."), ("s", "view.structure", "Where it landed: treemap with churn heat; `[`/`]` move the aggregation level."), ("g", "view.graph", "Module graph with this episode's delta overlay; `!` shows only the delta, `[`/`]` aggregate, `<`/`>` set the hop limit."), ("<Esc>", "drill.out", "Up one level, then again to ambient. Nothing was lost on the way.")]),
     ("T3", "Find a thing and land on it", "Where is `parse_lockfile`, who touched `Cargo.lock`, what flagged this?", &[("/", "search.open", "Search overlay, cursor already in the query field."), ("<text>", "(typing)", "Fuzzy over episodes, paths, symbols, dependencies and findings; `author:` `since:` `risk>` `kind:` `path:` `dep:` tokens compose with text."), ("<C-n>", "prompt.result_down", "Walk results without leaving the field; `<C-p>` walks back."), ("<Enter>", "prompt.submit", "Jump into the right view with the right selection: a deep link, not a list of paths.")]),
 ];
 
@@ -339,12 +333,12 @@ pub const EXPECTED_UNUSABLE: &[(&str, &str, &str)] = &[
 #[rustfmt::skip]
 pub const EXPECTED_RETIRED: &[(&str, &str, &str)] = &[
     ("i", "intent.show", "the intent pane is retired — the card's `intent` row is the one line, and `fathom show <episode>` prints the plan and the declared scope behind it"),
+    ("q", "view.queue", "the Queue view is retired — the timeline (`t`) is home; accept, flag, dismiss and snooze act on the rail's row and `r` lists the ledger's acts in the same pane"),
 ];
 
 /// The global view keys, which are also the tab bar's order.
 #[rustfmt::skip]
 pub const EXPECTED_VIEW_KEYS: &[(&str, &str)] = &[
-    ("q", "queue"),
     ("t", "timeline"),
     ("d", "diff"),
     ("s", "structure"),

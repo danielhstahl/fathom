@@ -20,7 +20,7 @@
 │  b31c00 1mo +18 −6 ●●●○○○ ? z            │                                   │
 │                                          │                                   │
 │                                          │                                   │
-│4 unread · 1 snoozed · filter: area=any s…│card · reads delta.structure.* · o…│
+│order: newest first · 4 unread · 1 snooze…│card · reads delta.structure.* · o…│
 └──────────────────────────────────────────────────────────────────────────────┘
-⏺ epoch 1 · 48 eps · queue 4 open · idx unknown
+⏺ epoch 1 · 48 eps · 4 unread · idx unknown
 10 episodes from fixture index

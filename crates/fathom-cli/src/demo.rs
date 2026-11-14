@@ -135,7 +135,7 @@ pub fn intro(demo: &Demo) {
         &demo.digest[..12]
     ));
     output::problem(format_args!(
-        "  two people and one agent wrote it, so the queue ranks agent work against human work; its \
+        "  two people and one agent wrote it, and every row is scored the same whichever of them wrote it; its \
          history has a rename, a dependency bump in two ecosystems, a deleted test, a CI job, a cycle \
          and a merge"
     ));
@@ -150,7 +150,7 @@ pub fn handoff() {
     // what they can do once they are at a terminal, and the note the CLI already prints about text output
     // covers the fact that they are not at one.
     output::problem(format_args!(
-        "  `?` lists the keys · `q` queue · `t` timeline · `d` diff · `s` structure · `g` graph · `p` \
+        "  `?` lists the keys · `t` timeline · `d` diff · `s` structure · `g` graph · `p` \
          dependencies · `o` export"
     ));
     output::problem(format_args!(

@@ -194,7 +194,7 @@ fn every_claim_in_the_json_cites_something_that_exists() {
     let payload: serde_json::Value = serde_json::from_str(lines[0]).expect("one JSON value");
     assert_eq!(payload["contract"], "fathom-narrative/1");
     assert_eq!(payload["generator"], "fathom-template/1");
-    assert_eq!(payload["source_contract"], "fathom-delta/1");
+    assert_eq!(payload["source_contract"], "fathom-delta/2");
     assert_eq!(payload["integrity"]["verified"], true, "{payload}");
     let claims = payload["claims"].as_array().expect("claims");
     let citations = payload["citations"].as_array().expect("citations");
@@ -229,7 +229,7 @@ fn the_markdown_is_the_artefact_body_and_names_its_evidence() {
     let text = stdout(&out);
     assert!(text.starts_with("## "), "{text}");
     assert!(text.contains("Evidence"), "{text}");
-    assert!(text.contains("`fathom-delta/1`"), "{text}");
+    assert!(text.contains("`fathom-delta/2`"), "{text}");
     // Every bracketed citation in the prose has a row in the table — the AC's "resolvable", checked on
     // the bytes a user would paste into a PR.
     for index in 1..=60 {

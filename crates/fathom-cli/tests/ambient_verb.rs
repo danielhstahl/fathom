@@ -25,7 +25,7 @@ use std::time::{Duration, Instant};
 /// The three facts that are always on the pane, plus the reason line, which is labelled by what the
 /// reason *is* — `look now` for a high-risk episode, `waiting` for ordinary work, `caught up` when there
 /// is nothing — so it is matched as a set.
-const PROMISES: [&str; 3] = ["latest", "queue  ", "index  "];
+const PROMISES: [&str; 3] = ["latest", "open   ", "index  "];
 const REASONS: [&str; 7] = [
     "no index",
     "index behind",
@@ -326,7 +326,7 @@ fn a_new_episode_is_on_the_pane_inside_a_second() {
     );
     assert!(
         next["attention"]["kind"].as_str() == Some("high_risk")
-            || next["attention"]["kind"].as_str() == Some("open_queue"),
+            || next["attention"]["kind"].as_str() == Some("open_work"),
         "the reason to look now is named: {next}"
     );
     let _ = child.kill();
@@ -338,13 +338,13 @@ fn a_new_episode_is_on_the_pane_inside_a_second() {
 fn the_first_object_answers_the_questions_the_pane_is_asked() {
     let dir = repository("contract");
     let object = json(&dir, &["--once", "--json", "--no-index"]);
-    assert_eq!(object["contract"].as_str(), Some("fathom.cli.ambient/1"));
+    assert_eq!(object["contract"].as_str(), Some("fathom.cli.ambient/2"));
     for key in [
         "caught_up",
         "attention",
         "drill",
         "latest",
-        "queue",
+        "open_work",
         "index",
         "watch",
         "lines",
@@ -353,7 +353,7 @@ fn the_first_object_answers_the_questions_the_pane_is_asked() {
     }
     assert_eq!(object["caught_up"].as_bool(), Some(false));
     assert_eq!(object["latest"]["summary"].as_str(), Some("first"));
-    assert_eq!(object["queue"]["counts"]["open"].as_u64(), Some(1));
+    assert_eq!(object["open_work"]["counts"]["open"].as_u64(), Some(1));
     assert!(
         object["lines"]
             .as_array()

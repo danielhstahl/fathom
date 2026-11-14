@@ -222,7 +222,7 @@ pub fn episodes(
 // from the frame while `e4.4`'s feature vector is still on the other side of epic 2.
 //
 // `e2.11` did not change the ranking; it gave it a place to travel. The same [`Risk`] that ranks the rail is
-// copied into every delta's `risk` section, so the card, the queue, the artefact and the MCP tool print one
+// copied into every delta's `risk` section, so the card, the rail, the artefact and the MCP tool print one
 // number rather than four close approximations of it.
 pub use crate::risk::FileChange;
 pub use crate::risk::{
@@ -230,20 +230,21 @@ pub use crate::risk::{
 };
 
 // ---------------------------------------------------------------------------
-// the attention queue, through the same door (`e4.5`, `reco-wsj`)
+// the review ledger, through the same door (`e4.5` `reco-wsj`; renamed by `e10.3` `reco-ydek.3`)
 // ---------------------------------------------------------------------------
 //
-// The queue's ordering, its four triage acts and its retrospective are computed in
-// [`crate::queue`] — the façade computes nothing, as its own doc insists — but every surface that *shows*
+// The four triage acts, the open-work counts and the retrospective are computed in
+// [`crate::review`] — the façade computes nothing, as its own doc insists — but every surface that *shows*
 // them has to name them, and `fathom-tui` may not reach past this module (ADR-002 §5.3, lint `M02`). Same
-// arrangement as the risk block above: the door is the façade, the arithmetic is `queue`'s.
+// arrangement as the risk block above: the door is the façade, the arithmetic is `review`'s.
 //
-// The functions come through too, and that is deliberate rather than leakage: the queue re-ranks itself
-// after every keystroke, and a shell that re-derived the order locally would be a second ranking — the
-// same argument `e2.11` made about a second copy of `RiskView`. `rank` is the spine's ([`crate::risk::rank`]),
-// so the queue's arrives as `rank_queue` and nobody has to remember which is which.
-pub use crate::queue::{
-    BlastInput, CONDITIONS, DismissReason, Disposition, QueueCounts, QueuePlacement, QueuePolicy,
-    QueueRanking, QueueRetrospective, QueueRow, QueueWindow, REASONS, ReasonVocabulary, Severity,
-    SnoozeSituation, SnoozeUntil, TriageAct, TriageRecord, rank_queue, retrospect,
+// The functions come through too, and that is deliberate rather than leakage: the rail re-counts its open
+// work after every keystroke, and a shell that re-derived the tally locally would be a second count — the
+// same argument `e2.11` made about a second copy of `RiskView`. What the retired queue's ordering used to
+// ship (`rank_queue`, `QueuePolicy`, `QueueRanking`, `QueuePlacement`, `BlastInput`) is gone rather than
+// renamed: a place in a ranked set nothing ranks is not a fact (ADR-006 §5.1.2 §5).
+pub use crate::review::{
+    CONDITIONS, DismissReason, Disposition, REASONS, ReasonVocabulary, ReviewCounts, ReviewRetrospective,
+    ReviewRow, ReviewWindow, SEVERITY_HIGH, SEVERITY_MEDIUM, Severity, SnoozeSituation, SnoozeUntil,
+    TriageAct, TriageRecord, count_rows, retrospect,
 };

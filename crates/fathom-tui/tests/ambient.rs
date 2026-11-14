@@ -10,11 +10,11 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
-use fathom_analyze::insight::{QueueCounts, RiskView};
+use fathom_analyze::insight::{ReviewCounts, RiskView};
 use fathom_core::time::Timestamp;
 use fathom_tui::ambient::{
     self, End, FLOOR, Feed, Glance, HeadlessSink, IDEAL, IndexState, Latest, Mode, Need,
-    QueueState, Reason, RunOptions,
+    OpenWork, Reason, RunOptions,
 };
 use fathom_tui::event::{Bus, Message};
 use fathom_tui::index::Read;
@@ -68,8 +68,8 @@ impl Feed for Scripted {
     }
 }
 
-/// The facts a busy repository would hand the pane: a new agent episode, a queue with something high in
-/// it, an index that is current, and a watcher doing its job.
+/// The facts a busy repository would hand the pane: a new agent episode, open work with something high
+/// in it, an index that is current, and a watcher doing its job.
 fn busy() -> Glance {
     Glance {
         now: NOW,
@@ -86,16 +86,16 @@ fn busy() -> Glance {
             provisional: false,
             risk: Some(RiskView::scored(82)),
         }),
-        queue: QueueState {
+        open_work: OpenWork {
             known: true,
-            counts: Some(QueueCounts {
+            counts: Some(ReviewCounts {
                 total: 12,
                 open: 7,
                 high: 2,
                 medium: 3,
                 low: 2,
                 snoozed: 2,
-                ..QueueCounts::default()
+                ..ReviewCounts::default()
             }),
             over_day: Some(1),
         },
@@ -129,13 +129,13 @@ fn caught_up() -> Glance {
         reasons: Vec::new(),
         latest: None,
         drill: None,
-        queue: QueueState {
+        open_work: OpenWork {
             known: true,
-            counts: Some(QueueCounts {
+            counts: Some(ReviewCounts {
                 total: 12,
                 accepted: 9,
                 dismissed: 3,
-                ..QueueCounts::default()
+                ..ReviewCounts::default()
             }),
             over_day: Some(0),
         },
@@ -166,12 +166,12 @@ fn the_pane_fits_eighty_columns_and_twelve_rows() {
         );
     }
     let text = lines.join("\n");
-    for fact in ["latest", "queue  ", "index  ", "look now"] {
+    for fact in ["latest", "open   ", "index  ", "look now"] {
         assert!(text.contains(fact), "missing the {fact:?} line:\n{text}");
     }
     // The four facts ADR-006 §5.7's mock promises, in the mock's own words.
     assert!(text.contains("risk 82 ✱ high"), "{text}");
-    assert!(text.contains("7 of 12 open"), "{text}");
+    assert!(text.contains("7 unread of 12"), "{text}");
     assert!(text.contains("epoch 41"), "{text}");
     assert!(text.contains("adds a cycle"), "{text}");
     // The keys the pane offers, including the one that drills in.
@@ -190,7 +190,7 @@ fn it_fits_the_forty_column_tmux_pane_adr_001_promises() {
     }
     // The ladder keeps the three facts a glance is made of: newest, waiting, now-or-not.
     assert!(lines[0].starts_with("latest e8f1a2"), "{lines:?}");
-    assert!(lines[1].starts_with("queue  "), "{lines:?}");
+    assert!(lines[1].starts_with("open   "), "{lines:?}");
     assert!(lines[2].starts_with("look now"), "{lines:?}");
 }
 
@@ -276,8 +276,8 @@ fn a_stale_pane_is_never_caught_up() {
     assert!(text.contains("index stale"), "{text}");
     assert!(!text.contains("caught up"), "{text}");
     assert!(
-        text.contains("0 open"),
-        "the queue line stays factual: {text}"
+        text.contains("0 unread"),
+        "the open-work line stays factual: {text}"
     );
 }
 
@@ -299,9 +299,9 @@ fn the_order_of_reasons_is_the_order_of_now() {
 }
 
 #[test]
-fn an_unread_queue_that_was_never_counted_says_unknown() {
+fn open_work_that_was_never_counted_says_unknown() {
     let glance = Glance {
-        queue: QueueState {
+        open_work: OpenWork {
             known: false,
             counts: None,
             over_day: None,
@@ -310,7 +310,11 @@ fn an_unread_queue_that_was_never_counted_says_unknown() {
     };
     let text = at(&glance, IDEAL.0, IDEAL.1).join("\n");
     assert!(text.contains("unknown"), "{text}");
-    assert!(!text.contains("0 open"), "{text}");
+    assert!(!text.contains("0 unread"), "{text}");
+    assert!(
+        text.contains("the index would not read"),
+        "the unknown blames the index, not a retired pane: {text}"
+    );
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -358,7 +362,7 @@ fn a_change_wakes_the_pane_immediately() {
     let feed = Scripted::new(busy());
     let later = {
         let mut glance = busy();
-        glance.reasons = vec![Reason::new(Need::OpenQueue, "the queue moved")];
+        glance.reasons = vec![Reason::new(Need::OpenWork, "the rail moved")];
         glance
     };
     let mut sink = HeadlessSink {
@@ -387,7 +391,7 @@ fn a_change_wakes_the_pane_immediately() {
     );
     thread.join().expect("the producer ran");
     assert_eq!(report.draws, 2, "{:?}", report);
-    assert!(sink.frames[1].join("\n").contains("the queue moved"));
+    assert!(sink.frames[1].join("\n").contains("the rail moved"));
 }
 
 #[test]

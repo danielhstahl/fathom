@@ -40,7 +40,7 @@ REPORT = ROOT / "benchmarks" / "reports" / "e4-3a-g3-calibration.json"
 THESIS = ROOT / "docs" / "concepts" / "thesis.md"
 CONCEPT = ROOT / "docs" / "concepts" / "false-positive-calibration.md"
 HARNESS = ROOT / "crates" / "fathom-analyze" / "examples" / "g3_calibration.rs"
-DISPOSITION_RS = ROOT / "crates" / "fathom-analyze" / "src" / "queue" / "disposition.rs"
+DISPOSITION_RS = ROOT / "crates" / "fathom-analyze" / "src" / "review" / "disposition.rs"
 
 #: The four settling acts `e4.6`'s ledger recognises (`ledger::entry::Decision`).
 SETTLING_DECISIONS = {"accepted", "flagged", "dismissed", "snoozed"}

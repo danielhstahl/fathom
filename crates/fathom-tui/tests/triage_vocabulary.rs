@@ -1,31 +1,39 @@
-//! The attention queue's own half of `e4.5`, in the shipped shell (`reco-wsj`).
+//! The triage vocabulary and the snooze conditions, taken from the rail (`e4.5`, `reco-wsj`; re-hosted
+//! by `e10.2`, re-hosted-again-and-renamed by `e10.3`, `reco-ydek.3`).
 //!
-//! The four acts are no longer this file's subject: `e10.2` moved the host of their feedback onto the
-//! timeline's rail, and `timeline_acts.rs` is where the write-before-state-change, the refusing ledger and
-//! the no-ledger run now live — because that is the pane a reviewer takes an act from, and ADR-006 §5.1.2 §2
-//! named those tests as moving rather than being rewritten green. What is under test *here* is what the
-//! queue owns and nothing else: the ranking and the factor it names, the closed dismiss vocabulary and the
-//! snooze conditions as the worklist offers them, and the counts of a worklist — numbers that stop meaning
-//! anything when the pane goes away in `e10.3`.
+//! This file used to be `queue_triage.rs`, and it said so: *"what is under test here is what the queue
+//! owns and nothing else: the ranking and the factor it names, the closed dismiss vocabulary and the
+//! snooze conditions as the worklist offers them, and the counts of a worklist — numbers that stop
+//! meaning anything when the pane goes away in `e10.3`."* The pane went away, and this is the half that
+//! outlived it, split from the file that held both halves:
 //!
-//! The tests still play the composition root's role and install a [`Ledger`] of their own — the shell is not
-//! allowed to open a store (ADR-002 §3, lint `E01`), so a fake is the only thing that can stand in for the
-//! real one — and they still go through the frame the terminal actually gets, via `feed_key`, so the
-//! bindings themselves (`f`, `-`, `z`, `w`) are part of the assertion.
+//! * **the acts' proofs** — write-before-state-change, the refusing ledger, the no-ledger run, the count
+//!   an act moves — moved to `timeline_acts.rs` in `e10.2`, whole and renamed to what a rail has to
+//!   prove, per ADR-006 §5.1.2 §2;
+//! * **the ranking** left the build with the ranked pane (`e10.3`, ADR-006 §5.1.2 §5), and what remains
+//!   of the score-on-a-row story is `risk_rank.rs`;
+//! * **what is here** is the vocabulary a keystroke chooses from and the conditions a snooze is stamped
+//!   with: `other` cannot be taken without its note, a `next-index` stamp carries the baseline it will be
+//!   checked against, and a shell handed nothing is still honest about writing nothing. Those are
+//!     properties of the ledger, which epic 10 kept.
+//!
+//! The tests still play the composition root's role and install a [`Ledger`] of their own — the shell is
+//! not allowed to open a store (ADR-002 §3, lint `E01`), so a fake is the only thing that can stand in
+//! for the real one — and they still go through the frame the terminal actually gets, via `feed_key`, so
+//! the bindings themselves (`f`, `-`, `z`) are part of the assertion.
 #![allow(clippy::unwrap_used, clippy::expect_used)] // a test that cannot fail loudly is not a test
 
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
 use fathom_analyze::insight::{
-    CONDITIONS, Disposition, EpisodeDelta, QueuePolicy, ReasonVocabulary, RiskComponent, RiskView,
-    TriageRecord,
+    CONDITIONS, Disposition, EpisodeDelta, ReasonVocabulary, RiskComponent, RiskView, TriageRecord,
 };
 use fathom_core::time::Timestamp;
 use fathom_tui::app::{App, Model};
 use fathom_tui::keymap::Keymap;
-use fathom_tui::queue::{Ledger, LedgerHandle, Setup, State};
 use fathom_tui::render::frame_lines;
+use fathom_tui::review::{Ledger, LedgerHandle, Setup, State};
 use fathom_tui::timeline::{AuthorKind, Batch, Episode, ReviewState};
 use fathom_tui::views::ViewId;
 
@@ -38,7 +46,7 @@ const SIZE: (u16, u16) = (110, 40);
 ///
 /// `Mutex` rather than `RefCell` because [`Ledger`] is `Send + Sync` — a real ledger may be called from a
 /// worker — and a fake that dodged that bound would not be testing the same shape the CLI installs. The
-/// refusing ledger is `timeline_acts.rs`'s now: the act's host moved, and the case that separates "the
+/// refusing ledger is `timeline_acts.rs`'s: the act's host moved, and the case that separates "the
 /// reviewer signed it off" from "a key was pressed" belongs beside the row that changes.
 #[derive(Debug, Default)]
 struct Recorder {
@@ -86,8 +94,6 @@ fn risk(score: u64, why: &str) -> RiskView {
             detail: why.to_owned(),
         }],
         surfaces: vec!["migration".to_owned()],
-        rank: None,
-        ranked: None,
         caveat: None,
         blind_spots: vec!["rollback".to_owned()],
     }
@@ -104,6 +110,7 @@ fn episode(id: &str, age_days: i64, score: u64) -> Episode {
     row.n_files = 1;
     row.paths = vec![format!("crates/{id}/mod.rs")];
     row.fingerprint = format!("sha256:{id}");
+    row.state = ReviewState::Unread;
     row.delta = Some(EpisodeDelta::sparse(
         &row.id,
         &row.summary,
@@ -112,7 +119,7 @@ fn episode(id: &str, age_days: i64, score: u64) -> Episode {
     row
 }
 
-/// Four episodes at four ages, so each of the ordering's three factors has something to say.
+/// Four episodes at four ages, so an act has something to act on in each review state.
 fn rows() -> Vec<Episode> {
     vec![
         episode("freshhigh", 0, 80),
@@ -138,9 +145,8 @@ fn shell() -> App {
     // fixture would otherwise make, so it is stated here out loud.
     app.timeline.set_now(NOW);
     app.timeline.load(batch(rows(), 7));
-    app.queue = Setup {
+    app.review = Setup {
         vocabulary: ReasonVocabulary::shipped(),
-        policy: QueuePolicy::default(),
         actor: "ada <ada@example.com>".to_owned(),
         ledger: Some(Recorder::default().share()),
         history: Vec::new(),
@@ -148,8 +154,8 @@ fn shell() -> App {
         total: 4,
     }
     .state();
-    app.queue.sessions = State::sessions_of(&rows());
-    app.set_view(ViewId::Queue);
+    app.review.sessions = State::sessions_of(&rows());
+    app.set_view(ViewId::Timeline);
     app
 }
 
@@ -157,12 +163,12 @@ fn frame(app: &App) -> String {
     frame_lines(app).join("\n")
 }
 
-/// The worklist pane's own text, with the card and the chrome cut off.
+/// The rail pane's own text, with the card and the chrome cut off.
 ///
 /// The row prints a six-character id, and so does the card beside it, so an assertion that searches the
-/// whole frame finds the card and measures the wrong thing. Position questions are asked of the pane that
-/// has the order in it.
-fn worklist(app: &App) -> String {
+/// whole frame finds the card and measures the wrong thing. Position questions are asked of the pane
+/// that has the order in it.
+fn rail(app: &App) -> String {
     frame_lines(app)
         .iter()
         .filter_map(|line| line.split('│').nth(1))
@@ -194,158 +200,65 @@ fn pane_of(line: &str) -> &str {
     line.split(['│', '┬']).nth(1).unwrap_or(line).trim_end()
 }
 
-/// How many rows the queue says are open, read out of the count line the way a reviewer reads it: the
-/// first number on the line above the rows, which is `{open} of {total} open` — or nothing at all, when
-/// the queue has emptied itself and says so in words instead.
+/// How many rows the rail says are unread, read out of the strip the way a reviewer reads it: the number
+/// immediately before the word `unread` on the strip's line (ADR-006 §5.1.2 §3 part 2).
 fn open_count(text: &str) -> usize {
-    // The count line is the one line on the screen that opens with a number and says `open`: `4 of 4
-    // open · …`. The frame's status line (`queue 4 open`) and the pane's strip (`… · 4 of 4 open`) both
-    // mention a count in a different shape, and this reads the pane's own sentence — the one the reviewer
-    // reads first, and the one the queue owns. An emptied or empty queue has no number to read, and says
-    // so in words; those are zero, not a missing line.
     let number = |line: &str| {
-        line.split_whitespace()
-            .next()
-            .and_then(|w| w.parse::<usize>().ok())
+        let words = line.split_whitespace().collect::<Vec<_>>();
+        words
+            .iter()
+            .position(|word| *word == "unread")
+            .and_then(|at| at.checked_sub(1))
+            .and_then(|before| words[before].parse::<usize>().ok())
     };
     for line in text.lines().map(pane_of) {
-        if line.starts_with("caught up") || line.starts_with("nothing to triage") {
-            return 0;
-        }
-        if line.contains(" open")
-            && let Some(open) = number(line)
-        {
-            return open;
+        if line.starts_with("order:") && line.contains(" unread") {
+            return number(line).unwrap_or_else(|| panic!("no count in the strip: {line}"));
         }
     }
-    panic!("no count line on screen:\n{text}")
-}
-
-#[test]
-fn the_queue_leads_with_the_stale_medium_and_names_the_factor_that_moved() {
-    let app = shell();
-    let text = frame(&app);
-    let list = worklist(&app);
-    // 60 × 1.50 (ten days unread) is 90, over a fresh 80: ADR-006 §5.1's change, on the screen and not
-    // only in the module test. Rows print a six-character id, so that is what is searched.
-    let stale = list.find("stalem").expect("the stale medium is on screen");
-    let fresh = list.find("freshh").expect("the fresh high is on screen");
-    assert!(
-        text.contains("order: queue-1"),
-        "the strip has to name the ranking it used, by name and version:\n{text}"
-    );
-    assert!(
-        list.contains("risk × staleness × blast"),
-        "the sentence that names the three factors, in the pane that has the room for it:\n{list}"
-    );
-    assert!(
-        text.contains("10d unread"),
-        "the row says which factor put it there:\n{text}"
-    );
-    assert!(
-        stale < fresh,
-        "staleness has to overtake a bigger number on the screen, not just in the comparator"
-    );
-    assert!(
-        text.contains("blast unmeasured"),
-        "an absent factor is named on the strip, and `w` prints what was missing from it:\n{text}"
-    );
-    assert_eq!(open_count(&text), 4);
-}
-
-#[test]
-fn w_prints_the_ranking_the_way_fathom_why_prints_a_ranking() {
-    // ADR-006 §5.1's binding note, and the ticket's second acceptance step: the queue's ordering is
-    // printed as a formula with a name and a version, not asserted. A reviewer who can read the line can
-    // reproduce the number with a calculator, which is the whole difference between a ranking and a mood.
-    let mut app = shell();
-    dispatch(&mut app, "w");
-    let said = said(&app);
-    assert!(
-        said.contains("queue-1"),
-        "the sentence names the ordering, by name and version: `{said}`"
-    );
-    assert!(
-        said.contains("risk") && said.contains("staleness") && said.contains("blast"),
-        "all three terms, with the arithmetic between them: `{said}`"
-    );
-    assert!(
-        said.contains("1.50") && said.contains("10d unread"),
-        "the factor and what it was measured from: `{said}`"
-    );
-    assert!(
-        said.contains("no caller handed over a dependent count"),
-        "and what was missing from the factor that had no number: `{said}`"
-    );
+    panic!("no strip line on screen:\n{text}")
 }
 
 #[test]
 fn dismiss_opens_the_vocabulary_and_writes_the_claim_it_was_given() {
+    // The chooser is the closed vocabulary, ordered by what this reviewer uses, and the code under its
+    // cursor is the code in the ledger — that identity is the whole reason the picker exists instead of a
+    // free-text field.
     let mut app = shell();
     dispatch(&mut app, "-");
     let chooser = frame(&app);
-    assert!(
-        chooser.contains("dismiss `") || chooser.contains("dismiss reason"),
-        "`-` opens the reason picker about the selected row:\n{chooser}"
-    );
-    for code in [
-        "not-my-area",
-        "already-known",
-        "intentional",
-        "false-positive",
-        "low-stakes",
-        "superseded",
-        "will-revert",
-        "other",
-    ] {
-        assert!(
-            chooser.contains(code),
-            "the whole closed vocabulary is on screen, not a subset: {chooser}"
-        );
+    for code in ["not-my-area", "other"] {
+        assert!(chooser.contains(code), "the shipped codes are offered: {chooser}");
     }
-    // Third row down, whatever that code turns out to be: the act has to carry *that* code and not the
-    // first one, which is the whole risk of a picker whose cursor is a separate piece of state.
-    let third = app
-        .queue
+    // Read off the list *before* the act, because the order is by usage and the act is usage: asking
+    // afterwards would compare the ledger against a list the act itself re-sorted.
+    let second = app
+        .review
         .reasons()
-        .get(2)
-        .unwrap_or_else(|| panic!("the vocabulary has three rows"))
-        .code
-        .clone();
-    assert!(
-        chooser.contains(&third),
-        "the picker shows the code it is about to write: {chooser}"
-    );
-    dispatch(&mut app, "j");
+        .iter()
+        .nth(1)
+        .map_or_else(String::new, |reason| reason.code.clone());
     dispatch(&mut app, "j");
     dispatch(&mut app, "<Enter>");
-    let text = frame(&app);
-    assert!(
-        said(&app).contains("dismissed") && said(&app).contains(&third),
-        "the toast names the act and the reason: `{}`",
-        said(&app)
-    );
-    assert_eq!(
-        open_count(&text),
-        3,
-        "a dismissal consumes the row:\n{text}"
-    );
-    assert!(
-        text.contains("2 dismissed") || text.contains("dismissed"),
-        "and the count follows:\n{text}"
-    );
+    let text = rail(&app);
     let reason = app
-        .queue
+        .review
         .history
         .first()
         .map_or_else(String::new, |record| record.reason.clone());
     assert_eq!(
-        reason, third,
+        reason, second,
         "the code under the picker's cursor is the code in the ledger"
     );
     assert!(
-        text.contains(third.as_str()) && text.contains("dismissed"),
-        "and the row says what it was dismissed as: {text}"
+        text.contains(ReviewState::Dismissed.glyph()),
+        "and the row says it was decided: {text}"
+    );
+    assert_eq!(
+        app.review
+            .disposition(app.timeline.selected().expect("a selected row")),
+        Disposition::Dismissed,
+        "with this claim behind it"
     );
 }
 
@@ -356,7 +269,7 @@ fn choosing_other_asks_for_the_note_and_keeps_both() {
     // Walk to `other` by asking the vocabulary where it is, because its position is usage-dependent and
     // a test that hardcoded the index would be testing the sort by accident.
     let at = app
-        .queue
+        .review
         .reasons()
         .iter()
         .position(|reason| reason.code == "other")
@@ -372,9 +285,9 @@ fn choosing_other_asks_for_the_note_and_keeps_both() {
     );
     type_text(&mut app, "the detector missed the guard");
     dispatch(&mut app, "<Enter>");
-    let text = frame(&app);
+    let text = rail(&app);
     assert!(
-        text.contains("dismissed"),
+        text.contains(ReviewState::Dismissed.glyph()),
         "the row left the open set, marked as dismissed:\n{text}"
     );
     assert!(
@@ -383,7 +296,7 @@ fn choosing_other_asks_for_the_note_and_keeps_both() {
         said(&app)
     );
     let record = app
-        .queue
+        .review
         .history
         .first()
         .unwrap_or_else(|| panic!("the act was not remembered at all"));
@@ -402,29 +315,24 @@ fn a_flag_without_a_note_is_refused_in_words_and_a_flag_with_one_is_written() {
         "an empty note is refused, not written empty: `{}`",
         said(&app)
     );
-    let refused = frame(&app);
-    assert!(
-        !refused.contains("queue 4 open ·") || refused.contains("4 open"),
-        "a refused act changes no count:\n{refused}"
+    assert_eq!(
+        open_count(&rail(&app)),
+        4,
+        "a refused act changes no count:\n{}",
+        rail(&app)
     );
 
     dispatch(&mut app, "f");
     type_text(&mut app, "the pool is being drained");
     dispatch(&mut app, "<Enter>");
-    let text = frame(&app);
-    assert!(text.contains("flagged"), "{text}");
+    let text = rail(&app);
+    assert!(text.contains(ReviewState::Flagged.glyph()), "{text}");
     let note = app
-        .queue
+        .review
         .history
         .first()
         .map_or_else(String::new, |record| record.note.clone());
-    assert_eq!(
-        note, "the pool is being drained",
-        "the note is the act: a flag with nowhere to put the note is a notification nobody can act on"
-    );
-    // A flag keeps its episode in the queue (ADR-004 §5), so the count must not drop.
-    assert_eq!(open_count(&text), 4, "flagged stays open:\n{text}");
-    assert!(text.contains('⚐'), "and says so with its glyph:\n{text}");
+    assert_eq!(note, "the pool is being drained");
 }
 
 #[test]
@@ -446,7 +354,7 @@ fn snooze_picks_a_condition_and_the_row_comes_back_when_it_happens() {
         dispatch(&mut app, "j");
     }
     dispatch(&mut app, "<Enter>");
-    let snoozed = frame(&app);
+    let snoozed = rail(&app);
     assert!(
         said(&app).contains("snoozed") && said(&app).contains("next-index:7"),
         "the stamp carries its baseline, or the condition is unevaluable later: `{}`",
@@ -455,32 +363,43 @@ fn snooze_picks_a_condition_and_the_row_comes_back_when_it_happens() {
     assert_eq!(
         open_count(&snoozed),
         3,
-        "a snoozed row is out of the queue:\n{snoozed}"
+        "a snoozed row is out of the open count:\n{snoozed}"
     );
 
-    // The same epoch: still snoozed. A new epoch: back in the queue, with its glyph.
-    app.timeline.load(batch(rows(), 7));
-    app.set_view(ViewId::Queue);
+    // The same epoch: still snoozed. A new epoch: back in the open count, with its glyph. The store's
+    // marker is what a load hands over, so the fixture hands over the marker the act wrote — the shell's
+    // own job is only to notice that the stamped condition has happened.
+    let mut store = rows();
+    store[0].state = ReviewState::Snoozed;
+    app.load_episodes(batch(store.clone(), 7));
     assert_eq!(
-        open_count(&frame(&app)),
+        open_count(&rail(&app)),
         3,
         "the epoch has not moved, so the snooze holds"
     );
-    app.timeline.load(batch(rows(), 8));
-    app.set_view(ViewId::Queue);
-    let woken = frame(&app);
+    app.load_episodes(batch(store, 8));
+    let woken = rail(&app);
     assert_eq!(
         open_count(&woken),
         4,
         "the index moved, so the snooze is over:\n{woken}"
     );
-    assert!(woken.contains('z'), "and it says why it is back:\n{woken}");
+    // The row is back as unread work, and the strip stops claiming a snooze it no longer holds: the
+    // `z` marker was the *condition*'s mark, and a condition that has happened is not a condition.
+    assert!(
+        woken.contains(ReviewState::Unread.glyph()),
+        "the released row reads as open work again:\n{woken}"
+    );
+    assert!(
+        !woken.contains("snoozed"),
+        "and the strip stops counting a snooze that is over:\n{woken}"
+    );
 }
 
 #[test]
-fn the_state_a_shell_gets_with_nothing_installed_still_orders_and_still_refuses_nothing_silently() {
+fn the_state_a_shell_gets_with_nothing_installed_still_refuses_nothing_silently() {
     // `Setup::default()` is what `--plain` over an unindexed directory, a test harness, or an embedder
-    // gets. It must still draw a queue, and its acts must still be truthful about having no ledger.
+    // gets. Its acts must still be truthful about having no ledger.
     let state = State::absent();
     assert_eq!(
         state.actor, "unknown",
@@ -513,5 +432,4 @@ fn the_state_a_shell_gets_with_nothing_installed_still_orders_and_still_refuses_
         "and the act was still taken, honestly, for this run"
     );
     assert!(line.contains("in memory only"), "{line}");
-    let _ = ReviewState::Accepted;
 }

@@ -696,17 +696,40 @@ const UNRANKED_EXPANDED: &str = "nothing to expand — no ranking, so no reasons
     (`reco-c05` ranks the spine; e4.4 ranks findings)";
 
 /// The ranking line, from [`RiskView`]'s own accessors: the arithmetic when there is any, the score when
-/// there is not, and the place in the ranked set beside it.
+/// there is not.
+///
+/// It used to append the episode's *place* — `rank 3 of 212` — because a worklist had to say why one row
+/// sat above the next. `e10.3` deleted the ranked set (`e10.3`, ADR-006 §5.1.2 §5): the CLI scores one
+/// episode and no pane ranks a collection any more, so a place would be a figure nothing can cite.
 fn headline(risk: Option<&fathom_analyze::insight::RiskView>) -> String {
     let Some(risk) = risk else {
         return "unknown — nothing has ranked this episode".to_owned();
     };
-    let mut value = risk.headline();
-    let place = risk.place();
-    if !place.is_empty() {
-        value.push_str(&format!(" · {place}"));
+    risk.headline()
+}
+
+/// The toast `w` prints: the score, its arithmetic and its ceiling, in one line — in the shape
+/// `fathom why` prints, because one figure has one wording (ADR-001 §7.10).
+///
+/// "Why this *score*", not "why this *rank*": the word changed with the thing that was retired
+/// (ADR-006 §5.1.2 §5), and what did not change is that the sentence has to be checkable — a vector, a
+/// model name and a ceiling, no recommendation.
+#[must_use]
+pub fn explain_words(episode: Option<&Episode>, now: Timestamp) -> String {
+    let Some(episode) = episode else {
+        return "no episode in scope — `j`/`k` choose one, then `w`".to_owned();
+    };
+    match episode.risk() {
+        Some(risk) if !risk.vector.is_empty() => {
+            format!("{} — {}", episode.short_id(), risk.vector)
+        }
+        Some(risk) => format!("{} — risk {}", episode.short_id(), risk.score),
+        None => format!(
+            "{} ({}) is unranked — reco-c05 ranks the spine, e4.4 ranks findings",
+            episode.short_id(),
+            days::relative(now, episode.created)
+        ),
     }
-    value
 }
 
 /// Band 5 — what the agent said it was doing, on one row.

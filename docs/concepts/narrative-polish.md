@@ -48,7 +48,7 @@ that parsed, ≥1 changed file, `totals.reconciles` true — none were excluded)
 at positions `round(i·(n−1)/19)` for `i` in 0..19. No sampling, so no re-drawing until the numbers
 looked good; no "first 20", which would have been one week of history called a corpus.
 
-The evidence set is the `fathom-delta/1` document `fathom analyze` prints, with an address on every
+The evidence set is the `fathom-delta/2` document `fathom analyze` prints, with an address on every
 fact (`packet.py`): each figure, each changed file, each gap, the risk vector, the attribution and
 the boundary rule. A narrative is then a list of *(sentence, cited item ids)* pairs and "supported"
 stops being an opinion. The index is deliberately generous — every changed file is listed, not a

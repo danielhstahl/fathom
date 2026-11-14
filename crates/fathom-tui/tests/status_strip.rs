@@ -1,6 +1,6 @@
 //! The status strip, pinned both ways (`reco-zv9`).
 //!
-//! The strip read `epoch unknown · unknown eps · queue unknown open · idx unknown` on a repository
+//! The strip read `epoch unknown · unknown eps · unread unknown · idx unknown` on a repository
 //! where `fathom stats` printed `epoch 1 ready`, 500 commits, integrity ok and 0 commits owed an
 //! analysis. Every one of those four was knowable by the process that had just opened the store to
 //! read the session — and ADR-006 §10.3's rule is that `unknown` is a value for what *cannot* be
@@ -9,7 +9,7 @@
 //!
 //! So this file pins the strip at both ends of the rule, and the middle too:
 //!
-//! * **known** — a caller that read the store gets the epoch, the count, the queue and the verdict,
+//! * **known** — a caller that read the store gets the epoch, the count, the open work and the verdict,
 //!   and the word `unknown` does not appear;
 //! * **unknown** — a caller that read nothing (an embedder, a test frame, a repository with no index)
 //!   gets `unknown` four times, which is the truth and stays on the page;
@@ -17,7 +17,7 @@
 //!   three.
 //!
 //! ADR-006 §5.2's own mock line is the known case, character for character: the ADR has been printing
-//! `⏺ epoch 41 · 3 412 eps · queue 7 open · idx warm` since it was written, and this is the first
+//! `⏺ epoch 41 · 3 412 eps · 7 unread · idx warm` since it was written, and this is the first
 //! build that can.
 #![allow(clippy::unwrap_used, clippy::expect_used)] // a test that cannot fail loudly is not a test
 
@@ -42,7 +42,7 @@ const SIZE: (u16, u16) = (80, 24);
 /// from the hand-over until now — seven episodes open, and nothing owed an analysis.
 fn known() -> Facts {
     Facts::present(Some(41), Some("ready".to_owned()), Some(3_412), Some(3_412))
-        .with_queue_open(Some(7))
+        .with_unread(Some(7))
         .with_backlog(Some(0))
 }
 
@@ -76,13 +76,13 @@ fn frame(facts: Facts, count: usize) -> App {
         "fathom/pilot · main",
     );
     app.timeline.set_now(NOW);
-    // Rows first, then the facts: that is the order `frame::prime` uses, and the strip's queue count
+    // Rows first, then the facts: that is the order `frame::prime` uses, and the strip's open-work count
     // is allowed to read both.
     if count > 0 {
         app.load_episodes(Batch::new(facts.origin(), rows(count)));
     }
     app.set_index_facts(&facts);
-    app.set_view(ViewId::Queue);
+    app.set_view(ViewId::Timeline);
     app
 }
 
@@ -94,8 +94,8 @@ fn strip(app: &App) -> String {
 #[test]
 fn the_strip_names_every_fact_the_caller_read() {
     let line = strip(&frame(known(), 4));
-    assert_eq!(line, "⏺ epoch 41 · 3 412 eps · queue 7 open · idx warm");
-    for fact in ["epoch 41", "3 412 eps", "queue 7 open", "idx warm"] {
+    assert_eq!(line, "⏺ epoch 41 · 3 412 eps · 7 unread · idx warm");
+    for fact in ["epoch 41", "3 412 eps", "7 unread", "idx warm"] {
         assert!(
             line.contains(fact),
             "the strip does not name {fact:?}: {line}"
@@ -114,7 +114,7 @@ fn the_strip_prints_unknown_for_what_nobody_read() {
     let line = strip(&frame(Facts::unknown(), 0));
     assert_eq!(
         line,
-        "⏺ epoch unknown · unknown eps · queue unknown open · idx unknown"
+        "⏺ epoch unknown · unknown eps · unread unknown · idx unknown"
     );
     assert_eq!(
         line.matches("unknown").count(),
@@ -124,23 +124,23 @@ fn the_strip_prints_unknown_for_what_nobody_read() {
 }
 
 /// A repository with an index and nothing in it: the rail drew no rows, so the shell has no count of
-/// its own — but the store does, and `0 open` and `unknown open` are different sentences.
+/// its own — but the store does, and `0 unread` and `unread unknown` are different sentences.
 #[test]
-fn an_indexed_repository_with_an_empty_queue_says_empty_not_unknown() {
+fn an_indexed_repository_with_no_open_work_says_zero_not_unknown() {
     let facts = Facts::present(Some(1), Some("ready".to_owned()), Some(0), Some(0))
-        .with_queue_open(Some(0))
+        .with_unread(Some(0))
         .with_backlog(Some(0));
     let line = strip(&frame(facts, 0));
-    assert_eq!(line, "⏺ epoch 1 · 0 eps · queue 0 open · idx warm");
+    assert_eq!(line, "⏺ epoch 1 · 0 eps · 0 unread · idx warm");
 }
 
 /// One fact nobody read is one `unknown`, not a reason to stop saying the rest.
 #[test]
 fn one_unknown_fact_does_not_take_the_other_three_down() {
     let facts = Facts::present(Some(2), Some("ready".to_owned()), Some(500), Some(412))
-        .with_queue_open(Some(3));
+        .with_unread(Some(3));
     let line = strip(&frame(facts, 4));
-    assert_eq!(line, "⏺ epoch 2 · 412 eps · queue 3 open · idx unknown");
+    assert_eq!(line, "⏺ epoch 2 · 412 eps · 3 unread · idx unknown");
 }
 
 /// A backlog is cold, and a building epoch is cold whatever its backlog says: the run that would warm
@@ -156,17 +156,17 @@ fn an_index_that_owes_an_analysis_is_cold() {
         Some(3_412),
         Some(3_412),
     )
-    .with_queue_open(Some(7))
+    .with_unread(Some(7))
     .with_backlog(Some(0));
     let line = strip(&frame(building, 4));
     assert!(line.ends_with("· idx cold"), "{line}");
 }
 
-/// The queue is the index's, not the page's: a rail holding four of 3 412 episodes — or a filter that
-/// hid rows — may print the page's unread count only when the caller could not say the real one.
+/// The open-work count is the index's, not the page's: a rail holding four of 3 412 episodes — or a
+/// filter that hid rows — may print the page's count only when the caller could not say the real one.
 #[test]
-fn a_page_of_a_longer_index_counts_the_queue_and_not_the_page() {
-    // Four rows on screen, all of them read: the page would say `0 open`.
+fn a_page_of_a_longer_index_counts_the_index_and_not_the_page() {
+    // Four rows on screen, all of them read: the page would say `0 unread`.
     let mut read_rows = rows(4);
     for episode in &mut read_rows {
         episode.state = ReviewState::Read;
@@ -180,9 +180,9 @@ fn a_page_of_a_longer_index_counts_the_queue_and_not_the_page() {
     app.timeline.set_now(NOW);
     app.load_episodes(Batch::new("index epoch 41 (ready)", read_rows));
     app.set_index_facts(&known());
-    app.set_view(ViewId::Queue);
+    app.set_view(ViewId::Timeline);
     let line = strip(&app);
-    assert!(line.contains("queue 7 open"), "{line}");
+    assert!(line.contains("7 unread"), "{line}");
 
     // And when nobody read the store, the shell still counts its own rows rather than shrugging —
     // which is the `reco-c05` behaviour this must not regress.
@@ -194,20 +194,20 @@ fn a_page_of_a_longer_index_counts_the_queue_and_not_the_page() {
     );
     blind.timeline.set_now(NOW);
     blind.load_episodes(Batch::new("fixture index", rows(4)));
-    blind.set_view(ViewId::Queue);
+    blind.set_view(ViewId::Timeline);
     let line = strip(&blind);
-    assert!(line.contains("queue 4 open"), "{line}");
+    assert!(line.contains("4 unread"), "{line}");
     assert!(
         line.contains("idx unknown"),
         "nothing said the verdict: {line}"
     );
 }
 
-/// As the reviewer reads, the number moves — provided the rows *are* the queue. With the caller's
-/// count in hand for a longer index, the store's number is the one that stays honest.
+/// As the reviewer reads, the number moves — provided the rows *are* the whole index. With the
+/// caller's count in hand for a longer index, the store's number is the one that stays honest.
 #[test]
 fn reading_an_episode_moves_the_number_the_strip_is_printing() {
-    // The caller said nothing about the index's size, so four rows are four episodes are the queue.
+    // The caller said nothing about the index's size, so four rows are four episodes are the index.
     let mut read = rows(4);
     read[0].state = ReviewState::Read;
     let mut app = App::new(
@@ -224,9 +224,9 @@ fn reading_an_episode_moves_the_number_the_strip_is_printing() {
         Some(4),
         Some(4),
     ));
-    app.set_view(ViewId::Queue);
+    app.set_view(ViewId::Timeline);
     assert!(
-        strip(&app).contains("queue 3 open"),
+        strip(&app).contains("3 unread"),
         "one already-read episode is not open: {}",
         strip(&app)
     );
@@ -254,8 +254,8 @@ fn golden_text() -> String {
     for (name, note, facts, count) in [
         (
             "known",
-            "ADR-006 §5.2's own line: epoch, count, queue and verdict, all read from the store by \
-             `fathom-cli`, none guessed by the shell",
+            "ADR-006 §5.2's own line: epoch, count, open work and verdict, all read from the store \
+             by `fathom-cli`, none guessed by the shell",
             known(),
             4,
         ),
@@ -267,11 +267,11 @@ fn golden_text() -> String {
             4,
         ),
         (
-            "known · empty queue",
-            "an indexed repository with nothing in it: `0 open` is the store's answer, not the \
+            "known · no open work",
+            "an indexed repository with nothing in it: `0 unread` is the store's answer, not the \
              shell's guess from an empty rail",
             Facts::present(Some(1), Some("ready".to_owned()), Some(0), Some(0))
-                .with_queue_open(Some(0))
+                .with_unread(Some(0))
                 .with_backlog(Some(0)),
             0,
         ),

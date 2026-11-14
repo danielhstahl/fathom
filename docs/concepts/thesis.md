@@ -534,9 +534,9 @@ ad-hoc strings. — `e0.10`.
 pane, and "what is on screen" is fully described by (view, scope, focus) — which is what `e1.11`
 persists between sessions and what `e5.7` writes into an artefact's header. — ADR-006 (`e0.6`).
 
-**View** — one of the frames a reviewer can put on the screen — nine today (Queue, Timeline, Diff,
-Structure, Graph, Deps, Ambient, Artefact, Search), **eight once `e10.3` deletes the Queue view**
-(ADR-006 §5.1.2) — each answering exactly one question and each reachable by one
+**View** — one of the frames a reviewer can put on the screen — **eight** (Timeline, Diff, Structure,
+Graph, Deps, Ambient, Artefact, Search); it was nine while the Queue view existed, and `e10.3` deleted
+that one (ADR-006 §5.1.2) — each answering exactly one question and each reachable by one
 global key. A view is not a page and not a route: it is a pane layout plus a focus ring plus the drill
 edges out of it. — ADR-006 (`e0.6`).
 

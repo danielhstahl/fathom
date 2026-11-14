@@ -661,7 +661,7 @@
     },
     "risk": {
       "additionalProperties": true,
-      "description": "The ranking, with its arithmetic and its blind spots. Absent means unranked, which is not rank 0.",
+      "description": "The ranking, with its arithmetic and its blind spots. Absent means unranked, which is not rank 0. It carries no place in a set: `rank`/`ranked` left with the ranked pane in `e10.3`, and that removal is why the contract is v2.",
       "properties": {
         "blind_spots": {
           "items": {
@@ -702,14 +702,6 @@
         "model": {
           "description": "Which ranking produced the number (`spine-2` today).",
           "type": "string"
-        },
-        "rank": {
-          "minimum": 1,
-          "type": "integer"
-        },
-        "ranked": {
-          "minimum": 0,
-          "type": "integer"
         },
         "score": {
           "maximum": 100,
@@ -877,7 +869,7 @@
       "$ref": "#/$defs/complexity"
     },
     "contract": {
-      "const": "fathom-delta/1"
+      "const": "fathom-delta/2"
     },
     "episode": {
       "$ref": "#/$defs/episode"
@@ -906,7 +898,7 @@
       "$ref": "#/$defs/risk"
     },
     "schema_version": {
-      "const": 1
+      "const": 2
     },
     "sections": {
       "description": "The seven sections, in contract order. `minItems` is seven because a missing section is a missing question; a newer producer may append one, which is why there is no `maxItems`.",
@@ -942,9 +934,9 @@
       "export (e5.7)",
       "mcp (e6.4)"
     ],
-    "contract": "fathom-delta/1",
+    "contract": "fathom-delta/2",
     "owner": "e2.11",
     "reader_ignores_unknown_fields": true,
-    "version": 1
+    "version": 2
   }
 }

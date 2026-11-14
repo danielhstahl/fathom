@@ -9,7 +9,7 @@ the one condition that would justify it:
     counts at zero against the evidence set.
 
 This is that measurement. Three arms compose a narrative for the same 20 real episodes out of the
-same evidence set (the `fathom-delta/1` document `fathom analyze` prints):
+same evidence set (the `fathom-delta/2` document `fathom analyze` prints):
 
 * **A — template**: the deterministic composer (`template.py`). Every sentence cites the evidence
   item it renders, and it can only cite, so it cannot say anything the delta document does not.

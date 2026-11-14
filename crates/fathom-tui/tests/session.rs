@@ -279,7 +279,7 @@ fn a_run_with_no_rows_at_all_is_a_first_session_not_a_damaged_one() {
         "nothing to restore — this is a first session in this repository",
         "and it says which of the three empties it is"
     );
-    assert_eq!(app.view, ViewId::Queue, "and the defaults are the defaults");
+    assert_eq!(app.view, ViewId::Timeline, "and the defaults are the defaults");
 }
 
 // --- damage and mismatch ---------------------------------------------------------------------------
@@ -337,7 +337,7 @@ fn damage_in_the_state_is_named_and_the_defaults_stand() {
     let said = session::restore(&mut app, &junk);
     assert_eq!(
         app.view,
-        ViewId::Queue,
+        ViewId::Timeline,
         "the app starts, on the view it opens by default"
     );
     assert_eq!(app.size, (100, 30), "and at the size it was given");
@@ -406,7 +406,7 @@ fn a_state_from_a_newer_fathom_is_read_not_refused() {
         "and told which value this build could not apply: {:?}",
         said.warnings
     );
-    assert_eq!(app.view, ViewId::Queue, "and the app starts anyway");
+    assert_eq!(app.view, ViewId::Timeline, "and the app starts anyway");
 }
 
 // --- the read set ----------------------------------------------------------------------------------

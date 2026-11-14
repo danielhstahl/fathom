@@ -42,7 +42,7 @@ files it touched and their final content, the author, the subject and message sh
 * the **review does not move with it**, because a review is keyed to identity plus a content fingerprint,
   and Fathom runs a ladder of re-link tests (ADR-003 §6, four tiers, each with a published price) to
   re-attach it. A re-link that cannot be made is **fail-visible**: the ledger says `orphan` and the work
-  re-appears in the queue rather than being quietly considered reviewed.
+  is unread again on the rail rather than quietly considered reviewed.
 
 This is the single design decision that makes the tool usable on real agent history, because agent history
 is rewritten constantly. It is also why a [sign-off](review-ledger.md) is stored with four digests rather
@@ -50,8 +50,8 @@ than one: each digest answers exactly one question, and "was this the same thing
 
 **Consequences you can observe.** `fathom show <episode>` accepts an episode id, a revision
 (`HEAD~3`, `main`, `v1.2^{}`) or an oid prefix, and prints the digests it derived the identity from. The
-queue's selection follows the episode through all four re-link tiers, so a cursor does not jump when the
-history moves under it.
+rail's selection follows the episode through all four re-link tiers, so a cursor does not jump when the
+history moves under it, and the sign-off that was on it arrives on the successor.
 
 ## How boundaries are found, and what a wrong one hides
 
@@ -103,16 +103,15 @@ that way ([risk score](risk-score.md)).
 ## Provisional episodes: the ones that are not history yet
 
 Uncommitted work can be an episode too (`kind = 'provisional'`), drawn with a distinct marker and **never**
-mixed into a committed count in any headline figure — not the queue badge, not the ambient line, not a
-metric. That last rule is a schema property, not a UI convention: the windows that metrics are computed
+mixed into a committed count in any headline figure — not the rail's unread count, not the ambient line,
+not a metric. That last rule is a schema property, not a UI convention: the windows that metrics are computed
 over join committed rows only, so a provisional episode cannot leak into a number by accident.
 
 ## Where an episode shows up
 
 | Surface | Verb or key | What it answers about the episode |
 |---|---|---|
-| Timeline (the rail) | `t` | what happened, in order, and which of it you have not read |
-| Queue | `q` | which episode to look at next, and why that one ([risk score](risk-score.md)) |
+| Timeline (the rail) | `t` | what happened, in order, which of it you have not read, and each row's [risk score](risk-score.md) — `w` expands the figure into the vector behind it |
 | `fathom show` | headless | identity, authorship, message, trailers, file rows with their taxonomy decision |
 | `fathom analyze` | headless | the [delta](delta.md) — the claims, with citations |
 | `fathom narrative` | headless | the prose version of the same claims |

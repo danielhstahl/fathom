@@ -140,10 +140,10 @@ The inventory, each line written for a specific state:
 
 | View · pane | What its empty state says |
 |---|---|
-| Queue · worklist | the queue is the ranked worklist, riskiest first — then `t` lists them in time order, `fathom analyze` prints one delta |
-| Queue · card, Timeline · card | the card is one episode, every figure cited — `j`/`k` choose one, `<Enter>` opens its card |
 | Timeline · rail | the rail is every episode, newest first — `F` edits the filter that hid them, `fathom stats` counts the index |
-| Diff · tree, hunks | the selected episode's files, riskiest first; nothing is selected yet — `q` then `j`/`k` picks an episode, then `d` |
+| Timeline · card | the card is one episode, every figure cited — `j`/`k` choose one, `<Enter>` opens its card |
+| Timeline · acts | the acts are what this branch decided — `a` walks them, and when none is written it says the branch has nothing to look back at yet rather than printing an empty list |
+| Diff · tree, hunks | the selected episode's files, riskiest first; nothing is selected yet — `j`/`k` picks an episode on the rail, then `d` |
 | Structure · treemap, detail | one episode's directories, sized by churn; nothing is selected — `q` then `j`/`k`, then `s` again |
 | Graph · canvas, detail | one episode's blast radius; no graph snapshot here yet, and `fathom index` writes one |
 | Deps · manifest, tree | one episode's dependency delta, then that requirement's transitive closure — `p` re-reads the selection, `<Enter>` opens the tree |

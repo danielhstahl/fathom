@@ -4,7 +4,7 @@
   label — decision in [ADR-006 §5.1.2](../adr/0006-tui.md), product position in
   [thesis.md Amendment 3](thesis.md#11-product-amendments). Four consequences for this page, and they land
   with different tickets: **the score is unchanged and stays a per-episode figure** printed on the rail's row,
-  expanded by `w` and rendered whole by `fathom why`; **`queue-1` (§12) dies with the pane in `e10.3`**, along
+  expanded by `w` and rendered whole by `fathom why`; **`queue-1` (§12) died with the pane in `e10.3`**, along
   with the `rank N of M` figure and the `order: risk × staleness × blast radius` strip, and the strip under
   the rail says `order: newest first` instead while still naming the model the row's number came from;
   **the `author` component (§3) is due for removal in `e10.5`** and may not be struck from the printed vector
@@ -20,7 +20,7 @@
   ordered itself by `queue-1` (`e4.5`): the score was its first factor and this document's order was not
   its order. See §12 — which since `e10.1` is the record of a **retired** ordering: there is no queue left to
   order itself, and the score is the rail's per-row figure.
-- **Ticket / plan key**: `reco-wsj` (`e4.5`) owned the queue, and `reco-ydek.3` (`e10.3`) retires it. This
+- **Ticket / plan key**: `reco-wsj` (`e4.5`) owned the queue, and `reco-ydek.3` (`e10.3`) deleted it. This
   ranking was pulled forward out of
   `e4.5` because `reco-glv`'s (`e1.12`) walkthrough could not be completed at all without some
   defensible answer to "which three episodes are the riskiest" — see
@@ -36,7 +36,7 @@
   `BLIND_SPOTS`), read through `fathom-store::episode::Store::episode_files`, composed in
   `fathom-cli::episodes`, and drawn by the rail's risk cell plus the episode card's ranking band,
   which `w` expands in place (§13, and [ADR-006](../adr/0006-tui.md) §5.1.1). `fathom-tui::worklist` draws
-  it too until `e10.3` deletes that pane. Measured by
+  it too until `e10.3` deleted that pane. Measured by
   `crates/fathom-analyze/tests/risk_spine.rs`, `crates/fathom-tui/tests/risk_rank.rs` and
   `crates/fathom-cli/tests/risk_rank.rs`.
 
@@ -66,7 +66,7 @@ Three refusals, all of them load-bearing:
   one, it prints that it cannot see one ([§8](#8-what-a-spine-cannot-see)) instead of guessing.
 * **It is not a recommendation.** It orders reading; it never marks an episode acceptable, never
   hides one, and is never the reason a row is absent. `x`/`f`/`-`/`z` dispositioning is
-  `e4.6`'s, and the strip says so. **`e10.1` retires even the ordering:** after `e10.3` this ranking ranks
+  `e4.6`'s, and the strip says so. **`e10.1` retires even the ordering:** since `e10.3` this ranking ranks
   nothing and orders nothing — it is a figure beside a chronology, printed on a row and explained on
   request.
 * **It is not computed in the shell.** `fathom-tui` sorts values it is handed; `fathom-cli` computes
@@ -314,7 +314,7 @@ per row.
 | `surfaces` from paths | `e4.4`'s features (a finding, not a path class) | `e4.4` closes |
 | `size`, discounted noise | `e2.2`'s measured noise share instead of a path guess | when the Rust ingest stamps `noise_class` |
 | `deletions`' test heuristic | `e2.9`'s named cases and `e4.4`'s deleted-test feature | `e2.9`'s Rust seam |
-| ordering: score only | risk × staleness × blast radius (`queue-1`) | closed by `e4.5` — the score was `queue-1`'s first factor, and blast still waits on `e3.2`. **`e10.1` closes `queue-1` itself**: the rail orders by time, `e10.3` deletes the ordering function, and staleness survives as the row's own age column rather than as a multiplier |
+| ordering: score only | risk × staleness × blast radius (`queue-1`) | closed by `e4.5` — the score was `queue-1`'s first factor, and blast still waits on `e3.2`. **`e10.1` closes `queue-1` itself**: the rail orders by time, `e10.3` deleted the ordering function, and staleness survives as the row's own age column rather than as a multiplier |
 | the blind-spot list | shorter, by closing items 1–7 one at a time | per finding, printed from the findings table |
 
 Nothing in that list changes what the panes print: a number, its vector, its reasons, and the ceiling.
@@ -334,11 +334,11 @@ Nothing in that list changes what the panes print: a number, its vector, its rea
   rows, keep each row's own reason with its row, hand `w` the whole ceiling, and keep the frame exact
   at 80×24, 100×30 and 200×60.
 * `tests/test_risk_ranking_contract.py` — the walkthrough's own question, asked of the shipped binary
-  through a pty against the 500-commit fixture: the queue is ranked and not chronological, the
-  migration and the CI permission change are on the first screen with their reasons, `w` prints the
-  vector and the ceiling, and a row nothing ranked prints `?` at the bottom of the list instead of a
-  `0` that would read as "safe" — which this fixture no longer contains, because `queue-1` scores every
-  row, so that test asserts whichever shape the fixture is in and the empty case is built in
+  through a pty against the 500-commit fixture. Since `e10.3` it asks it of the rail: every row carries
+  a score and a strip naming the model that produced it, the migration and the CI permission change
+  score above a documentation trim and cite the file that put them there (asked of `fathom why`, which
+  is where a score is explained once no pane sorts by it), `w` prints the vector and the ceiling, and a
+  row nothing scored prints `?` rather than a `0` that would read as "safe" — the empty case is built in
   `crates/fathom-tui/tests/risk_rank.rs`.
 * The acceptance harness measures the pane now that the pane answers. `tools/mvp_acceptance.py`
   records `cold.queue_visible.ms.small` (`q` until the screen printed `order: ` and a `risk` number),
@@ -346,10 +346,13 @@ Nothing in that list changes what the panes print: a number, its vector, its rea
   exactly this empty worklist, and the blocked reason said so.
 
 **Which of these `e10.3` retires rather than updates, said out loud because a retired measurement is a
-hole in a contract.** `cold.queue_visible.ms` and `query.queue.ms` are the queue's cold-start and query
-costs; with the pane gone the keys go, and what replaces them is the rail's own cold start, *named as new*
-rather than quietly re-blessed under the old key — a perf baseline whose subject changed is a baseline that
-stopped meaning anything. `tests/test_risk_ranking_contract.py` asked "is the queue ranked and not
+hole in a contract.** `cold.queue_visible.ms` and `query.queue.ms` are named for the pane, and their
+probe keystrokes — `q` to a screen printing `order: ` — went with it; `e10.3` retargeted the probes onto
+the rail (first paint of the home view, and `t` repainting it with its `order: ` strip) and left the
+**budget keys where they are**, because what each one measures did not change: first paint and one
+keystroke on the list that is still the shell's home. A baseline whose subject changed is the hole this
+page keeps pointing at, and these two did not change subject — only the letter that reached them. Renaming
+a published budget key is a perf ticket's, with the re-bless in the same commit. `tests/test_risk_ranking_contract.py` asked "is the queue ranked and not
 chronological" of a pty; the surviving question is "does every row print its score, print `?` when nothing
 scored it, and get a strip that names the model the number came from", asked of the rail in the same pty
 style rather than dropped. `crates/fathom-tui/tests/risk_rank.rs` keeps its obligations (order the rows the
@@ -361,7 +364,7 @@ is the one assertion on this page that does not care what any list is sorted by.
 
 > **This section is kept as the record of a retired ordering function**, in the same spirit as the retired
 > panes ADR-006 keeps its layout of: `fathom_analyze::queue` (`rank_queue`, `QueuePolicy`, `QueueRow`,
-> `QueuePlacement`) goes away in `e10.3` or is renamed to what it is, and the delta document drops the
+> `QueuePlacement`) went away in `e10.3`, renamed to what survives it (`fathom_analyze::review`), and the delta document dropped the
 > placement figures with a version bump rather than an accident. Read it as the answer to "what did the
 > strip mean when it said `order: risk × staleness × blast radius`", which is a question about a store
 > written before the deletion — an act's stamped `risk_model` and a reviewer's old sign-off still say
@@ -390,7 +393,7 @@ Three things about it are the contract, not the arithmetic:
 fathom-tui)`. The strip keeps only the name and the open count, because a strip is forty columns wide
 and the name is the part that may not be truncated away.
 
-**What `e10.3` deletes from this section, and what it re-homes.** Deleted with the pane: `rank_queue`,
+**What `e10.3` deleted from this section, and what it re-homed.** Deleted with the pane: `rank_queue`,
 `QueuePolicy`, `QueueRanking`, `QueuePlacement` and the delta document's placement figures — a schema
 version bump with `tools/check_delta_compat.py` consulted, not a quiet removal. Re-homed, because each of
 the three bullets above is an honesty mechanism and not a fact about a list: *"a factor with no measurement
@@ -421,8 +424,8 @@ from.
 
 | the print | where it appears | the bytes it is |
 |---|---|---|
-| the glance | the rail row (the worklist row until `e10.3` deletes it) | the score, the surface badge, and the biggest contributing reason — `RiskView`'s fields, the row's second line |
-| the ordering's name | the strip under the list pane | was `order: risk × staleness × blast radius`; after `e10.3`, `order: newest first` with the model named as `risk spine-2` — §5.1.2 §3's parts, in their drop order |
+| the glance | the rail row (the worklist row until `e10.3` deleted it) | the score, the surface badge, and the biggest contributing reason — `RiskView`'s fields, the row's second line |
+| the ordering's name | the strip under the list pane | was `order: risk × staleness × blast radius`; since `e10.3`, `order: newest first` with the model named as `risk spine-2` — §5.1.2 §3's parts, in their drop order |
 | the argument, brief | card band 4 | the delta document's own `attention` row — `RiskView::headline()` with the place appended when there is one — plus `badge()` and `blind_spot_note()` |
 | the argument, expanded | card band 4 under `w` | every line of `reasons()`, then every line of `BLIND_SPOTS`, then the model's own *reading order, not an all-clear* line |
 | the announcement | the toast, and the `--plain` frame | the same explain sentence, in the channel a screen reader hears: a toast is not a second surface, it is this one's voice |
@@ -433,7 +436,7 @@ no columns for: the feature-by-feature arithmetic, the denominator, the `τ` com
 overrides and `--calibrate`, and the JSON. None of it is drawn in the shell, and no band grows to
 hold any of it — a feature table is a document, and documents have verbs.
 
-The pane keeps the one fact the verb cannot have — **and `e10.3` takes that fact away with the queue,
+The pane keeps the one fact the verb cannot have — **and `e10.3` took that fact away with the queue,
 which is the consequence most worth stating here.** `RiskView::rank` and `ranked` are the caller's,
 because a place in a set is not a fact about one episode: `fathom why` scores one episode and is
 silent about the queue, while the pane knew exactly which set was on screen and could say `rank 4 of 7`

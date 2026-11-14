@@ -194,13 +194,13 @@ pub struct Rail {
     kept: usize,
     /// The order is stale and will be rebuilt before anything reads it.
     dirty: bool,
-    /// The rows on screen in queue order — episode indices, riskiest first (`reco-c05`). Built here
-    /// for the same reason the display order is: `rebuild()` is the only place the rail is
-    /// O(episodes), and a worklist that re-ranked on every frame would cost what the index costs
-    /// (which is what `timeline_bench` measures).
-    ranked: Vec<usize>,
+    /// The rows on screen, in the rail's own order — chronology, newest first inside each group
+    /// (ADR-006 §5.1.2 §3 part 1). Built here for the same reason the display order is: `rebuild()` is
+    /// the only place the rail is O(episodes). It used to be sorted riskiest-first, because the deleted
+    /// Queue view drew a window of it; what the counts need is the *set*, and a chronology is a set too.
+    listed: Vec<usize>,
     /// How many on-screen rows carry a ranking, and how many are unread. Both are printed every
-    /// frame — the strip's `N ranked of M held` and the status line's `queue N open` — so neither
+    /// frame — the strip's risk model clause and the status line's `N unread` — so neither
     /// may be a pass over the index at draw time.
     risked: usize,
     unread: usize,
@@ -240,7 +240,7 @@ impl Default for Rail {
             why_empty: None,
             now: Timestamp::UNIX_EPOCH,
             kept: 0,
-            ranked: Vec::new(),
+            listed: Vec::new(),
             risked: 0,
             unread: 0,
             snoozed: 0,
@@ -444,11 +444,11 @@ impl Rail {
         self.slots.iter().filter_map(Slot::index).collect()
     }
 
-    /// The on-screen rows in queue order: episode indices, riskiest first, unranked ones last
-    /// (`reco-c05`). A slice, because the worklist draws a window of it and must not rebuild one.
+    /// The on-screen rows in the rail's order: episode indices, newest first, collapsed groups
+    /// excluded. A slice, because the counts are taken over it and a frame must not rebuild one.
     #[must_use]
-    pub fn ranked(&self) -> &[usize] {
-        &self.ranked
+    pub fn listed(&self) -> &[usize] {
+        &self.listed
     }
 
     /// How many on-screen rows carry a ranking, and how many are still unread: the strip's and the
@@ -527,18 +527,14 @@ impl Rail {
         self.stats.slots = slots.len();
         self.stats.retained_bytes = self.episodes.iter().map(Episode::retained_bytes).sum();
         self.slots = slots;
-        // The queue's order over the same rows the rail is showing, so a filter is one question
-        // answered once: the worklist ranks what the filter kept (`reco-c05`).
+        // The rows the pane is showing, in the order it shows them. The counts below and the status
+        // line's open-work figure are taken over this set, so a filter is one question answered once.
         let on_screen: Vec<usize> = self.slots.iter().filter_map(Slot::index).collect();
         let (risked, unread, snoozed) = self.count_over(&on_screen);
         self.risked = risked;
         self.unread = unread;
         self.snoozed = snoozed;
-        let mut ranked = on_screen;
-        ranked.sort_by(|left, right| {
-            crate::worklist::precede(&self.episodes[*left], &self.episodes[*right])
-        });
-        self.ranked = ranked;
+        self.listed = on_screen;
         self.cursor = self.cursor.min(self.slots.len().saturating_sub(1));
         self.clamp_offset();
     }
@@ -888,7 +884,14 @@ impl Rail {
         format!("nothing on or before {}", days::day_label(self.now))
     }
 
-    /// The strip under the rail: the filter, what survived it, and how much of the index is loaded.
+    /// The strip under the rail: the order, how much of it is still asking to be read, the filter, and
+    /// where the printed score came from.
+    ///
+    /// The four parts are ADR-006 §5.1.2 §3 and they are in decreasing priority, because the strip is
+    /// sold from the right: `order: newest first · 7 unread · filter: state=unread (F edits) · risk
+    /// spine-2`, and the last thing standing at the rail's minimum is the order. The order clause is the
+    /// rule the deleted Queue view's strip was the first place that obeyed — *a list names the order it is
+    /// in, in words the renderer implements* — and it survives the pane that carried it.
     ///
     /// The "index holds N" half matters: a rail that was given a page and shows only it must not let
     /// the reviewer conclude the repository has been quiet (ADR-001 §7.2).
@@ -900,14 +903,14 @@ impl Rail {
             // index was empty and `0 unread` beside one the filter emptied are different facts, and the
             // sentence printed in place of the rows already says which it is.
             out.push_str(&format!(" · {}", self.empty_words()));
-            return out;
+            return format!("{} · {}", self.order_words(), out);
         }
-        // The open-work count leads the line (`e10.2`, ADR-006 §5.1.2 §3 part 2), for two reasons that
-        // are one reason: it is the number the four acts are supposed to move in the same frame the glyph
-        // changes — `accept_writes_before_it_moves` was the queue's proof, and a rail that only moves one
-        // cell proves less than a row leaving a list did — and the strip is sold from the right, so a part
-        // at the end of this line is a part the reviewer at the rail's 42 columns never sees. The count
-        // the acts move has to be a count that survives the pane.
+        // The open-work count leads everything but the order (`e10.2`, ADR-006 §5.1.2 §3 part 2), for two
+        // reasons that are one reason: it is the number the four acts are supposed to move in the same
+        // frame the glyph changes — `accept_writes_before_it_moves` was the queue's proof, and a rail that
+        // only moves one cell proves less than a row leaving a list did — and the strip is sold from the
+        // right, so a part at the end of this line is a part the reviewer at the rail's 42 columns never
+        // sees. The count the acts move has to be a count that survives the pane.
         out = format!(
             "{} unread",
             format_thousands(u64::try_from(self.unread).unwrap_or(u64::MAX))
@@ -955,7 +958,36 @@ impl Rail {
         if let Some(why) = self.complexity_absent.get() {
             out.push_str(&format!(" · {why}"));
         }
-        out
+        // Part 4 of §5.1.2 §3, and last for the same reason: a score with no named model beside it is the
+        // recommendation ADR-001 §7.9 forbids, so the rows' number gets a citation — but only while the
+        // rows print a number at all. A model name beside no figure is a citation to nothing.
+        if self.risked > 0 {
+            if let Some(model) = self.risk_model() {
+                out.push_str(&format!(" · risk {model}"));
+            }
+        }
+        format!("{} · {}", self.order_words(), out)
+    }
+
+    /// Part 1 of §5.1.2 §3: the order, in the words the renderer implements. The rail groups by day (or
+    /// by session under `group=session`) and prints newest first inside each group, and says exactly that;
+    /// a strip that named an order the code did not would be worse than no strip, which is the entire
+    /// argument for having one.
+    #[must_use]
+    fn order_words(&self) -> String {
+        "order: newest first".to_owned()
+    }
+
+    /// The risk model name the rows print, read off the rows rather than from a constant the shell could
+    /// be wrong about.
+    #[must_use]
+    fn risk_model(&self) -> Option<&str> {
+        self.listed
+            .iter()
+            .filter_map(|index| self.episodes.get(*index))
+            .filter_map(Episode::risk)
+            .find(|risk| !risk.model.is_empty())
+            .map(|risk| risk.model.as_str())
     }
 
     /// The windowed, drawn rows: exactly `visible` lines, each `width` cells.
@@ -1232,4 +1264,91 @@ impl Rail {
         let max = self.slots.len().saturating_sub(self.visible.get());
         self.offset = self.offset.min(max);
     }
+}
+
+/// Draw an open chooser — the dismiss reason (`-`) or the snooze condition (`z`) — at the top of the
+/// rail, in place of the rows (`e4.5`).
+///
+/// Drawn in the pane rather than floated over it on purpose: the reviewer is picking a claim *about the
+/// row they can see*, and a modal that hides it while they choose makes the choice worse, not safer.
+/// The rows behind are not gone; `<Esc>` brings them back with the cursor where it was.
+///
+/// It came from the deleted Queue view's worklist module (`e10.3`); what it draws and why it is drawn
+/// in the pane did not change when the pane that hosted the acts did.
+#[must_use]
+pub fn chooser(
+    title: &str,
+    hint: &str,
+    rows: &[(String, String)],
+    cursor: usize,
+    width: usize,
+    height: usize,
+) -> Vec<StyledLine> {
+    use crate::style::Face;
+
+    let mut out: Vec<StyledLine> = Vec::new();
+    out.push(StyledLine::with_face(title, Face::Emphasis));
+    for (row, (code, label)) in rows.iter().enumerate() {
+        let mut line = StyledLine::new();
+        line.push(
+            if row == cursor {
+                Face::Emphasis
+            } else {
+                Face::Muted
+            },
+            &format!("{}{:>2} ", if row == cursor { "▸" } else { " " }, row + 1),
+        );
+        line.push(
+            if row == cursor {
+                Face::Text
+            } else {
+                Face::Muted
+            },
+            &format!("{code:<16}"),
+        );
+        line.push(Face::Text, label);
+        out.push(clip(line, width));
+    }
+    out.push(StyledLine::with_face(hint, Face::Faint));
+    while out.len() < height {
+        out.push(StyledLine::plain(""));
+    }
+    out.truncate(height);
+    out.into_iter().map(|line| line.padded(width)).collect()
+}
+
+/// The one-line prompt for a flag's note (`f`), drawn where the rows are for exactly as long as the
+/// reviewer is typing it.
+#[must_use]
+pub fn prompt_line(label: &str, typed: &str, width: usize) -> StyledLine {
+    use crate::style::Face;
+
+    let mut line = StyledLine::new();
+    line.push(Face::Emphasis, label);
+    line.push(Face::Text, typed);
+    line.push(Face::Muted, "▏");
+    line.padded(width)
+}
+
+/// Clip a row to the pane rather than let it break the frame's border, and say so with `…`.
+fn fit_line(text: &str, width: usize) -> String {
+    let chars: Vec<char> = text.chars().collect();
+    if chars.len() <= width {
+        return text.to_owned();
+    }
+    let kept: String = chars[..width.saturating_sub(1)].iter().collect();
+    format!("{}…", kept.trim_end())
+}
+
+/// [`fit_line`] with the faces flattened: rebuilding in the same faces is more work than the pane
+/// needs, because the clipped row is the same sentence and the faces of what got clipped do not change
+/// what is left readable.
+fn clip(line: StyledLine, width: usize) -> StyledLine {
+    use crate::style::Face;
+
+    let text = line.text();
+    if crate::layout::display_width(text) <= width {
+        return line;
+    }
+    StyledLine::with_face(fit_line(text, width), Face::Text)
 }

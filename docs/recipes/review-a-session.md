@@ -6,7 +6,7 @@
 - **Time**: about ten minutes for a session of a few dozen commits.
 - **Needs**: `fathom` indexed on the repository; a terminal you are allowed to leave.
 - **Plan keys**: `e4.5` (the acts), `e4.4` (the score), `e4.6` (the ledger), `e1.6`/`e1.7` (rail and diff),
-  `e10.2` (the acts taken from the rail).
+  `e10.2` (the acts taken from the rail), `e10.3` (the rail as the only list).
 
 This is the tool's reason for existing, so it is the one sequence that is fixed as data
 (`keymap.TASKS`, `T1`) and printed by the help overlay, the hint line and
@@ -34,11 +34,12 @@ outranks the amount of file — a three-line CI edit and a migration that drops 
 documentation edit — and every row's figure has a reason naming a file you can open
 ([risk ranking](../concepts/risk-ranking.md)). To work only what is still open, `F` and set `state=unread`: it
 is the filter the acts read, so a row you sign off leaves the list rather than waiting for you to walk past it.
-(`q` still opens the ranked worklist until `e10.3` deletes it, and every act below works from either.)
+(There is no second list: `e10.3` deleted the ranked worklist, and `q` is the reviewer's letter now —
+[ADR-006 §5.1.2](../adr/0006-tui.md) is the decision.)
 
-Press `w` on the selected episode and the model shows its arithmetic: the feature vector, the rank, and the
-list of what it could not see ([risk score](../concepts/risk-score.md)). An episode nothing ranked prints
-`?` and sorts last, rather than a `0` standing in for "nobody looked".
+Press `w` on the selected episode and the model shows its arithmetic: the feature vector, the ceiling it was
+measured under, and the list of what it could not see ([risk score](../concepts/risk-score.md)). An episode
+nothing scored prints `?`, rather than a `0` standing in for "nobody looked".
 
 ## 3 · Read the episode, in the order the model puts it
 
@@ -84,7 +85,7 @@ Same four steps, four verbs, and every one of them has a `--json` shape under
 [`schemas/`](../../schemas):
 
 ```bash
-fathom --plain why <episode>                # the ranking's arithmetic
+fathom --plain why <episode>                # the score's arithmetic
 fathom --plain analyze <episode>            # the delta, rendered
 fathom --plain narrative <episode>          # the prose
 fathom --plain review sign <episode> --note "…"
@@ -94,9 +95,10 @@ fathom review status
 One honest gap: this build has no verb that lists episodes, so you get an episode address from the TUI, from
 `fathom show <rev>` (its `grouping` line), or from the timeline's `--plain` frame. The refusal is not a
 missing feature in the contract — `fathom review sign HEAD~3` resolves any revision you already have — it is
-just that "list everything" is a queue job and the queue is a screen.
+just that "list everything" is a screen's job, and since `e10.3` it is one screen's job: `fathom --plain`
+draws the rail, in the order the episodes happened, with a score per row.
 
-## If the queue is empty
+## If the rail is empty
 
 Three causes, and the pane says which:
 

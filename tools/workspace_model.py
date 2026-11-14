@@ -696,12 +696,12 @@ TEAMS: tuple[tuple[str, str, str, str], ...] = (
                                          "src/noncode/, src/testsurface/", "epic 2"),
     ("analyze-arch", "fathom-analyze", "src/graph/, src/cycles/, src/layers/, src/api/, src/hotspots/",
      "epic 3"),
-    ("analyze-agents", "fathom-analyze", "src/attrib/, src/intent/, src/detect/, src/risk/, src/queue/, "
+    ("analyze-agents", "fathom-analyze", "src/attrib/, src/intent/, src/detect/, src/risk/, src/review/, "
                                          "src/narrate/, src/export/", "epic 4 + `e5.7`"),
     ("analyze-insight", "fathom-analyze", "src/insight/", "the facade: `e2.11`; owns the schema version "
                                                           "and the budget of every view"),
     ("tui-shell", "fathom-tui", "src/app/, src/keymap/, src/layout/, src/ambient/", "epic 5 shell"),
-    ("tui-views", "fathom-tui", "src/views/", "queue, timeline, diff, structure, deps, search, compare"),
+    ("tui-views", "fathom-tui", "src/views/", "timeline, diff, structure, deps, search, compare"),
     ("mcp", "fathom-mcp", "everything", "ADR-005 §4 surface, shared review memory"),
 )
 

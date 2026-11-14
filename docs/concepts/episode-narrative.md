@@ -101,7 +101,7 @@ by the export artefact, so both stay consistent" — is discharged before `e5.7`
 in two places is prose that disagrees. The watermark is the last line of all three:
 
 ```
-*Composed by `fathom-template/1` from `fathom-delta/1` v1 — a template, not a model: every figure
+*Composed by `fathom-template/1` from `fathom-delta/2` v2 — a template, not a model: every figure
 above is copied from the citation printed beside it.*
 fathom-template/1 verified: 29 claims, 31 citations, 6 checks.
 ```

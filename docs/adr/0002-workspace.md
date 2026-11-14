@@ -763,10 +763,10 @@ and invisible, and cargo-deny will not tell anybody it is still there.
 | 4 | `ingest-git` | `fathom-ingest` | everything | gix access, normalisation, segmentation, hook events, watch |
 | 5 | `analyze-change` | `fathom-analyze` | src/taxonomy/, src/noise/, src/structure/, src/deps/, src/noncode/, src/testsurface/ | epic 2 |
 | 6 | `analyze-arch` | `fathom-analyze` | src/graph/, src/cycles/, src/layers/, src/api/, src/hotspots/ | epic 3 |
-| 7 | `analyze-agents` | `fathom-analyze` | src/attrib/, src/intent/, src/detect/, src/risk/, src/queue/, src/narrate/, src/export/ | epic 4 + `e5.7` |
+| 7 | `analyze-agents` | `fathom-analyze` | src/attrib/, src/intent/, src/detect/, src/risk/, src/review/, src/narrate/, src/export/ | epic 4 + `e5.7` |
 | 8 | `analyze-insight` | `fathom-analyze` | src/insight/ | the facade: `e2.11`; owns the schema version and the budget of every view |
 | 9 | `tui-shell` | `fathom-tui` | src/app/, src/keymap/, src/layout/, src/ambient/ | epic 5 shell |
-| 10 | `tui-views` | `fathom-tui` | src/views/ | queue, timeline, diff, structure, deps, search, compare |
+| 10 | `tui-views` | `fathom-tui` | src/views/ | timeline, diff, structure, deps, search, compare |
 | 11 | `mcp` | `fathom-mcp` | everything | ADR-005 §4 surface, shared review memory |
 <!-- END GENERATED: teams -->
 

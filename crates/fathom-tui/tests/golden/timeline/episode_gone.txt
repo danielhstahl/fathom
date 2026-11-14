@@ -15,7 +15,7 @@
   a77bb0 1mo +140 −12 ●●●●●○ ? ⚐          
 
 ## rail strip
-3 unread · 1 snoozed · filter: area=any state=any group=day (F edits) · 9 of 9
+order: newest first · 3 unread · 1 snoozed · filter: area=any state=any group=day (F edits) · 9 of 9
 
 ## card (35 columns × 14 rows)
 9c4d10 — cache the epoch probe     

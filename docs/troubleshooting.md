@@ -53,7 +53,7 @@ The codes you will actually meet, and the sentence each one is trying to tell yo
 |---|---|---|
 | `is not a git repository this build can read` (exit `3`) | wrong directory, a bare repo, or a `.git` file pointing somewhere unreadable | `cd` into the work tree, or `--root /path/to/repo` |
 | `no index yet` / exit `12` | nobody has indexed here, or the epoch was thrown away | `fathom index`, then `fathom stats` |
-| the queue is empty but there are commits | a stored filter, or everything is signed off, or the index is behind | `fathom --fresh`; `fathom tui --show-session`; `fathom index` |
+| the rail is empty but there are commits | a stored filter, or everything is signed off, or the index is behind | `fathom --fresh`; `fathom tui --show-session`; `fathom index` |
 | the frame will not draw, and says `LAYOUT REFUSED` | the terminal is below the view's floor | widen it, or use `--plain`; ambient needs 40×3 ([ambient](concepts/ambient-mode.md)) |
 | no progress row during `fathom index` | stderr is not a terminal — a pipe, a CI step, a `tee` | `fathom index --progress` asks for the row anyway |
 | `--json` refuses to run with `--progress` | deliberate: one document on stdout, no decoration | drop `--progress`; the row is for humans |

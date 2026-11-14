@@ -224,13 +224,13 @@ pub struct Options {
     /// shell has no opinion about colour and none is its to have. Folding to what the terminal answered
     /// happens at draw time, not here.
     pub theme: crate::theme::Theme,
-    /// Everything the queue needs to triage: vocabulary, actor, ledger and the acts already in it
+    /// Everything the ledger needs to take an act: vocabulary, actor, ledger and the acts already in it
     /// (`e4.5`, `reco-wsj`).
     ///
     /// `Default` is `Setup::default()`, which is a shell that takes acts in memory and says so: the
     /// `--plain` path and every embedder keep compiling, and none of them silently pretend to have written
     /// a sign-off.
-    pub queue: crate::queue::Setup,
+    pub review: crate::review::Setup,
     /// What keeps this frame current, and what it says when nothing does (`reco-bpc`).
     ///
     /// The frame has no producer of its own — no store handle, no git, no indexer, and no business having
@@ -267,7 +267,7 @@ impl Default for Options {
             lines: false,
             term: crate::terminal::Probe::unknown(),
             theme: crate::theme::Theme::default_theme(),
-            queue: crate::queue::Setup::default(),
+            review: crate::review::Setup::default(),
             watch: None,
         }
     }
@@ -751,7 +751,7 @@ pub fn apply_update(app: &mut App, update: crate::watch::Update) {
         let grew = u64::try_from(batch.len().saturating_sub(before)).unwrap_or(u64::MAX);
         // A `next-index` snooze is stamped against the epoch the rows came from, so the table that decides
         // whether one has released moves with the rows it was computed from.
-        app.queue.sessions = crate::queue::State::sessions_of(&batch.episodes);
+        app.review.sessions = crate::review::State::sessions_of(&batch.episodes);
         let line = app.timeline.load(batch);
         said = Some(match update.new_commits.or(Some(grew)) {
             Some(n) if n > 0 => format!("{} new · {line}", crate::app::format_thousands(n)),
@@ -860,14 +860,14 @@ pub fn run(options: &Options) -> Result<Report, Error> {
     // is on, and this provider is the only party that can read the record behind it (`e3.4`).
     app.graph.set_citations(options.citations.clone());
     app.set_hints(options.hints);
-    // The queue's triage world, installed before `prime` for the same reason the patch provider is: a
-    // session that resumes straight into the queue must be able to disposition from the first keystroke,
+    // The ledger's world, installed before `prime` for the same reason the patch provider is: a
+    // session that resumes straight onto the rail must be able to disposition from the first keystroke,
     // with the vocabulary and the actor that belong to this repository (`e4.5`, `reco-wsj`).
-    app.queue = options.queue.state();
+    app.review = options.review.state();
     if let Some(batch) = &options.episodes {
         // The `new-in-session` snooze needs to know what a session holds; the shell cannot look that up,
         // because the shell is not allowed to open the index.
-        app.queue.sessions = crate::queue::State::sessions_of(&batch.episodes);
+        app.review.sessions = crate::review::State::sessions_of(&batch.episodes);
     }
     let resumed = prime(&mut app, options);
     // The size to open at, in the order anyone's authority outranks anyone else's: what the caller
@@ -1026,11 +1026,11 @@ pub fn render_plain(options: &Options) -> Vec<String> {
     }
     app.graph.set_citations(options.citations.clone());
     app.set_hints(options.hints);
-    // The queue's triage world, same as the interactive path: a piped frame shows the same worklist, so
-    // it shows the same vocabulary, actor and ledger — or says in the same words that it has none.
-    app.queue = options.queue.state();
+    // The ledger's world, same as the interactive path: a piped frame shows the same rail and the same
+    // acts, so it shows the same vocabulary, actor and ledger — or says in the same words that it has none.
+    app.review = options.review.state();
     if let Some(batch) = &options.episodes {
-        app.queue.sessions = crate::queue::State::sessions_of(&batch.episodes);
+        app.review.sessions = crate::review::State::sessions_of(&batch.episodes);
     }
     let resumed = prime(&mut app, options);
     // A piped frame has no terminal to ask, so the reviewer's own last frame size is the honest answer
@@ -1040,9 +1040,9 @@ pub fn render_plain(options: &Options) -> Vec<String> {
     {
         app.resize(cols, rows);
     }
-    // Not `app.view = ViewId::Queue` any more (`e1.11`): `--plain` promises the same frame the terminal
+    // Not a hard-coded view (`e1.11`): `--plain` promises the same frame the terminal
     // would have been given, and a resumed session's frame is the reviewer's view. A first session lands
-    // on the queue anyway, because that is what `App::new` opens.
+    // on the home view anyway, because that is what `App::new` opens (ADR-006 §5.1.2 §1: the timeline).
     if options.lines {
         crate::render::plain_flow(&app)
     } else {

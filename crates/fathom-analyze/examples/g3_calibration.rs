@@ -25,7 +25,7 @@
 //!    [`fathom_analyze::risk::collect::vector`] plus [`fathom_analyze::risk::score::score`] under
 //!    [`fathom_analyze::risk::weights::Weights::defaults`]; the findings are
 //!    [`fathom_analyze::detectors::scan`] with every detector enabled; the label vocabulary is
-//!    [`fathom_analyze::queue::disposition::REASONS`], the closed list `e4.6` owns and §5.4 names as the
+//!    [`fathom_analyze::review::disposition::REASONS`], the closed list `e4.6` owns and §5.4 names as the
 //!    labelling mechanism. A τ in `thresholds.json` that disagrees with the shipped default is an error.
 //! 4. **Per detector, always.** A guardrail that cannot name which detector cried wolf is a guardrail that
 //!    gets relaxed wholesale, so `G3` is printed per detector as well as in aggregate, and `e0.12`'s rule —
@@ -55,7 +55,7 @@ use fathom_analyze::detectors::model::{Content, Corpus, Episode, FileChange};
 use fathom_analyze::detectors::policy::Policy;
 use fathom_analyze::fill;
 use fathom_analyze::index::{self, Scope, Worktree};
-use fathom_analyze::queue::is_code;
+use fathom_analyze::review::is_code;
 use fathom_analyze::risk::score;
 use fathom_analyze::risk::weights::Weights;
 use fathom_analyze::risk::{collect as risk_collect, collect::Supply};
@@ -704,7 +704,7 @@ fn measure_repo(clone: &Path, pin: &Pin, truth: &Truth, work: &Path, policy: &Po
     let mut repo = Repo {
         pin: pin.clone(),
         complexity_pass: run.complexity,
-        vocabulary: fathom_analyze::queue::REASONS
+        vocabulary: fathom_analyze::review::REASONS
             .iter()
             .map(|(code, ..)| (*code).to_owned())
             .collect(),

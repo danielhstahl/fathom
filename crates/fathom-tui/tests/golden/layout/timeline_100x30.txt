@@ -26,7 +26,7 @@
 │                                                              │session  session 4 · turn 12       │
 │                                                              │read     fixture index · times UTC │
 │                                                              │                                   │
-│4 unread · 1 snoozed · filter: area=any state=any group=day (…│card · reads delta.structure.* · o…│
+│order: newest first · 4 unread · 1 snoozed · filter: area=any…│card · reads delta.structure.* · o…│
 └──────────────────────────────────────────────────────────────────────────────────────────────────┘
-⏺ epoch 1 · 48 eps · queue 4 open · idx unknown
+⏺ epoch 1 · 48 eps · 4 unread · idx unknown
 10 episodes from fixture index

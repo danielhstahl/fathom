@@ -437,8 +437,15 @@ fn a_view_that_is_already_live_says_so() {
         toast.contains("already the live view"),
         "the second `t` said: {toast:?}"
     );
-    press(&mut app, "q");
-    assert_eq!(app.view, ViewId::Queue, "`q` still switches");
+    // `q` was the Queue view's letter and `e10.3` retired the view (ADR-006 §5.1.2 §1, §7.6): the
+    // keystroke stays a stated absence — the refusal, not a silent no-op and not a new binding.
+    let (changed, toast) = chord(&mut app, "q");
+    assert!(!changed, "a retired letter must not move the frame");
+    assert_eq!(app.view, ViewId::Timeline, "`t` is the home letter");
+    assert!(
+        toast.contains("Queue view is retired") && toast.contains("`t`"),
+        "`q` said: {toast:?}"
+    );
 }
 
 #[test]

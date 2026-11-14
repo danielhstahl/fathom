@@ -15,7 +15,7 @@
  Sat 13 Sep ── 1 episode                  
 
 ## rail strip
-4 unread · 1 snoozed · filter: area=any state=any group=day (F edits) · 10 of 10
+order: newest first · 4 unread · 1 snoozed · filter: area=any state=any group=day (F edits) · 10 of 10 · risk spine-2
 
 ## card (35 columns × 14 rows)
 e8f1a2 — make the store epoch-safe 
@@ -30,7 +30,7 @@ x tests  1 file(s)… · +3 more
 x blast  2 direct, 1 one… · +1 more
 ~ attention spine-2 62 = surfaces  
             50 + size 8 + author 4 
-            · rank 1 of 7 · +2 more
+            · +2 more              
 … 8 more rows · j · G              
 
 ## card strip

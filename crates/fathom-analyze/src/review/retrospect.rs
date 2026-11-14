@@ -29,7 +29,7 @@ use fathom_core::time::Timestamp;
 use serde::Serialize;
 
 use super::disposition::{Disposition, ReasonVocabulary, TriageRecord};
-use super::order::Severity;
+use super::counts::Severity;
 
 /// One reason's bucket while the rollup is being accumulated.
 #[derive(Debug, Default)]
@@ -52,20 +52,20 @@ pub const SYSTEMATIC_MIN_SHARE_BP: i64 = 4_000;
 
 /// How far back the retrospective looks.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
-pub enum QueueWindow {
+pub enum ReviewWindow {
     /// Everything the ledger holds.
     All,
     /// The last N days.
     Days(u32),
 }
 
-impl QueueWindow {
+impl ReviewWindow {
     /// The words the heading prints.
     #[must_use]
     pub fn label(self) -> String {
         match self {
-            QueueWindow::All => "everything the ledger holds".to_owned(),
-            QueueWindow::Days(days) => format!("the last {days} days"),
+            ReviewWindow::All => "everything the ledger holds".to_owned(),
+            ReviewWindow::Days(days) => format!("the last {days} days"),
         }
     }
 
@@ -73,8 +73,8 @@ impl QueueWindow {
     #[must_use]
     pub fn contains(self, utc: Timestamp, now: Timestamp) -> bool {
         match self {
-            QueueWindow::All => true,
-            QueueWindow::Days(days) => {
+            ReviewWindow::All => true,
+            ReviewWindow::Days(days) => {
                 now.as_unix_seconds() - utc.as_unix_seconds()
                     <= i64::from(days).saturating_mul(86_400)
             }
@@ -162,9 +162,9 @@ impl Coverage {
 
 /// The retrospective, in the shape both the pane and the CLI print.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-pub struct QueueRetrospective {
+pub struct ReviewRetrospective {
     /// The window it was built over.
-    pub window: QueueWindow,
+    pub window: ReviewWindow,
     /// Acts in the window, all dispositions.
     pub acts: usize,
     /// Acts in the window by disposition, in [`Disposition`]'s order, zeroes dropped.
@@ -183,7 +183,7 @@ pub struct QueueRetrospective {
     pub now: Timestamp,
 }
 
-impl QueueRetrospective {
+impl ReviewRetrospective {
     /// The pane's lines: the heading, the categories, the skipped list, the coverage line.
     ///
     /// Plain strings, because the shell owns colour (ADR-006 §6.4) and `--plain` owns the pipe. The
@@ -284,9 +284,9 @@ pub fn retrospect(
     records: &[TriageRecord],
     vocabulary: &ReasonVocabulary,
     total: usize,
-    window: QueueWindow,
+    window: ReviewWindow,
     now: Timestamp,
-) -> QueueRetrospective {
+) -> ReviewRetrospective {
     let in_window: Vec<&TriageRecord> = records
         .iter()
         .filter(|record| window.contains(record.utc, now))
@@ -383,7 +383,7 @@ pub fn retrospect(
     let mut notices: Vec<String> = Vec::new();
     for rollup in dismissals.iter().filter(|rollup| rollup.systematic) {
         notices.push(format!(
-            "`{}` is {} of {} dismissals in {} — the queue is being emptied, not read",
+            "`{}` is {} of {} dismissals in {} — the rail is being emptied, not read",
             rollup.code,
             rollup.count,
             dismissals_total,
@@ -404,7 +404,7 @@ pub fn retrospect(
              absence from the ranking is not evidence that they were safe"
         ));
     }
-    QueueRetrospective {
+    ReviewRetrospective {
         window,
         acts: in_window.len(),
         by_disposition: by_disposition
@@ -431,7 +431,7 @@ pub fn retrospect(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::queue::disposition::REASONS;
+    use crate::review::disposition::REASONS;
 
     const NOW: i64 = 1_700_000_000;
 
@@ -474,7 +474,7 @@ mod tests {
             &[],
             &ReasonVocabulary::shipped(),
             40,
-            QueueWindow::All,
+            ReviewWindow::All,
             at(NOW),
         );
         assert_eq!(view.acts, 0);
@@ -503,7 +503,7 @@ mod tests {
             &records,
             &ReasonVocabulary::shipped(),
             10,
-            QueueWindow::Days(7),
+            ReviewWindow::Days(7),
             at(NOW),
         );
         assert_eq!(view.acts, 4);
@@ -539,7 +539,7 @@ mod tests {
             &few_but_concentrated,
             &ReasonVocabulary::shipped(),
             50,
-            QueueWindow::All,
+            ReviewWindow::All,
             at(NOW),
         );
         assert_eq!(view.dismissals[0].share_bp, 10_000);
@@ -555,7 +555,7 @@ mod tests {
             &many,
             &ReasonVocabulary::shipped(),
             50,
-            QueueWindow::All,
+            ReviewWindow::All,
             at(NOW),
         );
         let top = &view.dismissals[0];
@@ -587,7 +587,7 @@ mod tests {
             &records,
             &ReasonVocabulary::shipped(),
             5,
-            QueueWindow::All,
+            ReviewWindow::All,
             at(NOW),
         );
         assert_eq!(view.dismissals[0].code, "out-of-hours");
@@ -607,7 +607,7 @@ mod tests {
             &records,
             &ReasonVocabulary::shipped(),
             5,
-            QueueWindow::Days(7),
+            ReviewWindow::Days(7),
             at(NOW),
         );
         assert_eq!(week.acts, 1);
@@ -615,7 +615,7 @@ mod tests {
             &records,
             &ReasonVocabulary::shipped(),
             5,
-            QueueWindow::All,
+            ReviewWindow::All,
             at(NOW),
         );
         assert_eq!(all.acts, 2);
@@ -625,7 +625,7 @@ mod tests {
             &[],
             &ReasonVocabulary::shipped(),
             0,
-            QueueWindow::All,
+            ReviewWindow::All,
             at(NOW),
         );
         assert!(
@@ -644,7 +644,7 @@ mod tests {
             &records,
             &ReasonVocabulary::shipped(),
             3,
-            QueueWindow::All,
+            ReviewWindow::All,
             at(NOW),
         );
         assert_eq!(view.dismissals[0].code, "unstated");
@@ -676,7 +676,7 @@ mod tests {
             &records,
             &ReasonVocabulary::shipped(),
             100,
-            QueueWindow::All,
+            ReviewWindow::All,
             at(NOW),
         );
         assert_eq!(view.dismissals.len(), REASONS.len());

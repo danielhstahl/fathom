@@ -11,8 +11,8 @@
 //! and `reco-glv`'s walkthrough both use.
 //!
 //! One thing has to be arranged rather than typed: `--plain` has no keystrokes, and the shell opens on
-//! the queue. The arrangement is a user's own — `tui.view` in `session_state` is what `fathom tui`
-//! writes when a reviewer presses `t` and quits — so the test writes that row through the store's
+//! the timeline, since `e10.3` (ADR-006 §5.1.2 §1). The arrangement is a user’s own — `tui.view` in `session_state` is what `fathom tui`
+//! writes when a reviewer presses a view key and quits — so the test writes that row through the store's
 //! `set_ui_state`, the same call `fathom tui`'s exit path uses, and then asks the binary what it draws.
 //! The stored `tui.size` is the same trick (`e1.11`: a piped frame draws the layout the reviewer last
 //! read at) and it is what lets the rail's strip print whole, which 80 columns truncates.
@@ -21,6 +21,10 @@
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output, Stdio};
+
+/// The frame reader shared with `tests/cli.rs`; see `tests/frame.rs` for why it is one file.
+mod frame;
+
 
 /// The fixture's size: Epic 1's own number, so what this asserts is what the epic promises.
 #[cfg(feature = "sqlite-bundled")]
@@ -316,10 +320,10 @@ fn the_rail_lists_the_episodes_the_index_holds() {
 
     // And the delta half of the card is no longer a stated absence: `reco-tt4` made every rail row carry
     // an `EpisodeDelta`, so the card prints the model's seven sections and signs the contract it read.
-    // That is the assertion a reviewer can audit: a frame that claims `fathom-delta/1` is a frame whose
+    // That is the assertion a reviewer can audit: a frame that claims `fathom-delta/2` is a frame whose
     // numbers came from the one model, and the self-check beside it says the document agreed with itself.
     assert!(
-        frame.contains("fathom-delta/1") && frame.contains("self-check"),
+        frame.contains("fathom-delta/2") && frame.contains("self-check"),
         "the card names the contract it rendered and the model's own verdict on itself:\n{frame}"
     );
     assert!(
@@ -467,26 +471,29 @@ fn an_index_with_nothing_to_list_says_so_rather_than_pointing_at_the_timeline() 
     git(&dir, &["init", "-q", "--initial-branch=main", "."]);
     let out = fathom_in(&dir, &["--plain", "--fresh"]);
     assert_eq!(code(&out), Some(0), "{}", stderr(&out));
-    // Not even indexed yet: `fathom index` is still the honest remedy, and says so.
+    // Not even indexed yet: `fathom index` is still the honest remedy, and says so. The sentence is drawn
+    // in the rail's column since `e10.3` made the rail the home list, which is narrower than the worklist
+    // that used to hold it, so it wraps between the verb and its adverb — the words are the claim, not
+    // the column they were cut in.
     assert!(
-        stdout(&out).contains("run `fathom index` here"),
+        frame::unfolded(&stdout(&out)).contains("run `fathom index` here, then reopen fathom"),
         "{}",
         stdout(&out)
     );
     let indexed = fathom_in(&dir, &["index", "."]);
     assert_eq!(code(&indexed), Some(0), "{}", stderr(&indexed));
-    let frame = stdout(&fathom_in(&dir, &["--plain", "--fresh"]));
+    let printed = frame::unfolded(&stdout(&fathom_in(&dir, &["--plain", "--fresh"])));
     assert!(
-        frame.contains("index epoch 1 ready · 0 commits · 0 eps"),
-        "the empty repository's frame states its own numbers:\n{frame}"
+        printed.contains("index epoch 1 ready · 0 commits · 0 eps"),
+        "the empty repository's frame states its own numbers:\n{printed}"
     );
     assert!(
-        !frame.contains("`t` opens the timeline"),
-        "there is nothing on the timeline to list:\n{frame}"
+        !printed.contains("`t` opens the timeline"),
+        "there is nothing on the timeline to list:\n{printed}"
     );
     assert!(
-        frame.contains("`fathom doctor`"),
-        "zero over a finished index is a fact to check, not a quiet repository:\n{frame}"
+        printed.contains("`fathom doctor` says whether"),
+        "zero over a finished index is a fact to check, not a quiet repository:\n{printed}"
     );
     std::fs::remove_dir_all(&dir).expect("clean up the fixture");
 }
@@ -515,16 +522,16 @@ fn digits(bit: &str) -> u64 {
         .unwrap_or_else(|err| panic!("{bit:?} holds no number: {err}"))
 }
 
-/// The four facts the strip prints, from the outside: the epoch, the count, the queue and the verdict,
+/// The four facts the strip prints, from the outside: the epoch, the count, the open work and the verdict,
 /// each of them read from the store by the binary that drew the frame.
 ///
-/// The defect was the opposite of a crash — a strip that said `epoch unknown · unknown eps · queue
-/// unknown open · idx unknown` on a repository `fathom stats` had just described as `epoch 1 ready`,
+/// The defect was the opposite of a crash — a strip that said `epoch unknown · unknown eps · unread
+/// unknown · idx unknown` on a repository `fathom stats` had just described as `epoch 1 ready`,
 /// 500 commits and 0 commits owed an analysis. Every one of those was known two frames earlier by the
 /// same process, and ADR-006 §10.3 allows `unknown` only for what cannot be known.
 ///
 /// The episode count is parsed, not written down: how many episodes 500 commits segment into belongs to
-/// the boundary rules. What this test owns is that the strip *names* a number, that the queue's number
+/// the boundary rules. What this test owns is that the strip *names* a number, that the unread count's number
 /// is the store's own review state, and that the verdict is said.
 #[cfg(feature = "sqlite-bundled")]
 #[test]
@@ -535,7 +542,7 @@ fn the_strip_prints_the_facts_the_store_knows() {
     // the half the fix must not lose by printing a comfortable zero instead.
     let bare = strip(&dir, &["--plain", "--fresh"]);
     assert_eq!(
-        bare, "⏺ epoch unknown · unknown eps · queue unknown open · idx unknown",
+        bare, "⏺ epoch unknown · unknown eps · unread unknown · idx unknown",
         "an unindexed repository is told the truth, not a zero"
     );
 
@@ -558,17 +565,17 @@ fn the_strip_prints_the_facts_the_store_knows() {
         "the index's episode count: {known}"
     );
     assert!(
-        bits[2].starts_with("queue ") && bits[2].ends_with(" open"),
-        "the queue count: {known}"
+        bits[2].ends_with(" unread"),
+        "the open-work count: {known}"
     );
     assert_eq!(
         digits(bits[2]),
         episodes,
-        "a fresh index has every episode unread, so the queue is the whole index: {known}"
+        "a fresh index has every episode unread, so the open work is the whole index: {known}"
     );
     assert_eq!(bits[3], "idx warm", "nothing is owed an analysis: {known}");
 
-    // The queue is the store's review state, not a decoration: three reviewed episodes are three
+    // The count is the store’s review state, not a decoration: three reviewed episodes are three
     // fewer open, in the store's own count and therefore in the strip's.
     {
         let path = dir.join(".fathom").join("index.sqlite3");
@@ -599,7 +606,7 @@ fn the_strip_prints_the_facts_the_store_knows() {
     assert_eq!(
         digits(read.split(" · ").nth(2).unwrap_or_default()),
         episodes - 3,
-        "three markers written, three fewer open: {read}"
+        "three markers written, three fewer unread: {read}"
     );
 
     // And a verdict that is not warm is said as itself: a store mid-rebuild is cold, which is the same
@@ -619,15 +626,15 @@ fn the_strip_prints_the_facts_the_store_knows() {
     std::fs::remove_dir_all(&dir).expect("clean up the fixture");
 }
 
-/// A queue longer than the largest page the shell may ask for: the strip prints the index's number
-/// while the rail holds the page it was given, because a page is not the queue (`reco-zv9`).
+/// An index longer than the largest page the shell may ask for: the strip prints the index's number
+/// while the rail holds the page it was given, because a page is not the index (`reco-zv9`).
 ///
 /// The page cap is `fathom-analyze`'s `PAGE_LIMIT_MAX` — 500 — so 600 episodes is the smallest index
 /// that separates the two counts, and the two sentences the frame prints about them are supposed to
-/// differ: the strip counts the queue, the rail says how much of it it is holding.
+/// differ: the strip counts the open work, the rail says how much of it it is holding.
 #[cfg(feature = "sqlite-bundled")]
 #[test]
-fn a_queue_longer_than_the_page_prints_the_queue() {
+fn an_index_longer_than_the_page_prints_the_open_work() {
     let dir = repository(600);
     let indexed = fathom_in(&dir, &["index", "."]);
     assert_eq!(code(&indexed), Some(0), "{}", stderr(&indexed));
@@ -639,8 +646,8 @@ fn a_queue_longer_than_the_page_prints_the_queue() {
         .trim()
         .to_owned();
     assert_eq!(
-        line, "⏺ epoch 1 · 600 eps · queue 600 open · idx warm",
-        "the index holds 600 open episodes and the strip says so, page or no page:\n{frame}"
+        line, "⏺ epoch 1 · 600 eps · 600 unread · idx warm",
+        "the index holds 600 unread episodes and the strip says so, page or no page:\n{frame}"
     );
     assert!(
         frame.contains("index holds 600"),

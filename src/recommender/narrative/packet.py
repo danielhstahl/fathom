@@ -2,7 +2,7 @@
 
 `e4.7`'s whole claim to trustworthiness is "every claim carries a resolvable evidence reference".
 That is only checkable if the evidence has *addresses*, so the first thing the spike does is put an
-address on every fact in the `fathom-delta/1` document `fathom analyze` prints: every figure, every
+address on every fact in the `fathom-delta/2` document `fathom analyze` prints: every figure, every
 changed file, every gap, the risk vector, the attribution, the boundary rule. From then on a
 narrative is a list of `(sentence, cited item ids)` pairs, and "supported" has a definition:
 
@@ -54,7 +54,7 @@ def _short(oid: str) -> str:
 
 
 def build_packet(delta: dict[str, Any], subjects: dict[str, str] | None = None) -> dict[str, Any]:
-    """Address every fact in one `fathom-delta/1` document, so a narrative can cite it.
+    """Address every fact in one `fathom-delta/2` document, so a narrative can cite it.
 
     `subjects` maps a member oid to its commit subject. It is optional because the delta document
     does not carry per-commit messages — only `episode.summary`, which is the lead commit's subject

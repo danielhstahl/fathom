@@ -1,16 +1,22 @@
-//! `fathom_tui::queue` — the shell's half of the attention queue (`e4.5`, `reco-wsj`).
+//! `fathom_tui::review` — the shell's half of the review ledger: the acts, their write, and the rollup
+//! that reads them back (`e4.5`, `reco-wsj`; named for what it is by `e10.3`, `reco-ydek.3`).
 //!
-//! The ordering, the four acts, the dismiss vocabulary and the retrospective all live in
-//! `fathom_analyze::queue` and reach here through [`fathom_analyze::insight`], which is the only door this
+//! The four acts, the dismiss vocabulary, the open-work counts and the retrospective all live in
+//! `fathom_analyze::review` and reach here through [`fathom_analyze::insight`], which is the only door this
 //! crate may open (ADR-002 §5.3, lint `M02`). What is in *this* module is the part a shell has to own:
 //! what the reviewer has done since the frame opened, which chooser is on screen, and the trait object
 //! that writes an act to disk.
 //!
+//! It used to be called `queue`, because the queue was the pane that hosted all of it. `e10.3` deleted the
+//! pane (ADR-006 §5.1.2 §1) and nothing here went with it: the acts are `x f - z` on the rail, the rollup
+//! is `r` on the same pane, and the ordering this module used to hand the worklist is deleted rather than
+//! renamed. A module that hosts the ledger is not a queue.
+//!
 //! # The one rule that keeps it honest
 //!
 //! **An act is not taken until it is written.** [`Ledger::record`] is called first and the shell's own
-//! state changes only if it returns `Ok`; a refusal is a toast that says what failed and why. A queue that
-//! moved the row and *then* discovered the ledger was closed would be showing a sign-off that does not
+//! state changes only if it returns `Ok`; a refusal is a toast that says what failed and why. A shell that
+//! marked the row and *then* discovered the ledger was closed would be showing a sign-off that does not
 //! exist — the exact class of lie ADR-001 §7.7 names, and the reason the order of those two statements is
 //! a contract rather than a style.
 //!
@@ -27,9 +33,8 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use fathom_analyze::insight::{
-    DismissReason, Disposition, QueuePolicy, QueueRanking, QueueRetrospective, QueueRow,
-    QueueWindow, ReasonVocabulary, SnoozeSituation, SnoozeUntil, TriageRecord, rank_queue,
-    retrospect,
+    DismissReason, Disposition, ReasonVocabulary, ReviewRetrospective, ReviewWindow,
+    SnoozeSituation, SnoozeUntil, TriageRecord, retrospect,
 };
 use fathom_core::time::Timestamp;
 
@@ -76,14 +81,12 @@ impl core::fmt::Debug for LedgerHandle {
 ///
 /// One struct rather than five `Options` fields because they are one decision — *who is reviewing, in
 /// which repository, with which vocabulary, writing where* — and a shell that was handed four of the five
-/// would render a queue whose acts were unsigned, unwritten or judged by the wrong vocabulary. Every field
+/// would take acts that were unsigned, unwritten or judged by the wrong vocabulary. Every field
 /// has an honest empty: no ledger, `unknown` actor, shipped vocabulary, empty history.
 #[derive(Debug, Clone, Default)]
 pub struct Setup {
-    /// The dismiss vocabulary in force: shipped codes plus `queue.dismiss_reasons` from the config.
+    /// The dismiss vocabulary in force: shipped codes plus `review.dismiss_reasons` from the config.
     pub vocabulary: ReasonVocabulary,
-    /// The ordering's knobs, as the config set them.
-    pub policy: QueuePolicy,
     /// `name <address>`, or `unknown` — never a guess (ADR-001 §7.7).
     pub actor: String,
     /// Where acts go. `None` is `--plain` over an unindexed directory, and is printed as such.
@@ -102,7 +105,6 @@ impl Setup {
     pub fn state(&self) -> State {
         let mut state = State {
             vocabulary: self.vocabulary.clone(),
-            policy: self.policy,
             actor: self.actor.clone(),
             ledger: self.ledger.clone(),
             history: Vec::new(),
@@ -125,8 +127,6 @@ impl Setup {
 pub struct State {
     /// The dismiss vocabulary in force — shipped codes plus whatever this repository added.
     pub vocabulary: ReasonVocabulary,
-    /// The ordering's knobs, as the repository's config set them.
-    pub policy: QueuePolicy,
     /// Who signs an act here: `name <address>`, or `unknown`. Never invented (ADR-001 §7.7).
     pub actor: String,
     /// Where acts go, when there is somewhere.
@@ -143,7 +143,7 @@ pub struct State {
     /// Whether the rail is listing *acts* instead of episodes (`r`, `e10.2`).
     ///
     /// State of the rail's pane, held here because the ledger, the vocabulary and the history are the
-    /// rollup's own; the queue's worklist stopped being where it showed in `e10.2` (ADR-006 §5.1.2 §4).
+    /// rollup's own; the worklist stopped being where it showed in `e10.2` (ADR-006 §5.1.2 §4).
     pub retrospective: bool,
     /// The episode the open chooser is about, fixed when the chooser opens (`e4.5`).
     ///
@@ -163,7 +163,6 @@ impl Default for State {
     fn default() -> Self {
         State {
             vocabulary: ReasonVocabulary::shipped(),
-            policy: QueuePolicy::default(),
             actor: "unknown".to_owned(),
             ledger: None,
             history: Vec::new(),
@@ -184,7 +183,7 @@ impl Default for State {
 /// Three answers, not a boolean, because *the ledger refused* and *there is no ledger* are different
 /// sentences and the panes have to draw them differently: a refused act changes nothing anywhere, and a
 /// remembered act is real for this run and says out loud that it will not survive it. `e4.5` shipped this
-/// as a `bool` and the queue's own worklist got away with it because it reads dispositions out of the
+/// as a `bool` and the worklist got away with it because it reads dispositions out of the
 /// shell's `decided` map; the rail marks the row itself, and on a bare `written` flag a run with no ledger
 /// never marked anything — a rail going quiet about a decision that was taken.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -247,7 +246,7 @@ impl State {
     /// Take an act: write it, and change nothing unless the write landed.
     ///
     /// Returns the line to show and where the act landed. The line is [`TriageRecord::line`] — the same
-    /// sentence `fathom queue --retrospect` prints — so what the reviewer is told at the keystroke and what
+    /// sentence `fathom review list` prints for the same act — so what the reviewer is told at the keystroke and what
     /// the ledger later says about the act are one string produced in one place, not two wordings that can
     /// drift. With no ledger attached the act is kept in memory and [`Landed::InMemory`] says so: not a
     /// failure and not a recorded sign-off either, and the toast line has to carry the difference.
@@ -336,7 +335,7 @@ impl State {
     ///
     /// The stamp is compared against what the frame can see now: the epoch it was given and how many
     /// episodes this episode's session holds. A stamp that cannot be parsed keeps the episode snoozed — a
-    /// snooze nobody can evaluate stays out of the queue and stays in the retrospective, rather than
+    /// snooze nobody can evaluate stays out of the open-work count and stays in the retrospective, rather than
     /// falling back into the worklist every run and teaching the reviewer to ignore it.
     #[must_use]
     pub fn released(&self, episode: &Episode, now: Timestamp, epoch: u64) -> bool {
@@ -370,46 +369,6 @@ impl State {
             },
         )
     }
-}
-
-/// The rows the ordering needs, marshalled from the rail's rows.
-///
-/// Nothing is computed here beyond reading fields: risk comes from the delta the row already carries,
-/// staleness is `created`, blast is whatever [`Episode::blast`] holds (nothing, until `e3.2` has a module
-/// graph to put in it), and the disposition is [`State::disposition`].
-#[must_use]
-pub fn rows(episodes: &[&Episode], state: &State) -> Vec<QueueRow> {
-    episodes
-        .iter()
-        .map(|episode| QueueRow {
-            episode: episode.id.clone(),
-            risk: episode
-                .risk()
-                .and_then(|risk| u8::try_from(risk.score.max(0)).ok()),
-            risk_model: episode
-                .risk()
-                .map_or_else(String::new, |risk| risk.model.clone()),
-            created: episode.created,
-            size: episode.size(),
-            blast: episode.blast.clone(),
-            disposition: state.disposition(episode),
-        })
-        .collect()
-}
-
-/// Which episodes the queue holds, in queue order, with the counts that go with them.
-///
-/// One call, one pass: the ranking *and* the counts, so the strip's numbers and the list's order cannot
-/// disagree about what is open. The `released` probe consults the shell's snooze stamps, which is the only
-/// place that knows them.
-#[must_use]
-pub fn ranking(episodes: &[&Episode], state: &State, now: Timestamp, epoch: u64) -> QueueRanking {
-    let inputs = rows(episodes, state);
-    let open: Vec<&Episode> = episodes.to_vec();
-    rank_queue(&inputs, now, &state.policy, |id: &str| {
-        open.iter()
-            .any(|episode| episode.id == id && state.released(episode, now, epoch))
-    })
 }
 
 /// Stamp a snooze condition with the baseline it will be checked against.
@@ -447,32 +406,17 @@ impl State {
     }
 }
 
-/// The count line, plus the one gap the analysis cannot see (`e4.5`).
-///
-/// The sentence is the analysis's — one source for "4 open, and the factor that had no number" — and this
-/// wrapper marks only what the analysis has no way to know: a run with no ledger attached, where every act
-/// so far is tonight's and dies with the process. That mark belongs to the shell, because the shell is the
-/// thing that was or was not handed a ledger.
-#[must_use]
-pub fn counts_line(state: &State, ranking: &QueueRanking) -> String {
-    let mut line = ranking.count_line();
-    if state.ledger.is_none() && state.has_acts() {
-        line.push_str(" · in memory only: no ledger attached to this run");
-    }
-    line
-}
-
 /// The retrospective over everything this shell knows: the ledger's history plus tonight's acts.
 ///
 /// The whole ledger rather than a week by default, because the pattern a reviewer needs to see is the one
 /// they have been building for months; narrowing it is a knob for whoever asks (`--window`).
 #[must_use]
-pub fn retrospective(state: &State, now: Timestamp) -> QueueRetrospective {
+pub fn retrospective(state: &State, now: Timestamp) -> ReviewRetrospective {
     retrospect(
         &state.history,
         &state.vocabulary,
         state.total,
-        QueueWindow::All,
+        ReviewWindow::All,
         now,
     )
 }
@@ -511,14 +455,14 @@ pub fn ledger_strip(state: &State, now: Timestamp) -> String {
 
 /// Draw the retrospective in the rail pane (`r`).
 ///
-/// The lines come from `fathom_analyze::queue::retrospect` as plain text — the analysis owns what the
+/// The lines come from `fathom_analyze::review::retrospect` as plain text — the analysis owns what the
 /// sentence says — and the faces are chosen here, because colour belongs to the shell (ADR-006 §6.4). The
 /// ledger's own read errors are printed as `!` lines: a retrospective that could not read the ledger must
 /// not be allowed to look like a clean sheet.
 ///
-/// It used to be drawn in the queue's worklist. `e10.2` moved the subject to the rail (ADR-006 §5.1.2 §4)
-/// and the renderer came with it unchanged, because the honesty rule below is the pane's contract and does
-/// not care which list it is standing in.
+/// It used to be drawn in the queue's worklist. `e10.2` moved the subject to the rail (ADR-006 §5.1.2 §4),
+/// `e10.3` deleted the pane that used to host it, and the renderer came through both unchanged — the honesty
+/// rule below is the rollup's contract and does not care which list it is standing in.
 #[must_use]
 pub fn retrospective_lines(
     state: &State,

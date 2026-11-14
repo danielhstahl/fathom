@@ -127,7 +127,6 @@
     "low"
   ],
   "views": [
-    "queue",
     "timeline",
     "diff",
     "structure",

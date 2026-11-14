@@ -149,7 +149,7 @@ fn status(root: &Path, as_json: bool) -> eyre::Result<ExitCode> {
     }
     if !pending.is_empty() {
         output::line(format_args!(
-            "  · {} settled act(s) in the queue have never been rendered into the ledger — `fathom review sync`",
+            "  · {} settled act(s) on the timeline have never been rendered into the ledger — `fathom review sync`",
             pending.len()
         ));
     }
@@ -558,7 +558,7 @@ pub fn reviewer(root: &Path, explicit: Option<&str>, agent: Option<&str>) -> (Ac
         .as_deref()
         .is_none_or(|value| value.trim().is_empty() || value == "unknown")
     {
-        let from_git = crate::queue::actor(root);
+        let from_git = crate::triage::actor(root);
         if from_git != "unknown" {
             display = Some(from_git);
             source = "git config";

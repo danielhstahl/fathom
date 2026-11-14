@@ -315,7 +315,7 @@ impl Fit {
         match self.state {
             FitState::Complete => String::new(),
             FitState::Refused => format!(
-                "LAYOUT REFUSED: {} needs {}×{} minimum, got {}×{} — `a` ambient, `q` queue, \
+                "LAYOUT REFUSED: {} needs {}×{} minimum, got {}×{} — `a` ambient, `t` timeline, \
                  or `fathom --plain`",
                 view.title,
                 refuse_below_cols(view),
@@ -731,7 +731,7 @@ pub fn refusal_lines(view_id: ViewId, cols: u16, rows: u16) -> Vec<String> {
             refuse_below_cols(ambient),
             refuse_below_rows(ambient)
         ),
-        "`q` queue · `,` commands".to_owned(),
+        "`t` timeline · `,` commands".to_owned(),
         "`fathom --plain` for text".to_owned(),
         String::new(),
         "nothing was clipped.".to_owned(),

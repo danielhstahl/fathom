@@ -210,7 +210,7 @@ pub enum Verb {
     Mcp(McpArgs),
     /// Watch the repository and index as it changes
     Watch(WatchArgs),
-    /// The glance pane for the terminal beside the agent: latest episode, queue, index, one reason (`reco-8bx`)
+    /// The glance pane for the terminal beside the agent: latest episode, open work, index, one reason (`reco-8bx`)
     Ambient(AmbientArgs),
     /// Report on the harness event stream: lag, offset, rejections, replay (`e6.1`)
     Hooks(HooksArgs),

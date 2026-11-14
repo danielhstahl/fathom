@@ -826,8 +826,6 @@ impl Source for Review {
                 "training_corpus_version": Value::Null,
                 "trained": false,
                 "grounding": "heuristic — no trained model exists (reco-884's bar is unmet)",
-                "rank": risk.rank,
-                "ranked_of": risk.ranked,
                 "paths": delta.totals.n_files,
                 "churn": delta.totals.churn,
                 "commits": delta.episode.n_commits,

@@ -461,7 +461,8 @@ timeline on screen from wherever the reviewer was standing and has the rail list
 episodes: what was dismissed, by whom, under which reason, over what coverage denominator. `r` again puts
 the episodes back; `<Esc>` pops exactly one thing (§R2), which is this listing and nothing else.
 
-What it prints is `fathom_analyze::queue::retrospect`'s rollup, unchanged, and the honesty rule came with
+What it prints is `fathom_analyze::review::retrospect`'s rollup, unchanged (the module was `queue::`
+until `e10.3` deleted the pane it was named after), and the honesty rule came with
 it verbatim: an unreadable ledger prints its complaint and the *nothing dismissed* line is withheld,
 because silence about the ledger plus a clean sheet is the lie a reviewer would act on. The strip is
 replaced wholesale while the rail is on this subject — `ledger: 41 acts · 12 dismissed · 3 reasons ·
@@ -475,8 +476,8 @@ review verify` — and the ledger itself did not change at all ([review ledger](
 
 ## 14 Deliberately not here yet
 
-`e10.1` retired the queue as the home view; `e10.3` deletes it. The risk number in the rail and in the
-card is still the spine-only ranking, and its published ceiling is
+`e10.1` retired the queue as the home view and `e10.3` deleted the pane. The risk number in the rail and
+in the card is still the spine-only ranking, and its published ceiling is
 [risk-ranking.md](risk-ranking.md) §12 — which since `e10.1` is the record of a **retired** ordering and
 no longer describes what the product ranks by. `e10.4` took the `human`/`agent` badge out of this view's
 row, out of the card's header and out of the `F` editor, and spent the six freed cells on the ladder's
@@ -498,8 +499,9 @@ from the store's dead-episode markers rather than handed in per row (`e1.3`'s le
 verification of the glyph set (`e5.6`).
 
 `e10.2` left its own list behind, and these are the parts of it that are *decisions* rather than unfinished
-work: the queue's pane is still on screen and still owns `s`, `J`/`K`, its run mode and its flip until
-`e10.3` deletes it, so until then a disposition reads the same marker in two places; the rail's act listing
+work: the queue's pane was still on screen when `e10.2` wrote this, and still owned `s`, `J`/`K`, its run
+mode and its flip until `e10.3` deleted it — so a disposition now reads its marker in one place, and the
+rail's act listing
 is a **read** of the ledger and nothing else — retracting, reclassifying and bulk-applying stay the verbs'
 (`fathom review retract`, `fathom review apply --all`, `fathom review verify`), because a rail that could
 edit an act would be a second place a decision could change and the ledger is one place on purpose; and the

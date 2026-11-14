@@ -246,7 +246,7 @@ fn an_unindexed_repository_gets_a_stated_empty_state() {
     // No `fathom index`: the store does not exist, so there is no provider answer to show.
     let frame = stdout(&fathom_in(&dir, &["--plain"]));
     assert!(
-        frame.contains("Queue ·") || frame.contains("queue"),
+        frame.contains("Timeline ·") || frame.contains("timeline"),
         "with no session and no index the shell opens home:\n{frame}"
     );
 }

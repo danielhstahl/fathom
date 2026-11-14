@@ -123,7 +123,7 @@ pub fn load(root: &Path, facts: &Facts) -> Option<Batch> {
         complexity,
     } = raw;
     let held = u64::try_from(rows.len()).unwrap_or(u64::MAX);
-    let mut episodes: Vec<Episode> = rows
+    let episodes: Vec<Episode> = rows
         .into_iter()
         .map(|row| {
             let state = states.get(&row.id).copied().unwrap_or_default();
@@ -133,7 +133,6 @@ pub fn load(root: &Path, facts: &Facts) -> Option<Batch> {
             into_episode(row, state, touched, stats, files.truncated, roll)
         })
         .collect();
-    rank_page(&mut episodes);
     Some(Batch {
         origin: facts.origin(),
         episodes,
@@ -243,57 +242,17 @@ fn into_episode(
         n_add: scale(row.n_add),
         n_del: scale(row.n_del),
         n_binary: scale(row.n_binary),
-        // The queue's third factor, and the honest answer this build has: nothing has measured what
-        // depends on this change. `e3.1`/`e3.2` own the module graph; until it exists the composition root
-        // says so rather than guessing from path prefixes, and the queue's strip prints the gap
-        // (`e4.5`, `reco-wsj`).
-        blast: fathom_analyze::insight::BlastInput::Unmeasured,
         state: ReviewState::parse(state.as_str()),
         session: row.session_id,
         turn: row.turn_id,
         boundary_rule: (!delta.episode.boundary_rule.is_empty())
             .then(|| delta.episode.boundary_rule.clone()),
         boundary_confidence: delta.episode.boundary_confidence,
-        // The ranking lives inside the delta. Ranks 1..=N are filled by [`rank_page`] once every row of
-        // the page exists; a score is meaningless among its peers until there are peers to compare it with.
+        // The ranking lives inside the delta, and it carries no place in a set: `risk.rank`/`risk.ranked`
+        // went with the ranked pane in `e10.3`, so the page stamps nothing and the score stands as a
+        // figure per row, which is the only claim the shell is allowed to make (ADR-006 §5.1.2 §5).
         delta: Some(delta),
         live: row.live,
-    }
-}
-
-/// Give every row of the page its place in the page: `risk.rank` / `risk.ranked`.
-///
-/// The order is the queue's order and is stated here rather than trusted from the shell because the
-/// number printed in a row has to agree with the position of that row in the list, and the two are
-/// computed in different crates. A row that is unranked (the file read never reached it) is not
-/// counted, so "rank 3 of 212" never has holes in it.
-#[cfg(all(feature = "tui", feature = "sqlite-bundled"))]
-fn rank_page(episodes: &mut [Episode]) {
-    let mut places: Vec<usize> = episodes
-        .iter()
-        .enumerate()
-        .filter(|(_, episode)| episode.risk().is_some())
-        .map(|(index, _)| index)
-        .collect();
-    let score = |episode: &Episode| episode.risk().map_or(0, |risk| risk.score);
-    places.sort_by(|a, b| {
-        let (left, right) = (&episodes[*a], &episodes[*b]);
-        score(right)
-            .cmp(&score(left))
-            .then_with(|| right.size().cmp(&left.size()))
-            .then_with(|| right.created.cmp(&left.created))
-            .then_with(|| left.id.cmp(&right.id))
-    });
-    let ranked = places.len();
-    for (place, index) in places.into_iter().enumerate() {
-        if let Some(risk) = episodes[index]
-            .delta
-            .as_mut()
-            .and_then(|delta| delta.risk.as_mut())
-        {
-            risk.rank = i64::try_from(place + 1).ok();
-            risk.ranked = Some(i64::try_from(ranked).unwrap_or(i64::MAX));
-        }
     }
 }
 

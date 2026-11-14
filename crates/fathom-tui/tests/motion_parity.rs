@@ -64,7 +64,7 @@ fn base() -> App {
     )
 }
 
-/// `n` episodes, newest first, so the rail and the queue both have `n` rows to move over.
+/// `n` episodes, newest first, so the rail has `n` rows to move over.
 fn episodes(n: usize) -> Vec<Episode> {
     (0..n)
         .map(|i| {
@@ -113,7 +113,6 @@ fn with_rows(mut app: App, view: ViewId, pane: &str) -> App {
 /// and the list pane focused.
 fn surfaces() -> Vec<(&'static str, App)> {
     vec![
-        ("queue (worklist)", with_episodes(base(), ViewId::Queue)),
         ("timeline (rail)", with_episodes(base(), ViewId::Timeline)),
         ("deps (file tree)", with_rows(base(), ViewId::Deps, "tree")),
         (

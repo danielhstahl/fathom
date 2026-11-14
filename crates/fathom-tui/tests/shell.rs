@@ -30,20 +30,27 @@ fn app(size: (u16, u16)) -> App {
     )
 }
 
-/// An app whose lists have rows in them, because motion needs something to move over. `rows` are
-/// fed in as plain strings — the shell only ever holds the index, never the row (ADR-006 §5.4).
-fn app_with_rows(size: (u16, u16), rows: usize) -> App {
+/// An app whose **rail** has episodes in it, because the rail's cursor is an episode and not a row of
+/// text (`e1.8`'s model), and the two are not the same selection. Motion over the rail is motion over
+/// these.
+fn app_with_rail(size: (u16, u16), rows: usize) -> App {
     let mut app = app(size);
-    let lines: Vec<String> = (0..rows)
-        .map(|i| format!("e{i:04x} 0:12 agent  +{i} −1   risk {}", 90 - i))
-        .collect();
-    for view in [ViewId::Queue, ViewId::Timeline] {
-        for pane in views::view(view).panes {
-            app.model
-                .rows
-                .insert((view, pane.name.to_owned()), lines.clone());
-        }
-    }
+    let base = 1_760_443_200_000_000_i64;
+    let batch = fathom_tui::timeline::Batch::new(
+        "fixture index",
+        (0..rows).map(|i| {
+            let created = fathom_core::time::Timestamp::from_unix_micros(base - i as i64 * 60_000_000);
+            let mut episode = fathom_tui::timeline::Episode::new(
+                format!("e{i:04x}"),
+                created,
+                format!("episode {i}"),
+            );
+            episode.last = created;
+            episode
+        })
+            .collect::<Vec<_>>(),
+    );
+    app.load_episodes(batch);
     app
 }
 
@@ -95,7 +102,7 @@ fn the_frame_survives_being_shrunk_and_grown_across_the_whole_ladder() {
     for size in sizes {
         app.resize(size.0, size.1);
         let lines = frame_lines(&app);
-        assert_frame(&lines, size, &format!("queue at {}×{}", size.0, size.1));
+        assert_frame(&lines, size, &format!("timeline at {}×{}", size.0, size.1));
     }
 }
 
@@ -130,7 +137,7 @@ fn a_plain_frame_is_the_same_frame_with_no_terminal_in_it() {
     assert!(
         lines
             .iter()
-            .any(|l| l.contains("queue") || l.contains("Queue")),
+            .any(|l| l.contains("Timeline") || l.contains("timeline")),
         "{lines:?}"
     );
 }
@@ -230,12 +237,12 @@ fn the_interaction_mode_follows_the_pane_that_has_focus() {
 
 #[test]
 fn switching_views_lands_on_pane_one_and_keeps_the_row_selected() {
-    let mut app = app_with_rows((100, 30), 20);
+    let mut app = app_with_rail((100, 30), 20);
     app.set_selection(7);
-    app.dispatch("view.timeline");
-    assert_eq!(app.view, ViewId::Timeline);
+    app.dispatch("view.diff");
+    assert_eq!(app.view, ViewId::Diff);
     assert_eq!(app.pane, 0, "a new view starts on pane 1 (§5.2)");
-    app.dispatch("view.queue");
+    app.dispatch("view.timeline");
     assert_eq!(
         app.selected_row(),
         7,
@@ -249,29 +256,29 @@ fn switching_views_lands_on_pane_one_and_keeps_the_row_selected() {
 fn a_pinned_tab_is_kept_and_the_switch_happens_beside_it() {
     let mut app = app((100, 30));
     assert_eq!(app.tabs.len(), 1);
-    assert_eq!(app.tabs[0].view, ViewId::Queue);
+    assert_eq!(app.tabs[0].view, ViewId::Timeline);
     assert!(
         !app.tabs[0].pinned,
         "the context you start in is the working one, not a pinned tab"
     );
     let bar = app.tab_bar();
     assert!(
-        bar.contains("1 ▣ Queue") && bar.contains("(T pins this view)"),
+        bar.contains("1 ▣ Timeline") && bar.contains("(T pins this view)"),
         "{bar}"
     );
     // A view switch with nothing pinned replaces the working context: one tab, new view.
-    app.dispatch("view.timeline");
+    app.dispatch("view.diff");
     assert_eq!(app.tabs.len(), 1);
-    assert_eq!(app.tabs[0].view, ViewId::Timeline);
+    assert_eq!(app.tabs[0].view, ViewId::Diff);
     // `T` pins it, and the hint becomes a statement.
     app.dispatch("tab.pin");
     assert!(app.tabs[0].pinned);
     assert!(app.tab_bar().contains("(pinned)"), "{}", app.tab_bar());
     // Now a switch has to open a context beside it — which is how §5's three tabs exist.
-    app.dispatch("view.queue");
+    app.dispatch("view.timeline");
     assert_eq!(app.tabs.len(), 2, "a pinned tab is never overwritten");
-    assert_eq!(app.tabs[0].view, ViewId::Timeline);
-    assert_eq!(app.view, ViewId::Queue);
+    assert_eq!(app.tabs[0].view, ViewId::Diff);
+    assert_eq!(app.view, ViewId::Timeline);
     assert_eq!(app.active_tab, 1);
 }
 
@@ -279,11 +286,11 @@ fn a_pinned_tab_is_kept_and_the_switch_happens_beside_it() {
 fn cycling_tabs_moves_the_live_context_and_closing_respects_the_pin() {
     let mut app = app((100, 30));
     app.dispatch("tab.pin");
-    app.dispatch("view.timeline");
+    app.dispatch("view.diff");
     app.dispatch("tab.pin");
     assert_eq!(app.tabs.len(), 2);
     app.dispatch("tab.next");
-    assert_eq!(app.view, ViewId::Queue, "`J` cycles to the other tab");
+    assert_eq!(app.view, ViewId::Timeline, "`J` cycles to the other tab");
     app.dispatch("tab.close");
     assert_eq!(app.tabs.len(), 2, "a pinned tab is not closed by `<C-w>c`");
     assert!(
@@ -295,7 +302,11 @@ fn cycling_tabs_moves_the_live_context_and_closing_respects_the_pin() {
     assert!(!app.tabs[app.active_tab].pinned);
     app.dispatch("tab.close");
     assert_eq!(app.tabs.len(), 1);
-    assert_eq!(app.view, ViewId::Timeline);
+    assert_eq!(
+        app.view,
+        ViewId::Diff,
+        "closing the tab you were on lands you on the one that stayed — the home view is not privileged here"
+    );
     // The one remaining tab is pinned, so it is refused on that ground; unpin it and it is refused
     // because it is the last one standing.
     app.dispatch("tab.close");
@@ -360,7 +371,7 @@ fn drill_in_pushes_focus_into_the_next_pane_and_esc_pops_it_back() {
     assert_eq!(app.pane, 0, "<Esc> pops back to the list");
     app.dispatch("drill.out");
     assert!(
-        app.view == ViewId::Queue,
+        app.view == ViewId::Timeline,
         "popping out of the last level stays in the view, it does not quit"
     );
     assert!(app.quit.is_none(), "nothing about <Esc> quits Fathom");
@@ -378,11 +389,11 @@ fn history_back_walks_the_places_the_reviewer_has_been() {
         "<C-o> returns to the previous place"
     );
     app.dispatch("history.back");
-    assert_eq!(app.view, ViewId::Queue);
+    assert_eq!(app.view, ViewId::Timeline);
     app.dispatch("history.back");
     assert_eq!(
         app.view,
-        ViewId::Queue,
+        ViewId::Timeline,
         "back past the beginning stays at the beginning and says so"
     );
     assert!(
@@ -417,12 +428,12 @@ fn the_help_overlay_draws_the_keymap_and_esc_leaves_the_view_as_it_was() {
         app.keymap
             .help_lines(100)
             .iter()
-            .any(|line| line.contains("view.queue")),
+            .any(|line| line.contains("view.timeline")),
         "the table underneath has every action"
     );
     app.dispatch("overlay.close");
     assert_eq!(app.overlay, None);
-    assert_eq!(app.view, ViewId::Queue);
+    assert_eq!(app.view, ViewId::Timeline);
 }
 
 #[test]
@@ -693,7 +704,7 @@ fn key(ch: char) -> crossterm::event::KeyEvent {
 
 #[test]
 fn the_loop_applies_every_key_in_order_before_drawing() {
-    let mut app = app_with_rows((100, 30), 20);
+    let mut app = app_with_rail((100, 30), 20);
     let bus = fathom_tui::event::Bus::new();
     for ch in "jjjj".chars() {
         bus.send(fathom_tui::event::Message::Key(key(ch)));
@@ -703,7 +714,16 @@ fn the_loop_applies_every_key_in_order_before_drawing() {
         size: None,
     };
     run_loop(&mut app, &bus, &mut sink, None, Some(1)).expect("loop");
-    assert_eq!(app.selected_row(), 4, "four `j` presses, applied in order");
+    // Four presses, four rows down. The rail's slots count a day header, so the assertion is made on the
+    // episode that ended up selected rather than on a slot number the grouping owns (`e1.8`).
+    assert_eq!(
+        app.timeline
+            .selected()
+            .map(|episode| episode.id.clone())
+            .as_deref(),
+        Some("e0004"),
+        "four `j` presses, applied in order"
+    );
 }
 
 #[test]

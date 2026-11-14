@@ -14,11 +14,10 @@ const NOW: Timestamp = Timestamp::from_unix_micros(1_760_443_200_000_000);
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let view = match args.first().map(String::as_str) {
-        Some("timeline") => ViewId::Timeline,
         Some("diff") => ViewId::Diff,
         Some("ambient") => ViewId::Ambient,
         Some("search") => ViewId::Search,
-        _ => ViewId::Queue,
+        _ => ViewId::Timeline,
     };
     let cols: u16 = args.get(1).and_then(|v| v.parse().ok()).unwrap_or(80);
     let rows: u16 = args.get(2).and_then(|v| v.parse().ok()).unwrap_or(24);

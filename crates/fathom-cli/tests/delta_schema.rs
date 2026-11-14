@@ -59,7 +59,8 @@ fn corpus() -> Vec<(&'static str, EpisodeDelta)> {
         ),
     ));
 
-    // A real ranking: components, vector, surfaces, blind spots, and a rank within a set.
+    // A real ranking: components, vector, surfaces and blind spots. No place in a set — `rank`/
+    // `ranked` left the document with the ranked pane in `e10.3`.
     // An array, not a `Vec`: it is borrowed and iterated, never grown, and the row count is the fixture.
     let files = [
         ("src/store/epoch.rs", 412, 90, false, "source", "none"),
@@ -95,7 +96,7 @@ fn corpus() -> Vec<(&'static str, EpisodeDelta)> {
         EpisodeDelta::sparse(
             "e-cccc3333",
             "make the store epoch-safe",
-            Some(RiskView::of(&ranking, Some(1), Some(3))),
+            Some(RiskView::of(&ranking)),
         ),
     ));
 
@@ -130,7 +131,7 @@ fn corpus() -> Vec<(&'static str, EpisodeDelta)> {
             },
         )
         .collect();
-    input.risk = Some(RiskView::of(&ranking, Some(2), Some(9)));
+    input.risk = Some(RiskView::of(&ranking));
     corpus.push(("measured", insight::compose(&input)));
 
     // A capped read: the rows seen are fewer than the episode counted, and `reconciles` has to say
@@ -608,7 +609,10 @@ fn the_analyze_verb_prints_one_schema_valid_document() {
     // printed — one model, three surfaces, no second computation.
     let rendered = stdout(&run(&["analyze", "HEAD", "--root", root]));
     assert!(rendered.contains("what"), "{rendered}");
-    assert!(rendered.contains("fathom-delta/1"), "{rendered}");
+    assert!(
+        rendered.contains(fathom_analyze::insight::CONTRACT),
+        "the text render signs the contract the model writes ({rendered})"
+    );
 
     // The complexity figure rides in the `what` section beside the line counts it qualifies (`e8.5`,
     // `reco-l9bz.5`). This is the assertion the whole ticket is about at the process boundary: the card,

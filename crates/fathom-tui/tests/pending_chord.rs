@@ -275,17 +275,17 @@ fn a_hint_line_the_reviewer_turned_off_still_marks_the_wait() {
 #[test]
 fn the_mark_reads_the_merged_table_and_not_a_copy_of_it() {
     let km = Keymap::defaults();
-    let queue = chain(ViewId::Queue);
+    let rail = chain(ViewId::Timeline);
     assert_eq!(
-        km.extensions(&queue, "g"),
+        km.extensions(&rail, "g"),
         vec![("gg".to_owned(), "First row".to_owned())],
         "the shipped table holds exactly one extension of `g`"
     );
     assert_eq!(
-        km.pending_hint(&queue, "g"),
+        km.pending_hint(&rail, "g"),
         "`g` … waiting · `g` alone = Graph in 250 ms · `gg` = First row"
     );
-    assert_eq!(km.pending_hint(&queue, ""), "");
+    assert_eq!(km.pending_hint(&rail, ""), "");
     // The ADR's claim, measured: `g`/`gg` is the one pair the published table ships, per view.
     // A character-wise prefix test would add `<`, because the table spells its named keys `<…>`.
     assert_eq!(
@@ -351,10 +351,10 @@ fn unbinding_the_extension_takes_the_wait_away_with_it() {
         action: None,
         source: None,
     }]);
-    let queue = chain(ViewId::Queue);
-    assert!(!km.has_extension(&queue, "g"));
+    let rail = chain(ViewId::Timeline);
+    assert!(!km.has_extension(&rail, "g"));
     let mut state = ChordState::new();
-    let steps = state.feed(&km, &queue, "g");
+    let steps = state.feed(&km, &rail, "g");
     assert_eq!(
         steps.len(),
         1,

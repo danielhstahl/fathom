@@ -57,7 +57,7 @@ a second terminal that is always slightly shouting gets closed within a week, an
 about the thing it was there for.
 
 The other way is `fathom watch & fathom` in that pane and `a` inside the shell — the same view, one of the
-shell's, with the queue and timeline a keystroke away instead of a process away. Use it when the second
+shell's, with the rail, the card and the diff a keystroke away instead of a process away. Use it when the second
 terminal is a Fathom you also work in; use `fathom ambient` when it is a glance and nothing else.
 
 Two numbers you can check rather than believe:
@@ -72,7 +72,7 @@ property. The second is the contract a statusline script reads (`fathom.cli.ambi
 
 ## 3 · Make the interruptions mean something
 
-Ambient's `look now` line and the queue's ordering both come from
+Ambient's `look now` line and the rail's risk figures both come from
 [findings](../detectors/index.md) and the [risk score](../concepts/risk-score.md), and both get sharper when
 Fathom knows *why* a change was asked for. With a harness wired up, an episode carries a recorded intent, and
 you get three more things: the narrative's "Why it was asked for" section stops saying
@@ -96,7 +96,7 @@ Two habits make this setup pay for itself:
 
 ## What this is not
 
-Ambient is a tripwire, not a worklist: when it says look now, the work happens in the queue
+Ambient is a tripwire, not a worklist: when it says look now, the work happens on the rail
 ([review a session](review-a-session.md)). And nothing here makes Fathom part of the agent — it never runs,
 stops or steers the harness ([the thesis](../concepts/thesis.md) §2 is emphatic about that boundary). It watches,
 it reports, and it stays out of the way, which is exactly why it gets to be open all day.

@@ -1426,7 +1426,7 @@ fn other_panes(shell: &mut App) -> Vec<(String, Vec<String>)> {
 /// in are byte-identical before and after.
 #[test]
 fn w_changes_a_band_and_no_other_pane() {
-    for view in [ViewId::Queue, ViewId::Timeline] {
+    for view in [ViewId::Timeline, ViewId::Artefact] {
         let mut shell = app(DESKTOP, with_delta(mock()));
         shell.set_view(view);
         let before = other_panes(&mut shell);

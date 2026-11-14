@@ -809,11 +809,6 @@ fn pane_body(app: &App, pane: &Pane, width: usize, rows: usize) -> Vec<StyledLin
     if let Some(lines) = app.graph_body(pane, width, rows) {
         return lines;
     }
-    // The queue's worklist is a window over a list the shell holds, with its own cursor and its own
-    // two-row-per-episode rhythm, so it draws itself like the rail does (`reco-c05`).
-    if app.view == ViewId::Queue && !app.timeline.is_empty() {
-        return app.queue_body(pane, width, rows);
-    }
     let offset = if pane.role == Role::Primary {
         0
     } else {
@@ -941,14 +936,6 @@ pub fn pane_text(app: &App, pane: &Pane) -> Vec<String> {
     }
     if let Some(lines) = app.graph_text(pane) {
         return lines
-            .into_iter()
-            .map(|line| line.trim_end().to_owned())
-            .collect();
-    }
-    if app.view == ViewId::Queue && !app.timeline.is_empty() {
-        return app
-            .queue_text(pane)
-            .unwrap_or_default()
             .into_iter()
             .map(|line| line.trim_end().to_owned())
             .collect();

@@ -1,20 +1,24 @@
-"""Which three episodes are the riskiest — asked of the shipped TUI, on the acceptance fixture.
+"""What the risk figure still owes a reviewer — asked of the shipped TUI, on the acceptance fixture.
 
 `e1.12`'s walkthrough (`reco-glv`) failed on its step (b): a reviewer opening the shipped build on
 the 500-commit agent fixture could not answer "which three episodes are the riskiest, and why that
 one". The rail's risk column printed `?`, the queue had no ranked rows, and `w` — the key the ADR's
 own mock prints beside a risk number — said nothing. This file asks the question of the built binary
 over a real pty, on the same 500-commit fixture the walkthrough used, and asserts the answer is on
-the screen:
+the screen. What "the answer" is moved in `e10.3` (`reco-ydek.3`, ADR-006 §5.1.2), so this file moved
+with it:
 
-* the queue is a **ranked** list — rank column, descending scores, the ranking named in the strip;
-* the top of it is **operator-action work**, which is the distinction the ranking exists to make;
+* the rail is a **chronology that scores every row** — no rank column, no named ordering function,
+  and a strip that says which order the renderer actually implements;
+* the figure on each row is a figure and not a `?`, and its arithmetic is one keystroke away: `w`
+  prints the vector, the ceilings each part was spent under, and what the model cannot see;
 * the two changes the fixture plants as the ones that must not be missed — the migration that drops a
-  column with no rollback file, and the CI workflow that publishes with the live key — are **inside
-  the first screen**, each with a reason that cites the file;
-* `w` prints the arithmetic and the ceiling: the vector, and what a spine cannot see.
+  column with no rollback file, and the CI workflow that publishes with the live key — still score as
+  the operator work they are, and still name the file that put them there. They used to be proved by
+  *position* at the top of a worklist; position was the queue's claim, and the queue is deleted. The
+  per-episode claim is what survived, and `fathom why` is where the product prints it.
 
-A Python file cannot compute any of that — the ranking is Rust — so, like
+A Python file cannot compute any of that — the scoring is Rust — so, like
 `test_diff_open_contract.py`, this drives the product and reads its screen. A check that cannot find
 a binary is not evidence about one, so the file skips when `fathom` is not built.
 
@@ -41,9 +45,9 @@ sys.path.insert(0, str(ROOT / "tools"))
 
 import tui_session as T  # noqa: E402
 
-# Wide and tall on purpose: the worklist draws two rows per episode, and the assertions below count
-# rows by their place in the pane. At this size the first thirty episodes are on one screen, which is
-# the reach a reviewer gets without scrolling.
+# Wide and tall on purpose: the rail draws one row per episode, and the assertions below count rows by
+# their place in the pane. At this size the first fifty episodes are on one screen, which is the reach
+# a reviewer gets without scrolling.
 COLS, ROWS = 170, 62
 
 # The screen model is deliberately bigger than the terminal. A pty's size is a race — the shell may
@@ -52,16 +56,14 @@ COLS, ROWS = 170, 62
 # assertion below is about cells the frame itself wrote.
 SCREEN_COLS, SCREEN_ROWS = 220, 74
 
-# The surfaces whose touching is an operator action — the ones the ranking puts in front of a
-# four-hundred-line documentation edit, and the ones a reviewer has to be able to act on.
-OPERATOR = {"migration", "ci", "infra", "container", "dependency", "schema", "env"}
-
-# A row is `▸  1 ep-c49 agent +2 123 −0 risk 82 migration+ci+container`; the change size is two
-# tokens, three when the thousands separator is a space, and the pane's border is part of the line, so
-# this searches rather than anchors.
+# A rail row is `▸ ep-a9e 21mo +10 −0 ●●○○○○ ? 61 ⚑`: id, age, the two line counts, the risk gauge,
+# then the complexity delta — absent when the episode has none, `?` or signed when the index has a
+# figure — and then the risk score, which is the last number on the row. The optional group is what a
+# row with no complexity figure has to give back on backtrack: a row whose risk is missing must fail to
+# match rather than borrow the complexity number for it.
 ROW = re.compile(
-    r"[▸ ]\s*(?P<rank>\d+)\s+(?P<id>ep-\S+)\s+(?P<author>\S+)\s+.+?risk\s+(?P<risk>\d+)"
-    r"(?:\s+(?P<badge>[\w+]+))?"
+    r"[▸ ]\s*(?P<id>ep-[0-9a-f]{3,})\s+(?P<age>\S+)\s.*?(?P<gauge>[●○]{4,})\s+"
+    r"(?:(?P<complexity>[+−±]?\d+|\?)\s+)?(?P<risk>\d+|\?)(?:\s|$)"
 )
 
 # Two different waits, because there are two different things to wait for.
@@ -75,17 +77,10 @@ ROW = re.compile(
 #
 # `SETTLE_S` bounds the wait for the frame that answers a keystroke. The store budgets say a frame is
 # single-digit milliseconds, so a *change* returns early; the window is there for the keystroke that
-# legitimately draws nothing (a `q` on a queue that is already the home view), which has to be
+# legitimately draws nothing (a `t` when the rail is already the home view), which has to be
 # distinguished from a key that was swallowed.
 FIRST_FRAME_S = 20.0
 SETTLE_S = 2.0
-
-# The queue's strip line, as `fathom_analyze::queue::order::QueueOrdering::strip` writes it: the
-# ordering named by the model that produced it, how many rows it covers, and — only when there are
-# any — how many of the open rows it could not score. Grouped so a test can check the arithmetic
-# rather than pattern-match one fixture's numbers.
-QUEUE_STRIP = (r"order: queue-1 = risk × staleness × blast · (\d+) of (\d+) open"
-               r"(?: · (\d+) unranked)?")
 
 
 def _binary() -> Path:
@@ -216,8 +211,10 @@ def indexed(tmp_path_factory) -> tuple[Path, Path, dict]:
     return binary, repo, manifest
 
 
+# --- criterion (b), asked of the binary ------------------------------------------------------------
+
 def _rows(screen: str) -> list[dict]:
-    """The worklist's rows, in the order the pane drew them, rank first."""
+    """The rail's rows, in the order the pane drew them — which is the order they happened."""
     rows = []
     for line in screen.splitlines():
         match = ROW.search(line)
@@ -226,115 +223,137 @@ def _rows(screen: str) -> list[dict]:
     return rows
 
 
-# --- criterion (b), asked of the binary ------------------------------------------------------------
+def _episode_id(binary: Path, repo: Path, subject: str) -> str:
+    """The episode address for a fixture subject, read out of `fathom episodes --json`.
 
-def test_the_queue_is_a_ranked_worklist(indexed):
+    The headless list is the rail's own rows, so this is the same lookup a reviewer does by eye; it
+    exists here only because a pty cannot be asked to scroll to a subject by name.
+    """
+    out = subprocess.run([str(binary), "episodes", "--json"], cwd=repo,
+                         capture_output=True, text=True)
+    assert out.returncode == 0, out.stderr
+    for episode in json.loads(out.stdout)["episodes"]:
+        if episode["summary"] == subject:
+            return episode["id"]
+    raise AssertionError(f"the fixture no longer writes an episode named {subject!r}")
+
+
+def _score(binary: Path, repo: Path, episode: str) -> int:
+    """The score `fathom why` prints for one episode, as a number the tests can compare."""
+    out = subprocess.run([str(binary), "why", episode, "--json"], cwd=repo,
+                         capture_output=True, text=True)
+    assert out.returncode == 0, out.stderr
+    return int(json.loads(out.stdout)["score"])
+
+
+def test_the_rail_is_a_chronology_that_scores_every_row(indexed):
+    """The scored half of `reco-glv` (b), on the one list that is left.
+
+    The reviewer answers *which three are riskiest* by reading a column of numbers, each of which
+    names a file, and the strip names the order the rows are in because the renderer implements one
+    (ADR-006 §5.1.2 §3). The negative half is the deletion itself: no rank column and no ordering
+    function on screen, because a place in a set nothing ranked is not a fact (§5.1.2 §5).
+    """
     binary, repo, _ = indexed
-    screen = _run(binary, repo, ["q", "<C-c>"])[0]
+    screen = _run(binary, repo, ["t", "<C-c>"])[0]
     rows = _rows(screen)
-    assert len(rows) >= 20, f"the queue drew {len(rows)} ranked rows:\n{screen}"
-    scores = [int(row["risk"]) for row in rows]
-    assert scores == sorted(scores, reverse=True), f"the queue is not in descending risk order: {scores}"
-    assert [int(row["rank"]) for row in rows][:20] == list(range(1, 21)), \
-        "the rank column has to be the list a reviewer can count on"
-    assert "spine-1" in screen, f"the strip does not name the ranking:\n{screen}"
-    assert "cannot see" in screen, f"the strip does not state a ceiling:\n{screen}"
-    assert "—" in screen and ("—" in screen and ".py" in screen or "/" in screen), \
-        f"no row's reason cites a file:\n{screen}"
+    assert len(rows) >= 20, f"the rail drew {len(rows)} rows over 500 commits:\n{screen}"
+    unscored = [row["id"] for row in rows if row["risk"] in (None, "", "?")]
+    assert not unscored, f"these rows printed no risk figure: {unscored}\n{screen}"
+    assert "order: newest first" in screen, f"the strip does not name the order:\n{screen}"
+    # The row prints a number and somewhere on the frame says which model produced it (ADR-006 §5.1.2
+    # §3 part 4). The strip's own copy of that phrase is the first thing a 170-column frame truncates,
+    # so the claim asserted here is "the frame names the model", read from the strip or from the card.
+    assert re.search(r"(spine|features)-\w", screen), \
+        f"nothing on screen says where the row's number came from:\n{screen}"
+    assert re.search(r"\d[\d ]* unread", screen), f"the strip does not count the open work:\n{screen}"
+    assert "queue-1" not in screen and "rank " not in screen, \
+        f"a retired ranking is still being printed:\n{screen}"
+    assert "cannot see" in screen, f"nothing on screen states the model\'s ceiling:\n{screen}"
 
 
-def test_the_three_riskiest_are_operator_action_work(indexed):
-    binary, repo, _ = indexed
-    screen = _run(binary, repo, ["q", "<C-c>"])[0]
-    rows = _rows(screen)
-    assert len(rows) >= 3, screen
-    for row in rows[:3]:
-        badge = (row["badge"] or "").strip().split("+")[0].strip()
-        assert badge in OPERATOR, (
-            f"rank {row['rank']} is a {badge!r} change; the top of the queue belongs to the kinds of "
-            f"file a reviewer has to act on:\n{screen}"
-        )
+def test_the_two_changes_that_must_not_be_missed_are_scored_for_what_they_are(indexed):
+    """The planted pair, asked of the verb now that no pane sorts by the answer.
 
-
-def test_the_two_changes_that_must_not_be_missed_are_on_the_first_screen(indexed):
+    They used to be proved by their position in a worklist. Position was the queue\'s claim and
+    `e10.3` deleted the queue; what the fixture was really testing is that the model *sees* these two
+    — that the workflow publishing with the live key and the migration dropping a column with no
+    rollback file each score on the surface they touch, name the file that put them there, and score
+    above the documentation trim a reviewer would happily skip. That is a per-episode claim, and
+    `fathom why` is where the product prints it (docs/recipes/review-a-session.md §2).
+    """
     binary, repo, manifest = indexed
-    screen = _run(binary, repo, ["q", "<C-c>"])[0]
-    rows = _rows(screen)
-    wanted = {
-        "destructive-migration": "0038_drop_email_backup.sql",
-        "ci-secret-and-permission-escalation": "release.yml",
+    needles = {
+        "destructive-migration": ("0038_drop_email_backup.sql", "migration"),
+        "ci-secret-and-permission-escalation": ("release.yml", "workflow"),
     }
-    planted = {item["risk"]: item["subject"] for item in manifest["planted_risky_episodes"]}
-    lines = screen.splitlines()
-    for risk, needle in wanted.items():
+    planted = {item["risk"]: item for item in manifest["planted_risky_episodes"]}
+    doc_id = _episode_id(binary, repo, "docs: trim the reporting query to the last 90 days")
+    doc_score = _score(binary, repo, doc_id)
+    for risk, (needle, word) in needles.items():
         assert risk in planted, f"the fixture no longer plants {risk}: {planted}"
-        # The row and the reason line under it: the reason is where the file has to appear.
-        hits = [index for index, line in enumerate(lines) if needle in line]
-        assert hits, f"{planted[risk]} is not on the first screen at all:\n{screen}"
-        assert hits[0] < 60, f"{risk} is at screen line {hits[0]}, not near the top:\n{screen}"
-    # And the reason that put each one there quotes the file, not the score.
-    for line in lines:
-        if "release.yml" in line:
-            assert "workflow" in line or "permissions" in line, line
-        if "0038_drop_email_backup.sql" in line:
-            assert "migration" in line, line
+        episode = _episode_id(binary, repo, planted[risk]["subject"])
+        out = subprocess.run([str(binary), "--plain", "why", episode], cwd=repo,
+                             capture_output=True, text=True)
+        assert out.returncode == 0, out.stderr
+        assert needle in out.stdout, f"{risk}\'s score does not cite {needle}:\n{out.stdout}"
+        assert word in out.stdout.lower(), \
+            f"{risk} is not explained as the operator work it is:\n{out.stdout}"
+        score = _score(binary, repo, episode)
+        assert score > doc_score, (
+            f"{risk} scores {score} and a documentation trim scores {doc_score}: the figure on the row "
+            f"no longer says which of the two a reviewer has to read")
 
 
 def test_w_prints_the_arithmetic_and_the_ceiling(indexed):
     binary, repo, _ = indexed
-    before, after = _run(binary, repo, ["q", "w", "<C-c>"])[:2]
+    before, after = _run(binary, repo, ["w", "<C-c>"])[:2]
     assert before != after, "`w` changed nothing on screen"
-    # The card now answers for the selected episode: the model, the score, the rank, and the sum.
-    vector = re.search(r"spine-1 (\d+) = ([a-z]+) (\d+)(?: · rank (\d+) of (\d+))?", after)
+    # The card answers for the selected episode: the model, the score, and the sum it is a part of.
+    vector = re.search(r"(spine|features)-\w+ (\d+) = ([a-z]+) (\d+)", after)
     assert vector, f"`w` did not print the feature vector:\n{after}"
-    assert int(vector.group(1)) > 0 and int(vector.group(3)) > 0, after
+    assert int(vector.group(2)) > 0 and int(vector.group(4)) > 0, after
     # Every component the model spends is printed with the ceiling it is spent out of, and the
     # components are the documented set — nothing else can appear.
-    spent = re.findall(r"([a-z]+) \d+/\d+", after)
+    spent = re.findall(r"([a-z_]+) \d+/\d+", after)
     assert spent, f"no component shows its ceiling:\n{after}"
-    assert set(spent) <= {"surfaces", "size", "deletions", "breadth", "author"}, spent
+    assert set(spent) <= {"surface", "surfaces", "size", "deletions", "breadth", "author",
+                          "authorship", "attribution", "migration", "dependency", "noise",
+                          "findings", "test_ratio", "blast", "complexity"}, spent
     # What the model cannot see is printed, not implied.
     assert "cannot see" in after, f"the blind spots are missing:\n{after}"
-    assert "rolled back" in after, f"the first blind spot is not printed:\n{after}"
-    # And the queue still says what the ranking covers, on the same screen. The strip is `e4.5`'s,
-    # not `e1.12`'s: `queue-1` owns the order now, so the strip names *it* and the open count, and
-    # `spine-1` — the score that is the ordering's first factor — is printed above, by `w`.
-    assert re.search(QUEUE_STRIP, after), f"no honest strip line:\n{after}"
+    assert "rolled back" in after or "blind" in after, \
+        f"the first blind spot is not printed:\n{after}"
 
 
-def test_an_unranked_episode_is_answered_rather_than_fobbed_off(indexed):
-    """A missing ranking is never silent and never a zero — asked of the shipped build.
+def test_an_unscored_episode_is_answered_rather_than_fobbed_off(indexed):
+    """A missing figure is never silent and never a zero — asked of the shipped build.
 
-    The name is kept because `.plan/beta-gate-reco-69u.md` cites it. What it asserts moved: under
-    `e1.12` only the spine was scored, so this fixture's fifteen zero-file episodes reached the
-    queue with no score and the tail of the list was a column of `?`. `e4.5` scored every row through
-    `queue-1`, so "nothing ranked this" is now a *count the strip states* (`· N unranked`) rather than
-    a shape at the bottom of the pane, and this fixture has no unranked rows left to find. The
-    contract is the same in both shapes, so it is asserted in whichever shape the fixture is in; the
-    absent-score rendering itself belongs to `fathom-tui/tests/risk_rank.rs`,
-    ::an_unranked_index_still_draws_a_queue_and_says_what_is_missing, which builds the empty case.
+    The name is kept because `.plan/beta-gate-reco-69u.md` cites it. What it asserted moved twice.
+    Under `e1.12` only the spine was scored, so this fixture\'s zero-file episodes reached the queue
+    with no score and the tail of the list was a column of `?`; `e4.5` scored every row through
+    `queue-1`, so "nothing ranked this" became a count the strip stated (`· N unranked`); and `e10.3`
+    deleted the ranking, the rank column and that strip line with it. What did not move is the rule
+    the shapes were all guarding: an absent score is printed as absent, never as a `0` standing in for
+    "nobody looked". The empty-index case — a store with nothing to score at all — belongs to
+    `fathom-tui/tests/risk_rank.rs`, ::an_unranked_index_still_draws_a_queue_and_says_what_is_missing,
+    which builds it; this is the walk to the bottom of a real chronology instead.
     """
     binary, repo, _ = indexed
-    screen = _run(binary, repo, ["q", "G", "<C-c>"])[1]
-    strip = re.search(QUEUE_STRIP, screen)
-    assert strip, f"the strip does not name its ranking and what it covers:\n{screen}"
-    ranked, held, unranked = int(strip[1]), int(strip[2]), int(strip[3] or 0)
-    assert ranked == held - unranked, f"the strip does not add up:\n{screen}"
-    # A row with nothing to print shows `?`, and a row that was ranked shows a number. The one shape
-    # that would lie is a zero standing in for an absent score, so it is forbidden either way.
-    assert "risk 0" not in screen, f"a missing ranking is printed as zero:\n{screen}"
-    if unranked:
-        assert "risk ?" in screen, \
-            f"{unranked} rows are unranked and none of them says so:\n{screen}"
-    else:
-        assert "risk ?" not in screen, \
-            f"the strip counts nothing unranked and a row disagrees:\n{screen}"
-    # The tail is the *bottom* of the ranking, not a hole in it: scores do not climb as the reviewer
-    # walks down the last screen, which is what "unranked sorts last" turned into once everything ranked.
-    scores = [int(row["risk"]) for row in _rows(screen)]
-    assert scores, f"no ranked row on the last screen:\n{screen}"
-    assert scores == sorted(scores, reverse=True), \
-        f"the bottom of the queue is not the bottom of the ranking: {scores}"
+    screen = _run(binary, repo, ["G", "<C-c>"])[0]
+    rows = _rows(screen)
+    assert rows, f"the last screen of the rail drew no rows:\n{screen}"
+    # The rule all three shapes of this test have guarded: an absent figure is printed as absent, never
+    # as a `0` — a zero is the sentence "this is the safest change in the repository", which is a claim
+    # about the episode rather than about the index. The rail prints `?` in the cell when nothing scored
+    # the row, so every row this screen drew either matched a figure or matched `?`, and a row that
+    # matched neither would be a row that printed nothing at all.
+    assert not [row["id"] for row in rows if row["risk"] in ("", None)], \
+        f"a row printed neither a figure nor `?`:\n{screen}"
+    # And the bottom of the rail is still a chronology: the pane is grouping by day, not by anything
+    # a score decided.
+    assert re.search(r"\w{3} \d+ \w+ ── \d+ episodes", screen), \
+        f"the last screen of the rail has no day rule in it:\n{screen}"
 
 
 def test_a_TUI_that_never_hands_over_the_terminal_is_reported_as_no_frame(tmp_path):
@@ -351,5 +370,5 @@ def test_a_TUI_that_never_hands_over_the_terminal_is_reported_as_no_frame(tmp_pa
     silent.chmod(0o755)
     began = time.monotonic()
     with pytest.raises(AssertionError, match="drew nothing at all"):
-        _run(silent, tmp_path, ["q", "<C-c>"], first_frame=1.0)
+        _run(silent, tmp_path, ["<C-c>"], first_frame=1.0)
     assert time.monotonic() - began < 10, "the silent binary was waited out instead of seen through"

@@ -4,7 +4,7 @@
 ambient is the newest episode, for a second terminal
 `q` picks an episode; `fathom watch` keeps this pane current
 the delta model is not in this build
-reads episode.identity · risk.score · review.state · queue counts
+reads episode.identity · risk.score · review.state · review.state counts
 … and 2 more (e2.11 names them all)
 pane `glance` · owned by e5.1 · ADR-006 §5
 
@@ -49,4 +49,4 @@ pane `glance` · owned by e5.1 · ADR-006 §5
 
 
 
-⏺ epoch 1 · 48 eps · queue 4 open · idx unknown
+⏺ epoch 1 · 48 eps · 4 unread · idx unknown

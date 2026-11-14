@@ -51,12 +51,11 @@ MODES: tuple[Mode, ...] = (
          "A single-key chooser is open (dismiss reason, snooze window, format). One "
          "keystroke chooses; there is no text entry.", exclusive=True),
     Mode("list", "interaction",
-         "A list pane has focus: queue worklist, episode rail, file tree, dependency "
+         "A list pane has focus: episode rail, file tree, dependency "
          "table, search results, treemap rows."),
     Mode("body", "interaction",
          "A content surface has focus: hunk view, episode card, graph canvas, "
          "artefact preview."),
-    Mode("queue", "view", "The attention queue is the live view."),
     Mode("timeline", "view", "The timeline (episode rail + card) is the live view."),
     Mode("diff", "view", "The diff view is the live view."),
     Mode("structure", "view", "The structure treemap view is the live view."),
@@ -73,7 +72,7 @@ MODES: tuple[Mode, ...] = (
 #: narrower mode always beats a broader one (ADR-006 §7.1).
 PRECEDENCE: tuple[str, ...] = (
     "prompt", "pick", "list", "body",
-    "queue", "timeline", "diff", "structure", "graph", "deps", "artefact", "ambient",
+    "timeline", "diff", "structure", "graph", "deps", "artefact", "ambient",
     "global",
 )
 
@@ -82,7 +81,7 @@ PRECEDENCE: tuple[str, ...] = (
 #: `p` inside the graph canvas and get the dependency view. `<Esc>` is deliberately not
 #: in this list: drill-out is bound per mode, and `prompt`/`pick` own it outright.
 GLOBAL_NEVER_SHADOWED: tuple[str, ...] = (
-    "q", "t", "d", "s", "g", "p", "a", "o", "/", ",", "?",
+    "t", "d", "s", "g", "p", "a", "o", "/", ",", "?",
 )
 
 #: Chords Fathom promises never to bind in v1, so a user may claim them through
@@ -114,6 +113,12 @@ RESERVED_FOR_USER: tuple[tuple[str, str, str], ...] = (
           "`intent` row is the one line, and `fathom show` prints the plan and the declared "
           "scope behind it. Free for a chord of your own; bringing it back into the default "
           "table is §7.6's route, not a quiet rebind.", "all modes"),
+    ("q", "the Queue view's letter. `e10.3` retired the view (ADR-006 §5.1.2 §1): the "
+          "timeline is home and `t` stays the home letter, because a key belongs to the view "
+          "it opens and not to the pane that happened to be deleted. The acts moved to the "
+          "rail and `r` came with them, so nothing this build needs is spelled `q`. Free for a "
+          "chord of your own; §11 carries the bar for binding it in the default table again.",
+     "all modes"),
 )
 
 #: A chord whose action this build **retired**: the letter is free (§8.2), the action is gone
@@ -125,6 +130,9 @@ RETIRED_ACTIONS: tuple[tuple[str, str, str], ...] = (
     ("i", "intent.show",
      "the intent pane is retired — the card's `intent` row is the one line, and `fathom show "
      "<episode>` prints the plan and the declared scope behind it"),
+    ("q", "view.queue",
+     "the Queue view is retired — the timeline (`t`) is home; accept, flag, dismiss and snooze "
+     "act on the rail's row and `r` lists the ledger's acts in the same pane"),
 )
 
 #: Chords that **cannot** be used as distinct bindings, with the measured reason. The
@@ -187,10 +195,9 @@ def _a(id_, title, scope, ticket, modes=("global",), palette=True, doc=""):
 
 ACTIONS: dict[str, Action] = {a.id: a for a in (
     # --- view switching: one letter each (the ticket's fixed list) -------------
-    _a("view.queue", "Go to: Queue", "view", "e4.5",
-       doc="The home view: the ranked attention worklist (ADR-001 §4.1)."),
     _a("view.timeline", "Go to: Timeline", "view", "e1.6",
-       doc="Chronological episode rail plus episode card."),
+       doc="Chronological episode rail plus episode card. The home view since `e10.3` "
+           "(ADR-006 §5.1.2 §1): `fathom tui` opens here, rail focused, no filter applied."),
     _a("view.diff", "Go to: Diff", "view", "e1.7",
        doc="File tree plus hunk view for the live scope."),
     _a("view.structure", "Go to: Structure", "view", "e2.3",
@@ -254,7 +261,10 @@ ACTIONS: dict[str, Action] = {a.id: a for a in (
        doc="Opens the closed dismiss-vocabulary chooser (`pick`)."),
     _a("review.snooze", "Snooze until a condition", "review", "e4.5",
        doc="Opens the snooze-window chooser (`pick`)."),
-    _a("risk.explain", "Why this rank: every reason and the whole ceiling", "review", "e4.4"),
+    _a("risk.explain", "Why this score: every reason and the whole ceiling", "review", "e4.4",
+       doc="The score, its components and its ceiling, in the shape `fathom why` prints. The "
+           "word is *score*, not *rank*: `e10.3` retired the ranked set that `rank N of M` was "
+           "a place in (ADR-006 §5.1.2 §5)."),
     _a("review.retrospect", "Rail: what you skipped, and why", "review", "e4.5",
        doc="Puts the timeline on screen with the rail listing *acts* instead of episodes: the "
            "dismissed-with-reason rollup, so systematic dismissing is a number on a screen. `r` "
@@ -355,7 +365,6 @@ PREFIX_C_W: tuple[str, ...] = ("h", "l", "n", "p", "o", "c", "1", "2", "3", "4",
 DEFAULTS: dict[str, dict[str, str]] = {
     # --- the root layer: reachable from everywhere except prompt/pick ---------
     "global": {
-        "q": "view.queue",
         "t": "view.timeline",
         "d": "view.diff",
         "s": "view.structure",
@@ -511,11 +520,9 @@ DEFAULTS: dict[str, dict[str, str]] = {
     },
     # Views whose whole job is a list plus a card add nothing of their own: the
     # shared motion set *is* the whole keymap, which is what "identical motion
-    # behaviour across timeline, queue, file tree and search results" (e5.4) demands.
+    # behaviour across timeline, file tree and search results" (e5.4) demands.
     # `queue` used to hold `r`; `e10.2` moved the rollup onto the rail and the key with it
-    # (ADR-006 §5.1.2 §4), and the mode is left standing empty rather than deleted so the view
-    # keeps its mode row until `e10.3` deletes the view.
-    "queue": {},
+    # (ADR-006 §5.1.2 §4), and `e10.3` deleted the view, the mode and the letter along with it.
     "timeline": {},
     "ambient": {},
 }
@@ -600,7 +607,7 @@ TASKS: tuple[Task, ...] = (
         ticket="e2.10",
         steps=(
             TaskStep("a", "view.ambient",
-                     "Glance mode: latest episode, its risk, queue count, index state.",
+                     "Glance mode: latest episode, its risk, the unread count, index state.",
                      "global"),
             TaskStep("<Enter>", "drill.in",
                      "Drill into that episode's card: one keypress, per ADR-001 §4.1.",
@@ -643,7 +650,7 @@ TASKS: tuple[Task, ...] = (
 
 #: The hint line (`e5.4`) may advertise only these, in this order.
 HINT_ACTIONS: tuple[str, ...] = (
-    "view.queue", "view.timeline", "view.diff", "search.open", "palette.open",
+    "view.timeline", "view.diff", "search.open", "palette.open",
     "review.accept", "risk.explain", "help.open",
 )
 
@@ -655,7 +662,7 @@ def mode_chain(view: str, interaction: str) -> tuple[str, ...]:
     """The live modes for (view, interaction), in precedence order.
 
     An exclusive mode (`prompt`, `pick`) replaces the whole chain: while a text field
-    has the keyboard, `q` is the letter q. This is what makes `queue` typeable in the
+    has the keyboard, `q` is the letter q. This is what makes `timeline` typeable in the
     palette and is the reason `prompt` sits at the head of :data:`PRECEDENCE`.
     """
     modes = {m.name: m for m in MODES}
@@ -735,7 +742,7 @@ def split_chords(text: str) -> list[str]:
     return out
 
 
-def press(sequence: str, view: str = "queue", interaction: str = "list") -> list[dict]:
+def press(sequence: str, view: str = "timeline", interaction: str = "list") -> list[dict]:
     """Resolve a published sequence against the real table.
 
     Returns one record per chord: the chord, the mode that answered, the action, and

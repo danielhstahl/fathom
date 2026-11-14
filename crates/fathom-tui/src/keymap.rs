@@ -52,9 +52,7 @@ pub enum Mode {
     List,
     /// A content surface has focus.
     Body,
-    /// The queue view is live.
-    Queue,
-    /// The timeline view is live.
+    /// The timeline view is live — the home view since `e10.1` (§5.1.2 §1).
     Timeline,
     /// The diff view is live.
     Diff,
@@ -74,12 +72,11 @@ pub enum Mode {
 
 impl Mode {
     /// Every mode, in resolution order: first binder wins (ADR-006 §7.1).
-    pub const PRECEDENCE: [Mode; 13] = [
+    pub const PRECEDENCE: [Mode; 12] = [
         Mode::Prompt,
         Mode::Pick,
         Mode::List,
         Mode::Body,
-        Mode::Queue,
         Mode::Timeline,
         Mode::Diff,
         Mode::Structure,
@@ -98,7 +95,6 @@ impl Mode {
             Mode::Pick => "pick",
             Mode::List => "list",
             Mode::Body => "body",
-            Mode::Queue => "queue",
             Mode::Timeline => "timeline",
             Mode::Diff => "diff",
             Mode::Structure => "structure",
@@ -137,7 +133,6 @@ impl Mode {
     #[must_use]
     pub fn for_view(view: crate::views::ViewId) -> Mode {
         match view {
-            crate::views::ViewId::Queue => Mode::Queue,
             crate::views::ViewId::Timeline => Mode::Timeline,
             crate::views::ViewId::Diff => Mode::Diff,
             crate::views::ViewId::Structure => Mode::Structure,
@@ -158,12 +153,13 @@ impl Mode {
 /// chord is a signal and never reaches a keymap. Fathom takes crossterm's mode, in which `ISIG` is
 /// off (§8.1, measured again in `e1.5`), so the chord *is* a byte — and the only quit chord has to
 /// survive the help overlay and the search box rather than be typed into them. One chord, and the
-/// reason it is not `q`: `q` is `view.queue` in the published table.
+/// reason it is not `q`: `q` was `view.queue` until `e10.3` retired the view, and it belongs to the
+/// user now (§8.2).
 pub const UNSHADOWABLE_CHORD: &str = "<C-c>";
 
 /// The live mode chain for a state: interaction mode first, then view mode, then `global`,
 /// in [`Mode::PRECEDENCE`] order. An exclusive mode owns the keyboard outright (ADR-006 §1.1),
-/// which is the difference between typing `queue` into the search box and visiting four views.
+/// which is the difference between typing `timeline` into the search box and visiting four views.
 #[must_use]
 pub fn mode_chain(view: Mode, interaction: Mode) -> Vec<Mode> {
     if interaction.is_exclusive() {
@@ -777,7 +773,7 @@ pub const ACTIONS: &[Action] = &[
     },
     Action {
         id: "risk.explain",
-        label: "Why this rank: every reason and the whole ceiling",
+        label: "Why this score: every reason and the whole ceiling",
         scope: "review",
         ticket: "e4.4",
         modes: &[Mode::Global],
@@ -968,14 +964,6 @@ pub const ACTIONS: &[Action] = &[
         palette: true,
     },
     Action {
-        id: "view.queue",
-        label: "Go to: Queue",
-        scope: "view",
-        ticket: "e4.5",
-        modes: &[Mode::Global],
-        palette: true,
-    },
-    Action {
         id: "view.structure",
         label: "Go to: Structure",
         scope: "view",
@@ -1012,7 +1000,7 @@ pub fn action_exists(id: &str) -> bool {
 /// The globally reserved keys a view or interaction mode may not shadow (ADR-006 §7.2 K4): the
 /// view switches, the two overlays and the palette. A user may rebind them at global level; a view
 /// mode eating them is a view with a maze in it.
-pub const GLOBAL_NEVER_SHADOWED: &[&str] = &["q", "t", "d", "s", "g", "p", "a", "o", "/", ",", "?"];
+pub const GLOBAL_NEVER_SHADOWED: &[&str] = &["t", "d", "s", "g", "p", "a", "o", "/", ",", "?"];
 
 /// A chord Fathom promises not to bind in v1 so a user may claim it (ADR-006 §8.2).
 #[derive(Debug, Clone, Copy)]
@@ -1083,6 +1071,15 @@ pub const RESERVED_FOR_USER: &[ReservedChord] = &[
         free_in: "all modes",
     },
     ReservedChord {
+        chord: "q",
+        why: "the Queue view's letter. `e10.3` retired the view (ADR-006 §5.1.2 §1): the timeline is \
+              home and `t` stays the home letter, because a key belongs to the view it opens and not to \
+              the pane that happened to be deleted. The acts moved to the rail and `r` came with them, so \
+              nothing this build needs is spelled `q`. Free for a chord of your own; §11 carries the bar \
+              for binding it in the default table again.",
+        free_in: "all modes",
+    },
+    ReservedChord {
         chord: "i",
         why: "the intent pane's letter. `e9.3` retired the pane (ADR-006 §5.1.1): the card's `intent` row is the one line, and `fathom show` prints the plan and the declared scope behind it. Free for a chord of your own; bringing it back into the default table is §7.6's route, not a quiet rebind.",
         free_in: "all modes",
@@ -1107,12 +1104,20 @@ pub struct RetiredChord {
 }
 
 /// Chords whose action this build retired — ADR-006 §5.1.1, §7.6.
-pub const RETIRED_CHORDS: &[RetiredChord] = &[RetiredChord {
-    chord: "i",
-    action: "intent.show",
-    says: "the intent pane is retired — the card's `intent` row is the one line, and `fathom show \
-           <episode>` prints the plan and the declared scope behind it",
-}];
+pub const RETIRED_CHORDS: &[RetiredChord] = &[
+    RetiredChord {
+        chord: "i",
+        action: "intent.show",
+        says: "the intent pane is retired — the card's `intent` row is the one line, and `fathom show \
+               <episode>` prints the plan and the declared scope behind it",
+    },
+    RetiredChord {
+        chord: "q",
+        action: "view.queue",
+        says: "the Queue view is retired — the timeline (`t`) is home; accept, flag, dismiss and snooze \
+               act on the rail's row and `r` lists the ledger's acts in the same pane",
+    },
+];
 
 /// The retired chord a keystroke landed on, if this build retired one.
 #[must_use]
@@ -1136,10 +1141,11 @@ pub struct UnusableChord {
 /// Chords that cannot be distinct bindings — ADR-006 §8.1.
 /// The actions the bottom hint line is built from, in order (ADR-006 §7.5).
 ///
-/// Eight items is the whole budget: the line has to fit 80 columns beside nothing else, which is
-/// why `risk.explain` is here and `review.defer` is not.
+/// Seven items is the whole budget: the line has to fit 80 columns beside nothing else, which is
+/// why `risk.explain` is here and `review.defer` is not. `view.queue` left the list with the view
+/// (`e10.3`), and `view.ambient` came in: with `q` gone, the glance mode is the letter a reviewer
+/// needs reminding of.
 pub const HINT_ACTIONS: &[&str] = &[
-    "view.queue",
     "view.timeline",
     "view.diff",
     "search.open",
@@ -1298,7 +1304,7 @@ pub const TASKS: &[Task] = &[
                 key: "a",
                 action: "view.ambient",
                 mode: "global",
-                effect: "Glance mode: latest episode, its risk, queue count, index state.",
+                effect: "Glance mode: latest episode, its risk, the unread count, index state.",
             },
             TaskStep {
                 key: "<Enter>",
@@ -1439,9 +1445,9 @@ fn default_bindings() -> BTreeMap<Mode, Bindings> {
     bind(Mode::Body, "j", "list.scroll_down");
     bind(Mode::Body, "k", "list.scroll_up");
     bind(Mode::Body, "l", "drill.in");
-    // `queue` adds no bindings of its own: it inherits the shared motion set. `r` used to live
-    // here and went to `global` as `review.retrospect` with the rollup (`e10.2`, ADR-006 §5.1.2 §4).
-    // `timeline` adds no bindings of its own: it inherits the shared motion set.
+    // `timeline` adds no bindings of its own: it inherits the shared motion set. The mode `queue` used
+    // to add none either, and `e10.3` deleted the mode along with the view (`reco-ydek.3`); `r` had
+    // already gone to `global` as `review.retrospect` with the rollup (`e10.2`, ADR-006 §5.1.2 §4).
     bind(Mode::Diff, "E", "diff.open_editor");
     bind(Mode::Diff, "W", "diff.word_toggle");
     bind(Mode::Diff, "=", "diff.ws_toggle");
@@ -1509,7 +1515,6 @@ fn default_bindings() -> BTreeMap<Mode, Bindings> {
     bind(Mode::Global, "n", "list.next_match");
     bind(Mode::Global, "o", "view.artefact");
     bind(Mode::Global, "p", "view.deps");
-    bind(Mode::Global, "q", "view.queue");
     bind(Mode::Global, "r", "review.retrospect");
     bind(Mode::Global, "s", "view.structure");
     bind(Mode::Global, "t", "view.timeline");
@@ -2294,7 +2299,7 @@ fn chord_atoms(chord: &str) -> Vec<String> {
 
 /// A palette label shortened for the hint line.
 ///
-/// The registry spells view actions as `Go to: Queue` and view-local actions as
+/// The registry spells view actions as `Go to: Timeline` and view-local actions as
 /// `Diff: next hunk`, so the useful half is after the colon; everything else keeps its first
 /// clause and loses its parenthetical.
 fn short_label(label: &str) -> &str {

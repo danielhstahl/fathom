@@ -266,7 +266,7 @@ pub fn document() -> Value {
         },
         "risk": {
             "additionalProperties": true,
-            "description": "The ranking, with its arithmetic and its blind spots. Absent means unranked, which is not rank 0.",
+            "description": "The ranking, with its arithmetic and its blind spots. Absent means unranked, which is not rank 0. It carries no place in a set: `rank`/`ranked` left with the ranked pane in `e10.3`, and that removal is why the contract is v2.",
             "properties": {
                 "blind_spots": {"items": {"type": "string"}, "type": "array"},
                 "caveat": {"type": "string"},
@@ -285,8 +285,6 @@ pub fn document() -> Value {
                     "type": "array"
                 },
                 "model": {"description": "Which ranking produced the number (`spine-2` today).", "type": "string"},
-                "rank": {"minimum": 1, "type": "integer"},
-                "ranked": {"minimum": 0, "type": "integer"},
                 "score": {"maximum": 100, "minimum": 0, "type": "integer"},
                 "surfaces": {"items": {"enum": surface_names(), "type": "string"}, "type": "array"},
                 "vector": {"description": "`spine-2 88 = surfaces 50 + size 12 + …` — the arithmetic, checkable from the row.", "type": "string"}

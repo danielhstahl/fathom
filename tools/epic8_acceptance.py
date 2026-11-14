@@ -849,8 +849,11 @@ def clause_delta(binary: Path, work: Path) -> Criterion:
     if len(blocks) < len(EPISODE_LABELS):
         return c
     doc = corpus.delta("branch one.py three ways")
+    # "unchanged" is `e8.5`'s claim — the complexity block never bumped the document. The number itself
+    # has since moved: `e10.3` (`reco-ydek.3`) removed the queue's placement figures, which is breaking,
+    # so the gate quotes the version this build writes rather than the one it was written against.
     c.add("the figure travels inside the delta document, at the document's unchanged version",
-          doc.get("schema_version") == 1 and doc.get("contract") == "fathom-delta/1"
+          doc.get("schema_version") == 2 and doc.get("contract") == "fathom-delta/2"
           and "complexity" in doc,
           f"contract {doc.get('contract')}, schema_version {doc.get('schema_version')}")
 

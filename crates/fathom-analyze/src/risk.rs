@@ -1299,8 +1299,8 @@ pub fn ceiling(score: &score::Score) -> Vec<String> {
             .to_owned()
     });
     out.push(
-        "whether the human reviewing this has already read it: review state is the queue's ordering \
-         input, not a feature of this vector".to_owned(),
+        "whether the human reviewing this has already read it: review state is what the rail counts as \
+         unread, not a feature of this vector".to_owned(),
     );
     out
 }

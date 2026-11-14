@@ -5,7 +5,8 @@
 - **In code**: `crates/fathom-analyze/src/risk/` (features, weights, score, collect, calibrate) and
   `crates/fathom-cli/src/why.rs`.
 - **The reference page**: [risk scoring](risk-scoring.md) has the thirteen axes with their rulers and
-  weights; [risk ranking](risk-ranking.md) has the ordering function the queue uses. This page is how to
+  weights; [risk ranking](risk-ranking.md) has how the figure is ordered and printed now that the queue is
+  gone. This page is how to
   read the number.
 - **Read this if**: you have seen a `82` next to an episode and want to know what it is a claim about.
 
@@ -160,20 +161,23 @@ knowing who wrote a change, and having no test describe new logic, are both risk
 
 An episode is **flagged** when its score reaches `risk.tau` (default **40**, `[risk] tau` in
 `fathom.toml`) or when it carries a `high` severity finding. Flagging routes: it puts the episode at the
-front of the queue and marks it in the timeline. It is not a statement that the change is bad, and the
+front of the score-ordered reading a reviewer asks for with `F`, and it marks the episode in the timeline.
+It is not a statement that the change is bad, and the
 [ledger](review-ledger.md) is where a human's actual judgement goes.
 
 If the threshold is wrong for your repository, the fix is `risk.tau`, not the weights — and the honest way
 to choose it is to look at what you dismiss below the line and what you sign off above it
 ([the dismiss vocabulary](review-ledger.md#the-dismiss-vocabulary-is-closed)).
 
-## The queue is the score times two other things
+## The score is a figure on a row, not an ordering
 
-The score ranks an episode on its own merits. The [attention queue](../reference/cheatsheet.md#1-the-three-sequences)
-orders a worklist, which is a different question: `queue-1` is the score weighted by **staleness** (how
-long it has been waiting) and **blast** (how much it can reach), so a 68 that has sat for three days can
-pass a 74 that arrived a minute ago. The order it chose, and the numbers behind it, are printed rather than
-implied: `w` on a selected episode shows its vector, its rank and what the model could not see.
+The score ranks an episode on its own merits, and since `e10.3` that is all it does: the rail is a
+chronology, its strip says `order: newest first`, and a reviewer who wants the worst first asks for it with
+`F` and reads the numbers. There used to be a second weighting on top of this one — `queue-1`, the score
+times **staleness** and **blast**, so a 68 that had sat for three days could pass a 74 that arrived a minute
+ago — and [risk ranking](risk-ranking.md) keeps that ordering's record, including why it was retired. What
+`w` prints has not changed with it: the vector, the weights, the ceiling, and what the model could not see,
+beside the row it is a figure for.
 
 ## What the model cannot see
 

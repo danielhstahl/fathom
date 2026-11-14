@@ -234,11 +234,11 @@ def refuse_below_cols(view: View) -> int:
     """Below this width the view refuses.
 
     The number is the primary pane's hard minimum taken *without* its frame, because the
-    frame is sold two steps earlier on the ladder: `Queue` refuses at 32 columns because
-    a worklist narrower than that cannot show `sha · age · +n −n · risk` at all, and
+    frame is sold two steps earlier on the ladder: `Timeline` refuses at 28 columns because
+    a rail narrower than that cannot show `sha · age · +n −n · risk` at all, and
     there is nothing left on the ladder to sell. (The author kind was in that list until
     `e10.4` took the printed verdict off every row; the floor did not move with it — see
-    `views.py`, whose rail/worklist floors are about identity and the risk phrase, and
+    `views.py`, whose rail floor is about identity and the risk phrase, and
     ADR-006 §5.1.2 §6a: a retired cell buys thresholds, not a narrower floor.) Ambient has no frame to
     sell, so its floor is its own line budget — see §6.2.
     """
@@ -250,7 +250,7 @@ def refuse_below_cols(view: View) -> int:
 def refuse_below_rows(view: View) -> int:
     """Below this many *frame* rows the view refuses: the chrome left standing once the
     ladder has sold all of it (the status line, one row) plus the view's own floor for
-    content. For `Queue` that is 4 — a frame with no room for a sentence — and for
+    content. For `Timeline` that is 4 — a frame with no room for a sentence — and for
     `Ambient` it is 3, which is ADR-001 §4.1's tmux claim, paid for in full."""
     return 1 + view.min_content_rows
 
@@ -329,7 +329,7 @@ class Fit:
             return ""
         if self.state == "refused":
             return ("LAYOUT REFUSED: %s needs %d×%d minimum, got %d×%d — `a` ambient, "
-                    "`q` queue, or `fathom --plain`"
+                    "or `fathom --plain`"
                     % (self.view.title, refuse_below_cols(self.view),
                        refuse_below_rows(self.view), self.cols, self.rows))
         return "LAYOUT %s: %s · <C-w>o" % (self.state, ", ".join(self.dropped))
@@ -561,7 +561,7 @@ def _refused(view: View, cols: int, rows: int) -> list[str]:
         % (refuse_below_cols(view), refuse_below_rows(view), cols, rows),
         "",
         "`a` ambient (%d×%d)" % (refuse_below_cols(ambient), refuse_below_rows(ambient)),
-        "`q` queue · `,` commands",
+        "`t` timeline · `,` commands",
         "`fathom --plain` for text",
         "",
         "nothing was clipped.",
@@ -573,7 +573,11 @@ def _refused(view: View, cols: int, rows: int) -> list[str]:
 
 
 def _tabs_line(view: View, cols: int) -> str:
-    tabs = "1 ▣ Queue   2 Timeline   3 Diff · (T pins this view)"
+    # Generated from the registry, so a retired view cannot leave a dead tab behind: the
+    # Queue's tab went with the view in `e10.3`, and the pinned view is marked with ▣.
+    names = ["%d %s%s" % (i + 1, "▣ " if v.id == view.id else "", v.title)
+             for i, v in enumerate(VIEWS[:3])]
+    tabs = "   ".join(names) + " · (T pins this view)"
     right = "fathom/pilot · main"
     pad = max(1, cols - disp_width(tabs) - disp_width(right))
     return fit_text(tabs + " " * pad + right, cols)
@@ -593,12 +597,12 @@ def _status_line(view: View, f: Fit, cols: int = 80) -> str:
         full = "LAYOUT %s: %s · <C-w>o, ?" % (f.state, ", ".join(f.dropped))
         short = "LAYOUT %s · %d dropped · <C-w>o, ?" % (f.state, len(f.applied))
         bits.append(full if disp_width(full) + 20 <= cols else short)
-    bits += ["⏺ epoch 41", "3 412 eps", "queue 7 open", "idx warm"]
+    bits += ["⏺ epoch 41", "3 412 eps", "7 unread", "idx warm"]
     return " · ".join(bits)
 
 
 def _hint_line(view: View) -> str:
-    return ("q queue · t timeline · d diff · s structure · g graph · p deps · "
+    return ("t timeline · d diff · s structure · g graph · p deps · a ambient · "
             "/ search · , commands · ? help")
 
 

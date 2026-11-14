@@ -90,7 +90,7 @@ fn the_ladder_is_the_adrs_ladder_in_the_adrs_order() {
         let Some(step) = LADDER.iter().find(|s| s.id() == cells[0].trim_matches('*')) else {
             continue;
         };
-        let (cols, rows_bought) = step.recover(views::view(ViewId::Queue));
+        let (cols, rows_bought) = step.recover(views::view(ViewId::Timeline));
         let want_cols = cells[2]
             .strip_prefix('+')
             .and_then(|c| c.parse::<u16>().ok())
@@ -174,12 +174,12 @@ fn chrome_rows_is_the_chrome_the_view_declared() {
 #[test]
 fn a_view_that_cannot_draw_says_what_it_needs_and_what_it_got() {
     // §6.4's refusal panel, verbatim in shape.
-    let queue = views::view(ViewId::Queue);
-    assert_eq!(layout::refuse_below_cols(queue), 32);
-    assert_eq!(layout::refuse_below_rows(queue), 4);
-    let lines = refusal_lines(ViewId::Queue, 30, 8);
-    assert_eq!(lines[0].trim(), "too small for Queue");
-    assert_eq!(lines[1].trim(), "need 32×4, have 30×8");
+    let rail = views::view(ViewId::Timeline);
+    assert_eq!(layout::refuse_below_cols(rail), 28);
+    assert_eq!(layout::refuse_below_rows(rail), 4);
+    let lines = refusal_lines(ViewId::Timeline, 26, 8);
+    assert_eq!(lines[0].trim(), "too small for Timeline");
+    assert_eq!(lines[1].trim(), "need 28×4, have 26×8");
     assert_eq!(lines[2].trim(), "");
     assert!(lines[3].trim().starts_with("`a` ambient"), "{lines:?}");
     assert!(
@@ -308,11 +308,11 @@ fn the_secondary_pane_is_squeezed_before_the_primary_and_the_frame_last() {
     // §6.1's ordering claim, checked against the arithmetic instead of the prose: at the size where
     // D5 fires the secondary is at strip width and the primary still has room; D9 is the only step
     // that removes the secondary outright.
-    let queue = views::view(ViewId::Queue);
+    let rail = views::view(ViewId::Timeline);
     let at_d5 = {
         let mut cols = 80u16;
         while cols > 30 {
-            let fit = fit(ViewId::Queue, cols, 24);
+            let fit = fit(ViewId::Timeline, cols, 24);
             if fit.applied.iter().any(|a| a == Step::SecondaryStrip.id()) {
                 break;
             }
@@ -320,15 +320,15 @@ fn the_secondary_pane_is_squeezed_before_the_primary_and_the_frame_last() {
         }
         cols
     };
-    let fit = fit(ViewId::Queue, at_d5, 24);
-    let widths = layout::pane_widths(ViewId::Queue, at_d5, &fit.applied);
-    let secondary = queue.panes[1];
+    let fit = fit(ViewId::Timeline, at_d5, 24);
+    let widths = layout::pane_widths(ViewId::Timeline, at_d5, &fit.applied);
+    let secondary = rail.panes[1];
     let (_, width) = widths
         .iter()
         .find(|(pane, _)| pane.name == secondary.name)
-        .expect("queue has a secondary pane");
+        .expect("the timeline has a secondary pane");
     assert_eq!(
-        *width, queue.panes[1].strip_width,
+        *width, rail.panes[1].strip_width,
         "D5 should hold the secondary at exactly its strip width"
     );
     assert!(widths[0].1 > *width, "the primary gave up width first");
@@ -341,8 +341,8 @@ fn the_secondary_pane_is_squeezed_before_the_primary_and_the_frame_last() {
 #[test]
 fn the_degradation_notice_fits_the_width_it_is_printed_in() {
     // §6.4: at a narrow width the notice counts the drops; at a wide one it lists them.
-    let queue14 = fit(ViewId::Queue, 64, 14);
-    let narrow = degraded_notice(&queue14, 64);
+    let rail14 = fit(ViewId::Timeline, 64, 14);
+    let narrow = degraded_notice(&rail14, 64);
     assert!(
         narrow.contains("dropped") && narrow.contains("<C-w>o"),
         "narrow notice should count: {narrow}"
@@ -351,16 +351,24 @@ fn the_degradation_notice_fits_the_width_it_is_printed_in() {
         display_width(&narrow) + 20 <= 64,
         "the narrow notice is the thing that must not be the clipped line: {narrow}"
     );
-    let wide = degraded_notice(&queue14, 240);
+    let wide = degraded_notice(&rail14, 240);
+    // Spelled out, not counted: every part the ladder sold is named in the notice, and named with the
+    // words that say what the reviewer lost. Read off the fit rather than from a hand-typed list, because
+    // which steps a given view sells is the ladder's business, not the test's.
+    let dropped = rail14.dropped();
+    assert!(!dropped.is_empty(), "the 64×14 rail sold something: {wide}");
+    for part in &dropped {
+        assert!(wide.contains(part), "`{part}` is not named in the notice: {wide}");
+    }
     assert!(
-        wide.contains("hint line") && wide.contains("box frame"),
-        "a frame wide enough to afford the list should spell it out: {wide}"
+        wide.contains("hint line"),
+        "the always-first drop is the hint line, spelled out: {wide}"
     );
     assert!(
         wide.starts_with("LAYOUT degraded: "),
         "the long form is the one with the list: {wide}"
     );
-    assert_eq!(degraded_notice(&fit(ViewId::Queue, 200, 60), 200), "");
+    assert_eq!(degraded_notice(&fit(ViewId::Timeline, 200, 60), 200), "");
 }
 
 #[test]

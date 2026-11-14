@@ -39,4 +39,4 @@ pane `results` · owned by e5.2 · ADR-006 §5                            │
                                                                        │
                                                                        │
                                                                        │
-⏺ epoch 1 · 48 eps · queue 4 open · idx unknown
+⏺ epoch 1 · 48 eps · 4 unread · idx unknown

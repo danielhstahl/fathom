@@ -19,7 +19,7 @@
 use std::collections::BTreeMap;
 use std::time::{Duration, Instant};
 
-use fathom_analyze::insight::{CONDITIONS, Disposition, QueuePlacement, TriageRecord};
+use fathom_analyze::insight::{CONDITIONS, Disposition, TriageRecord};
 
 use crate::diff::{self, DiffView};
 use crate::diff::{Env, Handoff};
@@ -233,8 +233,10 @@ pub struct IndexState {
     pub epoch: Option<u64>,
     /// Episodes indexed.
     pub episodes: Option<u64>,
-    /// Episodes open in the queue.
-    pub queue_open: Option<u64>,
+    /// Episodes still asking to be read — the open-work count, and the number behind *caught up*
+    /// (ADR-006 §5.1.2 §3 part 2). It used to be spelled `queue_open` and printed `queue N open`; the
+    /// count always counted episodes in open review states, so only the dead noun left.
+    pub unread: Option<u64>,
     /// Whether the analysis cache is warm — the index owes no analysis (`reco-zv9`).
     ///
     /// Only the store can say, so the caller says it: [`crate::index::Facts::warm`] is read from the
@@ -252,13 +254,13 @@ impl IndexState {
         IndexState {
             epoch: None,
             episodes: None,
-            queue_open: None,
+            unread: None,
             warm: None,
             progress: None,
         }
     }
 
-    /// The `⏺ epoch 41 · 3 412 eps · queue 7 open · idx warm` bits.
+    /// The `⏺ epoch 41 · 3 412 eps · 7 unread · idx warm` bits.
     #[must_use]
     pub fn bits(&self) -> Vec<String> {
         let number = |value: Option<u64>| match value {
@@ -268,7 +270,13 @@ impl IndexState {
         vec![
             format!("⏺ epoch {}", number(self.epoch)),
             format!("{} eps", number(self.episodes)),
-            format!("queue {} open", number(self.queue_open)),
+            // `unknown unread`, not `0 unread`: an uncounted rail is not a caught-up reviewer
+            // (ADR-001 §7.7), and this is the line a `--plain` frame prints as its only claim about
+            // the reviewer's own work.
+            match self.unread {
+                Some(open) => format!("{} unread", format_thousands(open)),
+                None => "unread unknown".to_owned(),
+            },
             format!(
                 "idx {}",
                 match self.warm {
@@ -389,7 +397,7 @@ const PALETTE_PAGE: usize = 10;
 /// with the one deliberate difference that `H`/`M`/`L` in a *scrolling* pane are relative to the top of
 /// its window (`App::scroll_of`) rather than to the cursor, because in a pane the window is on screen and
 /// in an overlay the window follows the cursor. Everything else — what a page is, what `G` means, what
-/// happens at the last row — is this function, so that `j` cannot mean one thing in the queue and
+/// happens at the last row — is this function, so that `j` cannot mean one thing in the rail and
 /// another thing in a result list.
 #[must_use]
 pub fn motion_target(action: &str, here: usize, page: usize, count: usize) -> usize {
@@ -523,10 +531,10 @@ pub struct App {
     /// What the shell knows about triage: the vocabulary, the actor, the ledger, and every act taken since
     /// the frame opened (`e4.5`, `reco-wsj`).
     ///
-    /// This is the queue's shell-side state and nothing else's. The ordering, the acts' validation and the
-    /// retrospective all live in `fathom_analyze::queue`; what is here is which chooser is open, which
+    /// This is the ledger's shell-side state and nothing else's. The acts' validation and the
+    /// retrospective live in `fathom_analyze::review`; what is here is which chooser is open, which
     /// episodes are already decided, and the handle that writes.
-    pub queue: crate::queue::State,
+    pub review: crate::review::State,
     /// The text in the prompt field (search query, palette filter).
     pub prompt: String,
     /// The last search submitted with `/` then `<Enter>` (`e1.11`).
@@ -544,13 +552,6 @@ pub struct App {
     pub opened: Vec<String>,
     /// The palette row under the cursor, when the palette is open.
     pub palette_row: usize,
-    /// The queue's ordering, cached between frames and stamped with the inputs it was built from.
-    ///
-    /// A [`std::cell::RefCell`] for the same reason the rail's order is one: the order is a pure function
-    /// of the rows and the day, and a frame should compute it once and read it from the list, the strip
-    /// and the counts.
-    pub queue_ranking_cache:
-        std::cell::RefCell<Option<(QueueStamp, fathom_analyze::insight::QueueRanking)>>,
     /// The chooser's cursor, for the pickers whose rows are not the palette's: the dismiss reason and the
     /// snooze condition (`e4.5`, `reco-wsj`).
     ///
@@ -651,25 +652,6 @@ fn own(steps: Vec<KeyStep<'_>>) -> Vec<Step> {
         .collect()
 }
 
-/// What the queue's cached ordering was built from, so a stale order is impossible by construction.
-///
-/// Every field is an input the ordering reads: the rows, the epoch (a new index can move a row's blast
-/// or add rows), the day (staleness steps in days and in nothing finer), and the acts taken this
-/// session. It used to carry whether the retrospective was on screen, which was only ever there because
-/// the worklist pane flipped in place; the rollup left that pane for the rail in `e10.2` (ADR-006
-/// §5.1.2 §4) and the stamp lost a field that had never ranked anything.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct QueueStamp {
-    /// How many rows the rail holds.
-    pub rows: usize,
-    /// Which index epoch they came from.
-    pub epoch: u64,
-    /// Which day, because staleness is a daily step.
-    pub day: i64,
-    /// How many acts the shell has taken.
-    pub decided: usize,
-}
-
 /// How long a toast keeps the hint row: long enough to read once, short enough that it never
 /// becomes the chrome it is standing in for.
 ///
@@ -694,7 +676,7 @@ fn cell(value: u16) -> usize {
 pub const DOUBLE_CLICK: Duration = Duration::from_millis(400);
 
 impl App {
-    /// A fresh application: the home view (`q`), pane 1 focused, one tab, empty scope.
+    /// A fresh application: the home view (`t`, ADR-006 §5.1.2 §1), pane 1 focused, one tab, empty scope.
     #[must_use]
     pub fn new(
         keymap: Keymap,
@@ -704,14 +686,14 @@ impl App {
     ) -> Self {
         let mut app = App {
             keymap,
-            view: ViewId::Queue,
+            view: ViewId::Timeline,
             overlay: None,
             pane: 0,
             zoomed: false,
             drill: Vec::new(),
             history: Vec::new(),
             tabs: vec![Tab {
-                view: ViewId::Queue,
+                view: ViewId::Timeline,
                 scope: Scope::empty(),
                 pane: 0,
                 pinned: false,
@@ -737,13 +719,12 @@ impl App {
             diff_episode: None,
             timeline: Timeline::new(fathom_core::time::Timestamp::UNIX_EPOCH),
             expanded_rank: None,
-            queue: crate::queue::State::absent(),
+            review: crate::review::State::absent(),
             prompt: String::new(),
             last_search: None,
             opened: Vec::new(),
             palette_row: 0,
             pick_row: 0,
-            queue_ranking_cache: std::cell::RefCell::new(None),
             selection: BTreeMap::new(),
             scroll: BTreeMap::new(),
             chords: ChordState::new(),
@@ -754,7 +735,7 @@ impl App {
             notices: Vec::new(),
             clock: None,
             size,
-            fit: fit_chosen(ViewId::Queue, size.0, size.1, &[]),
+            fit: fit_chosen(ViewId::Timeline, size.0, size.1, &[]),
             mouse: false,
             term: crate::terminal::Probe::unknown(),
             theme: crate::theme::Theme::default_theme(),
@@ -765,7 +746,7 @@ impl App {
             estimates: BTreeMap::new(),
             scheduler: FrameScheduler::new(),
         };
-        app.set_view(ViewId::Queue);
+        app.set_view(ViewId::Timeline);
         app
     }
 
@@ -844,10 +825,10 @@ impl App {
     /// because "what is selected" must mean one thing to every pane that asks (`e5.9`).
     #[must_use]
     pub fn episode_in_scope(&self) -> Option<String> {
-        self.scope.episode.clone().or_else(|| match self.view {
-            ViewId::Queue => self.queue_selected().map(|episode| episode.id.clone()),
-            _ => self.timeline.selected().map(|episode| episode.id.clone()),
-        })
+        self.scope
+            .episode
+            .clone()
+            .or_else(|| self.timeline.selected().map(|episode| episode.id.clone()))
     }
 
     /// What this pane can say about *why* it has no rows, as opposed to why the index has none.
@@ -869,11 +850,6 @@ impl App {
             return lines;
         }
         if let Some(lines) = self.diff_text(pane) {
-            return lines;
-        }
-        // The queue's rows are drawn the same way the rail's are — a window over a list the shell
-        // holds, with its own cursor — rather than as text the generic path then re-marks (`reco-c05`).
-        if let Some(lines) = self.queue_text(pane) {
             return lines;
         }
         // The architecture map draws its own panes, at its own size, from the graph it was handed
@@ -957,9 +933,6 @@ impl App {
             };
         }
         if let Some(strip) = self.timeline_strip(pane) {
-            return strip;
-        }
-        if let Some(strip) = self.queue_strip(pane) {
             return strip;
         }
         if let Some(strip) = self.graph_strip(pane) {
@@ -1122,10 +1095,10 @@ impl App {
         self.model.index_facts = facts.clone();
         self.model.index.epoch = facts.epoch;
         self.model.index.episodes = facts.episodes;
-        // The two the shell cannot arrive at on its own (`reco-zv9`): the queue's depth and the
+        // The two the shell cannot arrive at on its own (`reco-zv9`): the open-work count and the
         // analysis verdict. Both are the store's numbers, read by the party that may read it, and
         // both were printed as `unknown` in every frame the shipped binary ever drew.
-        self.model.index.queue_open = facts.queue_open;
+        self.model.index.unread = facts.unread;
         self.model.index.warm = facts.warm();
         self.timeline.set_index_facts(facts);
     }
@@ -1179,8 +1152,41 @@ impl App {
     /// can (`e1.6`'s "never block" criterion, ADR-001 §7.6).
     pub fn load_episodes(&mut self, batch: timeline::Batch) -> String {
         let said = self.timeline.load(batch);
+        self.release_snoozes();
         self.toast(said.clone());
         said
+    }
+
+    /// Put a released snooze back in the open count (`e4.5`, re-hosted by `e10.2`).
+    ///
+    /// A snooze is a condition with a baseline stamped on it — "until the index moves", recorded as
+    /// `next-index:41` — and the frame that sees the new epoch is the frame that has to notice. The store
+    /// cannot do it: the marker it holds is `snoozed`, and *which* epoch the snooze was stamped against is
+    /// knowledge the shell's ledger keeps. The deleted Queue view used to do this inside its ranking ("open
+    /// unless the condition has happened"), and the rail has no ranking to hide it in — so it is an
+    /// explicit pass over the rows a load just replaced, and the only thing that decides whether a `z` row
+    /// is open work is the condition the act wrote.
+    ///
+    /// A stamp that cannot be read keeps the row snoozed: a snooze nobody can evaluate stays out of the
+    /// count and in the retrospective, rather than falling back into the open set every run and teaching
+    /// the reviewer to ignore it.
+    fn release_snoozes(&mut self) {
+        let Some(epoch) = self.timeline.epoch() else {
+            return;
+        };
+        let now = self.timeline.now();
+        let due: Vec<String> = self
+            .timeline
+            .episodes()
+            .iter()
+            .filter(|episode| episode.state == crate::timeline::ReviewState::Snoozed)
+            .filter(|episode| self.review.released(episode, now, epoch))
+            .map(|episode| episode.id.clone())
+            .collect();
+        for id in due {
+            self.timeline
+                .set_state(&id, crate::timeline::ReviewState::Unread);
+        }
     }
 
     /// The rows the timeline's pane would print, as text — the `--plain` and golden projection of the
@@ -1219,9 +1225,9 @@ impl App {
         if let Some(lines) = self.chooser_body(width, rows) {
             return Some(lines);
         }
-        if self.queue.retrospective {
-            return Some(crate::queue::retrospective_lines(
-                &self.queue,
+        if self.review.retrospective {
+            return Some(crate::review::retrospective_lines(
+                &self.review,
                 self.timeline.now(),
                 width,
                 rows,
@@ -1304,92 +1310,10 @@ impl App {
         if self.view != ViewId::Timeline || pane.name != "rail" {
             return None;
         }
-        if self.queue.retrospective {
-            return Some(crate::queue::ledger_strip(&self.queue, self.timeline.now()));
+        if self.review.retrospective {
+            return Some(crate::review::ledger_strip(&self.review, self.timeline.now()));
         }
         Some(self.timeline.strip())
-    }
-
-    // --- the queue view (`reco-c05`) ---------------------------------------------------------------
-
-    /// The rows the queue holds: the same filtered set the rail holds, put in ranking order.
-    ///
-    /// Ordered by the numbers `fathom-cli` handed over with the rows — the shell sorts, it does not
-    /// score ([`crate::worklist`]'s contract, ADR-002 §5.3).
-    #[must_use]
-    pub fn queue_rows(&self) -> Vec<&Episode> {
-        self.queue_open()
-            .into_iter()
-            .filter_map(|id| self.timeline.find(&id))
-            .collect()
-    }
-
-    /// The queue's ordering and counts, rebuilt only when something the ordering reads has changed.
-    ///
-    /// The rail caches its order for the same reason (`timeline::Rail::rebuild`): a frame that re-ranked
-    /// every held episode would be paying for a computation whose inputs turn over once a day, and
-    /// `timeline_bench` is the test that would notice. The stamp is the whole set of inputs this build
-    /// has: how many rows, which epoch, which day (staleness steps in days and in nothing finer), and how
-    /// many acts this shell has taken.
-    fn queue_ranking(&self) -> fathom_analyze::insight::QueueRanking {
-        let stamp = QueueStamp {
-            rows: self.timeline.ranked_len(),
-            epoch: self.timeline.epoch().unwrap_or(0),
-            day: self.timeline.now().as_unix_seconds() / 86_400,
-            decided: self.queue.decided.len(),
-        };
-        let mut cache = self.queue_ranking_cache.borrow_mut();
-        if cache.as_ref().is_none_or(|(last, _)| *last != stamp) {
-            let rows = self.timeline.ranked();
-            let ranking = crate::queue::ranking(
-                &rows,
-                &self.queue,
-                self.timeline.now(),
-                self.timeline.epoch().unwrap_or(0),
-            );
-            *cache = Some((stamp, ranking));
-        }
-        cache
-            .as_ref()
-            .map(|(_, ranking)| ranking.clone())
-            .unwrap_or_else(|| fathom_analyze::insight::QueueRanking {
-                order: Vec::new(),
-                counts: fathom_analyze::insight::QueueCounts::default(),
-                blast_measured: false,
-            })
-    }
-
-    /// The episode ids the queue holds, in queue order.
-    fn queue_open(&self) -> Vec<String> {
-        self.queue_ranking()
-            .order
-            .iter()
-            .filter(|placement| placement.open)
-            .map(|placement| placement.episode.clone())
-            .collect()
-    }
-
-    /// The placements keyed by episode id, for the drawer and for `w`.
-    #[must_use]
-    pub fn queue_placements(&self) -> std::collections::BTreeMap<String, QueuePlacement> {
-        self.queue_ranking()
-            .order
-            .into_iter()
-            .map(|placement| (placement.episode.clone(), placement))
-            .collect()
-    }
-
-    /// The episode the queue's cursor is on.
-    #[must_use]
-    pub fn queue_selected(&self) -> Option<&Episode> {
-        let row = self
-            .selection
-            .get(&(ViewId::Queue, "worklist".to_owned()))
-            .copied()
-            .unwrap_or(0);
-        self.queue_open()
-            .get(row)
-            .and_then(|id| self.timeline.find(id))
     }
 
     /// Is `w`'s ranking band open, for the episode currently in scope?
@@ -1404,16 +1328,12 @@ impl App {
     /// The card pane's window: how deep into the document the reader has walked, and whether band 4 is
     /// open for the episode in scope (`e9.3`).
     ///
-    /// One place, because the queue and the timeline draw the same renderer at different widths and the
-    /// two channels — `--plain` text and styled rows — must not disagree about which card they are
-    /// printing. The scroll offset is read for the pane by name, not for whichever pane is focused:
+    /// One place, because the `--plain` text and the styled rows must not disagree about which card they
+    /// are printing. The scroll offset is read for the pane by name, not for whichever pane is focused:
     /// the card keeps its place when the cursor goes back to the rail.
     #[must_use]
     pub fn card_window(&self) -> timeline::CardWindow {
-        let expanded = match self.view {
-            ViewId::Queue => self.ranking_expanded(self.queue_selected()),
-            _ => self.ranking_expanded(self.timeline.selected()),
-        };
+        let expanded = self.ranking_expanded(self.timeline.selected());
         timeline::CardWindow {
             scroll: self
                 .scroll
@@ -1424,73 +1344,15 @@ impl App {
         }
     }
 
-    /// The queue's panes as text — the `--plain`, screen-reader and golden projection.
-    #[must_use]
-    pub fn queue_text(&self, pane: &Pane) -> Option<Vec<String>> {
-        if self.view != ViewId::Queue || self.timeline.is_empty() {
-            return None;
-        }
-        let width = self.pane_cols(pane.name).max(12);
-        Some(
-            self.queue_body(pane, width, self.pane_body_rows())
-                .into_iter()
-                .map(|line| line.text().to_owned())
-                .collect(),
-        )
-    }
-
-    /// The queue's panes as styled rows: the ranked worklist, and the card beside it — one episode
-    /// surface, with the band `w` opens drawn inside it (`e9.3`).
-    #[must_use]
-    pub fn queue_body(&self, pane: &Pane, width: usize, rows: usize) -> Vec<StyledLine> {
-        if pane.name == "card" {
-            return timeline::card_lines(
-                self.queue_selected(),
-                self.timeline.now(),
-                self.timeline.origin(),
-                width,
-                rows,
-                self.card_window(),
-            );
-        }
-        let ranking = self.queue_ranking();
-        if let Some(lines) = self.chooser_body(width, rows) {
-            return lines;
-        }
-        let total = self.queue_open().len();
-        let row = self
-            .selection
-            .get(&(ViewId::Queue, "worklist".to_owned()))
-            .copied()
-            .unwrap_or(0);
-        // Two rows per episode, so the window is half the pane: the scroll keeps the cursor on screen
-        // the way the rail's does, and `<C-d>`/`<C-u>` page episodes rather than lines.
-        let (offset, per) = self.queue_window(rows);
-        // Only the window is materialised; the order is the queue's cached one, and a frame that ranked
-        // every held episode is what `timeline_bench` catches (`reco-c05`).
-        let ids = self.queue_open();
-        let window: Vec<&Episode> = (offset..total.min(offset + per))
-            .filter_map(|at| ids.get(at))
-            .filter_map(|id| self.timeline.find(id))
-            .collect();
-        crate::worklist::lines(
-            &window,
-            &self.queue_placements(),
-            Some(&crate::queue::counts_line(&self.queue, &ranking)),
-            row.saturating_sub(offset),
-            rows,
-            width,
-        )
-    }
-
-    /// The chooser drawn in place of the worklist while `-` or `z` is open, or `None` when neither is.
+    /// The chooser the rail draws in place of its rows while `-` or `z` is open, or `None` when neither
+    /// is (`e4.5`; the host moved from the deleted worklist to the rail in `e10.2`).
     #[must_use]
     fn chooser_body(&self, width: usize, rows: usize) -> Option<Vec<StyledLine>> {
         match self.overlay {
             Some(Overlay::Reason) | Some(Overlay::Snooze) => {
                 let picking = self.overlay == Some(Overlay::Reason);
                 let target = self
-                    .queue
+                    .review
                     .pick
                     .as_deref()
                     .map(|id| {
@@ -1508,11 +1370,10 @@ impl App {
                 } else {
                     (
                         format!("snooze `{target}` — until what (`z`, then `j`/`k`, `<Enter>`)"),
-                        "a condition, not a date: the queue reopens it when the condition happens"
-                            .to_owned(),
+                        "a condition, not a date: it reopens when the condition happens".to_owned(),
                     )
                 };
-                Some(crate::worklist::chooser(
+                Some(crate::timeline::chooser(
                     &title,
                     &hint,
                     &self.pick_rows(),
@@ -1522,8 +1383,8 @@ impl App {
                 ))
             }
             Some(Overlay::Note) => {
-                let mut lines = vec![crate::worklist::prompt_line(
-                    if self.queue.pick_reason.is_some() {
+                let mut lines = vec![crate::timeline::prompt_line(
+                    if self.review.pick_reason.is_some() {
                         "why, in words: "
                     } else {
                         "flag note: "
@@ -1538,40 +1399,6 @@ impl App {
             }
             _ => None,
         }
-    }
-
-    /// The worklist's window: the first ranked row it draws, and how many lines each episode gets.
-    ///
-    /// Factored out of [`Self::queue_body`] so a click can name the row under the pointer with the
-    /// same arithmetic that drew it. Two lines per episode is the whole reason this is a function:
-    /// the answer to "which episode is on line 5" is not 5.
-    #[must_use]
-    fn queue_window(&self, rows: usize) -> (usize, usize) {
-        let total = self.queue_open().len();
-        let row = self
-            .selection
-            .get(&(ViewId::Queue, "worklist".to_owned()))
-            .copied()
-            .unwrap_or(0);
-        let per = (rows / crate::worklist::LINES_PER_EPISODE).max(1);
-        let want = self.scroll_of().min(total);
-        let offset = if row < want {
-            row
-        } else if row >= want + per {
-            (row + 1 - per).min(total)
-        } else {
-            want
-        };
-        (offset, per)
-    }
-
-    /// The strip the queue's worklist carries: the ranking named, with its ceiling (`reco-c05`).
-    #[must_use]
-    pub fn queue_strip(&self, pane: &Pane) -> Option<String> {
-        if self.view != ViewId::Queue || pane.name != "worklist" || self.timeline.is_empty() {
-            return None;
-        }
-        Some(self.queue_ranking().strip())
     }
 
     /// Run the half of the action registry this view owns (`e1.6`).
@@ -1679,12 +1506,11 @@ impl App {
     /// re-read the store); a different episode is a fresh load. With no provider installed the pane
     /// opens on its stated empty state, which is what a fixture-fed test with no store gets.
     pub fn open_diff(&mut self) {
-        let episode = self.scope.episode.clone().or_else(|| match self.view {
-            // The queue keeps its own cursor, so `d` from the queue means the queue's row
-            // (`reco-c05`); every other view's fallback is still the rail.
-            ViewId::Queue => self.queue_selected().map(|ep| ep.id.clone()),
-            _ => self.timeline.selected().map(|ep| ep.id.clone()),
-        });
+        let episode = self
+            .scope
+            .episode
+            .clone()
+            .or_else(|| self.timeline.selected().map(|ep| ep.id.clone()));
         let (Some(provider), Some(id)) = (self.patches.clone(), episode.as_deref()) else {
             // The pane has a stated empty state and the view opens on it. The keystroke only owes its
             // own sentence when the view was already the diff — otherwise the switch is the change, and
@@ -1900,10 +1726,7 @@ impl App {
     fn card_rows(&self, pane: &Pane) -> usize {
         let width = self.pane_cols(pane.name).max(12);
         let budget = self.pane_body_rows();
-        let episode = match self.view {
-            ViewId::Queue => self.queue_selected(),
-            _ => self.timeline.selected(),
-        };
+        let episode = self.timeline.selected();
         timeline::card_document(
             episode,
             self.timeline.now(),
@@ -1919,22 +1742,6 @@ impl App {
     /// clamped against.
     #[must_use]
     pub fn row_count(&self, pane: &Pane) -> usize {
-        if self.view == ViewId::Queue {
-            // The worklist's rows belong to the ranking: one row per episode the rail's filter keeps.
-            // The card is a document, and its rows are the rows the renderer laid out (`e9.3`) — the
-            // number its motion clamps against, which is why it is counted here and not guessed there.
-            return if pane.name == "worklist" {
-                if self.timeline.is_empty() {
-                    self.model.rows_for(self.view, pane.name).len()
-                } else {
-                    self.timeline.ranked_len()
-                }
-            } else if pane.name == "card" && !self.timeline.is_empty() {
-                self.card_rows(pane)
-            } else {
-                0
-            };
-        }
         if self.view == ViewId::Timeline {
             // The rail's rows belong to the rail: group headers count, collapsed groups' hidden rows
             // do not, and the number the motion keys clamp against is the number of slots.
@@ -2161,27 +1968,27 @@ impl App {
             bits.push(notice);
         }
         let mut index = self.model.index.clone();
-        // `queue N open` was `unknown` in every frame the shipped binary drew, because the shell has
-        // no store handle to ask. It does not need one when it holds the whole queue: the rows it was
-        // handed, and "open" is "nobody has read it yet" (`reco-c05`, and ADR-006 §10.3's rule that an
+        // The open-work count was `unknown` in every frame the shipped binary drew, because the shell has
+        // no store handle to ask. It does not need one when it holds the whole index: the rows it was
+        // handed, and "unread" is "nobody has read it yet" (`reco-c05`, and ADR-006 §10.3's rule that an
         // unknown is only allowed when it really is one). The count the caller read from the store takes
-        // over wherever the rows are not the queue — an empty rail, a page of a longer index, or a filter
-        // that hid rows — because a page is not the queue (`reco-zv9`), and a rail that drew nothing has
-        // no count to offer in the first place. `ranked().len()` is the denominator `unread()` was
+        // over wherever the rows are not the whole index — an empty rail, a page of a longer index, or a
+        // filter that hid rows — because a page is not the index (`reco-zv9`), and a rail that drew nothing
+        // has no count to offer in the first place. `listed_len()` is the denominator `unread()` was
         // counted over, so the two numbers are always about the same set of rows.
-        let rows = u64::try_from(self.timeline.rail().ranked().len()).unwrap_or(u64::MAX);
+        let rows = u64::try_from(self.timeline.listed_len()).unwrap_or(u64::MAX);
         let live = (rows > 0)
             .then(|| u64::try_from(self.timeline.unread()).ok())
             .flatten();
-        let whole_queue = self
+        let whole_index = self
             .model
             .index_facts
             .episodes
             .is_none_or(|total| rows >= total);
-        index.queue_open = if whole_queue {
-            live.or(index.queue_open)
+        index.unread = if whole_index {
+            live.or(index.unread)
         } else {
-            index.queue_open.or(live)
+            index.unread.or(live)
         };
         bits.extend(index.bits());
         // Is this picture current? (`reco-bpc`) The one question an ambient terminal is not allowed to
@@ -2304,7 +2111,7 @@ impl App {
         if self.tabs[self.active_tab].pinned {
             // A pinned tab is a context the reviewer asked to keep (ADR-006 §5.0), so switching
             // views opens a working context beside it instead of overwriting it. This is how the
-            // §5 mock's three tabs — Queue, Timeline, Diff — come to exist.
+            // §5 mock's three tabs — Timeline, Diff, Structure — come to exist.
             self.tabs.push(Tab {
                 view: target,
                 scope: self.scope.clone(),
@@ -2378,7 +2185,7 @@ impl App {
             ));
             return;
         }
-        if self.view == ViewId::Timeline && self.queue.retrospective {
+        if self.view == ViewId::Timeline && self.review.retrospective {
             // The rail listing acts is a state of a pane, not a view, so it pops like one: `<Esc>` puts
             // the episodes back and does not also throw the reviewer out of the timeline they were
             // reading (ADR-006 §5.1.2 §4, §R2's "exactly one"). It is checked after the overlay because
@@ -2386,7 +2193,7 @@ impl App {
             // owes. It is checked only on the timeline because the listing is the rail's own state, like
             // the rail's filter: leaving the view keeps it, and `<Esc>` in the diff viewer has no business
             // quietly un-flipping a pane the reviewer cannot see.
-            self.queue.retrospective = false;
+            self.review.retrospective = false;
             self.toast("the rail lists episodes again — `r` shows what was skipped, and why");
             return;
         }
@@ -2503,7 +2310,10 @@ impl App {
         self.refit();
     }
 
-    /// The tab bar's left half: `1 ▣ Queue 2 Timeline · (T pins this view)`.
+    /// The tab bar's left half: `1 ▣ Timeline 2 Diff 3 Structure · (T pins this view)`.
+    ///
+    /// Generated from the registry, so a retired view cannot leave a dead tab: the Queue's tab went with
+    /// the view in `e10.3` and ▣ marks whichever of the three is live.
     #[must_use]
     pub fn tab_bar(&self) -> String {
         let mut out = String::new();
@@ -2620,15 +2430,6 @@ impl App {
         }
         self.selection
             .insert((self.view, pane.name.to_owned()), clamped);
-        if self.view == ViewId::Queue && pane.name == "worklist" {
-            // The queue's cursor is an episode too: `d`, `<Enter>` and `x` all act on the scope, and
-            // since `reco-c05` the queue has rows worth acting on (`reco-glv`'s step (b) could not
-            // even try, because there was nothing to select).
-            let moved = self.queue_selected().map(|episode| episode.id.clone());
-            let was = self.expanded_rank.clone();
-            self.scope.episode = moved;
-            self.fold_rank_off_the_old_episode(was.as_deref());
-        }
         if self.view == ViewId::Diff && pane.name == "tree" {
             // The tree cursor *is* the file selection in this view: moving the cursor to a file row
             // moves the hunk pane with it, and leaving one (onto a group or the counts row) leaves the
@@ -2722,7 +2523,7 @@ impl App {
     /// its own, so every motion that names a row in it means "put that row at the top".
     #[must_use]
     fn is_document_pane(&self, pane: &Pane) -> bool {
-        pane.name == "card" && matches!(self.view, ViewId::Queue | ViewId::Timeline)
+        pane.name == "card" && self.view == ViewId::Timeline
     }
 
     /// Recompute the layout after a size change.
@@ -2875,13 +2676,6 @@ impl App {
                 // a date read, and `<Enter>` cannot open one. Clicking one focuses the pane and leaves
                 // the cursor where it was, which is what a header is for.
                 .filter(|slot| !self.timeline.slot_is_header(*slot)),
-            (ViewId::Queue, "worklist") if !self.timeline.is_empty() => {
-                // The same two-lines-per-row the pane drew with, from the same constant: `per` in
-                // `queue_window` is the number of *episodes* on a page, and dividing a line number by
-                // it is the kind of mistake that makes every click in the queue land on the wrong row.
-                let (offset, _) = self.queue_window(rows);
-                Some(offset + line / crate::worklist::LINES_PER_EPISODE)
-            }
             (ViewId::Diff, "tree") => Some(self.diff_tree_start(rows) + line),
             (ViewId::Graph, "canvas") if self.graph.has_data() => self.graph.hit(line),
             (ViewId::Graph, "detail") if self.graph.has_data() => {
@@ -3317,7 +3111,7 @@ impl App {
             // The palette is a list like every other surface, and it answers the same motion ids
             // (`e5.4`): a reviewer who found the palette by typing `,` and has `j`/`k` in their fingers
             // must be able to walk to the row they want without the arrow keys, and `g`/`G`/`<C-d>` have
-            // to mean the same thing here as they do in the queue. `Mode::Pick` binds only `j`/`k`, so the
+            // to mean the same thing here as they do on the rail. `Mode::Pick` binds only `j`/`k`, so the
             // rest arrive by action id — from the palette itself, which is the same door as a keystroke
             // for this arithmetic.
             action @ ("list.down" | "list.up" | "list.first" | "list.last" | "list.page_down"
@@ -3401,51 +3195,26 @@ impl App {
         let ticket = crate::keymap::action(action).map_or("another ticket", |a| a.ticket);
         match action {
             // The four acts (`e4.5`, `reco-wsj`), all registered `global` because a reviewer disposes of
-            // a finding from the rail as readily as from the worklist. They are handled here rather than
+            // a finding from the rail as readily as from anywhere else. They are handled here rather than
             // falling through to the "another ticket owns it" toast below.
             "review.accept" => self.act_accept(),
             "review.flag" => self.open_note(),
             "review.dismiss" => self.open_reason(),
             "review.snooze" => self.open_snooze(),
             "review.retrospect" => self.toggle_retrospective(),
-            // `w`: why this episode is where it is. The toast says the sentence in one line, because a
-            // screen reader gets the news from the hint row; what it *names* is now a band of the card
-            // rather than a pane the key swapped in, and the toast says which band and how to fold it
+            // `w`: why this episode scores what it scores. The toast says the sentence in one line,
+            // because a screen reader gets the news from the hint row; what it *names* is a band of the
+            // card rather than a pane the key swapped in, and the toast says which band and how to fold it
             // (`reco-c05`, re-worded by `e9.3` when the pane became a section).
             "risk.explain" => {
-                let id = match self.view {
-                    ViewId::Queue => self.queue_selected().map(|episode| episode.id.clone()),
-                    _ => self.timeline.selected().map(|episode| episode.id.clone()),
-                };
-                let target = match self.view {
-                    ViewId::Queue => self.queue_selected(),
-                    _ => self.timeline.selected(),
-                };
-                // In the queue, `w` answers "why is this *here*", and here is the queue's ordering — so
-                // the sentence is the queue's, in the same shape `fathom why` prints: formula name and
-                // version, then the arithmetic that produced the number (`e4.5`). The spine's own ranking
-                // is still worth saying, and follows it, because the queue's first factor *is* that score.
-                let words = match (self.view, target) {
-                    (ViewId::Queue, Some(episode)) => self
-                        .queue_ranking()
-                        .order
-                        .iter()
-                        .find(|placement| placement.episode == episode.id)
-                        .map_or_else(
-                            || crate::worklist::explain_words(Some(episode), self.timeline.now()),
-                            |placement| {
-                                format!(
-                                    "{} · {}",
-                                    placement.explain(),
-                                    crate::worklist::explain_words(
-                                        Some(episode),
-                                        self.timeline.now()
-                                    )
-                                )
-                            },
-                        ),
-                    (_, other) => crate::worklist::explain_words(other, self.timeline.now()),
-                };
+                let target = self.timeline.selected();
+                let id = target.map(|episode| episode.id.clone());
+                // One answer, in the same shape `fathom why` prints: model name and version, then the
+                // arithmetic that produced the number (`e4.4`). There is no second sentence about a
+                // *place* any more: `e10.3` deleted the ranked set, and "why is this one in front of me"
+                // is a question about a chronology the reviewer is reading, not about a ranking
+                // (ADR-006 §5.1.2 §5).
+                let words = crate::timeline::explain_words(target, self.timeline.now());
                 let opened = match &id {
                     Some(id) if self.expanded_rank.as_deref() == Some(id.as_str()) => {
                         self.expanded_rank = None;
@@ -3541,8 +3310,8 @@ impl App {
     /// the records, and since `e10.2` the pane that answers it is the rail. The view switch is a history
     /// push, so `<Esc>` — which pops exactly one thing (§R2) — is the way back out of the listing.
     fn toggle_retrospective(&mut self) {
-        let showing = !self.queue.retrospective;
-        self.queue.retrospective = showing;
+        let showing = !self.review.retrospective;
+        self.review.retrospective = showing;
         if showing {
             // The pane prints whatever the ledger holds, including the notice that it could not be read;
             // the toast says which of the two subjects the screen is now showing, because the rows and the
@@ -3556,15 +3325,13 @@ impl App {
         }
     }
 
-    /// The episode an act would apply to: the worklist's row, or the rail's.
+    /// The episode an act would apply to: the rail's cursor row, or the card's episode when the card
+    /// has focus (ADR-006 §5.1.2 §2).
     ///
     /// The same lookup `w` and `d` use, because an act on the wrong episode is worse than no act.
     #[must_use]
     pub fn act_target(&self) -> Option<&str> {
-        match self.view {
-            ViewId::Queue => self.queue_selected().map(|episode| episode.id.as_str()),
-            _ => self.timeline.selected().map(|episode| episode.id.as_str()),
-        }
+        self.timeline.selected().map(|episode| episode.id.as_str())
     }
 
     /// The act's ledger row: the act's own words plus who, when, and the risk at the time.
@@ -3588,11 +3355,11 @@ impl App {
                 let in_session = episode
                     .session
                     .as_deref()
-                    .and_then(|session| self.queue.sessions.get(session))
+                    .and_then(|session| self.review.sessions.get(session))
                     .map_or(1, |rows| {
                         u64::try_from(rows.len()).unwrap_or(u64::MAX).max(1)
                     });
-                crate::queue::stamp_condition(
+                crate::review::stamp_condition(
                     episode,
                     until,
                     self.timeline.epoch().unwrap_or(0),
@@ -3608,7 +3375,7 @@ impl App {
             reason: act.reason.unwrap_or_default().to_owned(),
             note: act.note.unwrap_or_default().to_owned(),
             until,
-            actor: self.queue.actor.clone(),
+            actor: self.review.actor.clone(),
             utc: self.timeline.now(),
             risk,
             risk_model: model,
@@ -3621,7 +3388,7 @@ impl App {
     /// sign-off the reviewer believes happened and never did, which is the exact failure the ledger
     /// exists to prevent.
     fn take_act(&mut self, act: fathom_analyze::insight::TriageAct<'_>) {
-        if let Err(why) = act.validate(&self.queue.vocabulary) {
+        if let Err(why) = act.validate(&self.review.vocabulary) {
             self.overlay = None;
             self.prompt.clear();
             self.toast(why);
@@ -3634,7 +3401,7 @@ impl App {
         };
         let short = record.episode.clone();
         let disposition = record.disposition;
-        let (line, landed) = self.queue.commit(record);
+        let (line, landed) = self.review.commit(record);
         self.overlay = None;
         self.prompt.clear();
         // The rail's marker is the store's marker, and the shell is the only thing holding it between
@@ -3671,7 +3438,7 @@ impl App {
             self.toast("nothing is selected — `j`/`k` choose an episode first");
             return;
         };
-        self.queue.pick = Some(id);
+        self.review.pick = Some(id);
         self.prompt.clear();
         self.overlay = Some(Overlay::Note);
         self.toast("flag note — type what you want someone to look at, `<Enter>` to flag, `<Esc>` to cancel");
@@ -3683,7 +3450,7 @@ impl App {
             self.toast("nothing is selected — `j`/`k` choose an episode first");
             return;
         };
-        self.queue.pick = Some(id);
+        self.review.pick = Some(id);
         self.pick_row = 0;
         self.overlay = Some(Overlay::Reason);
         self.toast("dismiss reason — `j`/`k`, `<Enter>` to dismiss, `<Esc>` to cancel");
@@ -3695,7 +3462,7 @@ impl App {
             self.toast("nothing is selected — `j`/`k` choose an episode first");
             return;
         };
-        self.queue.pick = Some(id);
+        self.review.pick = Some(id);
         self.pick_row = 0;
         self.overlay = Some(Overlay::Snooze);
         self.toast("snooze until — `j`/`k`, `<Enter>` to snooze, `<Esc>` to cancel");
@@ -3721,7 +3488,7 @@ impl App {
     /// a note), and a chosen condition (`z`). Each one builds a [`fathom_analyze::insight::TriageAct`]
     /// and hands it to [`App::take_act`], which is the only place an act becomes a write.
     fn triage_submit(&mut self) {
-        let Some(id) = self.queue.pick.clone() else {
+        let Some(id) = self.review.pick.clone() else {
             self.overlay = None;
             self.prompt.clear();
             return;
@@ -3729,7 +3496,7 @@ impl App {
         match self.overlay {
             Some(Overlay::Note) => {
                 let note = self.prompt.trim().to_owned();
-                match self.queue.pick_reason.take() {
+                match self.review.pick_reason.take() {
                     // `other` was chosen, and the note *is* the reason: without this hop the code would
                     // be recorded and the reason for it lost, which is the failure mode `other` exists to
                     // make visible.
@@ -3753,7 +3520,7 @@ impl App {
                 };
                 let code = code.clone();
                 if code == "other" {
-                    self.queue.pick_reason = Some(code);
+                    self.review.pick_reason = Some(code);
                     self.prompt.clear();
                     self.overlay = Some(Overlay::Note);
                     self.toast("`other` needs the reason in words — type it, `<Enter>` to dismiss");
@@ -3779,7 +3546,7 @@ impl App {
     fn pick_rows(&self) -> Vec<(String, String)> {
         match self.overlay {
             Some(Overlay::Reason) => self
-                .queue
+                .review
                 .reasons()
                 .into_iter()
                 .map(|reason| (reason.code, reason.label))
@@ -4088,8 +3855,7 @@ impl App {
             .scope
             .episode
             .clone()
-            .or_else(|| self.timeline.selected().map(|episode| episode.id.clone()))
-            .or_else(|| self.queue_selected().map(|episode| episode.id.clone()));
+            .or_else(|| self.timeline.selected().map(|episode| episode.id.clone()));
         let (Some(mark), Some(current)) = (self.scope.mark.clone(), live) else {
             self.toast(
                 "compare needs two endpoints — `m` marks one, `j`/`k` to the other, then `c`",
@@ -4255,11 +4021,10 @@ impl App {
     }
 }
 
-/// The view an action opens, if it is one of the nine.
+/// The view an action opens, if it is one of the eight.
 #[must_use]
 fn view_for_action(action: &str) -> Option<ViewId> {
     match action {
-        "view.queue" => Some(ViewId::Queue),
         "view.timeline" => Some(ViewId::Timeline),
         "view.diff" => Some(ViewId::Diff),
         "view.structure" => Some(ViewId::Structure),
@@ -4283,7 +4048,7 @@ impl FrameScheduler {
 impl App {
     /// A page's worth of motion.
     ///
-    /// On a **list** pane a page moves the *selection* — a reviewer paging down a queue wants the
+    /// On a **list** pane a page moves the *selection* — a reviewer paging down a long rail wants the
     /// cursor down there, and the window follows it — and on a **body** pane it moves the window,
     /// because a document has nothing to select. The rail is the list case even though it is also the
     /// one that scrolls independently, which is why this is a branch and not one `scroll_by`.

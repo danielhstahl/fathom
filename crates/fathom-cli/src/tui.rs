@@ -153,8 +153,8 @@ pub fn dispatch_focus(
     // In plain mode stdout is the artefact, so the complaints go to stderr with everything else the
     // user is meant to act on (ADR-002 §7.5); in the shell they belong inside the frame, where they
     // stay visible after a notice would otherwise have timed out.
-    let (queue_reasons, queue_notices) = dismiss_reasons(root);
-    notices.extend(queue_notices);
+    let (review_reasons, review_notices) = dismiss_reasons(root);
+    notices.extend(review_notices);
     // Whether the reviewer still wants the hint line (`e5.4`), and the notice when the file said something
     // that was not a yes or a no. Read here because `fathom-tui` may not read configuration
     // (ADR-002 §4.5), and `ui.hints` is configuration.
@@ -227,13 +227,13 @@ pub fn dispatch_focus(
         lines: globals.lines,
         term: probe,
         theme,
-        // ...and the queue gets the half it cannot read for itself (`e4.5`, `reco-wsj`): who is
+        // ...and the review ledger gets the half it cannot read for itself (`e4.5`, `reco-wsj`): who is
         // reviewing, which extra reasons this repository ships, how many episodes the index holds, and
         // the acts already in the ledger — read here, at the edge, because the shell opens nothing.
-        queue: crate::queue::setup(
+        review: crate::triage::setup(
             root,
-            &crate::queue::actor(root),
-            &queue_reasons,
+            &crate::triage::actor(root),
+            &review_reasons,
             index_total,
         ),
         watch,
@@ -488,13 +488,20 @@ fn unquote(key: &str) -> String {
         .to_owned()
 }
 
-/// `queue.dismiss_reasons` from the repository's own `fathom.toml` (`e4.5`, `reco-wsj`).
+/// `review.dismiss_reasons` from the repository's own `fathom.toml` (`e4.5`, `reco-wsj`; the section is
+/// renamed by `e10.3`, `reco-ydek.3`).
 ///
 /// The vocabulary is closed and this is the *only* thing a repository may add to it: a list of extra
 /// codes, so a team can say "out of hours" in its own words without every dismissal becoming free text.
 /// A missing key is the normal case. A key that is not a list of strings is a notice, not a silent
 /// drop — the same rule `keys.overrides` follows, because a config line that does nothing is worse than
 /// one that refuses.
+///
+/// The key was spelled `[queue] dismiss_reasons`, after a pane `e10.3` deleted (ADR-006 §5.1.2 §2). The
+/// old spelling is still honoured — a repository's own vocabulary may not silently stop working because
+/// a view went away, and the ordinary `unknown_key` nearest-name warning is not enough for a key that
+/// changes *behaviour* rather than disappearing — but it is honoured **with a notice** naming the new
+/// spelling. Where both sections name the key, `[review]` wins and says the other was ignored.
 pub(crate) fn dismiss_reasons(root: &std::path::Path) -> (Vec<String>, Vec<String>) {
     let Ok(text) = std::fs::read_to_string(root.join("fathom.toml")) else {
         return (Vec::new(), Vec::new());
@@ -504,25 +511,43 @@ pub(crate) fn dismiss_reasons(root: &std::path::Path) -> (Vec<String>, Vec<Strin
         // noise, and a file that parses for one reader parses for both.
         return (Vec::new(), Vec::new());
     };
-    let Some(reasons) = document
-        .get("queue")
-        .and_then(toml_edit::Item::as_table)
-        .and_then(|queue| queue.get("dismiss_reasons"))
-    else {
-        return (Vec::new(), Vec::new());
+    let named = |section: &'static str| {
+        document
+            .get(section)
+            .and_then(toml_edit::Item::as_table)
+            .and_then(|table| table.get("dismiss_reasons"))
+            .map(|item| (section, item.clone()))
+    };
+    let mut notices = Vec::new();
+    let (section, reasons) = match (named("review"), named("queue")) {
+        (Some(pair), Some(_)) => {
+            notices.push(
+                "[review] dismiss_reasons wins over [queue] dismiss_reasons, so the [queue] list was \
+                 ignored; delete the [queue] one (`e10.3` renamed the key)".to_owned(),
+            );
+            pair
+        }
+        (Some(pair), None) => pair,
+        (None, Some((_, item))) => {
+            notices.push(
+                "[queue] dismiss_reasons is now [review] dismiss_reasons — the reasons were read, and \
+                 the view the old section was named after is gone (`e10.3`)".to_owned(),
+            );
+            ("queue", item)
+        }
+        (None, None) => return (Vec::new(), notices),
     };
     let Some(reasons) = reasons.as_array() else {
         return (
             Vec::new(),
-            vec!["queue.dismiss_reasons must be a list of reason codes".to_owned()],
+            vec![format!("{section}.dismiss_reasons must be a list of reason codes")],
         );
     };
     let mut out = Vec::new();
-    let mut notices = Vec::new();
     for reason in reasons {
         match reason.as_str() {
             Some(code) => out.push(code.to_owned()),
-            None => notices.push("queue.dismiss_reasons entries must be strings".to_owned()),
+            None => notices.push(format!("{section}.dismiss_reasons entries must be strings")),
         }
     }
     (out, notices)
@@ -618,7 +643,7 @@ pub(crate) fn index_facts(root: &std::path::Path) -> fathom_tui::index::Facts {
     // How many live episodes nobody has reviewed — the store's own count over the whole index, which is
     // the queue, as opposed to the page of it the shell was handed. A missing `unread` key is a store
     // in which nothing is unread, not a store that refused to say.
-    let queue_open = store
+    let unread = store
         .review_counts()
         .ok()
         .map(|counts| u64::try_from(*counts.get("unread").unwrap_or(&0)).unwrap_or(0));
@@ -637,7 +662,7 @@ pub(crate) fn index_facts(root: &std::path::Path) -> fathom_tui::index::Facts {
             .and_then(|scale| u64::try_from(scale.commits).ok()),
         width(store.count_episodes(&EpisodeQuery::default())),
     )
-    .with_queue_open(queue_open)
+    .with_unread(unread)
     .with_backlog(owed)
 }
 

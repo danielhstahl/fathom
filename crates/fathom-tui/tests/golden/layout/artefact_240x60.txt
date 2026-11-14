@@ -58,5 +58,5 @@
 │                                                                                                                                     │                                                                                                        │
 │What would my review record say, before I make it permanent?                                                                         │scope · reads episode range · owner e5.7                                                                │
 └──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
-⏺ epoch 1 · 48 eps · queue 4 open · idx unknown
+⏺ epoch 1 · 48 eps · 4 unread · idx unknown
 10 episodes from fixture index

@@ -1,6 +1,6 @@
 //! The four review acts, taken from the timeline (`e10.2`, ADR-006 §5.1.2 §2 and §4).
 //!
-//! `queue_triage.rs` owns the queue's own half of `e4.5` — the ranking, the pickers, the counts of a
+//! `triage_vocabulary.rs` owns the vocabulary's half of `e4.5` — the pickers and the conditions, while the ranking and the counts of a
 //! worklist. What lives here is the half that moved: the acts are `global` bindings and always were, so
 //! what `e10.2` moved is the **host of the feedback**, and the feedback is now the rail's row and the
 //! rail's strip rather than a row leaving a list. Three of these tests are the ones ADR-006 §5.1.2 §2
@@ -13,7 +13,7 @@
 //! proof enough; on a chronology nothing leaves, so what has to be proved is finer: the cell that changed,
 //! the number the strip prints, the fact that the cursor did *not* move.
 //!
-//! As in `queue_triage.rs`, the tests play the composition root's role and install their own [`Ledger`]:
+//! As in `triage_vocabulary.rs`, the tests play the composition root's role and install their own [`Ledger`]:
 //! the shell may not open a store (ADR-002 §3), so a fake is the only thing that can stand in for the real
 //! one, and the refusing fake is the case that separates "the reviewer signed it off" from "a key was
 //! pressed".
@@ -28,7 +28,7 @@ use fathom_analyze::insight::{
 use fathom_core::time::Timestamp;
 use fathom_tui::app::{App, Model};
 use fathom_tui::keymap::Keymap;
-use fathom_tui::queue::{Ledger, LedgerHandle, Setup, State};
+use fathom_tui::review::{Ledger, LedgerHandle, Setup, State};
 use fathom_tui::render::frame_lines;
 use fathom_tui::timeline::{AuthorKind, Batch, Episode, Filter, GroupBy, ReviewState};
 use fathom_tui::views::{self, ViewId};
@@ -117,8 +117,6 @@ fn risk(score: u64, why: &str) -> RiskView {
             detail: why.to_owned(),
         }],
         surfaces: vec!["migration".to_owned()],
-        rank: None,
-        ranked: None,
         caveat: None,
         blind_spots: vec!["rollback".to_owned()],
     }
@@ -177,7 +175,7 @@ fn shell() -> App {
     no_grouping(&mut app);
     app.timeline.set_now(NOW);
     app.timeline.load(batch(rows(), 7));
-    app.queue = Setup {
+    app.review = Setup {
         vocabulary: ReasonVocabulary::shipped(),
         actor: "ada <ada@example.com>".to_owned(),
         ledger: Some(Recorder::default().share()),
@@ -185,7 +183,7 @@ fn shell() -> App {
         ..Setup::default()
     }
     .state();
-    app.queue.sessions = State::sessions_of(&rows());
+    app.review.sessions = State::sessions_of(&rows());
     app.set_view(ViewId::Timeline);
     app
 }
@@ -291,7 +289,8 @@ fn unread_rows(app: &App) -> usize {
 
 // --- the acts, on the rail ------------------------------------------------------------------------
 
-/// The moved test (`queue_triage.rs::accept_writes_before_it_moves_and_the_row_leaves_the_queue`), with
+/// The moved test (`queue_triage.rs::accept_writes_before_it_moves_and_the_row_leaves_the_queue`, now
+/// `triage_vocabulary.rs`), with
 /// the queue's proof replaced by the rail's: nothing leaves a chronology, so the row itself has to say
 /// `✔`, in the same frame, with no second view to confirm it (ADR-006 §5.1.2 §2). The write still happens
 /// before anything on screen changes, and that half of the name is the half that matters.
@@ -336,14 +335,14 @@ fn accept_writes_before_it_marks_and_the_row_reads_accepted_in_the_same_frame() 
     );
 
     let written = app
-        .queue
+        .review
         .history
         .iter()
         .filter(|record| record.disposition == Disposition::Accepted)
         .count();
     assert_eq!(written, 1, "one act, written once");
     let record = app
-        .queue
+        .review
         .history
         .iter()
         .find(|record| record.disposition == Disposition::Accepted)
@@ -378,7 +377,7 @@ fn a_ledger_that_refuses_keeps_the_row_exactly_where_it_was() {
     let mut app = App::new(Keymap::defaults(), Model::from_facade(), SIZE, "repo");
     app.timeline.set_now(NOW);
     app.timeline.load(batch(rows(), 7));
-    app.queue = Setup {
+    app.review = Setup {
         actor: "ada <ada@example.com>".to_owned(),
         ledger: Some(LedgerHandle(Arc::clone(&recorder) as Arc<dyn Ledger>)),
         total: 4,
@@ -414,7 +413,7 @@ fn a_ledger_that_refuses_keeps_the_row_exactly_where_it_was() {
         unread,
         "not even the count the act would have moved"
     );
-    assert!(app.queue.decided.is_empty(), "and nothing was remembered");
+    assert!(app.review.decided.is_empty(), "and nothing was remembered");
     assert_eq!(
         app.timeline
             .selected()
@@ -437,7 +436,7 @@ fn with_no_ledger_an_act_is_honest_about_living_only_in_memory() {
     let mut app = App::new(Keymap::defaults(), Model::from_facade(), SIZE, "repo");
     app.timeline.set_now(NOW);
     app.timeline.load(batch(rows(), 7));
-    app.queue = Setup {
+    app.review = Setup {
         actor: "ada".to_owned(),
         total: 4,
         ..Setup::default()
@@ -463,7 +462,7 @@ fn with_no_ledger_an_act_is_honest_about_living_only_in_memory() {
         "the act still works for this run, so the rail is still usable"
     );
     assert_eq!(
-        app.queue
+        app.review
             .decided
             .values()
             .filter(|disposition| **disposition == Disposition::Accepted)
@@ -634,7 +633,7 @@ fn the_retrospective_names_what_was_skipped_and_says_pattern_out_loud() {
             risk_model: "spine-2".to_owned(),
         })
         .collect();
-    app.queue = Setup {
+    app.review = Setup {
         vocabulary: ReasonVocabulary::shipped(),
         actor: "ada <ada@example.com>".to_owned(),
         ledger: Some(Recorder::default().share()),
@@ -697,7 +696,7 @@ fn an_unreadable_ledger_is_said_rather_than_shown_as_a_clean_sheet() {
     let recorder = Arc::new(Recorder::default());
     recorder.refuse("the ledger is on a network disk that is not mounted");
     let mut app = shell();
-    app.queue
+    app.review
         .notices
         .push("the ledger is on a network disk that is not mounted".to_owned());
     dispatch(&mut app, "r");
@@ -717,7 +716,7 @@ fn an_unreadable_ledger_is_said_rather_than_shown_as_a_clean_sheet() {
 /// and the answer is on the rail, so that is where the key goes.
 #[test]
 fn r_from_any_view_puts_the_timeline_on_screen_listing_acts() {
-    for view in [ViewId::Queue, ViewId::Diff, ViewId::Structure] {
+    for view in [ViewId::Timeline, ViewId::Diff, ViewId::Structure] {
         let mut app = shell();
         app.set_view(view);
         dispatch(&mut app, "r");
@@ -762,7 +761,7 @@ fn an_acts_listing_with_no_ledger_says_nothing_was_written() {
     let mut app = App::new(Keymap::defaults(), Model::from_facade(), SIZE, "repo");
     app.timeline.set_now(NOW);
     app.timeline.load(batch(rows(), 7));
-    app.queue = Setup {
+    app.review = Setup {
         actor: "ada".to_owned(),
         total: 4,
         ..Setup::default()
@@ -809,7 +808,7 @@ fn dismiss_from_the_rail_opens_the_vocabulary_in_the_rail_pane() {
     // Third row down, whatever that code turns out to be: the picker's cursor is separate state and the
     // act must carry the code under *it*, not the first one.
     let third = app
-        .queue
+        .review
         .reasons()
         .get(2)
         .unwrap_or_else(|| panic!("the vocabulary has three rows"))
@@ -830,7 +829,7 @@ fn dismiss_from_the_rail_opens_the_vocabulary_in_the_rail_pane() {
         rail(&app)
     );
     let reason = app
-        .queue
+        .review
         .history
         .first()
         .map_or_else(String::new, |record| record.reason.clone());
@@ -870,7 +869,7 @@ fn a_flag_without_a_note_is_refused_in_words_and_a_flag_with_one_is_written() {
         rail(&app)
     );
     let note = app
-        .queue
+        .review
         .history
         .first()
         .map_or_else(String::new, |record| record.note.clone());
@@ -898,7 +897,7 @@ fn clearing_a_hundred_episode_rail_costs_the_shell_seconds_not_minutes() {
     no_grouping(&mut app);
     app.timeline.set_now(NOW);
     app.timeline.load(batch(many, 1));
-    app.queue = Setup {
+    app.review = Setup {
         actor: "ada <ada@example.com>".to_owned(),
         ledger: Some(Recorder::default().share()),
         total: 100,
@@ -932,7 +931,7 @@ fn clearing_a_hundred_episode_rail_costs_the_shell_seconds_not_minutes() {
         strip(&app)
     );
     assert_eq!(
-        app.queue
+        app.review
             .decided
             .values()
             .filter(|disposition| **disposition == Disposition::Dismissed)

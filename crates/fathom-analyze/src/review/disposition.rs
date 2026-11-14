@@ -203,7 +203,7 @@ pub const REASONS: &[(&str, &str, &str, bool)] = &[
     (
         "superseded",
         "a later episode did it",
-        "this has been overtaken, and the queue is listing history",
+        "this has been overtaken, and the rail is listing history",
         false,
     ),
     (
@@ -573,7 +573,7 @@ impl<'a> TriageAct<'a> {
             Disposition::Dismissed => {
                 let Some(code) = self.reason.map(str::trim).filter(|code| !code.is_empty()) else {
                     return Err(
-                        "a dismissal needs a reason — `-` then pick one (the queue counts them, \
+                        "a dismissal needs a reason — `-` then pick one (the ledger counts them, \
                          and a reasonless dismissal cannot be counted)"
                             .to_owned(),
                     );
@@ -733,7 +733,10 @@ pub fn newest_first(left: &TriageRecord, right: &TriageRecord) -> CmpOrdering {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::queue::order::DAY_SECONDS;
+
+    /// A day in seconds. It lived in the queue's ordering module; a `7d` snooze is a week of these
+    /// whether or not anything ranks a list any more.
+    const DAY_SECONDS: i64 = 86_400;
 
     const NOW: i64 = 1_700_000_000;
 
@@ -932,7 +935,7 @@ mod tests {
         );
         assert!(
             !SnoozeUntil::NextIndex.released(None, at(NOW), &situation),
-            "a snooze nobody can evaluate stays out of the queue rather than back in it every run"
+            "a snooze nobody can evaluate stays snoozed rather than coming back into the unread set every run"
         );
     }
 
@@ -1001,7 +1004,7 @@ mod tests {
         assert!(Disposition::Read.open(false));
         assert!(
             Disposition::Flagged.open(false),
-            "a flag keeps its episode in the queue"
+            "a flag keeps its episode in the unread set"
         );
         assert!(!Disposition::Snoozed.open(false));
         assert!(Disposition::Snoozed.open(true));

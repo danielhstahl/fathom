@@ -268,9 +268,7 @@ impl Jump {
 
 /// The view registry ids (ADR-006 §4). Duplicated from `fathom-tui` on purpose — see [`Jump`].
 pub mod view {
-    /// The ranked attention worklist.
-    pub const QUEUE: &str = "queue";
-    /// The episode rail and card.
+    /// The episode rail and card — the shell's home view since `e10.3` deleted the queue.
     pub const TIMELINE: &str = "timeline";
     /// The file tree and hunks — where almost every finding's evidence lives.
     pub const DIFF: &str = "diff";
@@ -279,8 +277,8 @@ pub mod view {
     /// The module graph.
     pub const GRAPH: &str = "graph";
 
-    /// All seven this catalogue may name, for the contract test that keeps them ADR-006's list.
-    pub const ALL: [&str; 5] = [QUEUE, TIMELINE, DIFF, STRUCTURE, GRAPH];
+    /// All four this catalogue may name, for the contract test that keeps them ADR-006's list.
+    pub const ALL: [&str; 4] = [TIMELINE, DIFF, STRUCTURE, GRAPH];
 }
 
 /// One finding.
@@ -617,6 +615,6 @@ mod tests {
             assert!(!name.is_empty() && name == name.to_lowercase());
         }
         assert_eq!(view::DIFF, "diff");
-        assert_eq!(view::QUEUE, "queue");
+        assert_eq!(view::TIMELINE, "timeline");
     }
 }

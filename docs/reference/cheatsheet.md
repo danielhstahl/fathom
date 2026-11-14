@@ -68,7 +68,7 @@ a   <Enter>   s   g   <Esc>
 
 | # | Key | Resolves in mode | Action | What it does |
 |---|---|---|---|---|
-| 1 | `a` | `global` | `view.ambient` | Glance mode: latest episode, its risk, queue count, index state. |
+| 1 | `a` | `global` | `view.ambient` | Glance mode: latest episode, its risk, the unread count, index state. |
 | 2 | `<Enter>` | `body` | `drill.in` | Drill into that episode's card: one keypress, per ADR-001 §4.1. |
 | 3 | `s` | `global` | `view.structure` | Where it landed: treemap with churn heat; `[`/`]` move the aggregation level. |
 | 4 | `g` | `global` | `view.graph` | Module graph with this episode's delta overlay; `!` shows only the delta, `[`/`]` aggregate, `<`/`>` set the hop limit. |
@@ -104,7 +104,6 @@ up here first.
 <!-- BEGIN GENERATED: views -->
 | View | Mode | Go with | The question it answers |
 |---|---|---|---|
-| **Queue** | `queue` | `q` | What is the next thing I have to look at, and why that one? |
 | **Timeline** | `timeline` | `t` | What happened, in what order, and which of it have I not read? |
 | **Diff** | `diff` | `d` | What exactly changed in this file, and is it what the card claims? |
 | **Structure** | `structure` | `s` | Where did it land, and is the tree hottest where it already was? |
@@ -155,7 +154,7 @@ mode has to be live (§4).
 | **Review the episode** | `f` | Flag for attention, with a note | global |
 | **Review the episode** | `r` | Rail: what you skipped, and why | global |
 | **Review the episode** | `z` | Snooze until a condition | global |
-| **Review the episode** | `w` | Why this rank: every reason and the whole ceiling | global |
+| **Review the episode** | `w` | Why this score: every reason and the whole ceiling | global |
 | **Change what you are looking at** | `m` | Mark this endpoint for comparison | global |
 | **Change what you are looking at** | `c` | Compare the live scope with the mark | global |
 | **Change what you are looking at** | `F` | Edit filters (author, area, state, date) | global |
@@ -220,7 +219,6 @@ mode has to be live (§4).
 | **View-local** | `p` | Go to: Deps | global |
 | **View-local** | `d` | Go to: Diff | global |
 | **View-local** | `g` | Go to: Graph | global |
-| **View-local** | `q` | Go to: Queue | global |
 | **View-local** | `s` | Go to: Structure | global |
 | **View-local** | `t` | Go to: Timeline | global |
 <!-- END GENERATED: keys -->
@@ -232,8 +230,8 @@ findings) and `?` (this table, from inside the program).
 ## 4 Modes: why one key can be four different things
 
 Exactly one *interaction* mode and one *view* mode are live over the always-live `global` layer.
-`prompt` and `pick` are **exclusive**: while a text field or a chooser owns the keyboard, `q` is the
-letter q and not "go to the queue" — which is the reason the palette can be typed into at all.
+`prompt` and `pick` are **exclusive**: while a text field or a chooser owns the keyboard, `t` is the
+letter t and not "go to the timeline" — which is the reason the palette can be typed into at all.
 Precedence is first-binder-wins down this list (ADR-006 §7.1):
 
 <!-- BEGIN GENERATED: modes -->
@@ -241,9 +239,8 @@ Precedence is first-binder-wins down this list (ADR-006 §7.1):
 |---|---|---|---|
 | `prompt` | interaction | yes | A one-line text field owns the keyboard (search query, palette filter, reason text, path). Everything typed is text. |
 | `pick` | interaction | yes | A single-key chooser is open (dismiss reason, snooze window, format). One keystroke chooses; there is no text entry. |
-| `list` | interaction | no | A list pane has focus: queue worklist, episode rail, file tree, dependency table, search results, treemap rows. |
+| `list` | interaction | no | A list pane has focus: episode rail, file tree, dependency table, search results, treemap rows. |
 | `body` | interaction | no | A content surface has focus: hunk view, episode card, graph canvas, artefact preview. |
-| `queue` | view | no | The attention queue is the live view. |
 | `timeline` | view | no | The timeline (episode rail + card) is the live view. |
 | `diff` | view | no | The diff view is the live view. |
 | `structure` | view | no | The structure treemap view is the live view. |
@@ -320,7 +317,6 @@ Every default binding, in precedence order. This is the table the help overlay d
 | `body` | `j` | `list.scroll_down` | Scroll one line down |
 | `body` | `k` | `list.scroll_up` | Scroll one line up |
 | `body` | `l` | `drill.in` | Drill in (follow selection / evidence) |
-| `queue` | — | — | inherits the shared motion set: no view-local bindings |
 | `timeline` | — | — | inherits the shared motion set: no view-local bindings |
 | `diff` | `<` | `diff.sort_cycle` | Diff: sort the file tree by path / complexity delta |
 | `diff` | `=` | `diff.ws_toggle` | Diff: ignore whitespace |
@@ -387,11 +383,10 @@ Every default binding, in precedence order. This is the table the help overlay d
 | `global` | `n` | `list.next_match` | Next match |
 | `global` | `o` | `view.artefact` | Go to: Artefact |
 | `global` | `p` | `view.deps` | Go to: Deps |
-| `global` | `q` | `view.queue` | Go to: Queue |
 | `global` | `r` | `review.retrospect` | Rail: what you skipped, and why |
 | `global` | `s` | `view.structure` | Go to: Structure |
 | `global` | `t` | `view.timeline` | Go to: Timeline |
-| `global` | `w` | `risk.explain` | Why this rank: every reason and the whole ceiling |
+| `global` | `w` | `risk.explain` | Why this score: every reason and the whole ceiling |
 | `global` | `x` | `review.accept` | Mark reviewed (accept) |
 | `global` | `z` | `review.snooze` | Snooze until a condition |
 <!-- END GENERATED: keymap -->
@@ -478,7 +473,7 @@ makes "unbound" different from "unreachable".
 | `review.flag` | Flag for attention, with a note | review | `f` | yes | `global` | `e4.5` |
 | `review.retrospect` | Rail: what you skipped, and why | review | `r` | yes | `global` | `e4.5` |
 | `review.snooze` | Snooze until a condition | review | `z` | yes | `global` | `e4.5` |
-| `risk.explain` | Why this rank: every reason and the whole ceiling | review | `w` | yes | `global` | `e4.4` |
+| `risk.explain` | Why this score: every reason and the whole ceiling | review | `w` | yes | `global` | `e4.4` |
 | `screen.redraw` | Repaint the screen | frame | `<C-l>` | yes | `global` | `e1.5` |
 | `search.open` | Search: fuzzy over episodes, paths, symbols, deps, findings | overlay | `/` | yes | `global` | `e5.2` |
 | `structure.level_down` | Structure: drill one level down | view | `]` | yes | `structure` | `e2.3` |
@@ -502,7 +497,6 @@ makes "unbound" different from "unreachable".
 | `view.deps` | Go to: Deps | view | `p` | yes | `global` | `e2.6` |
 | `view.diff` | Go to: Diff | view | `d` | yes | `global` | `e1.7` |
 | `view.graph` | Go to: Graph | view | `g` | yes | `global` | `e3.4` |
-| `view.queue` | Go to: Queue | view | `q` | yes | `global` | `e4.5` |
 | `view.structure` | Go to: Structure | view | `s` | yes | `global` | `e2.3` |
 | `view.timeline` | Go to: Timeline | view | `t` | yes | `global` | `e1.6` |
 <!-- END GENERATED: actions -->
@@ -548,6 +542,7 @@ and [ADR-006 §7.2](../adr/0006-tui.md).
 | **reserved for user override** | <C-6> | a byte, simply unbound | all modes | vim's alternate-file |
 | **reserved for user override** | <S-F1> | a byte, simply unbound | all modes | function keys are otherwise unbound in v1: their encodings vary more across terminals than any other group |
 | **reserved for user override** | i | a byte, simply unbound | all modes | the intent pane's letter. `e9.3` retired the pane (ADR-006 §5.1.1): the card's `intent` row is the one line, and `fathom show` prints the plan and the declared scope behind it. Free for a chord of your own; bringing it back into the default table is §7.6's route, not a quiet rebind. |
+| **reserved for user override** | q | a byte, simply unbound | all modes | the Queue view's letter. `e10.3` retired the view (ADR-006 §5.1.2 §1): the timeline is home and `t` stays the home letter, because a key belongs to the view it opens and not to the pane that happened to be deleted. The acts moved to the rail and `r` came with them, so nothing this build needs is spelled `q`. Free for a chord of your own; §11 carries the bar for binding it in the default table again. |
 <!-- END GENERATED: reserved -->
 
 ## 8 Making a key yours
@@ -587,13 +582,12 @@ key the build does not bind ([ADR-006 §5](../adr/0006-tui.md), `keymap.HINT_ACT
 <!-- BEGIN GENERATED: hint -->
 | Action | Label | Key |
 |---|---|---|
-| `view.queue` | Go to: Queue | `q` |
 | `view.timeline` | Go to: Timeline | `t` |
 | `view.diff` | Go to: Diff | `d` |
 | `search.open` | Search: fuzzy over episodes, paths, symbols, deps, findings | `/` |
 | `palette.open` | Command palette | `,` |
 | `review.accept` | Mark reviewed (accept) | `x` |
-| `risk.explain` | Why this rank: every reason and the whole ceiling | `w` |
+| `risk.explain` | Why this score: every reason and the whole ceiling | `w` |
 | `help.open` | Help: this keymap as the merged table | `?` |
 <!-- END GENERATED: hint -->
 

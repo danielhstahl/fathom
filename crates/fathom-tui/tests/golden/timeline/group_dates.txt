@@ -15,7 +15,7 @@
                                           
 
 ## rail strip
-2 unread · filter: area=any state=any 2025-10-14…2025-10-14 group=day (F edits) · 3 of 10
+order: newest first · 2 unread · filter: area=any state=any 2025-10-14…2025-10-14 group=day (F edits) · 3 of 10
 
 ## card (35 columns × 14 rows)
 e8f1a2 — make the store epoch-safe 

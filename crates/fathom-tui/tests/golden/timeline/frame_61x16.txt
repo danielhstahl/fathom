@@ -14,9 +14,9 @@
 │ Thu 18 Sep · session 2 (pi) ──…│members  e8f1:0 e8f1:1 e8…│
 │  08d4b1 26d0h +3 −1 ? ✔        │boundary author 0.75 — a …│
 │ Sun 14 Sep · session 1 (pi) ──…│… 2 more rows · j · G     │
-│4 unread · 1 snoozed · filter: …│card · reads delta.struct…│
+│order: newest first · 4 unread …│card · reads delta.struct…│
 └───────────────────────────────────────────────────────────┘
-⏺ epoch unknown · unknown eps · queue 4 open · idx unknown
+⏺ epoch unknown · unknown eps · 4 unread · idx unknown
 10 episodes from fixture index
 
 ## rail (42 columns × 12 rows)
@@ -34,7 +34,7 @@
  Sat 13 Sep ── 1 episode                  
 
 ## rail strip
-4 unread · 1 snoozed · filter: area=any state=any group=day (F edits) · 10 of 10
+order: newest first · 4 unread · 1 snoozed · filter: area=any state=any group=day (F edits) · 10 of 10
 
 ## card (35 columns × 14 rows)
 e8f1a2 — make the store epoch-safe 

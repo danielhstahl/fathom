@@ -619,7 +619,7 @@ mod tests {
         let root = indexed("two-sessions");
         write_rows(
             &root,
-            &[("timeline.filter", "group=day"), ("tui.view", "queue")],
+            &[("timeline.filter", "group=day"), ("tui.view", "timeline")],
         );
         // Two fathoms open the same repository: both read the same rows.
         let a = load(&root, 1);
@@ -635,7 +635,7 @@ mod tests {
                     "timeline.filter".to_owned(),
                     "author=pi;group=day".to_owned(),
                 ),
-                ("tui.view".to_owned(), "queue".to_owned()),
+                ("tui.view".to_owned(), "timeline".to_owned()),
             ],
             2,
         );

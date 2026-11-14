@@ -2,7 +2,7 @@
 
 **Read this first**
 
-- The ranking puts it at `spine-2 74 = surfaces 50 + author 8 + size 8 + breadth 6 + deletions 2 · rank 2 of 9`[c1].
+- The ranking puts it at `spine-2 74 = surfaces 50 + author 8 + size 8 + breadth 6 + deletions 2`[c1].
 - Asked for, in the asker's own words: “split the worker pool so a slow clone cannot starve the rail”[c2].
 
 **Why it was asked for**
@@ -63,7 +63,7 @@
 
 Evidence
 
-- `[c1]` `attention` figure `risk` — #/risk — risk: spine-2 74 = surfaces 50 + author 8 + size 8 + breadth 6 + deletions 2 · rank 2 of 9
+- `[c1]` `attention` figure `risk` — #/risk — risk: spine-2 74 = surfaces 50 + author 8 + size 8 + breadth 6 + deletions 2
 - `[c2]` the recorded intent — #/episode/intent — intent, in the asker's words: split the worker pool so a slow clone cannot starve the rail — recorded by `hook-prompt` at 0.95, state recorded
 - `[c3]` the declared scope — #/episode/intent — declared scope: src/pool/**, tests/pool/**
 - `[c4]` the plan items as stated — #/episode/intent — plan: move the clone call off the UI thread | pending: add a regression test for the starvation case
@@ -100,5 +100,5 @@ Evidence
 - `[c35]` the `surface` gap — #/gaps/3 — findings are e2.8's — which surfaces moved is answered from the stored path classes; what an operator has to *do* — the migration that cannot be reversed, the environment variable nothing reads, the workflow that now signs artefacts — is `e2.8`'s finding set and reaches this model as a supplied block (owner e2.8; remedy none in this build)
 - `[c36]` the `attention` gap — #/gaps/6 — spine-only ranking — the ranking is the spine-only one: size, surfaces, deletions, breadth and authorship. Findings, staleness and blast radius enter with `e4.4`'s scorer, and until then the blind-spot list above is part of the answer rather than a footnote to it (owner e4.4; remedy none in this build)
 
-*Composed by `fathom-template/1` from `fathom-delta/1` v1 — a template, not a model: every figure above is copied from the citation printed beside it.*
+*Composed by `fathom-template/1` from `fathom-delta/2` v2 — a template, not a model: every figure above is copied from the citation printed beside it.*
 fathom-template/1 verified: 34 claims, 36 citations, 6 checks.

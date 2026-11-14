@@ -16,6 +16,66 @@ fails CI if the version in `Cargo.toml` has no dated section here, because the s
 body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
+### The Queue pane is deleted, the rail is the home view, and the badge's count becomes a count of something (`reco-ydek.3`, `e10.3`)
+
+`reco-ydek.1` decided this in [ADR-006 §5.1.2](docs/adr/0006-tui.md) and `reco-ydek.2` moved the acts off it;
+this is the deletion, and the arithmetic says so — across `crates/` the diff removes 3 425 lines and adds
+1 960. What `fathom-analyze::queue` (`rank_queue`, `QueuePolicy`, `QueueRow`, `QueuePlacement`),
+`fathom-tui::worklist` and `fathom queue` were built to answer does not disappear with them, and the ticket's
+real content is the four places that had to be named as their replacements rather than left as holes: the
+home view, the retrospective, the ambient glance, and the sentence under the rail that used to justify the
+ordering. `q` is **retired to the user**, not reused: ADR-002 §6.2 refuses to re-bind a public letter, so the
+keymap ships no entry at all, an override file may claim it, and pressing it says what it used to do and where
+those rows live now.
+
+* **Nine views become eight, and `q` is not the ninth.** `ViewId` loses its `Queue` arm; `Mode::Queue` leaves
+  the keymap precedence list; the shell opens on `t`, the rail, which is the pane that was already absorbing
+  the queue's job row by row. The generated layout tables, the matrix screenshots, the cheatsheet, the
+  shell's own `?` page and both completion artefacts are re-rendered from the same inventory, so there is one
+  list of views and it is printed in every place that used to have a second copy of it. `fathom queue` becomes
+  `fathom triage`, naming the ledger it reads instead of the pane that died.
+* **The retrospective is a listing, not a pane.** The acts the queue used to fold into a column — dismissal,
+  author, reason, note, when — are the timeline's own act list (`a` walks it, the card prints the one under
+  the cursor, `fathom review list --state dismissed` is its deep form), and a session with nothing written
+  says so in the same breath rather than painting an empty list. The write path is untouched: `fathom review
+  verify` still refuses a ledger that drifted, and `fathom review sync` still renders each act once.
+* **The ambient line stops counting a queue and starts counting reading.** `IndexState.queue_open` becomes
+  `unread` and prints `7 unread of 12` where it printed `queue 7 open`, because "open" was never a property a
+  reviewer could check — an episode is open because *you have not read it*, which is the sentence the pane now
+  prints, with the snoozed and overridden counts kept beside it as the exceptions they are. The ambient JSON
+  contract moves to `fathom.cli.ambient/2` for the same reason: `queue` becomes `open_work`, and a consumer
+  that asked for the old key gets the version it asked for rather than a renamed one.
+* **A ranking that orders nothing stops shipping an ordering.** `risk.rank` and `risk.ranked` leave the delta
+  document, which is `fathom-delta/2` after the bump and is re-blessed through `tools/check_delta_compat.py`
+rather than patched in place — a document whose *shape* changed is a version bump, not an edit. The strip
+  under the rail says `order: newest first` and keeps naming the model that produced the row's figure
+  (`risk spine-2`), because the number on the row is still `spine-2`'s and ADR-006 §5.1.2 §3's rule is that a
+  printed figure names its producer.
+* **The last two names the pane left behind, and a gate so they stay dead.** `fathom_analyze::queue` is
+  `fathom_analyze::review` — the disposition vocabulary, the retrospective roll-up and the counts were never
+  about a queue and are now not named for one — and the config key `[queue] dismiss_reasons` is
+  `[review] dismiss_reasons`, **still honoured in the old spelling with a notice naming the new one**, because
+  a repository's own vocabulary may not silently stop working because a view went away (`fathom queue` is
+  `fathom triage`, which names the ledger it reads). `tools/check_docs.py` gained the retired-surface gate
+  ADR-006 §7 asked this ticket for: ten deleted strings — the ordering strip's sentence, `rank N of M`, the
+  worklist's module path, the ranking's type names — each mapped to the pages allowed to print them, checked
+  in both directions so an exemption that outlived its record fails too.
+
+Tests moved with the deletion, including the ones that had to be re-asked rather than deleted:
+`tests/test_risk_ranking_contract.py` now asks the 500-commit pty "does every row print its score, print `?`
+when nothing scored it, and get a strip naming where the number came from" instead of "is the queue ranked",
+and asks the migration/CI pair through `fathom why` now that no pane sorts by their scores;
+`tests/test_tui_contract.py` counts eight views and asserts `q` is bound to nothing; the shell-open and
+view-key pty chords are green with the rail as home; `tools/perf_gate.py`'s and `tools/mvp_acceptance.py`'s
+probes are retargeted from `q` to the rail while the **budget keys keep their names**, because what they
+measure — first paint, and one keystroke on the home list — did not change, only the letter that reached
+them; and the finding schema's view registry drops `queue` with its blessed JSON re-generated rather than
+hand-edited. **Still owed, said out loud**:
+the committed store fixture [review-ledger](docs/concepts/review-ledger.md) asks for (a `.sqlite3` written by
+the build that still had the queue, to prove forty old sign-offs still read back) does not exist yet and this
+repo keeps no committed stores; the argument in the meantime is structural and is written on that page — no
+table moved, `SCHEMA_VERSION` did not move, and nothing in epic 10 read `triage_event` differently.
+
 ### Epic 8 closes, and its exit criteria became a program that can be told to lie to it (`reco-l9bz`, `e8`)
 
 Seven tickets made complexity a primitive: `e8.1` defined it, `e8.2` counted it in six grammars against a

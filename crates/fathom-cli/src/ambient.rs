@@ -41,7 +41,7 @@ use std::time::{Duration, Instant};
 use fathom_core::exit::ExitCode;
 use fathom_core::time::{Clock as _, Timestamp};
 use fathom_tui::ambient::{
-    self, End, Glance, IndexState, Latest, Need, QueueState, Reason, WatchState,
+    self, End, Glance, IndexState, Latest, Need, OpenWork, Reason, WatchState,
 };
 
 use crate::output;
@@ -58,7 +58,13 @@ const STALE_AFTER_SECS: i64 = 600;
 const HEARTBEAT_LIVE_SECS: i64 = 60;
 
 /// The machine contract `--json` promises, spelled the way `fathom watch --json` spells its own.
-const CONTRACT: &str = "fathom.cli.ambient/1";
+///
+/// `/2` is `e10.3` (`reco-ydek.3`), and two removals are why: the `queue` object is `open_work` now with
+/// its `open_queue` attention kind spelled `open_work`, and `latest.risk` no longer carries `rank` /
+/// `ranked` — the place in a ranked set left with the ranked set (ADR-006 §5.1.2 §5). Both are breaking
+/// for a consumer that switches on the shape it got rather than the one it hoped for, which is exactly
+/// what the version number is for.
+const CONTRACT: &str = "fathom.cli.ambient/2";
 
 /// Run `fathom ambient`.
 pub fn run(args: &AmbientArgs, globals: &Globals) -> eyre::Result<ExitCode> {
@@ -257,13 +263,11 @@ fn glance_json(glance: &Glance, args: &AmbientArgs) -> serde_json::Value {
             "risk": latest.risk.as_ref().map(|risk| serde_json::json!({
                 "score": risk.score,
                 "model": risk.model,
-                "rank": risk.rank,
-                "ranked": risk.ranked,
                 "surfaces": risk.surfaces,
             })),
         })
     });
-    let counts = glance.queue.counts;
+    let counts = glance.open_work.counts;
     serde_json::json!({
         "contract": CONTRACT,
         "stamp_utc": glance.now.as_unix_micros() / 1_000,
@@ -275,9 +279,9 @@ fn glance_json(glance: &Glance, args: &AmbientArgs) -> serde_json::Value {
             .map(|reason| serde_json::json!({ "kind": reason.kind.as_str(), "text": reason.text })),
         "drill": glance.drill,
         "latest": latest,
-        "queue": {
-            "known": glance.queue.known,
-            "over_day": glance.queue.over_day,
+        "open_work": {
+            "known": glance.open_work.known,
+            "over_day": glance.open_work.over_day,
             "counts": counts
                 .map(|counts| serde_json::to_value(counts).unwrap_or(serde_json::Value::Null)),
         },
@@ -319,8 +323,8 @@ type Job = crate::watch::IndexJob;
 struct Facts {
     index: IndexState,
     latest: Option<Latest>,
-    queue: QueueState,
-    /// The queue's top-ranked open episode: what the reason line prints and what `<Enter>` opens.
+    open_work: OpenWork,
+    /// The open row the pane points at: what the reason line prints and what `<Enter>` opens.
     top: Option<Top>,
     notes: Vec<String>,
 }
@@ -336,7 +340,10 @@ impl Facts {
     }
 }
 
-/// The queue's first open row, in the three things the pane needs from it.
+/// The row the pane points at, in the three things it needs from it.
+///
+/// It was "the queue's first open row" while something ranked the set; now it is the newest open row, and
+/// the pane says what the row's own score is rather than what place it took.
 struct Top {
     kind: Need,
     text: String,
@@ -633,7 +640,6 @@ impl Reader {
     fn read(&self, now: &Timestamp) -> Facts {
         use fathom_store::episode::{EpisodeQuery, ReviewState};
         use fathom_store::spine::Store;
-        use fathom_tui::timeline::Episode;
 
         let mut out = Facts::default();
         let facts = crate::tui::index_facts(&self.root);
@@ -661,7 +667,7 @@ impl Reader {
                 .ok()
                 .map(|known| known.contains(&self.head))
         };
-        out.queue.over_day = store
+        out.open_work.over_day = store
             .count_episodes(&EpisodeQuery {
                 state: Some(ReviewState::Unread),
                 until_utc: Some(now.as_unix_micros() / 1_000 - 86_400_000),
@@ -669,25 +675,39 @@ impl Reader {
             })
             .ok()
             .and_then(|count| usize::try_from(count).ok());
-        // The rows, the ranking and the counts, from the read the shell already makes: the pane may not
-        // have its own idea of what is riskiest, and this is the only ordering in the product that can
-        // explain itself (`reco-wsj`).
+        // The rows and the counts, from the read the shell already makes. There is no ranking here any
+        // more (`e10.3`, ADR-006 §5.1.2 §5): the pane counts open work and names the one row it points
+        // at, and neither claim needs an order over the rest (`reco-wsj`'s "the only ordering that can
+        // explain itself" is now the rail's chronology, which this pane does not draw).
         let Some(batch) = crate::episodes::load(&self.root, &facts) else {
-            out.queue.known = true;
+            out.open_work.known = true;
             return out;
         };
-        let setup = crate::queue::setup(
+        let setup = crate::triage::setup(
             &self.root,
-            &crate::queue::actor(&self.root),
+            &crate::triage::actor(&self.root),
             &crate::tui::dismiss_reasons(&self.root).0,
             usize::try_from(facts.episodes.unwrap_or(0)).unwrap_or(usize::MAX),
         );
         let state = setup.state();
-        let rows: Vec<&Episode> = batch.episodes.iter().collect();
-        let ranking = fathom_tui::queue::ranking(&rows, &state, *now, facts.epoch.unwrap_or(0));
+        let counts = fathom_analyze::insight::count_rows(
+            &batch
+                .episodes
+                .iter()
+                .map(|episode| fathom_analyze::insight::ReviewRow {
+                    episode: episode.id.clone(),
+                    risk: episode
+                        .risk()
+                        .and_then(|risk| u8::try_from(risk.score.max(0)).ok()),
+                    risk_model: episode.risk().map_or_else(String::new, |risk| risk.model.clone()),
+                    disposition: state.disposition(episode).into(),
+                })
+                .collect::<Vec<_>>(),
+            |_| false,
+        );
         out.notes = setup.notices;
-        out.queue.known = true;
-        out.queue.counts = Some(ranking.counts);
+        out.open_work.known = true;
+        out.open_work.counts = Some(counts);
         let newest_id = batch.episodes.first().map(|episode| episode.id.clone());
         out.latest = batch.episodes.first().map(|episode| Latest {
             id: episode.id.clone(),
@@ -705,15 +725,16 @@ impl Reader {
                 .is_some_and(|row| row.kind == "provisional"),
             risk: episode.risk().cloned(),
         });
-        if let Some(top) = ranking.order.iter().find(|placement| placement.open) {
-            let episode = batch
-                .episodes
-                .iter()
-                .find(|row| row.id == top.episode)
-                .or(batch.episodes.first());
-            if let Some(episode) = episode {
-                out.top = Some(Top::of(top, episode));
-            }
+        // The row the pane points at, chosen without ranking anything: the newest episode that is still
+        // open, which is the same row the rail's cursor would be on and the one the reader can get back to
+        // with `g t`. Its *score* is printed as a figure, not as a place — see [`Top::of`].
+        if let Some(episode) = batch
+            .episodes
+            .iter()
+            .find(|row| state.disposition(row).open(false))
+            .or(batch.episodes.first())
+        {
+            out.top = Some(Top::of(episode));
         }
         out
     }
@@ -780,7 +801,7 @@ impl Reader {
             root: self.root_display(),
             branch: branch(&self.root),
             latest: facts.latest.clone(),
-            queue: facts.queue.clone(),
+            open_work: facts.open_work.clone(),
             index: facts.index.clone(),
             watch: self.watch.clone(),
             reasons,
@@ -810,24 +831,25 @@ impl fathom_tui::ambient::Feed for Reader {
 }
 
 impl Top {
-    /// The reason sentence, from the placement that ranked the row and the row itself.
+    /// The reason sentence, from the row itself.
     ///
-    /// Every figure in it comes from the queue's own placement, so the pane's headline and the queue's row
-    /// are the same claim in two fonts (ADR-001 §7.10).
+    /// It used to be built from a queue placement, and printed `risk 88 (1 of 7)`. There is no ranked set
+    /// to take a place out of (`e10.3`), so the sentence carries the score and the band the score falls
+    /// in — the same two figures the rail's row and the card print, which is the point: the pane's headline
+    /// and the row are one claim in two fonts (ADR-001 §7.10), and a place in a list nobody ranks was a
+    /// third claim nobody could check.
     #[cfg(feature = "sqlite-bundled")]
-    fn of(
-        top: &fathom_analyze::insight::QueuePlacement,
-        episode: &fathom_tui::timeline::Episode,
-    ) -> Top {
+    fn of(episode: &fathom_tui::timeline::Episode) -> Top {
         use fathom_analyze::insight::Severity;
-        let kind = match top.severity {
+        let score = episode.risk().and_then(|risk| u8::try_from(risk.score.max(0)).ok());
+        let kind = match score.map(Severity::of) {
             Some(Severity::High) => Need::HighRisk,
-            Some(Severity::Medium) | Some(Severity::Low) => Need::OpenQueue,
+            Some(Severity::Medium) | Some(Severity::Low) => Need::OpenWork,
             None => Need::Unranked,
         };
-        let risk = top.risk.map_or_else(
+        let risk = score.map_or_else(
             || "unscored".to_owned(),
-            |score| format!("risk {score} {}", top.place()),
+            |score| format!("risk {score} · {}", Severity::of(score).label()),
         );
         Top {
             kind,

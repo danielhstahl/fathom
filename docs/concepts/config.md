@@ -33,7 +33,7 @@ Everything else is machinery for that answer. The consequences worth stating:
 2. **Every value is traceable to a file.** `fathom config explain` prints the winning layer *and*
    the chain it beat, per key, with `file:line`. This is not a nicety: the plan's later features —
    noise policy (`e0.9`), layer rules (`e3.1`), risk weights (`e2.9`) — are all "a function of
-   config", so "why did the queue rank this episode at 61?" has to terminate in a file a human can
+   config", so "why did this episode score 61?" has to terminate in a file a human can
    open.
 3. **Repo config is hostile input.** A cloned `fathom.toml` is reviewed like code and treated like
    an untrusted event (§5). It may not grant network consent, may not carry a listener token, and
@@ -206,6 +206,18 @@ Four deliberate choices:
 `fathom config lint --strict` promotes warnings to exit 5 for a project that wants that; `lint`
 without `--strict` reports and returns 0, so a newer file's keys never break an older binary's CI.
 
+**A renamed key is a third case, and it is neither unknown nor wrong-typed.** `dismiss_reasons` — the
+extended dismiss vocabulary, read where it is used rather than through the typed schema, so it is not a row
+in §10's table — was spelled `[queue] dismiss_reasons` until `e10.3` deleted the pane the section was named
+for (ADR-006 §5.1.2 §2). The old spelling is **still honoured**: a repository whose `fathom.toml` predates
+the rename keeps its reasons, because refusing to obey a file the user did not write is the same failure
+§6 refuses twice above. It is also **still noticed** — the shell prints a line saying that
+`[queue] dismiss_reasons` is now `[review] dismiss_reasons` and that the old key is being read, in the same
+band it uses to say a config line did something unexpected — because a silently-renamed key is a key nobody
+edits again, and the vocabulary is the one part of this configuration a reviewer is meant to change. When
+both sections are present `[review]` wins and the notice says the `[queue]` list was ignored, so there is
+exactly one vocabulary in force either way (`fathom_cli::tui::dismiss_reasons`).
+
 ## 7. Types, coercion, and where the schema lives
 
 `src/recommender/config/schema.py` is the single key spec: every key carries its type, default,
@@ -266,7 +278,7 @@ privacy.llm             won: user config · ~/.config/fathom/config.toml:8
     repo fathom.toml      true  SUPPRESSED                    suppressed    /tmp/demo/repo/fathom.toml:14 · scope=user: a repo file may not set it
 ```
 
-`--path` answers the per-file question the queue and the diff views will keep asking:
+`--path` answers the per-file question the rail and the diff views will keep asking:
 
 ```
 path: dist/app.js

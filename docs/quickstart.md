@@ -43,12 +43,13 @@ configuration is read, and deleting the cache directory is a complete undo. Real
 ```text
 fathom demo · a miniature repository of 21 commits, unpacked to
   /tmp/fth-demo/fathom/13088a3d85a5/signal (pack @ 13088a3d85a5)
-  two people and one agent wrote it, so the queue ranks agent work against human work; its history has
+  two people and one agent wrote it, and every row is scored the same way whichever of them wrote it; its
+  history has
   a rename, a dependency bump in two ecosystems, a deleted test, a CI job, a cycle and a merge
   indexing it now, with `fathom index` exactly as you would run it on your own history
   …/.fathom/index.sqlite3: 21 commit(s) walked, 21 new, 56 analyse unit(s) computed in 66 ms
   intent: 0 recorded (0 from the harness), 0 digest-only, 21 none recorded · harness: no stream at .fathom/events.jsonl
-  `?` lists the keys · `q` queue · `t` timeline · `d` diff · `s` structure · `g` graph · `p` dependencies · `o` export
+  `?` lists the keys · `t` timeline · `d` diff · `s` structure · `g` graph · `p` dependencies · `o` export
   nothing here is yours: it is a copy under your cache directory, and deleting that directory is a complete undo
 ```
 
@@ -60,11 +61,16 @@ With no terminal to take (CI, a pipe, a screen reader), add `--plain`, and `--li
 instead of a grid. Every fact on the screen has a text form; ADR-006 §6.7 makes that a rule rather than a
 hope.
 
-## 2 · Look at the queue
+## 2 · Look at the rail
 
-Press `q` for the queue — the ranked worklist, which is the product's home screen — then `j`/`k` to move,
-`?` for the keymap (rendered from the shipped bindings, not from this page), and `,` for the palette, which
-lists every command with its current binding.
+The timeline is what opens: the rail on the left, every episode newest-first, the selected one's card on the
+right. `j`/`k` move, `?` lists the keymap (rendered from the shipped bindings, not from this page), and `,`
+opens the palette, which lists every command with its current binding. Each row prints its risk figure beside
+its date, and `w` expands the figure into the vector behind it; `fathom why` prints the same thing in text.
+
+There is no second, ranked list. `e10.3` deleted the Queue pane and retired its letter `q` to your own
+keymap file — [ADR-006 §5.1.2](adr/0006-tui.md) is the decision, and [review a session](recipes/review-a-session.md)
+is the walkthrough that replaced this section.
 
 The full keyboard reference is [the cheatsheet](reference/cheatsheet.md), and it is generated from the same
 table the overlay uses, so it cannot lie about a key that moved.
@@ -198,7 +204,7 @@ fathom                  # the UI; `fathom --plain` for the text frame
 ```
 
 Expect the first index to take a moment and every later one to be fast — that is the cache doing its job, and
-`fathom stats` prints the hit rate if you want to see it. If the queue is empty, the pane says why and what
+`fathom stats` prints the hit rate if you want to see it. If the rail is empty, the pane says why and what
 to type; if it is wrong, `fathom doctor` is the verb with a remedy per finding
 ([troubleshooting](troubleshooting.md)).
 

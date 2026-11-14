@@ -15,24 +15,25 @@ a tmux split, answering a single question — *is there anything I need to look 
 either a line saying there is, or quiet.
 
 It is a **display mode, not a second data path**. It renders the same
-[delta model](delta.md) the queue and the card render, with the chrome dropped: no tab bar, no frame, no
+[delta model](delta.md) the rail and the card render, with the chrome dropped: no tab bar, no frame, no
 footer strips. That is not a simplified view of the product, it is the product at a size where it still has to
 work, and it is the reason ambient is the floor every other view degrades toward.
 
 ```text
 latest e8f1a2 · 0:12 · risk 82 ✱
-open   7 unread · 2 snoozed · 1 over 24 h
+open   7 unread of 12 · 2 snoozed · 1 over 24 h
 index  epoch 41 · warm · 3 412 eps · 0:03 ago
 
 look now  e8f1a2 adds a cycle and 288 untested source lines
 
-        <Enter> open it · q queue · t timeline · ? help
+        <Enter> open it · t timeline · ? help
         quiet: nothing new since 0:03 · no action needed
 ```
 
 That is ADR-006's documented mock for the view — the lines a reviewer is promised, in the order they are
 promised. Focus ring: one pane, `glance`. `<Enter>` opens the episode's card, which is the "one keypress
-drills in" clause of ADR-001 §4.1 made literal; `q` and `t` leave glance mode for the queue or the timeline.
+drills in" clause of ADR-001 §4.1 made literal; `t` leaves glance mode for the rail. `q` opens nothing
+since `e10.3` — it is the reviewer's own letter now (ADR-006 §5.1.2 §1).
 
 ## The two ways to get it
 
@@ -61,21 +62,21 @@ below 40×3, both print `unknown` where a count could not be read, and both say 
 |---|---|
 | **It fits 80×12, and its floor is 40×3.** | Ambient is the only view whose floor is stated in ADR-001 rather than derived here: the claim is that it fits a 40-column, 3-row tmux pane, so the layout ladder is one step long and the refusal floor is the view's own line budget — 40 columns, the longest line in the mock, and two content rows. A view with no frame has nothing to sell when the terminal shrinks. Below the floor `fathom ambient` prints `AMBIENT REFUSED` and exits **0**: a pane that drew a lie would be worse than a pane that admits it is too thin, and the reviewer did nothing wrong. |
 | **One keypress drills in.** | `<Enter>` in the standalone pane hands the terminal to the full view with the glance's own episode selected — the same session door (`tui.view`, `timeline.selection`) a reopened shell walks through, so the "that episode moved" report still applies. In the shell's view `<Enter>` opens the card. Either way the interaction is one key, because a reviewer mid-keystroke in the harness cannot afford a navigation. |
-| **Unknown is printed as `unknown`.** | A queue count that could not be computed prints `unknown`, not `0`. `0 open` and `unknown open` are different sentences, and in a glance view only one of them is a reason to relax. |
+| **Unknown is printed as `unknown`.** | An open-work count that could not be computed prints `unknown`, not `0`. `0 unread` and `unread unknown` are different sentences, and in a glance view only one of them is a reason to relax. |
 | **When you are caught up, it goes quiet and dim — on purpose.** | A second terminal that is always slightly shouting gets closed. The `caught_up` state is the designed resting state, not an empty state, and there are no animation loops and no colour strobing because the pane lives beside something you are reading. |
 
 The last of the four is the one with the sharp edge: **"caught up" has to mean *nothing is waiting and the
-pane is telling the truth*.** A pane whose index stopped an hour ago and whose queue is empty is not at rest,
-it is broken, and the two states must never print the same sentence. So the queue line only counts
-(`0 open · 12 dealt with`), the index line only reports the epoch and its age, and the single attention line
+pane is telling the truth*.** A pane whose index stopped an hour ago and whose open work is empty is not at
+rest, it is broken, and the two states must never print the same sentence. So the open-work line only
+counts (`0 unread · 12 dealt with`), the index line only reports the epoch and its age, and the single attention line
 is the one place that may say `caught up` — which it says only when no reason outranks it, where the reasons
 that outrank it are, in order: the index cannot be read, `HEAD` is not in the index, nothing has indexed for
 ten minutes, a high-risk episode is open, work is unranked, work is waiting. A stale pane is a loud pane.
 
 ## What it reads, and why those six fields
 
-The glance pane's declared inputs are `episode.identity`, `risk.score`, `review.state`, queue counts, the
-index epoch and the caught-up state — nothing else. That list is the argument for the whole product in six
+The glance pane's declared inputs are `episode.identity`, `risk.score`, `review.state`, the open-work
+counts, the index epoch and the caught-up state — nothing else. That list is the argument for the whole product in six
 names: *what* is newest, *how risky* it is, *whether you have seen it*, *what is waiting*, *whether this is
 current*, and *whether you can go back to what you were doing*.
 
@@ -93,7 +94,7 @@ Two consequences of that being the full list:
   that proves it.
 
 Provisional episodes — uncommitted work, `kind = 'provisional'` — are marked distinctly and are **never**
-mixed into a committed count here, in the queue badge or in a metric ([episode](episode.md#provisional-episodes-the-ones-that-are-not-history-yet)). The
+mixed into a committed count here or in a metric ([episode](episode.md#provisional-episodes-the-ones-that-are-not-history-yet)). The
 windows that ambient's numbers are computed over join committed rows only, so this cannot happen by accident
 rather than by discipline.
 
@@ -153,8 +154,8 @@ there" rather than "expand in place".
 ## When ambient is the wrong view
 
 If you want to *work through* a session, ambient is the wrong tool: it is a tripwire, not a worklist. Use the
-queue (`q`) to be triaged, the timeline (`t`) to be read, and [the review recipe](../recipes/review-a-session.md)
-for the sequence. Ambient earns its screen when the agent is driving and you are doing something else — and if
+timeline (`t`), which is where the disposition acts live since `e10.3` (ADR-006 §5.1.2 §2), and
+[the review recipe](../recipes/review-a-session.md) for the sequence. Ambient earns its screen when the agent is driving and you are doing something else — and if
 your terminal is 30 columns wide, ambient will tell you it refuses rather than drawing a lie, because the
 refusal floor is part of the layout contract ([ADR-006 §6](../adr/0006-tui.md)).
 

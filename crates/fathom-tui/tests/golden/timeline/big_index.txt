@@ -15,7 +15,7 @@
   0010e5 8:03 +51 −8 ●●●○○○ ? ✔           
 
 ## rail strip
-3 720 unread · 1 237 snoozed · filter: area=any state=any group=day (F edits) · 10 000 of 10 000
+order: newest first · 3 720 unread · 1 237 snoozed · filter: area=any state=any group=day (F edits) · 10 000 of 10 000
 
 ## card (35 columns × 14 rows)
 0005e5 — typo in the docs #5       

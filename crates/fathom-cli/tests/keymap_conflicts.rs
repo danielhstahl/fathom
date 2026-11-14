@@ -63,7 +63,7 @@ fn every_refused_override_names_the_line_to_fix() {
 x = "no.such.action"
 
 [keys.overrides.timeline]
-p = "view.queue"
+p = "view.timeline"
 
 [keys.overrides.notamode]
 j = "review.accept"

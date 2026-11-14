@@ -1,13 +1,18 @@
 """The view inventory: pane layout, focus order, minimum size, drill edges and
-degradation ladder for each of Fathom's nine views. **This module is the normative
+degradation ladder for each of Fathom's eight views. **This module is the normative
 table of ADR-006 §5–§6**; the ASCII layouts in the ADR are rendered from it
 (`python3 -m recommender.tui doc --write`), so a layout in the document *is* the layout
 the layout engine produces at that size rather than a drawing that drifted.
 
+The Queue view left this table in `e10.3` (`reco-ydek.3`); ADR-006 §5.1.2 is the decision
+and the Timeline is the home view now. Eight entries are not nine with a hole in the
+numbering: what the queue owned — the four acts, the ledger behind them and the
+retrospective — lives on the rail and in :mod:`recommender.tui.keymap` like everything else.
+
 Three rules this module exists to make checkable (ADR-006 §5.0):
 
 1. **Every view is usable at 80x24.** `ideal_cols <= 80` and `ideal_rows <= 24` for all
-   nine views, and the renderer is measured at exactly that size in the test suite.
+   eight views, and the renderer is measured at exactly that size in the test suite.
 2. **Degradation is an order, not a vibe.** Each view declares its ideal size, the size
    at which its documented pane set stops fitting, and a hard minimum; the ladder in
    :mod:`recommender.tui.render` is one fixed sequence applied until the view fits. If
@@ -123,61 +128,8 @@ def _p(name, role, order, ideal, minimum, collapse, kind, reads, ticket, sample,
 
 
 # ---------------------------------------------------------------------------
-# 1. Queue — the home view
+# 1. Timeline — the home view
 # ---------------------------------------------------------------------------
-QUEUE = View(
-    id="queue", key="q", title="Queue", kind="view", owner="e4.5",
-    question="What is the next thing I have to look at, and why that one?",
-    ideal_cols=80, ideal_rows=24, min_rows=18,
-    panes=(
-        _p("worklist", "primary", 1, 48, 36, 18, "list",
-           ("episode.identity", "episode.created_at",
-            "risk.score", "risk.reasons[]", "blast_radius.direct_count", "review.state",
-            "noise.share"), "e4.5",
-           ("▸ e8f1a2 0:12  +412 −90   risk 82",
-            "        ✱ new cycle store→core→store (high)",
-            "  9c4d10 0:41  +58 −12    risk 61",
-            "        ✱ +288 source, no test surface (med)",
-            "  2be77f 1:07  +8 −3      risk 34",
-            "  77aa0c 2:20  +1 204 −90 risk 77",
-            "        ✱ lockfile: 3 upgrades, 1 licence",
-            "  40c9b3 3:55  +96 −0     risk 58",
-            "        ✱ new public API, ratchet not updated",
-            "  c1f5e2 5:12  +22 −22    risk 21",
-            "  08d4b1 6:02  +3 −1      risk 12  snoozed",
-            "  5f2c99 9:40  +61 −61    risk 25 disp ×3"
-            "  ··· 4 more open · 2 snoozed · 1 stale",
-            "order: risk × staleness × blast radius (`w`)"),
-           hard=32),
-        _p("card", "secondary", 2, 29, 24, 16, "body",
-           ("delta.structure.*", "delta.dependencies.*", "delta.non_code.*",
-            "delta.tests.*", "blast_radius.*", "findings[].severity", "intent.*",
-            "review.state"), "e2.10",
-           ("e8f1a2 — make the store epoch-safe",
-            "4 commits · 0:12 ago · unread",
-            "~ what   +412 −90 · 12 files",
-            "noise    1 of 11 files discounted",
-            "~ where  src/store 9f +338 −74",
-            "x dependencies 1 added (`zstd`)",
-            "~ surface source 9f +338 −74",
-            "x tests  1 file · +37 −8",
-            "x blast  2 direct · 1 one-hop",
-            "~ attention spine-1 82 = surfaces…",
-            "surfaces migration+ci",
-            "blind    a spine cannot see 7 thin…",
-            "intent   make the store epoch-saf…",
-            "read     fixture index · times UTC"),
-           hard=20),
-    ),
-    drills=(("worklist · <Enter>", "card", "drill in: the episode card, pane 2"),
-            ("worklist · x f - z", "ledger", "disposition; the worklist advances"),
-            ("anywhere · d s g p", "that view", "same scope, different question"),
-            ("card · <Esc>", "worklist", "pop back; the selection is preserved")),
-    notes="Queue is the home view (ADR-001 §4.1). The worklist must explain its own "
-          "ordering, so its strip names the ranking function, and the card's `attention` "
-          "row prints the feature vector exactly as `fathom why` prints it — `w` expands "
-          "that band in place rather than swapping the pane (`e4.4`, `e9.3`).")
-
 TIMELINE = View(
     id="timeline", key="t", title="Timeline", kind="view", owner="e1.6",
     question="What happened, in what order, and which of it have I not read?",
@@ -200,6 +152,7 @@ TIMELINE = View(
             "  5f2c99 9:40  +61 −61  ●●○○○○ +2 25 ×",
             "  ··· 17 more",
             "complexity Δ · risk · state",
+            "order: newest first · 7 unread",
             "filter: area=any state=unread (F edits)"),
            hard=28),
         _p("card", "secondary", 2, 35, 26, 16, "body",
@@ -223,10 +176,17 @@ TIMELINE = View(
     ),
     drills=(("rail · <Enter>", "card", "drill in: card for the selected episode"),
             ("card · <Enter>", "Diff", "a second drill opens the diff at that episode"),
+            ("rail · x f - z", "ledger", "the four acts, on the row under the cursor"),
+            ("rail · r", "acts", "the same pane listing *acts*: what was dismissed, by "
+                                 "whom, under which reason (`e10.2`)"),
             ("<Esc>", "rail / previous view", "pop one level, then pop out")),
     notes="The rail groups by day or by agent session. Selection survives a re-index and "
           "re-attaches after a rebase (`e1.6`, ADR-003): the highlight follows the "
-          "*episode*, not the row index.")
+          "*episode*, not the row index. **This is the home view** (`e10.1`, ADR-006 "
+          "§5.1.2 §1): `fathom tui` opens here, rail focused, no filter applied. The strip "
+          "names the order the renderer implements — chronology, newest first — because a "
+          "list that does not say how it is ordered asks for trust (§5.1.2 §3), and `r` puts "
+          "the ledger's acts in this same pane rather than in a second ranked list.")
 
 DIFF = View(
     id="diff", key="d", title="Diff", kind="view", owner="e1.7",
@@ -414,20 +374,20 @@ AMBIENT = View(
     chrome=BORDERLESS_CHROME, min_content_rows=2,
     panes=(
         _p("glance", "primary", 1, 80, 40, 40, "body",
-           ("episode.identity", "risk.score", "review.state", "queue counts",
+           ("episode.identity", "risk.score", "review.state", "review.state counts",
             "index epoch (ADR-004 §6.3)", "caught-up state"), "e5.1",
            ("latest e8f1a2 · 0:12 · risk 82 ✱",
-            "queue  7 open · 2 snoozed · 1 over 24 h",
+            "open   7 unread of 12 · 2 snoozed",
             "index  epoch 41 · warm · 3 412 eps · 0:03 ago",
             "",
             "look now  e8f1a2 adds a cycle and 288 untested source lines",
             "",
-            "        <Enter> open it · q queue · t timeline · ? help",
+            "        <Enter> open it · t timeline · ? help",
             "        quiet: nothing new since 0:03 · no action needed"),
            strip=False, hard=40, trim=5),
     ),
     drills=(("<Enter>", "card", "the one keypress ADR-001 §4.1 promises"),
-            ("q / t", "view", "leave glance mode")),
+            ("t", "view", "leave glance mode for the rail, where the episode is selected")),
     notes="Ambient is a *display mode*, not a second data path: it renders the same "
           "delta model with the chrome dropped. It is the floor every other view "
           "degrades toward, the only view that must work at 80×12 (ADR-001 §4.1), and "
@@ -513,11 +473,12 @@ ARTEFACT = View(
           "defect in `e5.7`, not a difference between surfaces.")
 
 
-VIEWS: tuple[View, ...] = (QUEUE, TIMELINE, DIFF, STRUCTURE, GRAPH, DEPS, AMBIENT,
+VIEWS: tuple[View, ...] = (TIMELINE, DIFF, STRUCTURE, GRAPH, DEPS, AMBIENT,
                            SEARCH, ARTEFACT)
 
 #: The view keys, in keymap order. Asserted against `keymap.DEFAULTS` by the tests, so
-#: the ticket's fixed list (`d s g p q a`) can never silently lose a view.
+#: the ticket's fixed list (`d s g p a`) can never silently lose a view. `q` is not here: the
+#: view it opened is retired and the letter is the user's now (ADR-006 §5.1.2 §1, §8.2).
 VIEW_KEYS: dict[str, str] = {v.key: v.id for v in VIEWS if v.kind == "view"}
 
 #: Screenshot sizes `e5.5`'s matrix must cover, straight from its acceptance criteria.

@@ -102,8 +102,6 @@ fn episode(id: &str, first_utc: i64, summary: &str) -> EpisodeInput {
             partial_files: false,
             complexity: None,
         }),
-        Some(1),
-        Some(2),
     ));
     EpisodeInput {
         delta: insight::compose(&input),

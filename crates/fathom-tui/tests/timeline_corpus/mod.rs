@@ -663,8 +663,6 @@ fn compose_delta(episode: &Episode, complexity: Option<ComplexityView>) -> Episo
             detail: "a configuration file moved".to_owned(),
         }],
         surfaces: vec!["ci-config".to_owned()],
-        rank: Some(1),
-        ranked: Some(7),
         caveat: None,
         blind_spots: insight::BLIND_SPOTS
             .iter()

@@ -232,8 +232,8 @@ fn worker_progress_and_rows_land_in_the_model_not_in_a_thread_somewhere() {
         }));
         let _ = bus2.send(Message::Worker(WorkerMsg::Rows {
             task: "risk",
-            view: ViewId::Queue,
-            pane: "worklist".to_owned(),
+            view: ViewId::Timeline,
+            pane: "rail".to_owned(),
             lines: vec!["e8f1a2 risk 82".to_owned()],
         }));
         let _ = bus2.send(Message::Worker(WorkerMsg::Finished {
@@ -275,7 +275,7 @@ fn worker_progress_and_rows_land_in_the_model_not_in_a_thread_somewhere() {
         "the progress line is the reviewer's, with thousands separators: {progress}"
     );
     assert_eq!(
-        shell.model.rows_for(ViewId::Queue, "worklist"),
+        shell.model.rows_for(ViewId::Timeline, "rail"),
         ["e8f1a2 risk 82".to_owned()],
         "rows arrive in the pane they were addressed to"
     );
