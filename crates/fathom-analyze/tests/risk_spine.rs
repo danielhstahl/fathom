@@ -3,8 +3,8 @@
 //! `reco-glv`'s acceptance step (b) asked a reviewer to "find and read the three riskiest episodes"
 //! of the 500-commit fixture, and the shipped build could not answer it. The fixture plants ten
 //! candidates; this file feeds the ranking the same ten shapes, expressed as the rows the spine
-//! actually writes — paths, added and removed lines, file counts, author kind — and asserts what the
-//! ordering gets right, what it deliberately gets wrong, and that every number it prints adds up.
+//! actually writes — paths, added and removed lines, file counts — and asserts what the ordering gets
+//! right, what it deliberately gets wrong, and that every number it prints adds up.
 //!
 //! Two properties matter more here than the ordering itself:
 //!
@@ -15,14 +15,20 @@
 //!   ranking by construction — the environment variable that is declared and never read, and the new
 //!   import cycle — and the test named for it pins that the ranking says so out loud rather than
 //!   letting the list look complete.
+//!
+//! A third property is newer than the other two, and it is the reason the fixture has no author kind
+//! any more: **the ranking does not know who wrote an episode.** `reco-ydek.5` took the `author`
+//! component and `Signals::author` out together, so nothing in this file can even offer a verdict for
+//! the ranking to score — a property that is enforced by the type, not by an assertion.
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use fathom_analyze::risk::{
-    BLIND_SPOTS, COMPONENTS, FileChange, MODEL, Risk, Signals, Surface, classify, rank,
+    BLIND_SPOTS, COMPONENTS, FileChange, MODEL, Risk, SCORE_CEILING, Signals, Surface, classify,
+    rank,
 };
 
 /// Rank one episode described the way the store's rows describe it: `(path, added, removed)`.
-fn ranked(files: &[(&str, u64, u64)], author: &str) -> Risk {
+fn ranked(files: &[(&str, u64, u64)]) -> Risk {
     let changes: Vec<FileChange<'_>> = files
         .iter()
         .map(|(path, add, del)| FileChange {
@@ -47,7 +53,6 @@ fn ranked(files: &[(&str, u64, u64)], author: &str) -> Risk {
         )
         .unwrap_or(0),
         n_commits: 1,
-        author,
         partial_files: false,
         // The spine's complexity figure is handed over by the caller that has a delta document; this
         // fixture describes the file rows only, so the axis is absent here and says so.
@@ -62,104 +67,74 @@ fn candidates() -> Vec<(&'static str, Risk)> {
     vec![
         (
             "destructive-migration",
-            ranked(
-                &[("db/migrations/0038_drop_email_backup.sql", 5, 0)],
-                "agent",
-            ),
+            ranked(&[("db/migrations/0038_drop_email_backup.sql", 5, 0)]),
         ),
         (
             "ci-secret-and-permission-escalation",
-            ranked(
-                &[
-                    (".github/workflows/release.yml", 4, 1),
-                    (".github/workflows/ci.yml", 2, 0),
-                ],
-                "agent",
-            ),
+            ranked(&[
+                (".github/workflows/release.yml", 4, 1),
+                (".github/workflows/ci.yml", 2, 0),
+            ]),
         ),
         (
             "dependency-bump-storm",
-            ranked(&[("uv.lock", 38, 38), ("pyproject.toml", 2, 2)], "agent"),
+            ranked(&[("uv.lock", 38, 38), ("pyproject.toml", 2, 2)]),
         ),
         (
             "test-deletion-behind-a-big-turn",
-            ranked(
-                &[
-                    ("src/harbour/pricing.py", 520, 40),
-                    ("tests/test_pricing.py", 8, 380),
-                ],
-                "agent",
-            ),
+            ranked(&[
+                ("src/harbour/pricing.py", 520, 40),
+                ("tests/test_pricing.py", 8, 380),
+            ]),
         ),
         (
             "scope-creep",
-            ranked(
-                &[
-                    ("src/harbour/api.py", 30, 10),
-                    ("src/harbour/models.py", 30, 10),
-                    ("src/harbour/store.py", 30, 10),
-                    ("src/harbour/auth.py", 30, 10),
-                    ("src/harbour/pricing.py", 30, 10),
-                    ("src/harbour/worker.py", 30, 10),
-                    ("tests/test_api.py", 20, 5),
-                    ("web/src/checkout.ts", 40, 12),
-                    ("web/src/booking.tsx", 40, 12),
-                    ("docs/adr/0004-booking.md", 24, 4),
-                    ("Dockerfile", 3, 0),
-                    (".env.example", 2, 0),
-                ],
-                "agent",
-            ),
+            ranked(&[
+                ("src/harbour/api.py", 30, 10),
+                ("src/harbour/models.py", 30, 10),
+                ("src/harbour/store.py", 30, 10),
+                ("src/harbour/auth.py", 30, 10),
+                ("src/harbour/pricing.py", 30, 10),
+                ("src/harbour/worker.py", 30, 10),
+                ("tests/test_api.py", 20, 5),
+                ("web/src/checkout.ts", 40, 12),
+                ("web/src/booking.tsx", 40, 12),
+                ("docs/adr/0004-booking.md", 24, 4),
+                ("Dockerfile", 3, 0),
+                (".env.example", 2, 0),
+            ]),
         ),
         (
             "public-api-removal",
-            ranked(
-                &[
-                    ("src/harbour/api.py", 4, 60),
-                    ("web/src/booking.tsx", 18, 6),
-                ],
-                "agent",
-            ),
+            ranked(&[
+                ("src/harbour/api.py", 4, 60),
+                ("web/src/booking.tsx", 18, 6),
+            ]),
         ),
-        (
-            "env-declared-never-read",
-            ranked(&[(".env.example", 1, 0)], "agent"),
-        ),
+        ("env-declared-never-read", ranked(&[(".env.example", 1, 0)])),
         (
             "new-import-cycle",
-            ranked(
-                &[
-                    ("src/harbour/pricing.py", 6, 0),
-                    ("src/harbour/reporting.py", 6, 0),
-                ],
-                "agent",
-            ),
+            ranked(&[
+                ("src/harbour/pricing.py", 6, 0),
+                ("src/harbour/reporting.py", 6, 0),
+            ]),
         ),
         (
             "generated-churn-and-binary",
-            ranked(
-                &[
-                    ("src/generated/api_pb2.py", 1100, 0),
-                    ("assets/map.png", 0, 0),
-                ],
-                "agent",
-            ),
+            ranked(&[
+                ("src/generated/api_pb2.py", 1100, 0),
+                ("assets/map.png", 0, 0),
+            ]),
         ),
         (
             "one-enormous-agent-turn",
-            ranked(
-                &[
-                    ("src/harbour/store.py", 900, 120),
-                    ("src/harbour/api.py", 300, 40),
-                    ("tests/test_store.py", 120, 180),
-                ],
-                "agent",
-            ),
+            ranked(&[
+                ("src/harbour/store.py", 900, 120),
+                ("src/harbour/api.py", 300, 40),
+                ("tests/test_store.py", 120, 180),
+            ]),
         ),
-        (
-            "docs-only-control",
-            ranked(&[("docs/README.md", 3, 0)], "human"),
-        ),
+        ("docs-only-control", ranked(&[("docs/README.md", 3, 0)])),
     ]
 }
 
@@ -169,6 +144,58 @@ fn points(risk: &Risk, wanted: &str) -> u64 {
         .iter()
         .find(|component| component.name == wanted)
         .map_or(0, |component| component.points)
+}
+
+#[test]
+fn the_cap_table_is_the_whole_scale_and_sums_to_the_stated_ceiling() {
+    // `COMPONENTS` is one source read by the arithmetic (`cap`), by the printed table (`components`) and
+    // by the docs. The caps no longer sum to 100 — `reco-ydek.5` took `author`'s 8 out and did not
+    // redistribute them, and `SCORE_CEILING` is where that decision is written down rather than implied.
+    let sum: u64 = COMPONENTS.iter().map(|(_, limit)| *limit).sum();
+    assert_eq!(
+        sum, SCORE_CEILING,
+        "the caps sum to {sum}, which is not the ceiling the crate publishes ({SCORE_CEILING})"
+    );
+    assert!(
+        !COMPONENTS.iter().any(|(name, _)| *name == "author"),
+        "`author` is not a component any more: the label it scored is no longer printed, so scoring it \
+         is ADR-001 §7.9's forbidden thing"
+    );
+    assert_eq!(
+        fathom_analyze::risk::components()
+            .iter()
+            .map(|(name, cap, _)| (name.clone(), *cap))
+            .collect::<Vec<(String, u64)>>(),
+        COMPONENTS
+            .iter()
+            .map(|(name, cap)| ((*name).to_owned(), *cap))
+            .collect::<Vec<(String, u64)>>(),
+        "the printed table and the cap table are the same list, names and caps together"
+    );
+}
+
+#[test]
+fn no_component_scores_who_wrote_the_episode() {
+    // The regression this file is now the guard for: a score that silently rewards an agent turn, or
+    // punishes an uncredited one, after the label stopped being printed.
+    for (name, risk) in candidates() {
+        for component in &risk.components {
+            assert_ne!(
+                component.name, "author",
+                "{name}: an author-shaped component came back"
+            );
+            assert!(
+                !component.detail.contains("ADR-001 §7.3"),
+                "{name}: {}'s reason is the agent-attention claim, which left with the component: {}",
+                component.name,
+                component.detail
+            );
+        }
+        assert!(
+            BLIND_SPOTS.iter().any(|spot| spot.contains("who wrote it")),
+            "and what the ranking no longer sees is named where a reviewer reads it, not left as a silence"
+        );
+    }
 }
 
 #[test]
@@ -243,8 +270,8 @@ fn every_reason_names_something_the_reviewer_can_check() {
 fn the_kind_of_file_beats_the_amount_of_file() {
     // The ticket's own complaint: "the three-line CI permission change is indistinguishable from a
     // three-line docs edit — and that one is the change that must not be missed".
-    let ci = ranked(&[(".github/workflows/release.yml", 3, 0)], "agent");
-    let docs = ranked(&[("docs/README.md", 3, 0)], "agent");
+    let ci = ranked(&[(".github/workflows/release.yml", 3, 0)]);
+    let docs = ranked(&[("docs/README.md", 3, 0)]);
     assert!(
         ci.score > docs.score + 20,
         "a three-line CI change ({}) must not rank beside a three-line docs change ({})",
@@ -258,10 +285,7 @@ fn the_kind_of_file_beats_the_amount_of_file() {
     );
     assert_eq!(docs.badge(), "docs");
 
-    let migration = ranked(
-        &[("db/migrations/0038_drop_email_backup.sql", 3, 0)],
-        "agent",
-    );
+    let migration = ranked(&[("db/migrations/0038_drop_email_backup.sql", 3, 0)]);
     assert!(
         migration.score > docs.score + 20,
         "a three-line migration ({}) against a docs change ({})",
@@ -274,13 +298,10 @@ fn the_kind_of_file_beats_the_amount_of_file() {
 fn a_test_surface_that_shrank_while_source_grew_is_a_reason_of_its_own() {
     // The fixture's `test-deletion-behind-a-big-turn`: 380 lines of tests deleted behind a 520-line
     // rewrite. The aggregate `n_del` the rail prints cannot tell this from a refactor.
-    let risk = ranked(
-        &[
-            ("src/harbour/pricing.py", 520, 40),
-            ("tests/test_pricing.py", 8, 380),
-        ],
-        "agent",
-    );
+    let risk = ranked(&[
+        ("src/harbour/pricing.py", 520, 40),
+        ("tests/test_pricing.py", 8, 380),
+    ]);
     assert!(
         points(&risk, "deletions") >= 8,
         "the test shrink is worth its own points: {:?}",
@@ -302,8 +323,8 @@ fn a_test_surface_that_shrank_while_source_grew_is_a_reason_of_its_own() {
 #[test]
 fn generated_and_lockfile_churn_is_discounted_rather_than_dropped() {
     // 1 100 lines of regenerated protobuf is a lot of lines and very little review.
-    let generated = ranked(&[("src/generated/api_pb2.py", 1100, 0)], "agent");
-    let hand = ranked(&[("src/harbour/store.py", 1100, 0)], "agent");
+    let generated = ranked(&[("src/generated/api_pb2.py", 1100, 0)]);
+    let hand = ranked(&[("src/harbour/store.py", 1100, 0)]);
     assert!(
         points(&generated, "size") < points(&hand, "size"),
         "the same churn is worth less when it is generated: {} against {}",
@@ -316,7 +337,7 @@ fn generated_and_lockfile_churn_is_discounted_rather_than_dropped() {
     );
 
     // A lockfile storm still ranks on the dependency surface: it is an operator action.
-    let storm = ranked(&[("uv.lock", 38, 38)], "agent");
+    let storm = ranked(&[("uv.lock", 38, 38)]);
     assert!(
         storm.badge().contains("dependency"),
         "a lockfile change is a dependency surface: {}",
@@ -356,13 +377,10 @@ fn the_same_input_always_ranks_the_same_way() {
 
 #[test]
 fn the_vector_prints_the_arithmetic_and_the_badge_prints_the_surfaces() {
-    let risk = ranked(
-        &[
-            ("db/migrations/0001_init.sql", 40, 10),
-            ("Dockerfile", 3, 1),
-        ],
-        "agent",
-    );
+    let risk = ranked(&[
+        ("db/migrations/0001_init.sql", 40, 10),
+        ("Dockerfile", 3, 1),
+    ]);
     let vector = risk.vector();
     assert!(
         vector.starts_with(MODEL),
@@ -503,22 +521,16 @@ fn a_locked_or_generated_file_under_a_ci_path_is_ranked_as_what_it_is() {
 
     // And the episode shape, ranked: the bump with the recompiled lock beside go.mod/go.sum sits below
     // the same edit where the CI file is a hand-written workflow of the same size.
-    let bump = ranked(
-        &[
-            (".github/workflows/issue-triage.lock.yml", 2, 2),
-            ("go.mod", 2, 0),
-            ("go.sum", 4, 4),
-        ],
-        "agent",
-    );
-    let edited = ranked(
-        &[
-            (".github/workflows/deployment.yml", 2, 2),
-            ("go.mod", 2, 0),
-            ("go.sum", 4, 4),
-        ],
-        "agent",
-    );
+    let bump = ranked(&[
+        (".github/workflows/issue-triage.lock.yml", 2, 2),
+        ("go.mod", 2, 0),
+        ("go.sum", 4, 4),
+    ]);
+    let edited = ranked(&[
+        (".github/workflows/deployment.yml", 2, 2),
+        ("go.mod", 2, 0),
+        ("go.sum", 4, 4),
+    ]);
     assert!(
         points(&bump, "surfaces") < points(&edited, "surfaces"),
         "a machine's regenerated lock may not earn the surface claim a hand-written workflow earns: {} vs {}",
@@ -547,37 +559,38 @@ fn a_resolver_bots_bump_makes_the_supply_chain_claim_and_not_the_operator_claim(
 }
 
 #[test]
-fn breadth_and_author_are_separate_claimable_points() {
+fn breadth_is_a_claimable_point_of_its_own() {
     // Scope creep: twelve files across many surfaces is its own risk, independent of the size of
     // any one of them.
-    let creep = ranked(
-        &[
-            ("src/a.py", 5, 0),
-            ("src/b.py", 5, 0),
-            ("src/c.py", 5, 0),
-            ("src/d.py", 5, 0),
-            ("src/e.py", 5, 0),
-            ("src/f.py", 5, 0),
-            ("tests/test_a.py", 5, 0),
-            ("docs/x.md", 5, 0),
-            ("web/src/app.tsx", 5, 0),
-            ("Dockerfile", 5, 0),
-            (".env.example", 5, 0),
-            ("uv.lock", 5, 0),
-        ],
-        "agent",
-    );
+    let creep = ranked(&[
+        ("src/a.py", 5, 0),
+        ("src/b.py", 5, 0),
+        ("src/c.py", 5, 0),
+        ("src/d.py", 5, 0),
+        ("src/e.py", 5, 0),
+        ("src/f.py", 5, 0),
+        ("tests/test_a.py", 5, 0),
+        ("docs/x.md", 5, 0),
+        ("web/src/app.tsx", 5, 0),
+        ("Dockerfile", 5, 0),
+        (".env.example", 5, 0),
+        ("uv.lock", 5, 0),
+    ]);
     assert!(points(&creep, "breadth") > 0, "breadth fired: {creep:?}");
     assert!(creep.badge().split('+').count() >= 3);
 
-    // And the same change written by a person is a different claim than one written by an agent.
-    let agent = ranked(&[("src/a.py", 40, 0)], "agent");
-    let human = ranked(&[("src/a.py", 40, 0)], "human");
+    // This test used to end by ranking the same one-file change twice — once as an agent's, once as a
+    // person's — and asserting the agent's scored higher, citing ADR-001 §7.3. `reco-ydek.5` deleted the
+    // comparison along with the component: the label was being guessed often enough to be worse than
+    // silence, and `Signals` no longer carries one, so the two calls would be the same call. What the
+    // thesis asks of the ranking now is that it says nothing about who wrote the episode.
     assert!(
-        agent.score > human.score,
-        "ADR-001 §7.3 is the whole reason the tool exists: {} vs {}",
-        agent.score,
-        human.score
+        creep
+            .components
+            .iter()
+            .all(|component| component.name != "author"),
+        "and the scope-creep episode carries no author term to defend: {}",
+        creep.vector()
     );
 }
 
@@ -590,16 +603,30 @@ fn an_episode_with_no_files_is_answered_rather_than_crashed() {
         n_files: 0,
         n_binary: 0,
         n_commits: 0,
-        author: "unknown",
         partial_files: false,
         complexity: None,
     };
     let risk = rank(&empty);
-    assert_eq!(
-        risk.score, 6,
-        "only the attribution signal fires, and it is 6"
+    // Under `spine-2` this episode scored 6, and all 6 of it was "nobody is credited" — a number about
+    // the index's silence, printed as though it were a claim about the change. With the component gone an
+    // episode the spine cannot see scores nothing, which is the honest reading of an empty episode, and
+    // the refusal prints as a refusal rather than as a small score.
+    assert_eq!(risk.score, 0, "nothing about the change was visible");
+    assert!(
+        risk.components.is_empty(),
+        "so nothing contributed: {risk:?}"
     );
-    assert_eq!(risk.vector(), "spine-2 6 = author 6".to_owned());
+    assert_eq!(
+        risk.vector(),
+        format!("{MODEL} 0 = no signal"),
+        "and the printed vector says so in those words"
+    );
+    assert!(
+        risk.caveat()
+            .is_some_and(|note| note.contains("complexity")),
+        "with the axis that had no figure saying so beside it: {:?}",
+        risk.caveat()
+    );
 }
 
 #[test]

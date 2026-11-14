@@ -1,10 +1,11 @@
-# Episode risk scoring: `features-2`, the thirteen axes, and the calibration set that tunes them
+# Episode risk scoring: `features-3`, the twelve axes, and the calibration set that tunes them
 
 - **Status**: Accepted, and implemented (`e4.4`, `reco-884`; `e8.7` added the `complexity` axis and
-  renamed the model). One model, `features-2`; one command,
+  renamed the model; `reco-ydek.5` took the `authorship` axis out and renamed it again). One model,
+  `features-3`; one command,
   `fathom why`; one calibration set, checked in; and no opaque model anywhere in the path.
 - **Ticket / plan key**: `reco-884` (`e4.4`). It replaces the *inputs* of
-  [risk-ranking.md](risk-ranking.md) (`spine-2`), and leaves that document's shape — rank, reason,
+  [risk-ranking.md](risk-ranking.md) (`spine-3`), and leaves that document's shape — rank, reason,
   ceiling — standing, because `e4.5` (`reco-wsj`) is the ticket that replaced the ordering function: the
   score computed here is `queue-1`'s first factor, printed the same way in both.
 - **Implements**: ADR-001 §7.10 (*"every score is explainable: features, weights, and the contribution
@@ -42,7 +43,7 @@ The answer is a number `0..=100` and an ordered list of sentences. Three refusal
 The score is a *ranking aid with its arithmetic shown*, not a verdict. It is not a claim about code
 quality, and `flagged` (score ≥ `risk.tau`) is a routing decision, never a judgement — `thesis.md`.
 
-## 2. The thirteen features
+## 2. The twelve features
 
 Every axis is `0.0..=1.0` after its ruler, and every axis names the row or analysis it came from. The
 `weight` column is the built-in; the sum is `1.00`, and the sum is also the denominator (§3), so **only
@@ -52,8 +53,8 @@ relative weight matters** — doubling everything changes nothing, which is what
 code prints them (`fathom why --weights` prints the same rows out of the binary). A weight that moves in
 the source moves here in the same commit, or the two are checked against each other rather than trusted.
 
-| `findings` | 0.16 | what did the detectors find, and how bad was each one | severity-points; 8 severity-points fill the axis (a high finding is 3, a medium 2, a low 1) | `e4.3` detectors (`e4.3`) |
-| `surface` | 0.13 | what kind of file did this touch | surface weight; a migration (50) fills the axis; source is 10 and prose is 3 | `git_commit_file.path` via `risk::classify` (`e4.4`) |
+| `findings` | 0.18 | what did the detectors find, and how bad was each one | severity-points; 8 severity-points fill the axis (a high finding is 3, a medium 2, a low 1) | `e4.3` detectors (`e4.3`) |
+| `surface` | 0.15 | what kind of file did this touch | surface weight; a migration (50) fills the axis; source is 10 and prose is 3 | `git_commit_file.path` via `risk::classify` (`e4.4`) |
 | `migration` | 0.09 | does this change schema history, and does it say something irreversible | exposure; one migration file is 0.55; a `DROP`/`DELETE`/`TRUNCATE` in the added lines is 1.0 | path class plus the added lines of `*.sql` (`e4.4`) |
 | `blast` | 0.09 | what depends on the code this touched | dependents; 40 dependent paths fill the axis | a dependent count handed over by the caller (`the caller`) |
 | `test_ratio` | 0.08 | how much of the new logic arrived without a test alongside it | coverage share; inverted: 0 tests beside new logic fills the axis, and a suite that shrank floors it at 0.75 | per-path `add`/`del` split by surface (`e4.4`) |
@@ -64,7 +65,6 @@ the source moves here in the same commit, or the two are checked against each ot
 | `noise` | 0.06 | how much of the churn is text a review does not read | share of churn; the share itself: all-generated churn fills the axis | `episode.noise_share` when measured, path classes otherwise (`e2.2`) |
 | `breadth` | 0.06 | how far did this spread | spread; five surfaces past the first, or thirty files, fills the axis | `episode.n_files`, distinct surfaces, `n_commits` (`e4.4`) |
 | `attribution` | 0.04 | how sure are we who wrote this | confidence; inverted: 1 − the attribution confidence, floored at 0.8 when nobody is credited | `episode.author_confidence`, `author_kind` (`e4.1`) |
-| `authorship` | 0.04 | is the thing that wrote this a program | authorship; an agent is 0.7, an uncredited author is 1.0, a person named by evidence is 0, and a person inferred from no evidence at all does not measure | `episode.author_kind`, `attribution_source` (`e4.1`) |
 
 `fathom why --weights` prints this table out of the binary, so the table and the build cannot drift
 apart. Two inversions are worth noticing: `test_ratio` and `attribution` *risk on the absence* of the
@@ -83,33 +83,37 @@ The axes usually **absent** in this build, and what each one says rather than gu
 * `dependency`'s richer half — the path classes are measurable now, `e2.6`'s real delta is a supply.
 * `test_ratio` is absent when neither logic nor tests arrived, because coverage is then not a question
   the episode asks.
-* `authorship` in a repository whose harness says nothing about who is driving. Read it with the next
-  paragraph, because it is the axis the thesis cares most about (`ADR-001 §7.3`) and the one a repository
-  is most likely to be silently wrong on.
 
-### `authorship`, and the difference between a person and nobody
+### Who wrote it: the axis that used to be called `authorship`
 
-`author_kind` has three values and only two of them are evidence. An episode that arrives `agent` arrived
-that way because something *said* so — a turn from a harness, a `Co-authored-by:`/`Generated-with:` naming
-one, a registry entry under `attribution.agents`, a `🤖` in the subject, or a correction somebody stored —
-and that episode pays 0.7 on the axis. An episode that arrives `unknown` says nobody is credited, and pays
-1.0, because an unattributed change is exactly as unreviewable as an unattributed author.
+There is no authorship axis. `features-2` had one worth `0.04`, and `reco-ydek.5` removed it — the model
+string moved to `features-3` because the component set did, not because a number was retuned.
 
-An episode that arrives `human` at **0.50 by `identity`** says neither of those things. That rung is the
-ladder's fall-through: rungs 1–7 looked for an agent and found nothing, so ADR-003 §8 **H4** prints "a real
-identity with no agent evidence", which is an honest way of saying *probably, don't bet on it* — and the
-identity in question is the git author string, which an agent sets like anybody else. Pointed at the
-repository this tool is written in, that rung covered **102 of 109 episodes** ([the beta pass's own
-measurement](../../.plan/evidence/reco-rny/fathom-on-itself.md)). Scoring it 0.00 — "a person wrote this, and is
-named as having done so" — gave the thesis axis its lowest value in precisely the repositories the thesis is
-about, and gave it to them as a measurement.
+What the axis claimed was that an agent-written change deserves more attention than a human-written one
+(`ADR-001 §7.3`), and it scored that claim three ways: `agent` paid 0.7, `unknown` paid 1.0 (an
+unattributed change is as unreviewable as an unattributed author), and a person *named by evidence* paid
+0.0. The fourth state was the problem. A change that arrives `human` at **0.50 by `identity`** is not a
+person the tool met; it is rungs 1–7 of the attribution ladder finding no agent evidence, which ADR-003 §8
+**H4** prints as "a real identity with no agent evidence" — an honest way of saying *probably, don't bet on
+it*, about a git author string an agent sets like anybody else. Pointed at the repository this tool is
+written in, that rung covered **102 of 109 episodes** ([the beta pass's own
+measurement](../../.plan/evidence/reco-rny/fathom-on-itself.md)). `reco-0er` noticed and refused to score
+it, so on the repositories the thesis is about the axis was usually *absent*; where it was present it was
+usually `agent`, which is a fact about who runs a harness rather than a fact about the change.
 
-So the axis is **absent** there: out of the denominator, printed with a `—`, named in §7's list, and with
-the four things that would measure it in the sentence beside it — turn evidence from a harness
-([`docs/harness`](../harness/README.md)), a claim trailer naming an agent, `attribution.agents` declaring
-the identity, or `fathom attribution correct` overruling the guess. A `human` verdict that a *correction*
-asserted is a statement, and still scores 0.0. The axis is not softer now; it is refused where it was
-guessing.
+So the model no longer scores it. What is left is the honest half: **`attribution`** measures how sure the
+credit is — inverted, so "nobody is sure" is a risk and not a neutral fact — and the reason on that row
+still names the rung and the confidence, which is where `identity` at `0.50` now prints. `episode.author_kind`
+is still indexed, `fathom attribution` still answers "who wrote this" with its evidence, and the score says
+nothing about the answer. Whether the thing that wrote a change was a program is a question for the record,
+not a number a reviewer can check from the diff, and [risk-ranking.md](risk-ranking.md) §6 now lists it
+beside the other things a spine cannot see.
+
+The freed `0.04` was redistributed, because a weight here is a *share of a sum* and leaving it out would
+have re-scaled all twelve axes by stealth (§3). It went `findings +0.02` and `surface +0.02`, not to
+`attribution`: the two axes that received it read rows in the diff — a finding the catalogue raised, a path
+that is a migration — where `attribution` reads a guess about a label. That is also why `blast` and
+`complexity`, the two axes this corpus cannot fit, were not used as the landing place.
 
 ## 3. The arithmetic
 
@@ -124,7 +128,7 @@ flagged   = score ≥ risk.tau
 Four things are deliberate in those four lines:
 
 * **The denominator is the measured weight sum.** Absent axes are divided out, not zero-filled, so an
-  episode missing `blast` is scored on what is known about it and printed as `11 of 13 features measured
+  episode missing `blast` is scored on what is known about it and printed as `10 of 12 features measured
   · weight denominator 0.84`. This is also why relative weight is the whole knob.
 * **Arithmetic is integer after one division.** Every term is rounded to hundredths once, and the printed
   total *is* the printed terms summed — a reviewer adding the column with a calculator gets the number on
@@ -137,21 +141,22 @@ Four things are deliberate in those four lines:
 
 ## 4. A worked example
 
-Eleven axes measured, `blast` and `complexity` absent, from
+Ten axes measured, `blast` and `complexity` absent, from
 `crates/fathom-analyze/tests/risk_score.rs`'s hand-checked case — a migration that drops a column,
 4 severity-points of findings, a full test suite beside it:
 
 ```text
-features-2 36 · below τ 40
-  11 of 13 features measured · weight denominator 0.84 · total 35.71 of 100.00 points
-  features-2 36 = surface 15.48 + migration 10.71 + findings 9.52 + test_ratio 0.00 + size 0.00 + …
+features-3 39 · below τ 40
+  10 of 12 features measured · weight denominator 0.84 · total 39.28 of 100.00 points
+  features-3 39 = surface 17.86 + migration 10.71 + findings 10.71 + test_ratio 0.00 + size 0.00 + …
 ```
 
 By hand: `W = 1.00 − 0.09 − 0.07 = 0.84`. `migration` is at full value, so `100 · 0.09 · 1.00 / 0.84 =
-10.71`; `surface` is a migration path (50, which fills its axis) so `100 · 0.13 · 1.00 / 0.84 = 15.48`;
-`findings` at 4 of the 8 that fill the axis is `100 · 0.16 · 0.50 / 0.84 = 9.52`. The rest came in at
+10.71`; `surface` is a migration path (50, which fills its axis) so `100 · 0.15 · 1.00 / 0.84 = 17.86`;
+`findings` at 4 of the 8 that fill the axis is `100 · 0.18 · 0.50 / 0.84 = 10.71`. The rest came in at
 zero — a full test suite makes `test_ratio` 0 by inversion, and nothing arrived that the detectors flag.
-Sum: `35.71`, which rounds to `36`.
+Sum: `39.28`, which rounds to `39`. (`features-2` printed `35.71` for this same episode: the denominator
+is unchanged, and the two axes that absorbed `authorship`'s share are the two that moved.)
 
 The case carries no complexity figure on purpose. An episode the index has no V(G) delta for is divided
 out of the denominator exactly like a missing `blast` — it is not scored as having made the code no
@@ -160,9 +165,9 @@ harder to follow. That distinction is what lets the axis ship before every gramm
 `fathom why <episode>` prints all of this for a live episode, in five blocks:
 
 1. **the header** — score, model, and whether it clears `risk.tau`;
-2. **the vector line** — `features-2 36 = surface 15.48 + …`, the same shape `spine-2` prints, so the
+2. **the vector line** — `features-3 39 = surface 17.86 + …`, the same shape `spine-3` prints, so the
    strip, the card's `w` and this command say one kind of sentence (ADR-006 §5.1);
-3. **the feature table** — one row per feature, always all thirteen: raw in its unit, value, weight,
+3. **the feature table** — one row per feature, always all twelve: raw in its unit, value, weight,
    `points/max-points`, and the sentence that justifies it, or `—` plus who owns the missing input;
 4. **why, in order** — the reasons, largest contribution first, each naming a path, a finding or a row;
 5. **what this score cannot see** — §7, printed with the score rather than in a document nobody opens.
@@ -178,7 +183,7 @@ harder to follow. That distinction is what lets the axis ship before every gramm
 tau = 55          # score ≥ tau is what the queue surfaces (`e2.10`; default 40)
 
 [risk.weights]
-findings = 0.25   # up from 0.16: this repository trusts its detectors
+findings = 0.25   # up from 0.18: this repository trusts its detectors
 size = 0.00       # off entirely: nobody here triages on line counts
 ```
 
@@ -191,7 +196,7 @@ The rules, all of them asserted in `risk_score.rs`:
   `1.0`, and the score prints `config: risk.weights.findings = 4 is outside 0.0..=1.0, and was clamped
   to 1.00`. `-1` likewise becomes `0`. The value as written is kept in `clamped_from` for the JSON.
 * **Unknown keys are refused, and the run continues.** `finding = 0.4` (a typo) is a printed notice
-  naming the key and the thirteen real names, never a silent default. A `fathom.toml` that is not valid
+  naming the key and the twelve real names, never a silent default. A `fathom.toml` that is not valid
   TOML is a notice too: a reviewer should still get their queue.
 * **Provenance is carried, not implied.** Every weight knows whether it came from the build (`default`),
   the repository or user file (`repo`), the environment (`env`), or a `--weight` flag (`flag`), and
@@ -227,19 +232,19 @@ As shipped, on the shipped corpus:
 
 ```text
 calibration: 40 cases · 6 labelled must-read · the top 10% is 4 episodes
-      shipped    0.750  0.500  0.600     4    3         1      5.2
-     retuned    1.000  0.667  0.800     4    4         0      4.8
-       change   +0.250  +0.167  +0.200                          0.5 earlier
-   threshold  `risk.tau` 40 flags 6 of 40 as shipped; the proposal sets it to 34, which flags 11
+      shipped    0.750  0.500  0.600     4    3         1      5.0
+     retuned    1.000  0.667  0.800     4    2         0      4.8
+       change   +0.250  +0.167  +0.200                          0.2 earlier
+   threshold  `risk.tau` 40 flags 4 of 40 as shipped; the proposal sets it to 32, which flags 11
     not fitted  blast, complexity
 ```
 
-The retune moved three weights — `findings 0.16 → 0.25`, `surface 0.13 → 0.25`, `test_ratio 0.08 → 0.10`
+The retune moved three weights — `findings 0.18 → 0.25`, `surface 0.15 → 0.25`, `test_ratio 0.08 → 0.10`
 — and the report prints the `[risk.weights]` block to paste, plus the `risk.tau` it proposes. It never
 writes the file: adopting a retune is a human edit made after reading a report. And it prints **`not
-fitted`**: two of the thirteen axes — `blast` and `complexity` — are not moved by this corpus in either
+fitted`**: two of the twelve axes — `blast` and `complexity` — are not moved by this corpus in either
 direction, because no case in it turns on an exported symbol breaking or on decision points being added.
-That is stated rather than hidden in the totals: 11 of 13 weights have a measurement behind them here and
+That is stated rather than hidden in the totals: 10 of 12 weights have a measurement behind them here and
 2 do not, which is also true of the shipped defaults and is why `--weight` exists.
 
 Read the numbers as the finding, not the decoration:
@@ -250,7 +255,7 @@ Read the numbers as the finding, not the decoration:
   to be able to make;
 * **the shipped threshold was a knob nobody had measured.** At `e2.10`'s 70 this corpus flagged nothing;
   `reco-6co` confirmed the default against three real repositories and it is 40 now, so the shipped line
-  flags 6 of 40 here and the proposal still moves it to this corpus's own decile floor (34). That is the
+  flags 4 of 40 here and the proposal still moves it to this corpus's own decile floor (32). That is the
   ticket's purpose in one line: a knob change, evaluated rather than felt — including this one.
 
 Two honesty rules are enforced by the retune itself: it **refuses to move a weight** on a corpus with no
@@ -274,10 +279,11 @@ are limits of the model itself:
 * the `blast` axis — whichever answer `risk::blast::Availability` got back from this index, e.g. "this
   index can say what depends on 3 of the 7 path(s) this episode touched (25 graph revisions) — and this
   read did not ask";
-* the `authorship` axis, in a repository whose harness says nothing about who drove: `human` at `0.50` by
-  `identity` is the classifier reporting that it found no agent evidence, not a person it can name, so the
-  axis leaves the denominator instead of printing a confident `0.00` — §2's `authorship` section names the
-  four things that put a number on it;
+* **who wrote it.** `features-2` had an `authorship` axis and `reco-ydek.5` took it out: the one state the
+  attribution ladder could not distinguish — a named person, from nobody — was the state the axis printed a
+  number on (§2). The index still carries `author_kind`, and `fathom attribution` still answers the question
+  with its evidence; this score does not, so a change that is unreviewable *because* nobody is credited is
+  invisible here except through `attribution`, which measures how sure the credit is and not who it went to;
 * whether a finding is already known and accepted: the vector reads the catalogue and nothing else, so a
   dismissal recorded in the review ledger is not an input to it and every visible finding counts;
 * whether the tests that arrived *assert* anything: coverage shape is measurable, coverage quality is not;
@@ -302,7 +308,7 @@ One consequence worth saying plainly: in a repository with no harness in it, thi
 than it was, and the score above it is computed over fewer axes. That is the trade the vector makes
 wherever an axis cannot be measured — a hole with a name and a door, not a zero that reads as safe.
 
-Compare with `spine-2`'s seven blind spots ([risk-ranking.md](risk-ranking.md) §6). What changed is that
+Compare with `spine-3`'s eight blind spots ([risk-ranking.md](risk-ranking.md) §6). What changed is that
 two of the axes — dependency exposure and migration exposure — are now measured rather than assumed, and
 the ones still missing are missing by name, with a weight and a door.
 
@@ -354,7 +360,7 @@ Not done, on purpose:
 * `blast` and `e2.6`'s dependency delta arrive as *inputs*, from `Supply`, the moment a caller hands them
   over — the graph exists to be walked; what is missing is a caller that pays for the walk per episode.
   Until then the axes are absent and the denominator says so, with the index's own answer as the reason.
-* The TUI's `w` still prints `spine-2`'s vector. Wiring `features-2` into the `fathom export` artefact is
+* The TUI's `w` still prints `spine-3`'s vector. Wiring `features-3` into the `fathom export` artefact is
   that ticket's work — `e4.5`'s ordering function and the pane it ordered are gone (`e10.3`), so the list
   of callers shrank rather than grew — and `risk::score::render` is the one renderer they are all meant to
   call.

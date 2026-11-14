@@ -2,7 +2,7 @@
 
 **Read this first**
 
-- The ranking puts it at `spine-2 74 = surfaces 50 + author 8 + size 8 + breadth 6 + deletions 2`[c1].
+- The ranking puts it at `spine-3 66 = surfaces 50 + size 8 + breadth 6 + deletions 2`[c1].
 - Asked for, in the asker's own words: “split the worker pool so a slow clone cannot starve the rail”[c2].
 
 **Why it was asked for**
@@ -46,15 +46,15 @@
 
 - The ranking comes with a caveat: the complexity component says nothing: this read had no complexity figure for the episode, so the axis is absent from the sum rather than zero[c24].
 - Surfaces (50/50): `migrations/0007.sql — a schema migration whose reversal is not in the spine · an operator must act on it · also touched: source, test, generated`[c25].
-- Author (8/8): `written by an agent — the reason this tool exists (ADR-001 §7.3)`[c26].
-- Size (8/12): `+552 −105 = 657 churn`[c27].
+- Size (8/12): `+552 −105 = 657 churn`[c26].
+- Breadth (6/8): `4 surfaces over 5 files in 4 commits`[c27].
 - The remaining terms of the vector are in the document's `risk.components`[c28].
 
 **What you cannot tell from this document**
 
 - You cannot tell which named cases were added, removed or weakened — the document's own words are “case names are e2.9's”[c29].
 - You cannot tell what depends on the paths this change touched — the document's own words are “no supplied reach”[c30].
-- You cannot tell from the score: whether a migration can be rolled back; an environment variable declared and never read; a new import cycle; a removed public API; what depends on the touched code (blast radius); a committed secret whose value is real; whether a deleted test was the only cover for the behaviour[c31].
+- You cannot tell from the score: whether a migration can be rolled back; an environment variable declared and never read; a new import cycle; a removed public API; what depends on the touched code (blast radius); a committed secret whose value is real; whether a deleted test was the only cover for the behaviour; who wrote it: an agent turn reads the same here as a person's[c31].
 - You cannot tell which of these lines a reformat and which a rewrite — the document's own words are “path-rule discount only”[c32].
 - You cannot tell the shape of the move, rather than its endpoints — the document's own words are “shape sentence is e2.3's”[c33].
 - You cannot tell what new thing the tree now depends on — the document's own words are “no dependency delta here”; meanwhile, run `fathom analyze <episode> --json`[c34].
@@ -63,7 +63,7 @@
 
 Evidence
 
-- `[c1]` `attention` figure `risk` — #/risk — risk: spine-2 74 = surfaces 50 + author 8 + size 8 + breadth 6 + deletions 2
+- `[c1]` `attention` figure `risk` — #/risk — risk: spine-3 66 = surfaces 50 + size 8 + breadth 6 + deletions 2
 - `[c2]` the recorded intent — #/episode/intent — intent, in the asker's words: split the worker pool so a slow clone cannot starve the rail — recorded by `hook-prompt` at 0.95, state recorded
 - `[c3]` the declared scope — #/episode/intent — declared scope: src/pool/**, tests/pool/**
 - `[c4]` the plan items as stated — #/episode/intent — plan: move the clone call off the UI thread | pending: add a regression test for the starvation case
@@ -88,17 +88,17 @@ Evidence
 - `[c23]` `tests` figure `watch` — #/files — watch: source grew by 424 while 12 test lines were removed — the deleted cover is not re-established by anything in these rows
 - `[c24]` `attention` figure `caveat` — #/risk/caveat — caveat: the complexity component says nothing: this read had no complexity figure for the episode, so the axis is absent from the sum rather than zero
 - `[c25]` `attention` figure `surfaces (50/50)` — #/risk/components — surfaces (50/50): migrations/0007.sql — a schema migration whose reversal is not in the spine · an operator must act on it · also touched: source, test, generated
-- `[c26]` `attention` figure `author (8/8)` — #/risk/components — author (8/8): written by an agent — the reason this tool exists (ADR-001 §7.3)
-- `[c27]` `attention` figure `size (8/12)` — #/risk/components — size (8/12): +552 −105 = 657 churn
-- `[c28]` the ranking's remaining components — #/risk/components — surfaces (50/50): migrations/0007.sql — a schema migration whose reversal is not in the spine · an operator must act on it · also touched: source, test, generated | author (8/8): written by an agent — the reason this tool exists (ADR-001 §7.3) | size (8/12): +552 −105 = 657 churn | breadth (6/8): 4 surfaces over 5 files in 4 commits | deletions (2/10): 16% of the churn is removal (−105 against +552)
+- `[c26]` `attention` figure `size (8/12)` — #/risk/components — size (8/12): +552 −105 = 657 churn
+- `[c27]` `attention` figure `breadth (6/8)` — #/risk/components — breadth (6/8): 4 surfaces over 5 files in 4 commits
+- `[c28]` the ranking's remaining components — #/risk/components — surfaces (50/50): migrations/0007.sql — a schema migration whose reversal is not in the spine · an operator must act on it · also touched: source, test, generated | size (8/12): +552 −105 = 657 churn | breadth (6/8): 4 surfaces over 5 files in 4 commits | deletions (2/10): 16% of the churn is removal (−105 against +552)
 - `[c29]` the `tests` gap — #/gaps/4 — case names are e2.9's — counts of the test side come from the path taxonomy; the case-level answer — which named cases were added, removed, skipped or weakened, and the pairing between a case and the behaviour it covers — is `e2.9`'s and is supplied, not guessed (owner e2.9; remedy none in this build)
 - `[c30]` the `blast` gap — #/gaps/5 — no supplied reach — how far a change reaches is a question for the module graph, and this document carries no supplied block for it: the count costs a chain walk this pass did not take, and a reach estimate built from path prefixes would be a guess wearing a number — `fathom architecture` ranks modules by their fan-in on that graph today (owner e3.2; remedy none in this build)
-- `[c31]` what the ranking cannot see — #/risk/blind_spots — whether a migration can be rolled back | an environment variable declared and never read | a new import cycle | a removed public API | what depends on the touched code (blast radius) | a committed secret whose value is real | whether a deleted test was the only cover for the behaviour
+- `[c31]` what the ranking cannot see — #/risk/blind_spots — whether a migration can be rolled back | an environment variable declared and never read | a new import cycle | a removed public API | what depends on the touched code (blast radius) | a committed secret whose value is real | whether a deleted test was the only cover for the behaviour | who wrote it: an agent turn reads the same here as a person's
 - `[c32]` the `what` gap — #/gaps/0 — path-rule discount only — the discount is a path rule (`spine-1/noisy-path`); the token-level fold that separates a reformat from a rewrite is `e2.2`'s and reaches this model as supplied figures, not as a recomputation (owner e2.2; remedy none in this build)
 - `[c33]` the `where` gap — #/gaps/1 — shape sentence is e2.3's — the shape sentence — a module split, a flatten, a subtree move, with its churn band — is `e2.3`'s and is not recomputed here; it arrives as a supplied figure (owner e2.3; remedy none in this build)
 - `[c34]` the `dependencies` gap — #/gaps/2 — no dependency delta here — `e2.6`'s delta needs both trees' dependency files; the rail's per-path rollup has neither, and inventing a count from path names is the lie this section exists to prevent (owner e2.6; remedy fathom analyze <episode> --json)
 - `[c35]` the `surface` gap — #/gaps/3 — findings are e2.8's — which surfaces moved is answered from the stored path classes; what an operator has to *do* — the migration that cannot be reversed, the environment variable nothing reads, the workflow that now signs artefacts — is `e2.8`'s finding set and reaches this model as a supplied block (owner e2.8; remedy none in this build)
-- `[c36]` the `attention` gap — #/gaps/6 — spine-only ranking — the ranking is the spine-only one: size, surfaces, deletions, breadth and authorship. Findings, staleness and blast radius enter with `e4.4`'s scorer, and until then the blind-spot list above is part of the answer rather than a footnote to it (owner e4.4; remedy none in this build)
+- `[c36]` the `attention` gap — #/gaps/6 — spine-only ranking — the ranking is the spine-only one: size, surfaces, complexity, deletions and breadth. Findings, staleness and blast radius enter with `e4.4`'s scorer, and until then the blind-spot list above is part of the answer rather than a footnote to it (owner e4.4; remedy none in this build)
 
 *Composed by `fathom-template/1` from `fathom-delta/2` v2 — a template, not a model: every figure above is copied from the citation printed beside it.*
 fathom-template/1 verified: 34 claims, 36 citations, 6 checks.

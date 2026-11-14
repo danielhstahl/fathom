@@ -33,11 +33,12 @@ use super::disposition::Disposition;
 
 /// A score at or above this is `high`.
 ///
-/// This buckets the score a caller is *handed*, which is the delta's `spine-2` number, and it is
+/// This buckets the score a caller is *handed*, which is the delta's `spine-3` number, and it is
 /// deliberately **not** `risk.tau`. The two were the same number until `reco-6co` measured τ against real
-/// history: `risk.tau` is now 40 because that is the `features-2` floor three real repositories support
+/// history: `risk.tau` is now 40 because that is the `features-3` floor three real repositories support
 /// (`features-2`'s ceiling on that corpus was 63, so 70 flagged nothing), and this constant still buckets
-/// `spine-2`, a different model with its own range. "Flagged" is what `fathom why` says about the score it
+/// `spine-3`, a different model with its own range — a ceiling of 92 since `reco-ydek.5` took the `author`
+/// component out. "Flagged" is what `fathom why` says about the score it
 /// prints; "high" is what a count says about the score in the delta. A repository that wants one number
 /// for both sets `[risk] tau` and says so in the same commit that changes this constant — what is not
 /// allowed is a document that quotes one as the other.
@@ -320,11 +321,17 @@ mod tests {
     #[test]
     fn an_unscored_open_row_is_counted_as_unscored_and_not_as_low() {
         let counts = count_rows(
-            &[row("a", None, Disposition::Unread), row("b", Some(90), Disposition::Unread)],
+            &[
+                row("a", None, Disposition::Unread),
+                row("b", Some(90), Disposition::Unread),
+            ],
             |_| false,
         );
         assert_eq!(counts.open, 2, "both are still asking to be read");
-        assert_eq!(counts.unranked, 1, "`?` is a state of the tool, not a low score");
+        assert_eq!(
+            counts.unranked, 1,
+            "`?` is a state of the tool, not a low score"
+        );
         assert_eq!(counts.high, 1);
     }
 
@@ -334,7 +341,10 @@ mod tests {
         assert_eq!(count_rows(&rows, |_| false).snoozed, 1);
         let released = count_rows(&rows, |_| true);
         assert_eq!(released.released, 1);
-        assert_eq!(released.open, 1, "a snooze whose condition happened is work");
+        assert_eq!(
+            released.open, 1,
+            "a snooze whose condition happened is work"
+        );
     }
 
     #[test]

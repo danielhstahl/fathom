@@ -44,8 +44,8 @@ way rows enter, and it is also the way a **re-index** enters — same method, sa
 The batch reaches the shell through `frame::Options::episodes`, which `fathom-cli` fills from the spine
 (`crates/fathom-cli/src/episodes.rs`, the read `reco-glv`'s first P1 asked for): the live episodes,
 newest first, one page of them, with the review markers, the paths each one touched, and the per-file
-rollup the ranking reads. That read needs no delta model — identity, authorship, scale, session/turn
-and review state are rows `e1.3` already writes, and the per-file sums are `git_commit_file` rows —
+rollup the ranking reads. That read needs no delta model — identity, scale, session/turn and review state
+are rows `e1.3` already writes, and the per-file sums are `git_commit_file` rows —
 which is why the rail has rows in an Epic 1 build while `insight::episodes` is still `e2.11`'s to
 answer. What the store cannot say stays `None` and prints `?`, so a filled rail is not a claim that the
 delta model landed: the risk column carries the spine-only ranking's number and its reasons
@@ -333,7 +333,7 @@ cannot fill:
 
 ```
 delta    no document was handed to this card — `fathom analyze <episode>` is the one source
-risk     spine-2 82 = surfaces 50 + size 12 + complexity 12 + author 8 · rank 1 of 21
+risk     spine-3 74 = surfaces 50 + size 12 + complexity 12 · rank 1 of 21
 ```
 
 That is the whole design constraint in two lines: a pane whose data has not been handed to it says which

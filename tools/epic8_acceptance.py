@@ -1032,8 +1032,8 @@ def clause_ranking(binary: Path, work: Path) -> Criterion:
     """The ranking uses the figure, and Guardrail 3 was re-measured against it — in whichever direction it landed.
 
     `e8.7`'s half is the one an epic can lose quietly: `e8.6` made the number visible and it would have
-    stayed merely visible. Two engines had to be rewired to *the same* figure — `spine-2` for the ordering
-    a reviewer sees and `features-2` for the score that can be tuned — and then the corpus that guards
+    stayed merely visible. Two engines had to be rewired to *the same* figure — `spine-3` for the ordering
+    a reviewer sees and `features-3` for the score that can be tuned — and then the corpus that guards
     false-positive rate had to be read again with the axis in it, honestly, in whichever direction it
     moved. Both engines and the re-measure are measured here.
     """
@@ -1050,8 +1050,8 @@ def clause_ranking(binary: Path, work: Path) -> Criterion:
     component = components.get("complexity")
     added = block.get("delta") or 0
     want = 0 if added <= 0 else (12 * min(added, ceiling or 20)) // (ceiling or 20)
-    c.add("`spine-2` grew the sixth component and scores it from the delta document's own figure",
-          risk.get("model") == "spine-2" and component is not None
+    c.add("`spine-3` carries the component and scores it from the delta document's own figure",
+          risk.get("model") == "spine-3" and component is not None
           and component.get("points") == want and "decision point" in component.get("detail", ""),
           f"{risk.get('vector')}; added {added} of a {ceiling}-point ceiling → {component and component.get('points')} "
           f"points (re-computed {want})")
@@ -1059,8 +1059,8 @@ def clause_ranking(binary: Path, work: Path) -> Criterion:
     why = corpus.fathom_json("why", corpus.episode_id(subject), "--json")
     terms = {t["feature"]: t for t in why.get("terms", [])}
     axis = terms.get("complexity", {})
-    c.add("`features-2` grew the thirteenth axis, and it reads the same roll-up",
-          why.get("model") == "features-2" and axis.get("feature") == "complexity"
+    c.add("`features-3` carries the axis, and it reads the same roll-up",
+          why.get("model") == "features-3" and axis.get("feature") == "complexity"
           and int(axis.get("raw") or 0) == int(added) and BASIS in axis.get("basis", ""),
           f"{why.get('model')}: raw {axis.get('raw')} against the document's {added}, basis "
           f"{axis.get('basis')!r}, weight {axis.get('weight')}")
@@ -1137,7 +1137,7 @@ def clause_ranking(binary: Path, work: Path) -> Criterion:
 
 #: The words the primitive brought with it. A changed golden line that contains one of these is a line
 #: this epic can account for; one that contains none of them is a change that slipped.
-VOCAB = ("complexity", "spine-2", "spine-1", "features-2", "mccabe", "sort:", "Δ", "~+", "V(G)")
+VOCAB = ("complexity", "spine-3", "spine-2", "spine-1", "features-3", "features-2", "mccabe", "sort:", "Δ", "~+", "V(G)")
 
 
 def epic_commits() -> list[tuple[str, str, str]]:

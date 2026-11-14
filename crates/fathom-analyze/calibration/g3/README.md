@@ -52,7 +52,7 @@ it is re-blessed as the day it was measured.
 Each `why` field in the pins says in one sentence what the repository buys the corpus, because a calibration
 corpus chosen for convenience measures convenience.
 
-### 1.1 The five passes this corpus is made of
+### 1.1 The six passes this corpus is made of
 
 | Pass | Windows | Labels | What it settled |
 | --- | --- | --: | --- |
@@ -62,7 +62,9 @@ corpus chosen for convenience measures convenience.
 | the re-measure (`reco-0zi`, 2026-11-02) | unchanged — no re-fetch, no re-pin | +5 (72) | that the harness means what it says. `reco-0er` made `authorship` absent where the classifier had only guessed `human`, so the score's denominator went from twelve axes to eleven and every measured term was renormalised upward. Nobody re-blessed the report, and CI's `--check` refused it — the only outcome that makes a byte-for-byte promise worth having. Five episodes were promoted over a cut, five diffs were read, five rows were written, and `every-flagged-episode-is-labelled` came back to `pass` the way it did in `reco-6co` |
 | the new axis (`reco-l9bz.7`, 2026-11-12) | unchanged — no re-fetch, no re-pin | +4 (76) | a thirteenth feature axis and a sixth ranking component: the episode's own cyclomatic-complexity delta, taken out of the index roll-up rather than recounted. `spine-2` / `features-2` moved 51 of the 58 scores the previous run had flagged, promoted nine episodes into a flag population and demoted five, and `every-flagged-episode-is-labelled` went red on arrival and came back green on four readings — a telemetry-lifecycle rewrite `accepted`, a vendored-typeshed sync `dismissed` and blamed on the ranking for the reason given in its own note, and two ty changes `accepted`. It also exposed a determinism bug: the complexity fill is budgeted per run, so on a busy machine the axis was absent and on a quiet one it was not — the harness now runs the pass to completion and refuses to certify a report where any row was refused by the scan budget (§6) |
 
-Nothing about the *bars* moved, in any of the five passes: §5.4's `G3 ≤ 0.30 / ≤ 0.15` and
+| the axis came out (`reco-ydek.5`, 2026-11-14) | unchanged — no re-fetch, no re-pin | +1 (77) | taking a term out costs the same as putting one in. `authorship` left the feature vector and the `author` component left the ranking — the axis had been made to refuse guessing in `reco-0zi` and was still mostly a denominator, and the ranking's claim about who wrote a turn was one the store could not usually stand up. `spine-3` / `features-3` moved 24 of the 51 scores τ was already flagging without moving τ's population by one episode, moved two repositories' top-decile cuts by a point each, promoted one never-flagged `cli` episode (`Add issue artifact API client`, read and dispositioned `accepted`) and stranded six more readings below `cli`'s cut. `every-flagged-episode-is-labelled` went red on that one promotion and came back green on the reading, fifth time the gate has been the price of a re-score |
+
+Nothing about the *bars* moved, in any of the six passes: §5.4's `G3 ≤ 0.30 / ≤ 0.15` and
 `miss_rate ≤ 0.20`, `min_denominator`, `DEFAULT_FLIP_MIN_LABELLED` and the 20-episode floor are
 byte-identical to `e4.9`'s, and τ has been 40 since `reco-6co`. What has moved is an input to the
 measurement and an `expected` or two:
@@ -71,7 +73,8 @@ measurement and an `expected` or two:
 inert. That is the one number in here the corpus is allowed to set rather than copy, and §5.4 says so.
 Widening a corpus is a labelling job, not a re-bless: 44 new flagged episodes meant 44 diffs read and 44
 dispositions written, and the fetch depth went with the window (see §6). A re-measure after a scoring change
-is the same job at a smaller scale, `reco-0zi` paid it five times, and `reco-l9bz.7` paid it four.
+is the same job at a smaller scale, `reco-0zi` paid it five times, `reco-l9bz.7` paid it four, and
+`reco-ydek.5` paid it once.
 
 One more thing `reco-l9bz.7` changed about how this directory is *run*: the harness now needs the grammars,
 so the command is `--features sqlite-bundled,langs-all`. A build without them does not fail, it measures a
@@ -82,7 +85,7 @@ of CI compiles all six grammars now.
 ## 2. What a label is, and how one was written
 
 One row per flagged episode — every episode any cut flagged, and there is no sampling, because a sample of
-a flag set is a flag set with holes. 76 rows today: 22 from the `e4.9` pass, 44 from the re-pin, 1 written
+a flag set is a flag set with holes. 77 rows today: 22 from the `e4.9` pass, 44 from the re-pin, 1 written
 when `reco-6co`'s re-score promoted an episode into the cut, 5 when `reco-0zi`'s re-measure promoted
 five more, and 4 when `reco-l9bz.7`'s new axis promoted four. Nine dispositions now sit on episodes that a moved cut left *out* of the flag set — three bot
 bumps `reco-6co` demoted, and six `cli` episodes `reco-0er`'s renormalisation left under a raised cut; the

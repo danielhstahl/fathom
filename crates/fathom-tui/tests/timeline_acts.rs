@@ -107,9 +107,9 @@ impl Ledger for Recorder {
 
 fn risk(score: u64, why: &str) -> RiskView {
     RiskView {
-        model: "spine-2".to_owned(),
+        model: "spine-3".to_owned(),
         score: i64::try_from(score).unwrap_or(0),
-        vector: format!("spine-2 {score} = surfaces {score}"),
+        vector: format!("spine-3 {score} = surfaces {score}"),
         components: vec![RiskComponent {
             name: "surfaces".to_owned(),
             points: i64::try_from(score).unwrap_or(0),
@@ -630,7 +630,7 @@ fn the_retrospective_names_what_was_skipped_and_says_pattern_out_loud() {
             },
             utc: NOW,
             risk: Some(70 + n),
-            risk_model: "spine-2".to_owned(),
+            risk_model: "spine-3".to_owned(),
         })
         .collect();
     app.review = Setup {

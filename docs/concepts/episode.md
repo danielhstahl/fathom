@@ -112,7 +112,7 @@ over join committed rows only, so a provisional episode cannot leak into a numbe
 | Surface | Verb or key | What it answers about the episode |
 |---|---|---|
 | Timeline (the rail) | `t` | what happened, in order, which of it you have not read, and each row's [risk score](risk-score.md) — `w` expands the figure into the vector behind it |
-| `fathom show` | headless | identity, authorship, message, trailers, file rows with their taxonomy decision |
+| `fathom show` | headless | identity, attribution, message, trailers, file rows with their taxonomy decision |
 | `fathom analyze` | headless | the [delta](delta.md) — the claims, with citations |
 | `fathom narrative` | headless | the prose version of the same claims |
 | `fathom why` | headless | the [risk score](risk-score.md) as an arithmetic you can check |

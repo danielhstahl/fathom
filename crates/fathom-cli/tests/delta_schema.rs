@@ -87,7 +87,6 @@ fn corpus() -> Vec<(&'static str, EpisodeDelta)> {
         n_files: 5,
         n_binary: 1,
         n_commits: 4,
-        author: "agent",
         partial_files: false,
         complexity: None,
     });

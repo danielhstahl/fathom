@@ -265,8 +265,8 @@ fn code(out: &Output) -> Option<i32> {
     out.status.code()
 }
 
-/// The thirteen feature names the verb has to account for, in the order it prints them.
-const FEATURES: [&str; 13] = [
+/// The twelve feature names the verb has to account for, in the order it prints them.
+const FEATURES: [&str; 12] = [
     "findings",
     "surface",
     "migration",
@@ -279,7 +279,6 @@ const FEATURES: [&str; 13] = [
     "noise",
     "breadth",
     "attribution",
-    "authorship",
 ];
 
 /// The feature table as printed: the name, then the rest of the row.
@@ -320,11 +319,11 @@ fn why_prints_every_feature_its_weight_and_its_contribution() {
 
     // The header: which episode, and from which model.
     assert!(
-        text.contains("features-2"),
+        text.contains("features-3"),
         "the line says which model produced the number:\n{text}"
     );
     assert!(
-        text.contains("features-2 ") && text.contains(" = "),
+        text.contains("features-3 ") && text.contains(" = "),
         "the arithmetic is printed as a sum a human can check:\n{text}"
     );
     assert!(
@@ -349,7 +348,7 @@ fn why_prints_every_feature_its_weight_and_its_contribution() {
     expected.sort_unstable();
     assert_eq!(
         names, expected,
-        "every one of the thirteen is on the page, scored or declared absent:\n{text}"
+        "every one of the twelve is on the page, scored or declared absent:\n{text}"
     );
     for (name, row) in &rows {
         let fields: Vec<&str> = row.split_whitespace().collect();
@@ -373,15 +372,15 @@ fn why_prints_every_feature_its_weight_and_its_contribution() {
     );
 }
 
-/// A `human` verdict the classifier *fell through to* is not a measurement of authorship (`reco-0er`).
+/// There is no authorship axis any more (`reco-ydek.5`), and the doubt axis is still measured.
 ///
 /// Shape 1 is Ada's docs commit: a person-shaped author string, no harness turn, no claim trailer, no
-/// registry entry — the whole of the evidence is that nothing said an agent. Crediting "a person wrote
-/// this, and is named as having done so" on that is the confident 0.00 this ticket is about, in a
-/// repository an agent wrote end to end. The axis leaves the arithmetic instead, says why, and names what
-/// would fill it; the episode beside it, which *does* carry turn evidence, is still measured.
+/// registry entry — the whole of the evidence is that nothing said an agent. `reco-0er` refused to score
+/// that as "a person wrote this"; `reco-ydek.5` took the axis out, because the one state the ladder could
+/// not distinguish — a person, from nobody — is the state the number printed on. What is left is
+/// `attribution`: how sure the credit is, which "not sure" answers honestly.
 #[test]
-fn a_human_the_classifier_guessed_leaves_the_authorship_axis_unmeasured() {
+fn nobody_is_credited_and_the_vector_says_so_rather_than_scoring_it() {
     let dir = indexed();
     let out = fathom_in(&dir, &["why", &rev(1)]);
     assert_eq!(code(&out), Some(0), "{}", stderr(&out));
@@ -389,56 +388,59 @@ fn a_human_the_classifier_guessed_leaves_the_authorship_axis_unmeasured() {
     eprintln!("{text}");
 
     let rows = table(&text);
-    let authorship = &rows["authorship"];
     assert!(
-        authorship.starts_with('—'),
-        "a verdict that is only the absence of evidence is not scored: {authorship}"
+        !rows.contains_key("authorship"),
+        "the vector has no authorship axis to be coy about:\n{text}"
     );
     assert!(
-        authorship.contains("identity"),
-        "the absence names the rung it came from: {authorship}"
+        !text.contains("`authorship` axis"),
+        "and the scope statement no longer offers to fill it:\n{text}"
     );
     assert!(
-        authorship.contains("owned by the harness"),
-        "and says who can put a number on it: {authorship}"
+        text.contains("who wrote it"),
+        "what it says instead is that the question is outside the model:\n{text}"
     );
-    assert!(
-        text.contains("the `authorship` axis"),
-        "so the scope statement under the score carries it too:\n{text}"
-    );
+
     // The doubt axis is a different question and keeps its number: `attribution` measures how sure the
-    // credit is, and "not sure" is a real answer, unlike "a person".
+    // credit is, and "not sure" is a real answer.
     assert!(
         rows["attribution"].contains("0.50"),
         "the confidence is still printed as the doubt it is: {}",
         rows["attribution"]
     );
+    assert!(
+        rows["attribution"].contains("identity"),
+        "and names the rung that confidence came from: {}",
+        rows["attribution"]
+    );
 
-    // …and the axis is not simply switched off: the turn-carrying episode beside it is measured.
+    // The turn-carrying episode beside it prints the same attribution story, not an authorship one.
     let agent = stdout(&fathom_in(&dir, &["why", &rev(0)]));
     let agent_rows = table(&agent);
     assert!(
-        agent_rows["authorship"].contains('/') && agent_rows["authorship"].contains("0.70"),
-        "an episode the harness spoke for is scored on the axis:\n{agent}"
+        !agent_rows.contains_key("authorship"),
+        "an episode the harness spoke for is not scored on authorship either:\n{agent}"
+    );
+    assert!(
+        agent_rows["attribution"].contains("0.05"),
+        "a harness turn is credited at 0.95, so the doubt axis reads the 0.05 it is and not a \"not sure\":\n{agent}"
+    );
+    assert!(
+        agent_rows["attribution"].contains("harness"),
+        "and names the rung it came from:\n{agent}"
     );
 
-    // The machine's form says the same thing, with the owner attached.
+    // The machine's form agrees: no term, and no absent axis named authorship.
     let json: serde_json::Value =
         serde_json::from_str(&stdout(&fathom_in(&dir, &["why", &rev(1), "--json"])))
             .expect("--json is JSON");
-    let absent = json["absent"]
-        .as_array()
-        .expect("an absent list")
-        .iter()
-        .find(|axis| axis["name"] == "authorship")
-        .expect("authorship is absent on this episode");
-    assert_eq!(absent["owner"].as_str(), Some("the harness"));
-    assert!(
-        absent["why"]
-            .as_str()
-            .unwrap_or_default()
-            .contains("attribution.agents")
-    );
+    for axis in json["absent"].as_array().expect("an absent list") {
+        assert_ne!(
+            axis["name"].as_str(),
+            Some("authorship"),
+            "`absent[]` still carries an authorship axis with an owner: {json}"
+        );
+    }
 }
 
 /// The same episode, twice, and again: byte-identical, with nothing written to disk in between (criterion
@@ -465,14 +467,14 @@ fn the_same_episode_scores_the_same_way_twice_and_says_so_in_the_same_words() {
         Some("fathom.cli.why/1"),
         "the envelope carries a contract id, as every published verb's does"
     );
-    assert_eq!(payload["model"].as_str(), Some("features-2"));
+    assert_eq!(payload["model"].as_str(), Some("features-3"));
     let terms = payload["terms"].as_array().expect("a term list");
     let total = payload["total"].as_i64().expect("a total");
     let weights = payload["weights"].as_array().expect("the weight set");
     assert_eq!(
         weights.len(),
         FEATURES.len(),
-        "the payload names all thirteen weights"
+        "the payload names all twelve weights"
     );
     for weight in weights {
         assert!(

@@ -4,7 +4,7 @@
   [risk-ranking](risk-ranking.md)) whose shape it kept.
 - **In code**: `crates/fathom-analyze/src/risk/` (features, weights, score, collect, calibrate) and
   `crates/fathom-cli/src/why.rs`.
-- **The reference page**: [risk scoring](risk-scoring.md) has the thirteen axes with their rulers and
+- **The reference page**: [risk scoring](risk-scoring.md) has the twelve axes with their rulers and
   weights; [risk ranking](risk-ranking.md) has how the figure is ordered and printed now that the queue is
   gone. This page is how to
   read the number.
@@ -40,57 +40,60 @@ The miniature from `fathom --demo`, the episode that added a real crate:
 ```text
 $ fathom why 4513a988
 ep-4a42de295c13b5229318  "add the crate: one observation and the store"  ·  +62 −0  ·  7 file(s)
-features-2 36 · below τ 40
-  11 of 13 features measured · weight denominator 0.87 · total 36.36 of 100.00 points
-  features-2 36 = surface 10.76 + test_ratio 6.72 + dependency 6.21 + breadth 4.14 + size 2.85
-                  + complexity 2.82 + attribution 2.30 + noise 0.56 + findings 0.00 + migration 0.00 + …
+features-3 36 · below τ 40
+  11 of 12 features measured · weight denominator 0.91 · total 36.33 of 100.00 points
+  features-3 36 = surface 11.87 + test_ratio 6.42 + dependency 5.93 + breadth 3.96 + size 2.73
+                  + complexity 2.69 + attribution 2.20 + noise 0.53 + findings 0.00 + migration 0.00
+                  + deletions 0.00
 
 feature                measured   value  weight    points why
-surface       36 surface weight    0.72    0.13 10.76/14.94 Cargo.lock — a dependency or lockfile: the
+surface       36 surface weight    0.72    0.15 11.87/16.48 Cargo.lock — a dependency or lockfile: the
                                                        supply chain is part of the diff · an operator must
                                                        act on it · also touched: source, test, docs, other
-test_ratio   0.27 coverage share    0.73    0.08  6.72/9.20  of +38 on logic, +14 was tests (27% covered)
+test_ratio   0.27 coverage share    0.73    0.08  6.42/8.79  of +38 on logic, +14 was tests (27% covered)
                                                        over 62 lines of churn · per-path add/del by surface
-dependency        0.90 exposure    0.90    0.06  6.21/6.90  1 lockfile(s) and 1 manifest(s): Cargo.lock,
+dependency        0.90 exposure    0.90    0.06  5.93/6.59  1 lockfile(s) and 1 manifest(s): Cargo.lock,
                                                        Cargo.toml · the resolution is what the lock
                                                        recorded, not a re-solve · path class
-breadth             0.60 spread    0.60    0.06  4.14/6.90  5 surface(s) over 7 file(s) in 1 commit(s) …
-size         59.00 reviewable lines    0.41    0.06  2.85/6.90  +62 −0 = 62 churn, of which 59 is
+breadth             0.60 spread    0.60    0.06  3.96/6.59  5 surface(s) over 7 file(s) in 1 commit(s) …
+size         59.00 reviewable lines    0.41    0.06  2.73/6.59 +62 −0 = 62 churn, of which 59 is
                                                        reviewable (5 discounted as generated …)
-complexity         7 V(G) added    0.35    0.07  2.82/8.05  +7 V(G) across the 7 path(s) this episode
+complexity         7 V(G) added    0.35    0.07  2.69/7.69  +7 V(G) across the 7 path(s) this episode
                                                        touched, of which 3 could be counted on both sides ·
                                                        the worst single unit at head is V(G) 5 · a floor:
                                                        some paths refused a figure, so the true delta is at
                                                        least this · episode complexity roll-up (`mccabe-1`)
-attribution     0.50 confidence    0.50    0.04  2.30/4.60  credited to human by identity at confidence
+attribution     0.50 confidence    0.50    0.04  2.20/4.40  credited to human by identity at confidence
                                                        0.50 · the doubt is what this axis measures,
                                                        not the label
 …
 —                             —       —       —         — not measured, and not counted
 blast                         —       —    0.09         — this index can say what depends on 3 of the 7
-                                                       path(s) this episode touched (26 graph revision(s)) —
+                                                       path(s) this episode touched (20 graph revision(s)) —
                                                        and this read did not ask … owned by the caller
-authorship                    —       —    0.04         — nothing on this episode says who wrote it: `human`
-                                                       is what the ladder falls through to when no agent
-                                                       evidence exists … owned by the harness
 ```
 
-Read it as four things at once. **`features-2 36`** is the score and the model that produced it, so a score
+Read it as four things at once. **`features-3 36`** is the score and the model that produced it, so a score
 from another build is comparable only if the model name matches. **`below τ 40`** is the routing consequence:
 this episode is not flagged, and that is a statement about the threshold, not about the change.
-**`11 of 13 features measured · weight denominator 0.87`** is the honesty: two axes had no input, their
-weights left the denominator with them, and `36.36 of 100.00` is what the eleven that did measure added up
-to — and one of the two holes is `authorship`, which the harness would have filled had it stamped anything
-([`risk-scoring.md`](risk-scoring.md#authorship-and-the-difference-between-a-person-and-nobody)).
-And each row's `10.76/14.94` is the contribution against what it *could* have contributed at this
-denominator — which is how you see that `findings` was measured and silent (`the catalogue ran and raised
-nothing (8 of 12 detectors answered)`) rather than skipped.
+**`11 of 12 features measured · weight denominator 0.91`** is the honesty: one axis had no input, its weight
+left the denominator with it, and `36.33 of 100.00` is what the eleven that did measure added up to — and the
+hole is `blast`, which a caller would have to hand a dependent count to fill
+([`risk-scoring.md`](risk-scoring.md#2-the-twelve-features)). And each row's `11.87/16.48` is the contribution
+against what it *could* have contributed at this denominator — which is how you see that `findings` was
+measured and silent (`the catalogue ran and raised nothing (8 of 12 detectors answered)`) rather than skipped.
+
+Nothing in that table answers "who wrote this", and since `reco-ydek.5` nothing tries to. `attribution` says
+how sure the credit is — here 0.50, from the ladder falling through to the git author string, which is the
+doubt and not a person — and the score stops there. Whether the author was a program is on the row, in
+`fathom attribution`, and not in the arithmetic
+([why the axis was taken out](risk-scoring.md#who-wrote-it-the-axis-that-used-to-be-called-authorship)).
 
 The `complexity` row is the one `reco-l9bz.7` added, and it is worth reading closely because it is the
 model's only axis that measures a *shape* rather than an amount. Seven decision points arrived, three of
 the seven paths could be counted on both sides of the change, so the figure is a floor and the row says so
 in words; `V(G) 5` names the worst single function, so the number can be gone and looked at; and 0.35 of
-the axis is what `2.82/8.05` points are. An episode with no complexity figure at all would print `—` in
+the axis is what `2.69/7.69` points are. An episode with no complexity figure at all would print `—` in
 this row and leave the 0.07 out of the denominator, exactly like `blast` does two rows below.
 
 Now the same miniature, changed on purpose. One new public function with no test beside it, indexed, and
@@ -99,50 +102,51 @@ that drops a column, and a leftover `println!("DEBUG …")`:
 
 ```text
 $ fathom why HEAD | head -4          # pub fn parse_interval(), nothing else
-features-2 20 · below τ 40
-  11 of 13 features measured · weight denominator 0.87 · total 19.64 of 100.00 points
-  features-2 20 = test_ratio 9.20 + complexity 3.22 + surface 2.99 + attribution 2.30 + size 1.93 + …
+features-3 19 · below τ 40
+  11 of 12 features measured · weight denominator 0.91 · total 18.69 of 100.00 points
+  features-3 19 = test_ratio 8.79 + surface 3.30 + complexity 2.69 + attribution 2.20 + size 1.71 + …
 
 $ fathom why HEAD | head -4          # same function, with a test beside it
-features-2 18 · below τ 40
-  11 of 13 features measured · weight denominator 0.87 · total 18.18 of 100.00 points
-  features-2 18 = test_ratio 6.00 + complexity 3.62 + surface 2.99 + attribution 2.30 + size 2.24 + …
+features-3 17 · below τ 40
+  11 of 12 features measured · weight denominator 0.91 · total 17.39 of 100.00 points
+  features-3 17 = test_ratio 5.86 + surface 3.30 + complexity 3.08 + attribution 2.20 + size 1.96 + …
 
 $ fathom why HEAD | head -4          # + schema/migrations/0007_payments.sql (a DROP COLUMN)
-features-2 42 · flagged (score ≥ τ 40)
-  11 of 13 features measured · weight denominator 0.87 · total 41.57 of 100.00 points
-  features-2 42 = surface 14.94 + migration 10.34 + test_ratio 6.00 + complexity 3.62 + size 2.30 + …
+features-3 41 · flagged (score ≥ τ 40)
+  11 of 12 features measured · weight denominator 0.91 · total 41.48 of 100.00 points
+  features-3 41 = surface 16.48 + migration 9.89 + test_ratio 5.86 + complexity 3.08 + size 1.99 + …
 
-$ fathom why HEAD | head -4          # + println!("DEBUG refund {n}") in the new function
-features-2 44 · flagged (score ≥ τ 40)
-  11 of 13 features measured · weight denominator 0.87 · total 44.02 of 100.00 points
-  features-2 44 = surface 14.94 + migration 10.34 + test_ratio 6.13 + complexity 3.62 + size 2.32 + …
+$ fathom why HEAD | head -4          # + println!("DEBUG …") in the new function
+features-3 44 · flagged (score ≥ τ 40)
+  11 of 12 features measured · weight denominator 0.91 · total 44.31 of 100.00 points
+  features-3 44 = surface 16.48 + migration 9.89 + test_ratio 6.15 + complexity 3.08 + findings 2.47 + …
 ```
 
 Each step moved for a reason the printout names. Adding the test is the only step that made the number
-*smaller*, and the row that moved is the one a test answers: `test_ratio` fell `9.20 → 6.00` once the new
+*smaller*, and the row that moved is the one a test answers: `test_ratio` fell `8.79 → 5.86` once the new
 logic arrived with a test beside it, while `size`, `breadth` and `complexity` each rose a little for the
 extra lines and the extra branch in the test — which is the reason the axes are printed separately rather
 than folded into one "how big" number. Adding the migration is what made the number jump, and it is the
-step that crossed `τ`: `surface` went to its full `14.94/14.94` because a migration outranks source, and
-`migration` came in at its full `10.34/10.34` because a `DROP COLUMN` whose reversal is not in the diff is
+step that crossed `τ`: `surface` went to its full `16.48/16.48` because a migration outranks source, and
+`migration` came in at its full `9.89/9.89` because a `DROP COLUMN` whose reversal is not in the diff is
 the most expensive thing a spine-only build can notice. The `println!` is the detector talking:
-`findings 2.30`, small, because one leftover print in one new function is a small finding — and it is not
+`findings 2.47`, small, because one leftover print in one new function is a small finding — and it is not
 what routed the episode, which is the point. The threshold is a statement about the shape of the change,
 and the printout says so axis by axis.
 
-Note what stayed still while all of that happened: `complexity` was `3.22`, then `3.62`, then `3.62`, then
-`3.62`. The axis is counting decision points, and only the test added any (three of them, in the test's own
+Note what stayed still while all of that happened: `complexity` was `2.69`, then `3.08`, then `3.08`, then
+`3.08`. The axis is counting decision points, and only the test added any (two of them, in the test's own
 branches) — nothing in adding a migration or a `println!` made the code harder to follow in the one way this
 axis can see. A reviewer who disagrees with that on a particular episode is looking at the right row to
 argue with.
 
 Notice what did *not* happen: nothing got safer or worse in the arithmetic without a row appearing or changing.
 A score that moved with no row to point at would be a mood, and the whole point of printing the division is
-that you can argue with a specific line of it. `authorship` was absent from all four runs, because nothing on
-that commit says who wrote it; had a turn been stamped, the axis and its weight would have arrived with it.
+that you can argue with a specific line of it. All four runs credited the same author at the same confidence,
+and printed the same `attribution 2.20` for it; there is no axis left that would have scored the fact of
+being written by a person or by a program at all.
 
-## The thirteen axes, in one line each
+## The twelve axes, in one line each
 
 `findings` (what the detectors found, and how bad each was) · `surface` (what *kind* of file: a migration
 outranks source, prose is near-free) · `migration` (schema history touched, and whether it says
@@ -150,8 +154,8 @@ outranks source, prose is near-free) · `migration` (schema history touched, and
 logic with no test beside it) · `size` (lines a human must read, logged) · `dependency` (what the build now
 depends on) · `deletions` (how much is removal, and whether the cover went with it) · `noise` (churn a
 review does not read) · `breadth` (how far it spread) · `attribution` (how sure we are who wrote it —
-inverted) · `authorship` (agent `0.7`, uncredited `1.0`, a person *named* by evidence `0`; a person inferred
-from no evidence at all is not measured at all).
+inverted). There is no `authorship` axis: `reco-ydek.5` took it out, and what the model knows about an
+author stops at the confidence in `attribution`.
 
 Two of those are inverted on purpose. `attribution` and `test_ratio` measure risk on the *absence* of
 something, which is the part of this model that is about agent-written code rather than about code: not

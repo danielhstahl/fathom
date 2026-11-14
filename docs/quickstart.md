@@ -129,7 +129,7 @@ The narrative opens by putting the ranking where the reader will see it:
 ep-06cf — add toml to the dependency surface
 
 Read this first:
-  The ranking puts it at `spine-2 11 = surfaces 10 + size 1`[c1].
+  The ranking puts it at `spine-3 11 = surfaces 10 + size 1`[c1].
 ```
 
 `narrative` composes its paragraphs out of the [delta document](concepts/delta.md) and refuses to state

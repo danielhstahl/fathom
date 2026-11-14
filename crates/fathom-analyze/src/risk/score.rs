@@ -1,7 +1,7 @@
-//! The arithmetic: thirteen measurements and thirteen weights in, one explainable number out (`reco-884`).
+//! The arithmetic: twelve measurements and twelve weights in, one explainable number out (`reco-884`).
 //!
 //! ```text
-//! features-2 82 (flagged, τ 70) = findings 24.00 + surface 19.50 + migration 9.00 + …
+//! features-3 82 (flagged, τ 70) = findings 25.00 + surface 21.00 + migration 9.00 + …
 //! ```
 //!
 //! # The whole model, in four lines
@@ -142,9 +142,9 @@ impl Score {
         &self.terms
     }
 
-    /// `features-2 82 = findings 24.00 + surface 19.50 + migration 9.00`.
+    /// `features-3 82 = findings 25.00 + surface 21.00 + migration 9.00`.
     ///
-    /// The shape [`super::Risk::vector`] uses for `spine-2`, on purpose: the strip, the card's `w` and
+    /// The shape [`super::Risk::vector`] uses for `spine-3`, on purpose: the strip, the card's `w` and
     /// `fathom why` print one kind of sentence rather than two (ADR-006 §5.1's binding note).
     #[must_use]
     pub fn vector(&self) -> String {

@@ -132,7 +132,7 @@ def steps(root: pathlib.Path, mini: bool) -> list[Step]:
             "why is this one in front of me",
             ["fathom", "why", "$FIRST", "--plain"],
             "the risk score as an addition: every axis, its weight, what it measured",
-            wants=("features-2", "points"),
+            wants=("features-3", "points"),
             capture=("EPISODE", r"(ep-[0-9a-f]{6,})"),
             claim="the score is arithmetic a reviewer can check, not a gauge",
         ),

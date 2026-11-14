@@ -7,16 +7,22 @@
   expanded by `w` and rendered whole by `fathom why`; **`queue-1` (§12) died with the pane in `e10.3`**, along
   with the `rank N of M` figure and the `order: risk × staleness × blast radius` strip, and the strip under
   the rail says `order: newest first` instead while still naming the model the row's number came from;
-  **the `author` component (§3) is due for removal in `e10.5`** and may not be struck from the printed vector
-  before its points go; and this page's title used to say *the order the queue reads in*, which is now a
+  and this page's title used to say *the order the queue reads in*, which is now a
   sentence about a view that is going away.
+
+- **Amended by `reco-ydek.5`**, which executed the removal `e10.1` promised and `e10.4` made inevitable: the
+  `author` component is **gone from the arithmetic**, so is the `author` field of `Signals`, so is the word
+  from the printed vector. That moved the model string (`spine-2` → `spine-3`), and because the 8 points were
+  **not redistributed** (§3) the ceiling this ranking can print moved too: 100 → [`SCORE_CEILING`] 92. Every
+  number on this page is `spine-3`'s, and every gate that quotes the arithmetic was re-measured in the same
+  commit rather than restated.
 
 - **Status**: Accepted, and implemented — the spine-only half. `reco-884` (`e4.4`) has now replaced its
   *inputs* with a documented feature vector and a calibration set, in
-  [risk-scoring.md](risk-scoring.md) (`features-2`), and `reco-wsj` (`e4.5`) has replaced its *ordering
+  [risk-scoring.md](risk-scoring.md) (`features-3`), and `reco-wsj` (`e4.5`) has replaced its *ordering
   function* with risk × staleness × blast radius; neither changes the shape described here, which is the
   shape the queue, the rail and `w` print. This document stays the contract for **that** ranking —
-  `spine-2`, which is what the score, the rail's risk column and `fathom why` still compute. The queue
+  `spine-3`, which is what the score, the rail's risk column and `fathom why` still compute. The queue
   ordered itself by `queue-1` (`e4.5`): the score was its first factor and this document's order was not
   its order. See §12 — which since `e10.1` is the record of a **retired** ordering: there is no queue left to
   order itself, and the score is the rail's per-row figure.
@@ -53,9 +59,9 @@ The first form asks about a figure the reviewer can check on one row; the second
 choose the reviewer's next click, which is what the retired queue was, and what the rail's own chronology
 already does.)
 
-The answer is a number 0–100 with five named parts, a badge naming the kinds of file that earned it,
+The answer is a number 0–92 with five named parts, a badge naming the kinds of file that earned it,
 and a list of what the inputs cannot see. Everything it needs comes from rows the spine already
-writes — paths, added and removed lines, file counts, author kind (until `e10.5`) — so it exists in a
+writes — paths, added and removed lines, file counts, commit counts — so it exists in a
 build with no
 analysis layer, which is the build Epic 1 ships.
 
@@ -75,21 +81,22 @@ Three refusals, all of them load-bearing:
 
 ## 2. The scale, and the arithmetic that *is* the explanation
 
-`spine-2`, named in the model string so a screenshot says where its number came from:
+`spine-3`, named in the model string so a screenshot says where its number came from:
 
 ```
-spine-2 62 = surfaces 50 + complexity 7 + size 4 + author 1
+spine-3 62 = surfaces 50 + complexity 7 + size 5
 ```
 
-`spine-2` is `spine-1` plus the `complexity` axis (`reco-l9bz.7`); the model string moved because the
-arithmetic moved, and every number in this document is `spine-2`'s. What the axis is, and what it refuses
+`spine-2` was `spine-1` plus the `complexity` axis (`reco-l9bz.7`); `spine-3` is `spine-2` with the
+`author` component taken out (`reco-ydek.5`). The model string moved both times because the arithmetic
+moved, and every number in this document is `spine-3`'s. What the complexity axis is, and what it refuses
 to be, is [§3a](#3a-complexity-the-figure-the-ranking-was-handed).
 
 The vector prints the components that fired, largest first, and it is the same string on the card, in
-the `w` toast and in the `--plain` frame a pipe or a screen reader gets. `score` is their sum, clamped
-at 100; no component may exceed its own cap, and the caps are one table (`COMPONENTS`) that both the
-arithmetic and the printed table read, so a document cannot drift from the code without a test
-failing.
+the `w` toast and in the `--plain` frame a pipe or a screen reader gets. `score` is their sum; no component may exceed its own cap, and
+the caps are one table (`COMPONENTS`) that both the arithmetic and the printed table read, so a document
+cannot drift from the code without a test failing. That table now sums to [`SCORE_CEILING`] **92** rather
+than 100, and the ceiling is read out of the same constant (§3).
 
 The reasons are printed in the reviewer's language, not in the model's:
 
@@ -103,7 +110,7 @@ which prints the per-file rows these numbers were summed from, is where they go 
 whole content of "explainable" here: not a score with a label attached, but a sentence whose nouns are
 in the diff.
 
-## 3. The six components
+## 3. The five components
 
 | Component | Cap | Input, in one sentence | Row it comes from |
 |---|---|---|---|
@@ -112,25 +119,40 @@ in the diff.
 | `size` | 12 | churn (`n_add + n_del`) on a log scale, discounted three-quarters for noise | `episode.n_add`, `n_del`, per-file churn |
 | `deletions` | 10 | how much of the churn is removal, and whether the test surface shrank while source grew | per-file `n_added_lines`, `n_removed_lines` |
 | `breadth` | 8 | distinct surfaces touched, plus files past 12 and past 30 — scope creep | `episode.n_files`, surfaces seen |
-| `author` | 8 | an agent wrote it (8), nobody is credited (6), a human did (0) | `episode.author_kind` — **retiring: `e10.5`** |
 
-Caps sum to 100, so a component's share is meaningful beside another's, and the printed `8/50` or
-`9/12` says both the contribution and the ceiling. Three of the old caps came down to pay for the new
-axis: `size` 16 → 12, `deletions` 14 → 10, `breadth` 12 → 8. That was a deliberate trade — the three
-that shrank are the three that measure *how much* rather than *what*, and the axis being added measures
-a third thing, which is *how much harder to follow*. `author` is first-class because the thesis is
-that unreviewed agent work deserves more attention than unreviewed human work (ADR-001 §7.3); a
-ranking that ignored authorship would be silent about the reason the tool exists.
+The caps sum to **92** — `SCORE_CEILING`, a constant the arithmetic, the printed table and this page all read
+out of `fathom-analyze::risk` — so a component's share is meaningful beside another's, and the printed `8/50`
+or `9/12` says both the contribution and the ceiling. Three of the caps came down to pay for the complexity
+axis when it arrived: `size` 16 → 12, `deletions` 14 → 10, `breadth` 12 → 8. That was a deliberate trade —
+the three that shrank are the three that measure *how much* rather than *what*, and the axis being added
+measures a third thing, which is *how much harder to follow*.
 
-**`author` is the one row of this table with an expiry date, and `e10.1` recorded why**
-([ADR-006 §5.1.2](../adr/0006-tui.md) item 6c). The label is being withdrawn from every surface a human
-reads (`e10.4`), and a component that scores the episode for something the reviewer cannot see is what
-ADR-001 §7.9 forbids — so
-the component leaves in `e10.5`, with the freed cap's fate written into `COMPONENTS` beside the arithmetic,
-the model string changing, every gate that quotes the arithmetic re-measured rather than restated, and
-authorship moving to the blind-spot list if it is a gap at all. **Until that commit the word stays in the
-printed vector** (`spine-2 62 = surfaces 50 + complexity 7 + size 4 + author 1`): striking it before the points go would
-hide a live component inside the explanation of a number, which is the same lie in the other direction.
+**Where `author`'s 8 went: nowhere, and that is the point.** `spine-2` had a sixth component worth 8 points —
+8 for an agent, 6 for nobody credited, 4 for an unrecorded attribution, 0 for a named person. `reco-ydek.5`
+took it out, for the reason `e10.1` wrote down and `e10.4` made undeniable
+([ADR-006 §5.1.2](../adr/0006-tui.md) item 6c): the `human`/`agent` label left every surface a reviewer reads
+because an agent turn with no recorded session arc printed `human` often enough to teach people to distrust
+the row, and a component that scores an episode for a claim the reader is no longer shown is ADR-001 §7.9's
+forbidden thing — a printed *reason* whose noun the reviewer cannot go and look at.
+
+**The 8 were not redistributed.** Every cap in the table above is a measurement-shaped number with its own
+derivation — `surfaces` is a surface weight off a table whose top rung is 50, `complexity` is sized from the
+calibration corpus's own distribution of added V(G) ([§3a](#3a-complexity-the-figure-the-ranking-was-handed)),
+`size` is a log against `SIZE_CEILING`, `deletions` and `breadth` are counted thresholds — and none of them
+became more true because a component was withdrawn. Handing the 8 to any of them would have raised the score
+of every episode that never had an author problem, which is the same over-scoring the removal was meant to
+stop, arriving from the other side. So the ceiling moved instead of the caps: **92 is as high as `spine-3`
+goes**, and a reviewer comparing a `spine-2 46` with a `spine-3 40` is reading one episode's number before
+and after one component was withdrawn. That comparison is what the model string is for, and it is why the
+word could not simply be struck from the printed vector while its points stayed
+(`spine-2 62 = surfaces 50 + complexity 7 + size 4 + author 1` and `spine-3 62 = surfaces 50 + complexity 7 +
+size 5` are two different readings of one episode).
+
+The subject did not become measurable when the component left, so it moved to the blind-spot list
+([§8](#8-what-a-spine-cannot-see)): an agent turn and a person's turn now read identically here, and the card
+says so. `features-3` handles the same question differently and says why it differs — its weights are shares
+of a sum, so its freed `0.04` had to be redistributed
+([risk-scoring.md](risk-scoring.md#who-wrote-it-the-axis-that-used-to-be-called-authorship)).
 
 ## 3a. `complexity`: the figure the ranking was handed
 
@@ -220,9 +242,11 @@ An authored agent turn is untouched by the cap — that is the case ADR-001 §7.
 
 ## 5. The size axis
 
-`16 · ln(1 + churn) / ln(1 + 20 000)`, clamped, where `20 000` (`SIZE_CEILING`) is roughly where a
-single episode stops being reviewable at all — so "16/16" means "as big as an episode gets", and two
-repositories are measuring against the same ruler.
+`12 · ln(1 + churn) / ln(1 + 20 000)`, clamped, where `20 000` (`SIZE_CEILING`) is roughly where a
+single episode stops being reviewable at all — so "12/12" means "as big as an episode gets", and two
+repositories are measuring against the same ruler. The 12 is `spine-2`'s and has not moved since: the cap
+came down from 16 to pay for the complexity axis (§3), and the ruler has been 12 points of the vector ever
+since.
 
 It is a log because the acceptance fixture's largest turn is around 2 500 lines of churn: on a linear
 axis every ordinary commit would sit at zero and the component would be a one-episode flag.
@@ -236,10 +260,10 @@ reviewer can disagree with the discount rather than merely being subject to it.
 
 Two things the aggregate `n_del` on a rail row cannot tell apart, and the per-file rows can:
 
-* **a change that is mostly removal** — up to 6 of the 14 points once the removal is three-fifths of
-  the churn and the churn is at least 40 lines;
+* **a change that is mostly removal** — up to 6 of the component's 10 points, once the removal is
+  three-fifths of the churn and the churn is at least 40 lines, tapering linearly below that share;
 * **a test surface that shrank while source grew** (`n_del ≥ 20` on test paths and test removals
-  exceed test additions) — the other 8 points, and their own sentence.
+  exceed test additions) — 8 more points with its own sentence, the pair capped at the component's 10.
 
 That second case is "520 lines of rewrite, 300 lines of the suite deleted behind it", which is the
 fixture's own planting and the single most common way an agent turn quietly removes coverage. It is
@@ -249,7 +273,7 @@ a shape in a diffstat, not a coverage argument.
 ## 7. Breadth, and ties
 
 `breadth` is scope creep: 2 points per surface past the first (to 10) plus 2 more past 12 files and
-4 past 30. Authorship is worth up to 8, as above.
+4 past 30.
 
 Order, including the ties, is a contract, because `e4.5`'s acceptance criterion is that queue
 ordering is reproducible. This ranking's own order is **score descending, then churn descending, then
@@ -266,7 +290,7 @@ first asks with `F` and reads the numbers. What survives is the same tie-break a
 *measurement*, where reproducibility is not ergonomics but the whole point: `--calibrate`'s top-decile
 cut in [false-positive-calibration](false-positive-calibration.md), the G3 guardrail, and every golden
 that quotes "the top N by score". Those places must stop calling the set "the queue a reviewer would have
-read first" — there is no queue — and say what they measure: the top decile of this corpus by `spine-2`.
+read first" — there is no queue — and say what they measure: the top decile of this corpus by `spine-3`.
 The `?` rule is untouched and outlives the pane, because it was never about ordering: an episode nothing
 scored prints `?` and not `0` wherever a score prints, on the rail as on the retired worklist.
 
@@ -281,11 +305,14 @@ ranking band (§13) — because a list that looks complete is the dangerous fail
 4. a removed public API;
 5. what depends on the touched code (blast radius);
 6. a committed secret whose value is real;
-7. whether a deleted test was the only cover for the behaviour.
+7. whether a deleted test was the only cover for the behaviour;
+8. who wrote it: an agent turn reads the same here as a person's.
 
 `spine-2` took one thing off this list and put nothing else on it: *whether the code got harder to follow*
 is now a number with a ruler and a caveat ([§3a](#3a-complexity-the-figure-the-ranking-was-handed)), where
-`spine-1` had nothing to say. What remains true is the narrower claim — the spine can see that branches were
+`spine-1` had nothing to say, and `spine-3` put one item *on* the list in exchange: **who wrote it**, because
+the `author` component used to claim the ranking could tell and it never could
+([§3](#3-the-five-components)). What remains true is the narrower claim — the spine can see that branches were
 added, not that they are the wrong branches, and a change that is hard to follow for some other reason (a
 lock ordering, a lifetime, a cache invalidation) is still invisible here and still says so on the card.
 
@@ -315,7 +342,7 @@ per row.
 | `size`, discounted noise | `e2.2`'s measured noise share instead of a path guess | when the Rust ingest stamps `noise_class` |
 | `deletions`' test heuristic | `e2.9`'s named cases and `e4.4`'s deleted-test feature | `e2.9`'s Rust seam |
 | ordering: score only | risk × staleness × blast radius (`queue-1`) | closed by `e4.5` — the score was `queue-1`'s first factor, and blast still waits on `e3.2`. **`e10.1` closes `queue-1` itself**: the rail orders by time, `e10.3` deleted the ordering function, and staleness survives as the row's own age column rather than as a multiplier |
-| the blind-spot list | shorter, by closing items 1–7 one at a time | per finding, printed from the findings table |
+| the blind-spot list | shorter, by closing items 1–7 one at a time (item 8 is not a finding's to close) | per finding, printed from the findings table |
 
 Nothing in that list changes what the panes print: a number, its vector, its reasons, and the ceiling.
 
@@ -328,7 +355,7 @@ Nothing in that list changes what the panes print: a number, its vector, its rea
 * `crates/fathom-cli/tests/risk_rank.rs` — the shipped binary on a twenty-one-commit repository: the
   queue's top three rows are the migration, the three-line workflow change and the turn that deleted
   its own suite; the 400-line documentation edit is last; the strip names the ranking in force —
-  `queue-1` since `e4.5`, with `spine-2`'s number sitting beside it on every row — the count and the
+  `queue-1` since `e4.5`, with `spine-3`'s number sitting beside it on every row — the count and the
   ceiling.
 * `fathom-tui/tests/risk_rank.rs` — the shell's obligations, through the real renderer: order the
   rows, keep each row's own reason with its row, hand `w` the whole ceiling, and keep the frame exact
@@ -402,9 +429,9 @@ row, so the basis and its absence still print); *"an unranked row is `?`"* becom
 plus ambient's `Need::Unranked`, so a wall of unscored rows still cannot read as *caught up*; and *"the
 printed number is rounded, the order is not"* survives only inside a measurement's ordering (§7), where a
 decile boundary has to reproduce. `w` after `e10.3` explains the **score** — `fathom why`'s own
-`spine-2 62 = surfaces 50 + complexity 7 + size 4 + author 1`, less the author row once `e10.5` lands — because there is
-no ordering left to explain, and the strip's sentence becomes
-`order: newest first · 7 unread · filter: … · risk spine-2` (ADR-006 §5.1.2 §3).
+`spine-3 62 = surfaces 50 + complexity 7 + size 5`, the author row gone with the component that printed it —
+because there is no ordering left to explain, and the strip's sentence becomes
+`order: newest first · 7 unread · filter: … · risk spine-3` (ADR-006 §5.1.2 §3).
 
 ## 13. One surface, two depths: what the card prints, and what `fathom why` keeps
 
@@ -425,11 +452,11 @@ from.
 | the print | where it appears | the bytes it is |
 |---|---|---|
 | the glance | the rail row (the worklist row until `e10.3` deleted it) | the score, the surface badge, and the biggest contributing reason — `RiskView`'s fields, the row's second line |
-| the ordering's name | the strip under the list pane | was `order: risk × staleness × blast radius`; since `e10.3`, `order: newest first` with the model named as `risk spine-2` — §5.1.2 §3's parts, in their drop order |
+| the ordering's name | the strip under the list pane | was `order: risk × staleness × blast radius`; since `e10.3`, `order: newest first` with the model named as `risk spine-3` — §5.1.2 §3's parts, in their drop order |
 | the argument, brief | card band 4 | the delta document's own `attention` row — `RiskView::headline()` with the place appended when there is one — plus `badge()` and `blind_spot_note()` |
 | the argument, expanded | card band 4 under `w` | every line of `reasons()`, then every line of `BLIND_SPOTS`, then the model's own *reading order, not an all-clear* line |
 | the announcement | the toast, and the `--plain` frame | the same explain sentence, in the channel a screen reader hears: a toast is not a second surface, it is this one's voice |
-| the arithmetic, whole | `fathom why` | `risk::score::render()` — the number, the vector, the per-feature table with weights and contributions, `9 of 12 features measured · weight denominator 0.76`, the `τ` comparison, the caveats, the config notices, the ceiling |
+| the arithmetic, whole | `fathom why` | `risk::score::render()` — the number, the vector, the per-feature table with weights and contributions, `11 of 12 features measured · weight denominator 0.91`, the `τ` comparison, the caveats, the config notices, the ceiling |
 
 **Why that is not a duplicate in either direction.** The CLI keeps what a twenty-nine-column band has
 no columns for: the feature-by-feature arithmetic, the denominator, the `τ` comparison, the weight

@@ -103,7 +103,7 @@ def test_the_six_exit_criteria_hold_end_to_end(tmp_path: pathlib.Path) -> None:
     assert not reality["data"]["unexplained_golden_lines"], reality["data"]
 
     ranking = by_clause["ranking"]
-    assert ranking["data"]["model"] == "spine-2", ranking["data"]
+    assert ranking["data"]["model"] == "spine-3", ranking["data"]
     assert "complexity" in ranking["data"]["vector"], ranking["data"]
 
     # What the gate could not do is in the report as a note, not left out of it.

@@ -715,7 +715,7 @@ pub struct Totals {
     pub n_binary: i64,
     /// Churn, `n_add + n_del`. Filled by [`compose`].
     pub churn: i64,
-    /// Churn discounted as noise, by the same rule `spine-2` prices size with. Filled by [`compose`].
+    /// Churn discounted as noise, by the same rule `spine-3` prices size with. Filled by [`compose`].
     pub discounted_churn: i64,
     /// Churn a reviewer is expected to read: `churn - discounted_churn`. Filled by [`compose`].
     pub reviewable_churn: i64,
@@ -1251,7 +1251,7 @@ fn risk_complexity(view: &ComplexityView) -> risk::Complexity {
 /// One term of the ranking, with the sentence that justifies it.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RiskComponent {
-    /// The component name (`surfaces`, `size`, `deletions`, `breadth`, `author`).
+    /// The component name (`surfaces`, `complexity`, `size`, `deletions`, `breadth`).
     pub name: String,
     /// What it contributed.
     pub points: i64,
@@ -1272,11 +1272,11 @@ pub struct RiskComponent {
 /// that no longer ranks a set cannot cite a place in one. That removal is why the contract is v2.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RiskView {
-    /// Which ranking produced the number (`spine-2` today; `e4.4`'s scorer replaces the inputs, not this).
+    /// Which ranking produced the number (`spine-3` today; `e4.4`'s scorer replaces the inputs, not this).
     pub model: String,
-    /// 0..=100.
+    /// The score: `0..=92` under `spine-3`, whose caps sum to `risk::SCORE_CEILING`.
     pub score: i64,
-    /// `spine-2 88 = surfaces 50 + size 12 + deletions 14 + breadth 8 + author 4`.
+    /// `spine-3 88 = surfaces 50 + size 12 + deletions 10 + breadth 8 + complexity 8`.
     pub vector: String,
     /// The components that contributed, largest first — the feature vector, in order.
     pub components: Vec<RiskComponent>,
@@ -1886,7 +1886,7 @@ pub fn compose(input: &Input) -> EpisodeDelta {
     let mut totals = input.totals.clone();
     totals.churn = input.totals.n_add.saturating_add(input.totals.n_del);
 
-    // The discount is `spine-2`'s, applied the same way, so "reviewable churn" means one thing in the score
+    // The discount is `spine-3`'s, applied the same way, so "reviewable churn" means one thing in the score
     // and in the card. A noisy path still counts a quarter of its churn: noise is a view, never a deletion.
     let noisy: i64 = files
         .iter()
@@ -2666,7 +2666,7 @@ fn attention_section(risk_view: Option<&RiskView>, supplied: &Supplied) -> Secti
         Some(gap_for(
             id,
             "spine-only ranking",
-            "the ranking is the spine-only one: size, surfaces, deletions, breadth and authorship. \
+            "the ranking is the spine-only one: size, surfaces, complexity, deletions and breadth. \
              Findings, staleness and blast radius enter with `e4.4`'s scorer, and until then the \
              blind-spot list above is part of the answer rather than a footnote to it",
             None,
@@ -3763,7 +3763,6 @@ mod store_bridge {
                 n_files: u64::try_from(row.n_files.max(0)).unwrap_or(u64::MAX),
                 n_binary: u64::try_from(row.n_binary.max(0)).unwrap_or(u64::MAX),
                 n_commits: u64::try_from(row.n_commits()).unwrap_or(u64::MAX),
-                author: &row.author_kind,
                 partial_files: self.truncated,
                 complexity: self.complexity.as_ref().map(super::risk_complexity),
             });

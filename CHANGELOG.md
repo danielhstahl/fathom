@@ -16,6 +16,64 @@ fails CI if the version in `Cargo.toml` has no dated section here, because the s
 body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
+### Who wrote it stopped being a risk, so the arithmetic lost a term and every number that quotes it had to be re-measured (`reco-ydek.5`)
+
+ADR-001 §7.3 is the reason `fathom` separates a person's turn from a machine's at all: a reviewer reads an
+agent's +4 000 lines differently. But *reading* it differently is an act of the reviewer, and the two places
+the score claimed to do it — `spine-2`'s `author` component and `features-2`'s `authorship` axis — were
+scoring an actor label that `fathom` itself documented as an identity string in disguise. `reco-0er` made the
+axis refuse the guess and `reco-0zi` re-measured what was left of it; what was left was a denominator effect
+on 448 of 540 corpus episodes and a claim the product could not stand up. Both terms are out, the model
+strings moved with them, and everything that quotes either one was measured again rather than restated.
+
+* **The ranking lost a component and did not replace it.** `spine-2` → `spine-3`: `surfaces 50`,
+  `complexity 12`, `size 12`, `deletions 10`, `breadth 8`, and a ceiling of **92**
+  ([`risk::SCORE_CEILING`](crates/fathom-analyze/src/risk.rs)). The 8 points were deliberately **not**
+  redistributed. Every remaining cap is measurement-shaped — `surfaces` is a table whose top rung is 50
+  because an operator has to act on a migration, `complexity` is sized off this corpus's own distribution of
+  added V(G) — and none of them became more true when a mention stopped being a risk; handing the 8 to any of
+  them would have raised the score of every episode that never had an author problem, which is the same
+  over-scoring arriving from the other side. So `spine-3 92` is as high as `spine-3` goes, and a reviewer
+  comparing a `spine-2 46` with a `spine-3 40` is reading one episode before and after one withdrawal, which
+  is what the model name is for.
+* **The vector lost an axis and paid the two axes whose noun is in the diff.** `features-2` → `features-3`,
+  twelve axes, and because `risk::score` divides by the sum of the weights it has, the freed `0.04` had to be
+  placed rather than deleted: **`findings` 0.16 → 0.18 and `surface` 0.13 → 0.15**, and nothing else moved.
+  Not one hundredth went to `attribution`, which stayed at `0.04` — giving the retired axis's weight to its
+  nearest neighbour, the axis that scores how unsure we are who wrote this, would have spent the same money on
+  the same subject again. The arithmetic consequence is stated where the weights are: `findings` and `surface`
+  now count about a tenth more, every other axis about a twentieth less.
+* **`risk::collect` stopped reading the actor for risk at all.** The `Signals.author` field is gone, and with
+  it the identity-confidence ladder that turned a git name into a point on an axis. Nothing about attribution
+  got less honest: `fathom show`, `fathom who`, `fathom attribution` and the delta document still print the
+  actor, the kind and the confidence, still say `not recorded — that is a label, not a proof`, and the CLI
+  still refuses to render a bare `human`. What is gone is the step from that label to a number of risk.
+* **The claim moved to the blind-spot lists, where it was always honest.** The spine prints "who wrote it: an
+  agent turn reads the same here as a person's" and `fathom why` prints the same limit as a scope statement —
+  `attribution` still answers *how sure is the record*, which is a question about the record, not ADR-001
+  §7.3's question about the reviewer's own agent. `risk-scoring.md` and `risk-ranking.md` carry the same
+  section: the thing the axis used to score is now a named hole in what the model can see.
+* **Every printed surface that quoted the arithmetic was re-blessed, not edited.** The rail's risk cell and
+  strip, the episode card's `w` band and its blind-spot rows, `fathom why`, `--plain`, the episode-delta
+  schema and its 173 declared shapes, the narrative golden (whose `author (8/8)` row and citation chain are
+  now the size and breadth rows that moved up a slot), the export record, and three concept pages plus the
+  corpus README. Doc transcripts were regenerated from the binary rather than hand-tuned: the worked example
+  in `risk-score.md`, the four-step repository in `risk-scoring.md`, and the doc tour's and epic 8's
+  acceptance expectations of `features-3`.
+* **Guardrail 3 was re-measured, and the τ answer did not move at all.** Same 51 episodes at the published
+  τ 40, the same 31 false positives, `G3` **0.608** unchanged — 24 of those 51 scores moved by a point or two
+  and none of them crossed the threshold, which is what an axis worth ±1 point on a real corpus looks like. At
+  the corpus cut the flag population went **67 → 63** and `G3` **0.642 → 0.619**, and the reason is a
+  denominator, not a better ranking: the episodes the axis had been paying were the bot- and agent-authored
+  ones, so six `cli` rows that had sat at exactly its cut of 33 scored 31 and fell under a cut that had itself
+  dropped only to 32 (five `low-stakes` bot bumps and one `accepted` CVE bump), one `accepted` episode came in
+  at 32, and `ruff` traded a `low-stakes` typeshed sync for a toolchain bump across its 42 → 41 move. The
+  one episode the lower cut promoted had never been flagged in any pass before this one and so had never been
+  read — `cli` `01f9dd3975`, *Add issue artifact API client*, read against its own diff and dispositioned
+  `accepted` in the truth file, which is what made `every-flagged-episode-is-labelled` go red and come back
+  green for the fifth time. No bar moved; five of nine gates still fail; the miss rate is 0.833/0.750 exactly
+  as before, and the closest miss in the file is now one point further from τ.
+
 ### The Queue pane is deleted, the rail is the home view, and the badge's count becomes a count of something (`reco-ydek.3`, `e10.3`)
 
 `reco-ydek.1` decided this in [ADR-006 §5.1.2](docs/adr/0006-tui.md) and `reco-ydek.2` moved the acts off it;

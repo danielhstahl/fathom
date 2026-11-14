@@ -120,7 +120,7 @@ From `crates/fathom-analyze/tests/golden/narrative/measured.md` (blessed; re-bak
 
 **Read this first**
 
-- The ranking puts it at `spine-2 74 = surfaces 50 + author 8 + size 8 + breadth 6 + deletions 2 · rank 2 of 9`[c1].
+- The ranking puts it at `spine-3 66 = surfaces 50 + size 8 + breadth 6 + deletions 2`[c1].
 - Asked for, in the asker's own words: “split the worker pool so a slow clone cannot starve the rail”[c2].
 
 **What you cannot tell from this document**
@@ -134,7 +134,7 @@ and the corresponding rows of the evidence table:
 <!-- ticket-claims: transcript · copied from crates/fathom-analyze/tests/golden/narrative/measured.md · the plan key in the gap row is the delta's own `owner` field, not this page's promise -->
 
 ```
-- `[c1]` `attention` figure `risk` — #/risk — risk: spine-2 74 = surfaces 50 + author 8 + size 8 + breadth 6 + deletions 2 · rank 2 of 9
+- `[c1]` `attention` figure `risk` — #/risk — risk: spine-3 66 = surfaces 50 + size 8 + breadth 6 + deletions 2
 - `[c2]` the recorded intent — #/episode/intent — intent, in the asker's words: split the worker pool … — recorded by `hook-prompt` at 0.95, state recorded
 - `[c30]` the `blast` gap — #/gaps/5 — no supplied reach — how far a change reaches is a question for the
   module graph, and this document carries no supplied block for it … (owner e3.2; remedy none in this build)

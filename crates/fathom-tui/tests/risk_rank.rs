@@ -41,9 +41,9 @@ const SIZE: (u16, u16) = (110, 34);
 /// — there is no set to state a denominator against.
 fn risk(score: u64, why: &str) -> RiskView {
     RiskView {
-        model: "spine-2".to_owned(),
+        model: "spine-3".to_owned(),
         score: i64::try_from(score).unwrap_or(0),
-        vector: format!("spine-2 {score} = surfaces {score}"),
+        vector: format!("spine-3 {score} = surfaces {score}"),
         components: vec![RiskComponent {
             name: "surfaces".to_owned(),
             points: i64::try_from(score).unwrap_or(0),
@@ -187,7 +187,7 @@ fn the_strip_names_the_order_it_is_in_and_the_model_behind_the_number() {
         "the retired function is named nowhere a reviewer reads: {strip}"
     );
     assert!(
-        strip.contains("spine-2"),
+        strip.contains("spine-3"),
         "the rows print a number and the strip says whose it is: {strip}"
     );
     assert!(
@@ -257,7 +257,7 @@ fn an_unranked_index_still_draws_every_row_and_says_what_is_missing() {
     // about what is unread, which is a fact about the reviewer, not about the scorer.
     assert!(strip.contains("4 unread"), "{strip}");
     assert!(
-        !strip.contains("spine-2"),
+        !strip.contains("spine-3"),
         "no model is cited beside no number: {strip}"
     );
 }
@@ -302,7 +302,7 @@ fn w_expands_the_ranking_band_in_place_and_w_folds_it_again() {
     assert!(
         app.toast
             .as_ref()
-            .is_some_and(|toast| toast.contains("spine-2 64")),
+            .is_some_and(|toast| toast.contains("spine-3 64")),
         "the toast carries the arithmetic, for a reader who will not open the card: {:?}",
         app.toast
     );
@@ -323,7 +323,7 @@ fn w_expands_the_ranking_band_in_place_and_w_folds_it_again() {
         .collect::<Vec<_>>()
         .join(" ");
     assert!(
-        said.contains("spine-2 64 = surfaces 64"),
+        said.contains("spine-3 64 = surfaces 64"),
         "the arithmetic is on the screen, never a bare number:\n{card:?}"
     );
     assert!(

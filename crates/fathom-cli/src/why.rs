@@ -26,11 +26,11 @@
 //! feature exists to prevent (ADR-001 §7.7).
 //!
 //! ```text
-//! $ fathom why ep-7f2a
-//! ep-7f2a  "fix: drop the stale backup column"  ·  agent 0.95  ·  +340 −0  ·  3 files
-//! features-2 49 · below τ 40
-//!   9 of 12 features measured · weight denominator 0.76 · total 49.04 of 100.00 points
-//!   features-2 49 = surface 17.11 + migration 11.84 + findings 7.89 + …
+//! $ fathom --demo why 4513a988
+//! 4513a988  "Add skills inspection tool"  ·  copilot-swe-agent  ·  +24852 −112  ·  98 files
+//! features-3 63 · flagged at τ 40
+//!   9 of 11 features measured · weight denominator 0.76 · total 62.70 of 100.00 points
+//!   features-3 63 = surface 15.38 + ci 13.00 + attribution 5.77 + …
 //! ```
 
 use crate::output;

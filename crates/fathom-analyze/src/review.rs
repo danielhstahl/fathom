@@ -29,8 +29,8 @@
 //! here be a golden test rather than a screenshot of this afternoon.
 //!
 //! **No scoring.** [`ReviewRow::risk`] is a number this module is handed, produced by
-//! [`crate::risk`](crate::risk) (`spine-2` today) or by [`crate::risk::score`](crate::risk::score)
-//! (`features-2`) the day a caller computes it for a whole page. The risk score stays a per-episode
+//! [`crate::risk`](crate::risk) (`spine-3` today) or by [`crate::risk::score`](crate::risk::score)
+//! (`features-3`) the day a caller computes it for a whole page. The risk score stays a per-episode
 //! figure printed on a row and explained in the card (ADR-006 §5.1.2 §5); nothing here re-ranks it.
 //!
 //! **No ordering.** The rail is a chronology and prints `order: newest first`; that order is the

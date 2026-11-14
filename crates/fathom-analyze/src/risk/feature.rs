@@ -1,6 +1,6 @@
 //! The feature vector `e4.4` scores an episode on (`reco-884`).
 //!
-//! Thirteen features, one claim each, and every one of them is a number a reviewer can go and look at.
+//! Twelve features, one claim each, and every one of them is a number a reviewer can go and look at.
 //! This is the part of the risk score that is *not* arithmetic: a feature is a measurement, the ruler
 //! that turns the measurement into a 0..=1 risk value, the sentence that says what the ruler means, and
 //! the row the measurement came from. [`Feature::normalise`] and [`Feature::spec`] live in this file
@@ -34,22 +34,23 @@ use serde::{Deserialize, Serialize};
 
 /// The model's name, printed beside every number it produces.
 ///
-/// `spine-2` ([`super::MODEL`]) is the ordering the rail and the queue use today; `features-2` is the
+/// `spine-3` ([`super::MODEL`]) is the ordering the rail and the queue use today; `features-3` is the
 /// vector this ticket owns. Both names appear on purpose: a screenshot has to say which of the two
 /// produced it, and `e4.5` switches the queue from one to the other without changing a pane.
 ///
-/// `features-1` was this vector from `reco-884` until `reco-l9bz.7`, which added the `complexity` axis.
-/// A new feature changes what a score *means* — two scores from the two models are not the same claim
-/// about one episode — so the name moved with it, exactly as `spine-1` moved to `spine-2` for the same
-/// reason in the same commit.
-pub const MODEL: &str = "features-2";
+/// `features-1` was this vector from `reco-884` until `reco-l9bz.7`, which added the `complexity` axis
+/// and became `features-2`; `features-2` was it until `reco-ydek.5` dropped `authorship`. A component
+/// change is a meaning change — two scores from the two models are not the same claim about one episode
+/// — so the name moves with it, exactly as `spine-2` moved to `spine-3` in this same commit for the same
+/// reason.
+pub const MODEL: &str = "features-3";
 
 /// The version of the vector and its arithmetic, bumped when a feature is added, dropped or re-ruled.
 ///
 /// A weight change is *not* a version change — that is the whole point of tunable weights — but a new
 /// feature changes what a score means, so it is. `fathom why` prints this number, and a bug report that
 /// names it says which ruler the score was taken with.
-pub const MODEL_VERSION: u32 = 2;
+pub const MODEL_VERSION: u32 = 3;
 
 /// The ceiling on a weight, and on a normalised value.
 ///
@@ -82,8 +83,6 @@ pub enum Feature {
     Complexity,
     /// How sure the attribution is that it is right.
     Attribution,
-    /// Whether a program wrote this, which is the thesis (ADR-001 §7.3), not a detail.
-    Authorship,
     /// The share of the churn that is generated, locked, vendored or binary.
     Noise,
     /// How far the change spread: surfaces, files, commits.
@@ -110,19 +109,19 @@ pub struct Spec {
     pub owner: &'static str,
 }
 
-/// The thirteen specs, in printed order: the ones a reviewer acts on first.
+/// The twelve specs, in printed order: the ones a reviewer acts on first.
 ///
 /// The order is the order `fathom why` prints when contributions tie, and the order the docs table is
 /// written in. It is not the order of the arithmetic — contributions decide that — but it is the order
 /// of *explainability*, so that a table read top-down answers "what matters most" before the arithmetic
 /// has been read at all.
-pub const SPECS: [Spec; 13] = [
+pub const SPECS: [Spec; 12] = [
     Spec {
         id: "findings",
         asks: "what did the detectors find, and how bad was each one",
         unit: "severity-points",
         ruler: "8 severity-points fill the axis (a high finding is 3, a medium 2, a low 1)",
-        default: 0.16,
+        default: 0.18,
         source: "`e4.3` detectors",
         owner: "e4.3",
     },
@@ -131,7 +130,7 @@ pub const SPECS: [Spec; 13] = [
         asks: "what kind of file did this touch",
         unit: "surface weight",
         ruler: "a migration (50) fills the axis; source is 10 and prose is 3",
-        default: 0.13,
+        default: 0.15,
         source: "`git_commit_file.path` via `risk::classify`",
         owner: "e4.4",
     },
@@ -225,15 +224,6 @@ pub const SPECS: [Spec; 13] = [
         source: "`episode.author_confidence`, `author_kind`",
         owner: "e4.1",
     },
-    Spec {
-        id: "authorship",
-        asks: "is the thing that wrote this a program",
-        unit: "authorship",
-        ruler: "an agent is 0.7, an uncredited author is 1.0, a person named by evidence is 0, and a person inferred from no evidence at all does not measure",
-        default: 0.04,
-        source: "`episode.author_kind`, `attribution_source`",
-        owner: "e4.1",
-    },
 ];
 
 /// The built-in weights, as a list in [`SPECS`]' order.
@@ -251,9 +241,28 @@ pub const SPECS: [Spec; 13] = [
 /// left alone. Whether `0.07` is the right share is not settled by this table: it is settled by the
 /// corpus ([`super::calibrate`], and Guardrail 3), and a retune that proposes a different number is a
 /// proposal a reviewer reads before pasting it into `fathom.toml`.
-pub const DEFAULTS: [(Feature, f64); 13] = [
-    (Feature::Findings, 0.16),
-    (Feature::Surface, 0.13),
+///
+/// # Where `authorship`'s 0.04 went
+///
+/// `authorship` left in `reco-ydek.5` for the reason written at [`super::COMPONENTS`] — the label it
+/// scored is no longer printed, and an axis that scores what the reviewer cannot see is what ADR-001 §7.9
+/// refuses. Unlike the spine, whose caps are absolute points, these weights are **shares of a sum that is
+/// also the denominator** ([`super::score`]), so the freed 0.04 has to be placed, not merely deleted:
+/// leaving twelve axes summing to `0.96` would print a table whose total contradicts the sentence printed
+/// over it ("the weight sum is the denominator") for no arithmetic gain — dividing by `0.96` and by
+/// `1.00` with re-cut shares is the same ranking.
+///
+/// So: **`findings` 0.16 → 0.18 and `surface` 0.13 → 0.15, and nothing else moved.** Not one hundredth of
+/// it went to `attribution`, which stayed at `0.04`. The retired axis was retired because this epic stopped
+/// trusting what it scored, and giving its weight to its nearest neighbour — the axis that scores how
+/// unsure we are who wrote this — would spend the same money on the same subject again. It went to the two
+/// axes whose noun is in the diff: a detector's severity-weighted finding, and the kind of file the
+/// episode touched. That is an argument, and Guardrail 3 is where an argument like that gets measured
+/// rather than asserted — the corpus re-measure that came with this change is the check, and
+/// `thresholds.json` quotes what it found.
+pub const DEFAULTS: [(Feature, f64); 12] = [
+    (Feature::Findings, 0.18),
+    (Feature::Surface, 0.15),
     (Feature::Migration, 0.09),
     (Feature::Blast, 0.09),
     (Feature::TestRatio, 0.08),
@@ -264,12 +273,11 @@ pub const DEFAULTS: [(Feature, f64); 13] = [
     (Feature::Noise, 0.06),
     (Feature::Breadth, 0.06),
     (Feature::Attribution, 0.04),
-    (Feature::Authorship, 0.04),
 ];
 
 impl Feature {
     /// Every feature, in printed order.
-    pub const ALL: [Feature; 13] = [
+    pub const ALL: [Feature; 12] = [
         Feature::Findings,
         Feature::Surface,
         Feature::Migration,
@@ -282,7 +290,6 @@ impl Feature {
         Feature::Noise,
         Feature::Breadth,
         Feature::Attribution,
-        Feature::Authorship,
     ];
 
     /// The spec: id, question, unit, ruler, default weight, source, owner.
@@ -301,7 +308,6 @@ impl Feature {
             Feature::Noise => &SPECS[9],
             Feature::Breadth => &SPECS[10],
             Feature::Attribution => &SPECS[11],
-            Feature::Authorship => &SPECS[12],
         }
     }
 
@@ -363,8 +369,7 @@ impl Feature {
             | Feature::Migration
             | Feature::Deletions
             | Feature::Noise
-            | Feature::Breadth
-            | Feature::Authorship => raw,
+            | Feature::Breadth => raw,
             Feature::TestRatio => 1.0 - raw,
             Feature::Attribution => 1.0 - raw,
         };
@@ -479,9 +484,9 @@ impl Measurement {
     }
 }
 
-/// The vector: one [`Measurement`] per feature, always all thirteen.
+/// The vector: one [`Measurement`] per feature, always all twelve.
 ///
-/// All thirteen even when five are missing, because a partial list cannot answer "why is there no blast
+/// All twelve even when five are missing, because a partial list cannot answer "why is there no blast
 /// radius row" — the answer has to be a row that says so. Order is [`Feature::ALL`], so two runs of the
 /// same index print the same bytes.
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -530,7 +535,7 @@ impl Vector {
             .find(|item| item.feature == feature)
     }
 
-    /// How many of the thirteen were measured.
+    /// How many of the twelve were measured.
     #[must_use]
     pub fn measured(&self) -> usize {
         self.measurements

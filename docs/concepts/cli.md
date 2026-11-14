@@ -14,7 +14,7 @@ what a machine reads.
 | Verb | What it answers | `--json` schema |
 |---|---|---|
 | `fathom index [ROOT] [--rebuild] [--watch] [--refresh] [--stats] [--committed-only]` | turn git history into the index, and say what the run did | [`index.schema.json`](../../schemas/index.schema.json) |
-| `fathom show <episode\|rev> [--root R] [--json]` | one episode: identity, authorship, message, trailers, and the file rows with their taxonomy decisions | [`show.schema.json`](../../schemas/show.schema.json) |
+| `fathom show <episode\|rev> [--root R] [--json]` | one episode: identity, attribution, message, trailers, and the file rows with their taxonomy decisions | [`show.schema.json`](../../schemas/show.schema.json) |
 | `fathom episodes [--root R] [--json] [--limit N] [--offset N] [--author N] [--kind K] [--state S] [--path P] [--since W] [--until W] [--include-dead]` | the **episode list** — the rail's rows: id, time, `+add`/`−del`, path count, review state, session/turn, plus the three counts (index, selection, page) and a breakdown by review state. `--kind` still filters, and `--json` still carries `author_kind`; neither the column nor the word is printed (`e10.4`) | [`episodes.schema.json`](../../schemas/episodes.schema.json) |
 | `fathom analyze <episode\|rev\|id> [--root R] [--json] [--schema [--check\|--write]]` | the episode's **delta document** — the seven-section model the TUI card, the export and an agent all read; `--schema` prints its JSON Schema | [`episode-delta.schema.json`](../../schemas/episode-delta.schema.json) |
 | `fathom narrative <episode\|rev\|id> [--root R] [--json] [--markdown] [--explain] [--top N] [--attribution]` | one episode's **narrative** — the prose a human skims, with a citation on every claim, the self-check verdict printed with it, and (with `--attribution`) whether a model was ever in the path | `fathom-narrative/1`, documented in [the episode narrative](episode-narrative.md) |
@@ -222,7 +222,7 @@ index is missing, and the TUI says it too rather than guessing.
 The second untidy row is not about the index at all, and it earns the same class for the same reason: nothing
 the binary answers is wrong, and what the finding asks for is a line edited. `[risk.weights]` is an open map
 in the key spec (`risk.weights.<weight>`), so the config layer resolves *any* name under it and only
-`features-2` knows what a real one is — which is how `new_dependency = 0.2` sat in this repository's own
+`features-3` knows what a real one is — which is how `new_dependency = 0.2` sat in this repository's own
 `fathom.toml` alongside a vector that has never carried that name, configuring nothing while looking like a
 decision, noticed only in the last three lines of a score nobody re-reads (**reco-gna**). `fathom doctor`
 says the sentence on its own now: the key, that it is not a feature, the twelve that are, and the remedy — and

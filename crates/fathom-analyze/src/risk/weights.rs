@@ -239,9 +239,9 @@ impl Weights {
 ///
 /// The key is one key shared by three readers, and all three moved in the same commit: this constant,
 /// `thresholds.json`'s `tau_alpha` / `tau_1_0`, ADR-001 §5.4, `fathom.toml`, and the reference policy
-/// in `src/recommender/card/policy.py`. `spine-2` reads the same key and its scores run higher; the
+/// in `src/recommender/card/policy.py`. `spine-3` reads the same key and its scores run higher; the
 /// queue's own `high`/`medium` buckets are [`super::super::queue`'s] severity floors, which are stated
-/// against `spine-2`'s range and deliberately not this number.
+/// against `spine-3`'s range and deliberately not this number.
 pub const DEFAULT_TAU: u8 = 40;
 
 /// `fathom.toml`'s `[risk]` and `[risk.weights]`, read.

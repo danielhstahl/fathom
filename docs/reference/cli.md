@@ -46,7 +46,7 @@ not a wall, and the reason it appears here rather than being quietly hidden unti
 | **[`export`](#fathom-export)** | Write a review artefact for a pull request or an audit | shipped | [*export-artefact*](../concepts/export-artefact.md) · [*export-for-a-pr*](../recipes/export-for-a-pr.md) |
 | **[`mcp`](#fathom-mcp)** | Speak MCP to a coding agent | shipped | [*0005-harness-contract*](../adr/0005-harness-contract.md) · [*ask-an-agent*](../recipes/ask-an-agent.md) |
 | **[`watch`](#fathom-watch)** | Watch the repository and index as it changes | shipped | [*run-beside-the-agent*](../recipes/run-beside-the-agent.md) · [*session-state*](../concepts/session-state.md) |
-| **[`ambient`](#fathom-ambient)** | The glance pane for the terminal beside the agent: latest episode, queue, index, one reason (reco-8bx) | shipped | [*ambient-mode*](../concepts/ambient-mode.md) · [*0006-tui*](../adr/0006-tui.md) |
+| **[`ambient`](#fathom-ambient)** | The glance pane for the terminal beside the agent: latest episode, open work, index, one reason (reco-8bx) | shipped | [*ambient-mode*](../concepts/ambient-mode.md) · [*0006-tui*](../adr/0006-tui.md) |
 | **[`hooks`](#fathom-hooks)** | Report on the harness event stream: lag, offset, rejections, replay (e6.1) | shipped | [*README*](../harness/README.md) · [*0005-harness-contract*](../adr/0005-harness-contract.md) |
 | **[`daemon`](#fathom-daemon)** | The one process per repository that watches, tails the harness stream and indexes (e6.3) | shipped | [*watch-daemon*](../concepts/watch-daemon.md) · [*cli*](../concepts/cli.md) |
 | **[`status`](#fathom-status)** | Who is keeping this index current, what it costs, and what is left (e6.3) | shipped | [*watch-daemon*](../concepts/watch-daemon.md) · [*cli*](../concepts/cli.md) |
@@ -238,7 +238,7 @@ Options:
 
 ## `fathom show`
 
-One episode: identity, authorship, message, trailers, and the file rows with their taxonomy decisions.
+One episode: identity, attribution, message, trailers, and the file rows with their taxonomy decisions.
 The handle grammar — episode id, `HEAD~3`, `main`, `v1.2^{}`, an oid prefix — is shared by `show`,
 `analyze`, `narrative` and `why`, because a reviewer who has an episode should not have to learn which
 verb wants which spelling of it.
@@ -1388,7 +1388,7 @@ no terminal taken.
 
 <!-- BEGIN GENERATED: help.ambient -->
 ```text
-The glance pane for the terminal beside the agent: latest episode, queue, index, one reason (`reco-8bx`)
+The glance pane for the terminal beside the agent: latest episode, open work, index, one reason (`reco-8bx`)
 
 Usage: fathom ambient [OPTIONS]
 

@@ -889,7 +889,7 @@ impl Rail {
     ///
     /// The four parts are ADR-006 §5.1.2 §3 and they are in decreasing priority, because the strip is
     /// sold from the right: `order: newest first · 7 unread · filter: state=unread (F edits) · risk
-    /// spine-2`, and the last thing standing at the rail's minimum is the order. The order clause is the
+    /// spine-3`, and the last thing standing at the rail's minimum is the order. The order clause is the
     /// rule the deleted Queue view's strip was the first place that obeyed — *a list names the order it is
     /// in, in words the renderer implements* — and it survives the pane that carried it.
     ///

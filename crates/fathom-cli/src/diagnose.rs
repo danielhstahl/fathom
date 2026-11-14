@@ -638,7 +638,7 @@ mod tests {
             notices[0]
         );
         assert!(notices[0].contains("not a feature"), "{}", notices[0]);
-        for feature in ["findings", "dependency", "authorship"] {
+        for feature in ["findings", "dependency", "attribution"] {
             assert!(notices[0].contains(feature), "{}", notices[0]);
         }
     }
