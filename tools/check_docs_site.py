@@ -9,7 +9,7 @@ generated page cannot quietly stop covering something:
     python3 tools/check_docs_site.py --verbose  # print every check that passed
     python3 tools/check_docs_site.py --no-html  # skip the Pages build (the render rules, about a second)
 
-Six groups of rules, named as they are named here so a failure message points at the rule:
+Seven groups of rules, named as they are named here so a failure message points at the rule:
 
 **Site shape.** `docs/index.md` is the front door; every page under `docs/` is reachable from it (or from
 `README.md`) by following links, has exactly one `# ` heading, and contains no `TODO`/`TBD` left standing
@@ -18,6 +18,13 @@ in as prose.
 **Anchors.** A fragment link — `[x](page.md#section)` or `[x](#section)` — resolves to a heading in the
 target, computed the way a markdown renderer computes it. A page that is *mentioned* by a link with a
 fragment and does not have it is a silent lie, and file-level link checking cannot see it.
+
+**Relocations.** A retired path leaves a pointer page behind, and `RELOCATIONS` is the list of them:
+every retired path exists, is a pointer (one `# ` title, under `POINTER_MAX_LINES` non-empty lines, no
+table rows, no generated block, a link to the page that took its claims), is linked from `docs/index.md`,
+and is linked by **nothing else** in the tree. That last clause is what forces a merge to rewrite its
+inbound links instead of letting the whole repository lean on a redirect. `--self-test` breaks a copy of
+the documentation four ways and fails unless each break is named.
 
 **Generated pages are fresh and complete.** The four generated pages exist, and the generator reports no
 drift for them (the same call CI makes, so `check_docs_site.py` alone is enough to catch a stale page).
@@ -325,6 +332,179 @@ def check_nav(problems: list[str], report: list[str]) -> None:
     report.append("nav: the front door links the %d pages it must" % (len(HOME_DOCS) + len(GENERATED_PAGES)))
 
 
+#: A retired path -> the page that owns its claims now: one row per row of
+#: `docs/reference/doc-map.md` §6.2, and one place. A relocation list duplicated across a workflow, a
+#: test and a page is a list that drifts, which is what rule `C01` refuses.
+RELOCATIONS = {
+    "docs/concepts/risk-score.md": "docs/concepts/risk.md",
+    "docs/concepts/risk-scoring.md": "docs/concepts/risk.md",
+    "docs/concepts/risk-ranking.md": "docs/concepts/risk.md",
+}
+
+#: How long a pointer page may be, counted in non-empty lines. `doc-map.md` §6.1 wrote "five to fifteen"
+#: and §9 named the number as one M0 gets to decide, because `risk-ranking.md` had fourteen sections and
+#: fourteen destinations do not fit in fifteen lines without dropping a row — and a section map with a
+#: dropped row is the lie a section map exists to prevent. So: the longest map on the board, with room
+#: for one more row.
+POINTER_MAX_LINES = 24
+
+
+def link_targets(source: pathlib.Path, text: str, root: pathlib.Path) -> list[str]:
+    """The paths a page links to, relative to `root`: fragments ignored, remote links dropped."""
+    out: list[str] = []
+    for _number, target in links(text):
+        path, _fragment = resolve(source, target)
+        if path is None:
+            continue
+        try:
+            out.append(str(path.resolve().relative_to(root.resolve())))
+        except ValueError:
+            continue
+    return out
+
+
+def relocation_problems(root: pathlib.Path, prefix: str = "") -> list[str]:
+    """Every retired path resolves — and resolves *only* as a pointer.
+
+    A function of a tree rather than of this module's own `docs/`, so `--self-test` can run it against a
+    broken copy. A rule nobody has seen fail is a rule nobody can trust.
+    """
+    problems: list[str] = []
+    docs = root / "docs"
+    index = docs / "index.md"
+
+    def rel(path: pathlib.Path) -> str:
+        try:
+            return str(path.resolve().relative_to(root.resolve()))
+        except ValueError:
+            return ""
+
+    pages = sorted(docs.rglob("*.md"))
+    index_targets = (link_targets(index, index.read_text(encoding="utf-8"), root)
+                     if index.exists() else [])
+
+    # Who links a pointer page. `docs/index.md` is the only page allowed to: a redirect serves a reader
+    # with a bookmark, never this repository, so every real link in the tree has to go to the page that
+    # now owns the claim. This clause is what makes a merge rewrite its inbound links.
+    linkers: dict[str, list[str]] = {old: [] for old in RELOCATIONS}
+    for page in pages:
+        if page == index:
+            continue
+        for target in link_targets(page, page.read_text(encoding="utf-8"), root):
+            if target in linkers:
+                linkers[target].append(rel(page))
+
+    for old, new in sorted(RELOCATIONS.items()):
+        say = prefix + old
+        path = root / old
+        if not path.exists():
+            problems.append("%s: retired path does not exist — a pointer page is what keeps a bookmark, a "
+                            "CHANGELOG line or a four-month-old bead from landing on nothing" % say)
+            continue
+        if not (root / new).exists():
+            problems.append("%s: points at %s, which does not exist" % (say, new))
+        text = path.read_text(encoding="utf-8")
+        titles = [line for _n, line in prose_lines(text)
+                  if HEADING.match(line) and HEADING.match(line).group(1) == "#"]
+        if len(titles) != 1:
+            problems.append("%s: %d `# ` headings; a pointer has exactly one, and it is the title the "
+                            "retired page had" % (say, len(titles)))
+        body = [line for line in text.splitlines() if line.strip()]
+        if len(body) > POINTER_MAX_LINES:
+            problems.append("%s: %d non-empty lines, over the pointer cap of %d — a pointer maps the old "
+                            "sections and says where they went; the claims live on one page" %
+                            (say, len(body), POINTER_MAX_LINES))
+        for number, line in prose_lines(text):
+            if line.lstrip().startswith("|"):
+                problems.append("%s:%d: a table row in a pointer — the table belongs to the page that "
+                                "owns the claim, or two pages will disagree in private" % (say, number))
+            if "BEGIN GENERATED" in line:
+                problems.append("%s:%d: a generated block in a pointer — regenerate it on the page that "
+                                "owns it" % (say, number))
+        if rel(path) not in index_targets:
+            problems.append("%s: not linked from docs/index.md — the retired list is what keeps a pointer "
+                            "reachable, and reachability is what keeps it read" % say)
+        for linker in sorted(set(linkers[old])):
+            problems.append("%s: still linked from %s — a redirect is for a reader with a bookmark, not "
+                            "for this repository; rewrite the link to %s" % (say, linker, new))
+    return problems
+
+
+def check_relocations(problems: list[str], report: list[str]) -> None:
+    if not RELOCATIONS:
+        report.append("relocations: nothing retired, nothing to check")
+        return
+    found = relocation_problems(ROOT)
+    problems.extend(found)
+    if not found:
+        report.append("relocations: %d retired path(s) exist, name their target, stay under %d lines, and "
+                      "are linked only from docs/index.md" % (len(RELOCATIONS), POINTER_MAX_LINES))
+
+
+def self_test() -> int:
+    """Break a copy of the documentation four ways and require each break to be named.
+
+    `check_docs_site.py` had no self-test, and `docs/reference/doc-map.md` §4.0 said the first rule that
+    needed one should bring it: a gate that has never said no cannot say yes. The fixture is a copy of
+    the real tree, because the rule reads paths, links and line counts — a synthetic tree would prove
+    less. Each mutation gets its own scratch copy so a fix cannot leak into the next break.
+    """
+    import shutil
+    import tempfile
+
+    def scratch() -> pathlib.Path:
+        work = pathlib.Path(tempfile.mkdtemp(prefix="relocations"))
+        shutil.copytree(ROOT / "docs", work / "docs")
+        return work
+
+    retired = sorted(RELOCATIONS)[0]
+    name = pathlib.Path(retired).name
+
+    work = scratch()
+    checks: list[tuple[str, list[str]]] = [("the clean tree passes",
+                                            relocation_problems(work, prefix="fixture:"))]
+
+    work = scratch()
+    (work / retired).unlink()
+    checks.append(("a retired path that has gone entirely is named",
+                   relocation_problems(work, prefix="fixture:")))
+
+    work = scratch()
+    pointer = work / retired
+    pointer.write_text(pointer.read_text(encoding="utf-8") + "\n"
+                       + "\n".join("row %d of a table restating the retired page" % i for i in range(30)))
+    checks.append(("a pointer that has grown into a second copy is named",
+                   relocation_problems(work, prefix="fixture:")))
+
+    work = scratch()
+    front = work / "docs" / "index.md"
+    front.write_text(front.read_text(encoding="utf-8").replace("(concepts/%s)" % name,
+                                                               "(concepts/nowhere.md)"))
+    checks.append(("a pointer the front door does not link is named",
+                   relocation_problems(work, prefix="fixture:")))
+
+    work = scratch()
+    quick = work / "docs" / "quickstart.md"
+    quick.write_text(quick.read_text(encoding="utf-8") + "\n\nSee [the old page](concepts/%s).\n" % name)
+    checks.append(("a real page still leaning on the redirect instead of the new page is named",
+                   relocation_problems(work, prefix="fixture:")))
+
+    failures = []
+    for what, found in checks:
+        ok = (not found) if what.startswith("the clean tree") else bool(found)
+        if not ok:
+            failures.append(what)
+        print("%s check_relocations: %s%s" % (
+            "ok —" if ok else "FAIL", what,
+            "" if ok else (" — " + ("; ".join(found[:2]) if found else "the rule stayed silent"))))
+    if failures:
+        print("\nself-test failed: " + "; ".join(failures))
+        return 1
+    print("check_relocations self-test OK (%d ways the rule bites, with the clean tree passing between "
+          "them)" % (len(checks) - 1))
+    return 0
+
+
 def check_html_build(problems: list[str], report: list[str]) -> None:
     """Build the Pages site in memory and assert its invariants (see `tools/build_docs_site.py`).
 
@@ -369,8 +549,14 @@ def main(argv: list[str] | None = None) -> int:
                         help="the fathom binary to read clap's verb tree from (optional)")
     parser.add_argument("--no-html", action="store_true",
                         help="skip the Pages build (the render rules; about a second of the run)")
+    parser.add_argument("--self-test", action="store_true",
+                        help="break a copy of the docs four ways and prove `check_relocations` names each")
     parser.add_argument("-v", "--verbose", action="store_true")
     args = parser.parse_args(argv)
+
+    if args.self_test:
+        return self_test()
+
     binary = pathlib.Path(args.bin)
 
     problems: list[str] = []
@@ -379,6 +565,7 @@ def main(argv: list[str] | None = None) -> int:
     check_reachability(problems, report)
     check_anchors(problems, report)
     check_nav(problems, report)
+    check_relocations(problems, report)
     check_generated_fresh(problems, report, binary)
     check_verbs(problems, report, binary)
     check_subverbs(problems, report, binary)

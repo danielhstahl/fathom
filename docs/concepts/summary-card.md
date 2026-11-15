@@ -14,7 +14,7 @@
   [paths](change-classification.md) (`e2.1`), [folder structure](folder-structure.md) (`e2.3`),
   [the dependency delta](dependency-delta.md) (`e2.6`),
   [non-code surfaces](noncode-surfaces.md) (`e2.8`), [the test surface](test-surface.md) (`e2.9`)
-  and [risk ranking](risk-ranking.md) (`e4.4`) — plus `fathom_graph::blast` (`e3.2`) for the reach
+  and [the risk page](risk.md) (`e4.4`) — plus `fathom_graph::blast` (`e3.2`) for the reach
   figure, whose Rust home is planned at `crates/fathom-analyze/src/card/` and whose Python package
   is the contract surface. Measured by `tests/test_summary_card_contract.py` and by
   `python3 -m recommender.card score`.

@@ -54,7 +54,7 @@
 //! string is a real secret. [`BLIND_SPOTS`] states that in the product's own words, and every surface
 //! that prints a ranking prints it beside them: two of the ten episodes the MVP acceptance fixture
 //! plants are invisible here by construction, and a reviewer who knows that reads those two by hand
-//! instead of trusting the list. `docs/concepts/risk-ranking.md` and
+//! instead of trusting the list. `docs/concepts/risk.md` and
 //! `tests/test_risk_ranking_contract.py` pin the same sentence in the docs and in the fixture run.
 //!
 //! # Determinism
@@ -130,7 +130,7 @@ pub const MODEL: &str = "spine-3";
 ///
 /// Where the 12 came from is stated rather than assumed: `complexity` is capped at the share of the
 /// score that [`COMPLEXITY_CEILING`]'s worth of added decision points is, sized from the distribution
-/// of the figure over real history in [`docs/concepts/risk-ranking.md`] §3, and it was paid for by
+/// of the figure over real history in [`docs/concepts/risk.md`]'s component table, and it was paid for by
 /// `size` (16 → 12), `deletions` (14 → 10) and `breadth` (12 → 8) — the three axes whose claim is
 /// about the *shape* of a diff, which is the claim `complexity` now shares. `surfaces` gave up nothing.
 ///
@@ -171,7 +171,8 @@ pub const COMPONENTS: [(&str, u64); 5] = [
 /// What the caps in [`COMPONENTS`] add to, and so the highest score this ranking can print.
 ///
 /// Named because it is now a number a reader has to know: the caps stopped summing to 100 when `author`
-/// left ([`COMPONENTS`] says why they were not topped back up). `risk-ranking.md` §3 and
+/// left ([`COMPONENTS`] says why they were not topped back up). The component table in
+/// `docs/concepts/risk.md` and
 /// `crates/fathom-analyze/tests/risk_spine.rs` both read it out of here rather than reciting it, so the
 /// ceiling and the table cannot disagree.
 pub const SCORE_CEILING: u64 = 92;
@@ -193,7 +194,7 @@ pub const SIZE_CEILING: u64 = 20_000;
 
 /// What this ranking cannot see, in the words a surface prints.
 ///
-/// Printed beside every ranking — in the card, in the queue's strip, in `docs/concepts/risk-ranking.md`
+/// Printed beside every ranking — in the card, in the queue's strip, in `docs/concepts/risk.md`
 /// — because these are the episodes no spine-only ordering can rank, and a reviewer who knows they
 /// exist reads the code for them instead of trusting the list.
 ///
@@ -1246,7 +1247,7 @@ fn cap(name: &str) -> u64 {
 
 /// The ranking's own documentation as data, for `fathom doctor`, the docs page and the help pane.
 ///
-/// One function so the printed table and `docs/concepts/risk-ranking.md` can be checked against each
+/// One function so the printed table and `docs/concepts/risk.md` can be checked against each
 /// other by a test rather than kept in step by hand.
 #[must_use]
 pub fn components() -> Vec<(String, u64, String)> {

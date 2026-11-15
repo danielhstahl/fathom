@@ -232,8 +232,8 @@ def prose_units(text: str) -> list[tuple[int, str]]:
     joining one made every key in `change-classification.md`'s refusal list share a window with every
     "not" in it. A **fenced block** is one unit and it is scanned: a `fathom why` table is a copy of what a
     build printed, and a stale copy is exactly what this rule exists to find — a page that cannot show a
-    transcript goes and writes the sentence by hand instead, which is how `risk-score.md` came to be quoting
-    a ceiling line about a ticket that had landed.
+    transcript goes and writes the sentence by hand instead, which is how `docs/concepts/risk.md` came to
+    be quoting a ceiling line about a ticket that had landed.
 
     A `<!-- ticket-claims: … -->` marker is carried with the unit it excuses: alone on its line it attests
     the unit that follows it — across a blank line and across a fence opening, which is where a page puts

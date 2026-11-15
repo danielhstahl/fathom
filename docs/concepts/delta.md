@@ -105,7 +105,7 @@ disagree, CI says so; if a consumer starts reading a field that is not in the sc
 ## What the delta deliberately does not contain
 
 No prose paragraphs (the [narrative](episode-narrative.md) composes them from the delta, and is checked
-against it), no risk score of its own (it *feeds* the [risk score](risk-score.md)), no store handle, no
+against it), no risk score of its own (it *feeds* the [risk score](risk.md)), no store handle, no
 clock, no config reads. The composition is a pure function of what is already in the index, which is what
 makes "the same episode gives the same bytes twice" testable rather than aspirational — and it is the same
 promise the export is built on.

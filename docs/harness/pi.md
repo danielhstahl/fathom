@@ -93,7 +93,7 @@ used to pretend it could (`reco-0zi` made it refuse this guess, `reco-ydek.5` to
 altogether) is not there to lose. What the unstamped trailer costs is therefore honest and small:
 `attribution` prints its real doubt, `fathom who` says nobody is credited, and ADR-001 §7.3's claim that
 an agent turn is a big deal is carried by the printed identity and the trail rather than by a risk term
-([`fathom why`](../concepts/risk-scoring.md#who-wrote-it-the-axis-that-used-to-be-called-authorship)).
+([`fathom why`](../concepts/risk.md#who-wrote-it-the-axis-that-used-to-be-called-authorship)).
 The other three doors are a `Co-authored-by:`/`Generated-with:` naming the agent, `attribution.agents`
 declaring the identity in `fathom.toml`, and `fathom attribution correct <rev> --kind agent`; what none of
 them is is a guess the tool could have made on its own.

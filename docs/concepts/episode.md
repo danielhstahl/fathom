@@ -96,9 +96,9 @@ fathom attribution forget <identity>
 A correction is keyed to an **identity** (an address), not to an episode id, because the identity is what
 you meant and episode ids move when a lineage is rewritten. Two consequences: attribution is not a
 truth you look up, it is a stance the tool holds and shows its evidence for
-([attribution, `e4.1`](risk-scoring.md)); and an uncredited commit is scored as *more* risky than an
+([attribution, `e4.1`](risk.md)); and an uncredited commit is scored as *more* risky than an
 agent's, not less — nobody-credited is the worst answer to "who wrote this", and the risk model treats it
-that way ([risk score](risk-score.md)).
+that way ([risk score](risk.md)).
 
 ## Provisional episodes: the ones that are not history yet
 
@@ -111,11 +111,11 @@ over join committed rows only, so a provisional episode cannot leak into a numbe
 
 | Surface | Verb or key | What it answers about the episode |
 |---|---|---|
-| Timeline (the rail) | `t` | what happened, in order, which of it you have not read, and each row's [risk score](risk-score.md) — `w` expands the figure into the vector behind it |
+| Timeline (the rail) | `t` | what happened, in order, which of it you have not read, and each row's [risk score](risk.md) — `w` expands the figure into the vector behind it |
 | `fathom show` | headless | identity, attribution, message, trailers, file rows with their taxonomy decision |
 | `fathom analyze` | headless | the [delta](delta.md) — the claims, with citations |
 | `fathom narrative` | headless | the prose version of the same claims |
-| `fathom why` | headless | the [risk score](risk-score.md) as an arithmetic you can check |
+| `fathom why` | headless | the [risk score](risk.md) as an arithmetic you can check |
 | `fathom review sign` | headless | "a human accepted this", durably ([the ledger](review-ledger.md)) |
 
 ---

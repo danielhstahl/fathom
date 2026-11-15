@@ -9,7 +9,7 @@
   ratchet](cycle-detection.md) (`e3.5`: the accepted list is subtracted here exactly once), [public API
   surface](api-surface.md) (`e3.7`: its removal ledger, or `pub` symbols at the module graph's export grain),
   [hotspots](hotspots.md) (`e3.8`: the fifth dimension is its score, unchanged),
-  [risk scoring](risk-scoring.md) (`e4.4`: what this repo means by "explainable" — hundredths that sum, a
+  [risk scoring](risk.md) (`e4.4`: what this repo means by "explainable" — hundredths that sum, a
   printed denominator, published knees, monotonicity), [review state and the review ledger](review-ledger.md)
   (the reviewer's identity is stored, not inferred), [config](config.md) (every knob is a `fathom.toml` key
   with a schema entry), [ADR-006 §9.5](../adr/0006-tui.md) (the ticket's own formula, transcribed).

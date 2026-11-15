@@ -83,7 +83,7 @@ commit in each of those still exits 0.
 | It cannot know | So the record says | Cost |
 | --- | --- | --- |
 | which turn, or which prompt | no `turn_id`; `session_id` is `git:<commit>` | turns come out `inferred`, and attribution's time-window rule has nothing to work with |
-| whether the change was one agent turn or four humans | `provenance: "asserted"` | episode boundaries still come from ADR-003's git-side rungs, at their own confidence, and `author_kind` has no turn to read, so nothing downstream can tell a person's turn from an agent's — which is why the vector stopped trying ([`risk-scoring.md`](../concepts/risk-scoring.md#who-wrote-it-the-axis-that-used-to-be-called-authorship)) |
+| whether the change was one agent turn or four humans | `provenance: "asserted"` | episode boundaries still come from ADR-003's git-side rungs, at their own confidence, and `author_kind` has no turn to read, so nothing downstream can tell a person's turn from an agent's — which is why the vector stopped trying ([`risk.md`](../concepts/risk.md#who-wrote-it-the-axis-that-used-to-be-called-authorship)) |
 | anything before the hook was installed | — | backfill with `python3 -m recommender.harness …` or the reference `replay_git_history`, which marks every backfilled record asserted too |
 | a merge commit's content | merges are skipped, with a line in the log | correct, not missing: a merge is a graph boundary, and segmentation's rung 4 names it better than a hook can |
 

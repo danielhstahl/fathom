@@ -137,7 +137,7 @@ anything it cannot cite; the watermark line at the bottom (`fathom-template/1 ve
 citations, 6 checks`) is the self-audit's verdict, and no model was in the path
 ([episode narrative](concepts/episode-narrative.md)). `why` prints the score as a sum — feature, weight,
 contribution, and the axes it could not measure, each with the ticket that owns it
-([risk score](concepts/risk-score.md)). An absent axis leaves the denominator instead of pretending to be a
+([risk score](concepts/risk.md)). An absent axis leaves the denominator instead of pretending to be a
 `0`, which is the single most important rule in the product.
 
 ## 5 · Sign it off
@@ -230,6 +230,6 @@ Three sentences, and they are the acceptance criterion for this page:
 | the verbs and flags | [CLI reference](reference/cli.md) |
 | what the findings are | [detector catalogue](detectors/index.md) |
 | a task, step by step | [recipes](recipes/) |
-| the six nouns | [episode](concepts/episode.md) · [delta](concepts/delta.md) · [risk score](concepts/risk-score.md) · [review ledger](concepts/review-ledger.md) · [ratchet](concepts/ratchet.md) · [ambient mode](concepts/ambient-mode.md) |
+| the six nouns | [episode](concepts/episode.md) · [delta](concepts/delta.md) · [risk score](concepts/risk.md) · [review ledger](concepts/review-ledger.md) · [ratchet](concepts/ratchet.md) · [ambient mode](concepts/ambient-mode.md) |
 | why it is built this way | [the thesis](concepts/thesis.md) and [the ADRs](adr/) |
 | it went wrong | [troubleshooting](troubleshooting.md) |

@@ -28,7 +28,7 @@ first; each links down to the deeper reference page that owns the detail.
 |---|---|---|
 | [**Episode**](concepts/episode.md) | the change one agent turn produced — the unit everything is keyed to, and the reason a sign-off survives a rebase | [segmentation](concepts/episode-segmentation.md), [ADR-003](adr/0003-episodes.md) |
 | [**Delta**](concepts/delta.md) | a claim with citations: seven sections, evidence behind every figure, and a gap that names its owner instead of printing zero | [the delta model](concepts/delta-model.md) |
-| [**Risk score**](concepts/risk-score.md) | `0..=100` as an auditable sum of twelve axes, with the axes it could not measure printed beside it | [risk scoring](concepts/risk-scoring.md), [ranking](concepts/risk-ranking.md) |
+| [**Risk score**](concepts/risk.md) | `0..=100` as an auditable sum of twelve axes, with the axes it could not measure printed beside it — and the spine-only `spine-3` figure the rail prints, in the same page | [the scorecard](concepts/scorecard.md), [false-positive calibration](concepts/false-positive-calibration.md) |
 | [**Review ledger**](concepts/review-ledger.md) | sign-offs as committed markdown with four digests, so "a human reviewed this" outlives the history it was written about | [ADR-004](adr/0004-storage.md), [the recipe](recipes/gate-a-pipeline.md) |
 | [**Ratchet**](concepts/ratchet.md) | the committed baseline of what the codebase already owed, so only *new* violations alarm — and it only tightens | [config](concepts/config.md), [perf budgets](../benchmarks/BUDGETS.md) |
 | [**CI gate**](concepts/ci-gate.md) | `fathom check`: six checks over a range, one threshold that exits 7, and the one sentence that says why the run is red | [the recipe](recipes/gate-a-pipeline.md), [ratchet](concepts/ratchet.md), [config](concepts/config.md) |
@@ -86,8 +86,7 @@ Everything under [docs/concepts/](concepts/), grouped by what you are trying to 
 [the delta model](concepts/delta-model.md) · [episode narrative](concepts/episode-narrative.md) ·
 [why the LLM polish was refused](concepts/narrative-polish.md) · [plan versus execution](concepts/plan-drift.md) ·
 [session state](concepts/session-state.md) · [the summary card](concepts/summary-card.md) ·
-[the review artefact](concepts/export-artefact.md) · [risk ranking](concepts/risk-ranking.md) ·
-[risk scoring](concepts/risk-scoring.md) ·
+[the review artefact](concepts/export-artefact.md) · [risk: the two numbers](concepts/risk.md) ·
 [hotspots and dead-code candidates](concepts/hotspots.md) ·
 [the architecture scorecard](concepts/scorecard.md)
 
@@ -98,6 +97,17 @@ Everything under [docs/concepts/](concepts/), grouped by what you are trying to 
 **The screen** — [timeline](concepts/timeline.md) · [diff viewer](concepts/diff-viewer.md) ·
 [the exits out of the reader](concepts/handoff.md) · [background materialisation](concepts/materialization.md) ·
 [theming](concepts/theming.md)
+
+## Retired page names
+
+Pages whose prose moved into one page. Each is a pointer: it maps its old sections to where they went and
+restates nothing, so an old bookmark, a `CHANGELOG.md` line or a four-month-old ticket still lands
+somewhere instead of on a 404. `tools/check_docs_site.py`'s `check_relocations` rule is what keeps them
+pointers, and every other link in this tree was rewritten to the page that owns the claim now.
+
+- [risk score](concepts/risk-score.md) · [risk scoring](concepts/risk-scoring.md) ·
+  [risk ranking](concepts/risk-ranking.md) →
+  [Risk: two numbers, and what each one is a claim about](concepts/risk.md) (`reco-msv1.2`)
 
 ## Decisions, and how it attaches to an agent
 
@@ -116,7 +126,7 @@ Everything under [docs/concepts/](concepts/), grouped by what you are trying to 
 | `python3 tools/gen_docs.py write\|check` | the CLI, cheatsheet, features and detector pages are **generated**: from `fathom --help` off the binary, from the keymap module, from `features.rs`, and from the detector fixtures. CI runs `check`, so a change that forgot to regenerate the docs is a red build |
 | `python3 tools/gen_shell_artifacts.py write\|check`, `tools/package_release.py --self-test`, `tools/rehearse_installer.py` | the same argument one directory over, for what a release *ships*: the completion scripts and man pages in `packaging/` are printed by `fathom completions` and re-diffed in CI, the `.deb`/`.rpm` packager asserts thirteen claims about its own output, and the curl installer is rehearsed against a local mirror with four deliberate corruptions ([release and adoption](concepts/release.md)) |
 | `python3 tools/check_docs.py` | every glossary term resolves once, every plan and beads reference exists in `.plan/keymap.json`, and every relative link resolves to a file |
-| `python3 tools/check_docs_site.py` | the site's own rules: no orphan pages, no dangling anchors, every shipped verb / view / detector / build feature has a doc entry, and the generated pages are in the nav — plus the GitHub Pages build itself, in memory (`tools/build_docs_site.py write` writes it, `.github/workflows/docs.yml` publishes it) ([publishing](reference/site.md)) |
+| `python3 tools/check_docs_site.py` | the site's own rules: no orphan pages, no dangling anchors, every shipped verb / view / detector / build feature has a doc entry, the generated pages are in the nav, and every retired path is a pointer page that nothing but the front door links (`--self-test` breaks a copy of the docs four ways to prove that last rule can fail) — plus the GitHub Pages build itself, in memory (`tools/build_docs_site.py write` writes it, `.github/workflows/docs.yml` publishes it) ([publishing](reference/site.md)) |
 | `python3 tools/five_minute_demo.py check`, `tools/publish_demo_repo.py check`, `tools/demo_acceptance.py check`, `tools/record_demo.py check` | the five-minute tour is **run**, not described: every step's exit code and output is asserted, the whole tour is inside its 300 s budget, the page carries the numbers this run measured, and the demo repository still assembles from the pack the binary ships. The clone half is run too: a `git clone` plus one `fathom` command has to reproduce every documented finding *and* leave every documented gap a gap, and the committed recording has to stay under budget, silent, current with the demo's tag, and full of the exhibits ([the scripted demo](demo/five-minute.md)) |
 | `python3 tools/check_ci_gate.py` | the shipped CI story is one coherent object: `ci/install-fathom.sh` refuses a binary that cannot run the six checks, the reusable `fathom-check` workflow and the dogfood workflow name verbs that exist, and the recipe that tells people to run the installer is not lying about a file that is not there. It runs on the docs-only job too, where nothing is compiled: the two rules whose source is a built binary print that they skipped rather than raising about the missing `target/debug/fathom` ([the gate](concepts/ci-gate.md)) |
 | `python3 tools/check_workflows.py` | the files in `.github/workflows/` are checked against *this repository*, offline: every action reference is on an inventory (and `--network` proves each one resolves), every `steps.` / `needs.` / `inputs.` context path is declared by the file that reads it, every path, `working-directory`, crate, feature, test, example and tool subcommand a step names exists here, every `dist build --artifacts=local` names the `--target` it means (a bare one asks `dist` for all six triples on one runner, and it will not make macOS on Linux), and job wiring adds up — `needs:`, `permissions:`, artefact names uploaded once and downloaded by a pattern that matches. `self-test` breaks it on purpose, because a gate that has never said no cannot say yes |

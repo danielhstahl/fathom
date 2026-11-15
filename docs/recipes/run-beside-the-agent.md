@@ -73,7 +73,7 @@ property. The second is the contract a statusline script reads (`fathom.cli.ambi
 ## 3 · Make the interruptions mean something
 
 Ambient's `look now` line and the rail's risk figures both come from
-[findings](../detectors/index.md) and the [risk score](../concepts/risk-score.md), and both get sharper when
+[findings](../detectors/index.md) and the [risk score](../concepts/risk.md), and both get sharper when
 Fathom knows *why* a change was asked for. With a harness wired up, an episode carries a recorded intent, and
 you get three more things: the narrative's "Why it was asked for" section stops saying
 `no recorded intent`, [plan drift](../concepts/plan-drift.md) becomes able to contradict the plan, and the

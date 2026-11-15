@@ -153,7 +153,7 @@ def test_every_keymap_action_is_reachable_and_published():
 
 
 def test_the_quickstart_carries_the_six_nouns():
-    for page in ("episode", "delta", "risk-score", "review-ledger", "ratchet", "ambient-mode"):
+    for page in ("episode", "delta", "risk", "review-ledger", "ratchet", "ambient-mode"):
         assert "concepts/%s.md" % page in QUICKSTART, "the quickstart never links concepts/%s.md" % page
 
 

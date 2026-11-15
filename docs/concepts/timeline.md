@@ -15,7 +15,7 @@ The timeline is the screen a reviewer arrives at first and returns to whenever t
 episode — with grouping, composable filters, quick jumps, and a details pane about the row under the
 cursor. Everything below follows from the same rule the diff viewer plays by: **the rail never lies and
 never goes quiet.** A risk nothing could rank prints `?`, and a risk the spine did rank prints its
-number with `w` beside it ([risk-ranking.md](risk-ranking.md)); a group that is collapsed says how many
+number with `w` beside it ([the risk page](risk.md)); a group that is collapsed says how many
 rows are behind it; a rail with nothing loaded names the command that fills it. Attribution is not one of
 the things the rail went quiet *about*: since `e10.4` it prints no `human`/`agent` word at all, in any
 spelling, in any column — the verdict is a datum for `fathom analyze --json` and not a fact to hand a
@@ -49,7 +49,7 @@ are rows `e1.3` already writes, and the per-file sums are `git_commit_file` rows
 which is why the rail has rows in an Epic 1 build while `insight::episodes` is still `e2.11`'s to
 answer. What the store cannot say stays `None` and prints `?`, so a filled rail is not a claim that the
 delta model landed: the risk column carries the spine-only ranking's number and its reasons
-([risk-ranking.md](risk-ranking.md)) while the card's `delta` row is still the stated absence (§8). The
+([the risk page](risk.md)) while the card's `delta` row is still the stated absence (§8). The
 toast line at open
 says `500 episodes from index epoch 1 (ready) · index holds 4 000`, because a rail that is merely full
 does not otherwise tell the reviewer how much of the index it was given.
@@ -340,7 +340,7 @@ That is the whole design constraint in two lines: a pane whose data has not been
 verb produces it, rather than rendering a confident `0` or an empty box. The `risk` row
 is the one that changed twice: it is a spine ranking rather than `e4.4`'s findings, so it prints its model
 name, its vector and its own ceiling, and `w` opens all of it
-([risk-ranking.md](risk-ranking.md)). `e10.3` then took `rank 1 of 21` off the end of it — a place in a set
+([the risk page](risk.md)). `e10.3` then took `rank 1 of 21` off the end of it — a place in a set
 nothing ranks any more is not a fact (ADR-006 §5.1.2 §5) — and `e10.5` changed what the vector adds up, so
 the row names `spine-3` and its five components rather than `spine-2`'s six. What it *can*
 say it says precisely: commit count, age, review state, the timezone
@@ -480,7 +480,7 @@ review verify` — and the ledger itself did not change at all ([review ledger](
 
 `e10.1` retired the queue as the home view and `e10.3` deleted the pane. The risk number in the rail and
 in the card is still the spine-only ranking, and its published ceiling is
-[risk-ranking.md](risk-ranking.md) §12 — which since `e10.1` is the record of a **retired** ordering and
+[the risk page](risk.md)'s `queue-1` record — which since `e10.1` is the record of a **retired** ordering and
 no longer describes what the product ranks by. `e10.4` took the `human`/`agent` badge out of this view's
 row, out of the card's header and out of the `F` editor, and spent the six freed cells on the ladder's
 thresholds instead of on new content ([ADR-006 §5.1.2
@@ -490,7 +490,7 @@ and the model name beside the figure reads `spine-3`.
 
 `delta.*` and `findings[]` rows in the card (`e2.11`, `e4.3`); the *finding-shaped* risk number the
 queue once ordered by — what it orders by is the spine-only ranking and its stated ceiling
-([risk-ranking.md](risk-ranking.md)), which `e4.4` replaces the inputs of, while `e4.5` replaces the
+([the risk page](risk.md)), which `e4.4` replaces the inputs of, while `e4.5` replaces the
 ordering function itself with risk × staleness × blast radius (`e1.8`'s worklist); the queue's own
 selection history and per-view scroll (one cursor and one filter are what the session carries,
 which is the honest amount); the delta model's own read —

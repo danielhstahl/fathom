@@ -70,9 +70,9 @@ advice, and advice does not survive a rebase.
    command list; that list gets checked, so copy the verb from `docs/reference/cli.md`, which is generated.
 10. **Retired vocabulary stays allowlisted by path, not by phrase.** `tools/check_docs.py` keeps
     `RETIRED_TOKENS` — the strings the deleted queue pane printed — and allowlists exactly the pages
-    allowed to print them, *by path*. `docs/concepts/risk-ranking.md` is allowlisted for seven of them, so
-    merging it into `risk.md` moves that allowlist entry in the same commit or the gate goes red on a page
-    that has merely changed its name (§7).
+    allowed to print them, *by path*. `docs/concepts/risk-ranking.md` was allowlisted for seven of them, so
+    merging it into `risk.md` had to move that allowlist entry in the same commit or the gate would go red
+    on a page that had merely changed its name — which is what `e12.2` did (§7).
 
 ---
 ## 2. The census: every page, the noun it is about, and who owns that noun afterwards
@@ -135,9 +135,10 @@ link/plan-key rules, which is not repeated per row.
 | rename-pairing.md | what the shipped card asserts about a pairing | **rename.md** (M4) | gen `gen_rename_pairing_tables`; test `test_rename_pairing_contract.py`; pin `rename/eval.py` |
 | review-ledger.md | the review ledger: sign-offs | itself, absorbs review-memory.md (M7, unscheduled) | test `test_queue_era_fixture_contract.py`, `test_release_contract.py`; pin `VERB_DOCS["review"]`, `store/ledger.rs` |
 | review-memory.md | the review memory: notes, questions | **review-ledger.md** (M7, unscheduled) | pin `VERB_DOCS["note"]`, `VERB_DOCS["context"]` |
-| risk-ranking.md | the `spine-3` ranking, and the retired `queue-1` record | **risk.md** (M1) | pin `check_docs.py` `RETIRED_TOKENS` (seven tokens), `risk.rs`, `risk_score.rs` |
-| risk-score.md | how to read the number | **risk.md** (M1) | pin `VERB_DOCS["why"]`, `epic7_acceptance.py` |
-| risk-scoring.md | `features-3`: twelve axes, the arithmetic, the calibration set | **risk.md** (M1) | pin `VERB_DOCS["why"]`, `risk/feature.rs`, `risk_score.rs` |
+| risk-ranking.md | the `spine-3` ranking, and the retired `queue-1` record | **risk.md** — done (`e12.2`) | was: `check_docs.py` `RETIRED_TOKENS` (seven tokens, now held by `risk.md`), `risk.rs`, `risk_score.rs` |
+| risk-score.md | how to read the number | **risk.md** — done (`e12.2`) | was: `VERB_DOCS["why"]`, `epic7_acceptance.py`, `test_docs_site_contract.py` (all three moved) |
+| risk-scoring.md | `features-3`: twelve axes, the arithmetic, the calibration set | **risk.md** — done (`e12.2`) | was: `VERB_DOCS["why"]`, `risk/feature.rs`, `risk_score.rs` |
+| risk.md | both risk numbers — the `spine-3` ranking and the `features-3` score — and the boundary at the scorecard | itself, one page per noun at last | gen `gen_risk_tables` (added by `e12.2`); pin `VERB_DOCS["why"]`, `check_docs.py` `RETIRED_TOKENS` |
 | scorecard.md | the architecture scorecard (the repository's number) | itself — a boundary, not a merge | pin `VERB_DOCS["architecture"]`, `scorecard/mod.rs` |
 | session-state.md | what a repository remembers about a reviewer | itself | pin `VERB_DOCS["watch"]`, `store/spine.rs` |
 | structure-extraction.md | what six tree-sitter grammars return (spike `s1`) | itself | gen `gen_structure_tables`; test `test_structure_{core,spike,tail}_contract.py`; pin three workflows + eight crate files |
@@ -172,7 +173,7 @@ Scheduled by epic 12 — these five merges are the deliverable:
 
 | Merge | Retires | Target | Net pages |
 |---|---|---|---|
-| **M1** risk | `risk-score.md`, `risk-scoring.md`, `risk-ranking.md` | **`concepts/risk.md`** (new) | 3 → 1 |
+| **M1** risk | `risk-score.md`, `risk-scoring.md`, `risk-ranking.md` | **`concepts/risk.md`** (new) | 3 → 1 — **done** (`e12.2`) |
 | **M2** delta | `delta-model.md` | `concepts/delta.md` | 2 → 1 |
 | **M3** episode | `episode-segmentation.md`, `episode-relink.md` | `concepts/episode.md` + **`concepts/episode-derivation.md`** (new) | 3 → 2 |
 | **M4** renames | `rename-detection.md`, `rename-pairing.md` | **`concepts/rename.md`** (new) | 2 → 1 |
@@ -197,7 +198,7 @@ with M6 and M7 taken, **48**. The ADR count does not move.
 
 ## 4. The merges
 
-### 4.0 M0 — the relocation mechanism, which is not a merge and must exist first
+### 4.0 M0 — the relocation mechanism, which is not a merge and must exist first — **built by `e12.2`**
 
 No retired path may be created before this lands, because a pointer page with no rule behind it is a page
 `check_docs_site.py` reports as an orphan ("not reachable from `docs/index.md` or `README.md`"). It is
@@ -222,16 +223,16 @@ that hides it. Prove the new rule can fail in the same commit it is written, the
 `build_docs_site.py --self-test` proves its own; `check_docs_site.py` has no self-test today and this rule
 is the first one that would benefit.
 
-### 4.1 M1 — risk: three pages into one (`e12.2`)
+### 4.1 M1 — risk: three pages into one (`e12.2`) — **done**
 
 | | |
 |---|---|
 | Sources | `risk-score.md` (228 lines), `risk-scoring.md` (372), `risk-ranking.md` (488) |
 | Target | **`docs/concepts/risk.md`** — the noun is *risk*; none of the three paths is the noun, so none survives |
 | Boundary kept out | `scorecard.md` (the repository's number), `false-positive-calibration.md` (the guardrail measurement), `hotspots.md` (a scorecard dimension) |
-| Generated | **none** — see the trap below |
+| Generated | **one, added by the merge**: `features_axes`, rendered from `risk::feature::SPECS` by `tools/gen_risk_tables.py` — see the trap below, which the merge resolved by *writing the generator* |
 | Path pins | `gen_docs.py` `VERB_DOCS["why"]` → `["docs/concepts/risk.md", "docs/reference/cli.md"]`; `tools/check_docs.py` `RETIRED_TOKENS` — move the seven `risk-ranking.md` allowlist entries to `risk.md`; comments in `risk.rs`, `risk/feature.rs` and `risk_score.rs` that cite these three paths |
-| Redirects | three pointer pages (§6.2) |
+| Redirects | three pointer pages (§6.2), 58 inbound links rewritten tree-wide, `check_relocations` green |
 | Checkers | `check_docs_site.py` (100-of-them links, anchors, relocation rule), `check_docs.py` (`RETIRED_TOKENS`, plan keys, links), `check_ticket_claims.py`, `check_docs_commands.py`, `gen_changelog.py audit` |
 
 **The trap in this merge.** `risk-scoring.md` says of its twelve-row axis table: *"This table is generated,
@@ -243,6 +244,15 @@ which means writing the generator half, and is the honest fix — or it keeps th
 prints this table; the test refuses a page that disagrees"*, which is what is actually true today. Do not
 carry the sentence "this table is generated" into a page that still has no generator behind it. That is the
 whole epic in miniature.
+
+**How `e12.2` resolved it: it wrote the generator.** `tools/gen_risk_tables.py` parses `SPECS` out of
+`crates/fathom-analyze/src/risk/feature.rs` as text — the way `gen_docs.py` reads `features.rs`, so the
+check runs in the job that compiles no Rust — and renders the page's twelve rows between
+`<!-- BEGIN GENERATED: features_axes -->` markers, refusing a `SPECS` array whose declared length it
+cannot reproduce and a weight set that no longer sums to `1.00`. The table also got the header row it
+never had, which is why its rows had never rendered as a table at all. And `risk/feature.rs`'s own doc
+comment, which named a `tests/test_risk_score_contract.py` that has never existed, names the generator
+now: a comment pointing at a test nobody can find is the same lie in a different file.
 
 **Surviving claims — from `risk-score.md`:**
 
@@ -660,6 +670,7 @@ being asked.
 | `adr/0003-episodes.md` + `concepts/episode-relink.md` | `s6_*` | `tools/gen_relink_tables.py` from the `s6` report | `python3 tools/gen_relink_tables.py check` | `test_relink_spike_contract.py`, `nightly.yml` (re-measures the spike) |
 | `concepts/rename-detection.md` | 11 `rename_spike_*` | `tools/gen_rename_tables.py` from `benchmarks/reports/s4-rename-detection.json` | `python3 tools/gen_rename_tables.py check` | `contracts.yml` |
 | `concepts/rename-pairing.md` | 5 `rename_pairing_*` | `tools/gen_rename_pairing_tables.py` from `benchmarks/reports/e2-4-rename-pairing.json` | `python3 tools/gen_rename_pairing_tables.py check` | `contracts.yml` |
+| `concepts/risk.md` | `features_axes` | `tools/gen_risk_tables.py` from `risk::feature::SPECS` in `crates/fathom-analyze/src/risk/feature.rs` | `python3 tools/gen_risk_tables.py check` | `contracts.yml` |
 | `concepts/structure-extraction.md` | 7 `s1_*` | `tools/gen_structure_tables.py` from `benchmarks/reports/s1-tree-sitter-accuracy.json` | `python3 tools/gen_structure_tables.py check` | `contracts.yml`, three structure tests |
 | `concepts/config.md` | `precedence budgets sections keys aliases` | `src/recommender/config/explain.py` (the key spec) | `PYTHONPATH=src python3 -m recommender.config doc --check` | `contracts.yml` |
 | `concepts/release.md` | `targets artefacts installer_env gates secrets` | `tools/check_release.py` from the captured plan | `python3 tools/check_release.py write` / `check` | `ci.yml` |
@@ -672,23 +683,28 @@ Three consequences for the merges:
 * **M3 and M4 move generated pages.** `gen_segment_tables.py`, `gen_relink_tables.py`, `gen_rename_tables.py`
   and `gen_rename_pairing_tables.py` each name a document path in their own source, and each refuses a block
   that no document renders. Editing them is the merge; running their `check` is the proof.
-* **M1 moves a `VERB_DOCS` entry, not a generated block.** `tools/gen_docs.py` maps every shipped verb to the
+* **M1 moved a `VERB_DOCS` entry *and* added a generated block.** `tools/gen_docs.py` maps every shipped verb to the
   pages that explain it, and a shipped verb whose page is gone is a documentation failure the generator
   reports. `why → risk.md`, `analyze → delta.md` (twice), and for M6 `stats`/`mcp` neighbours; the same table
   is what `check_docs_site.py` leans on for "no shipped feature without a doc entry".
-* **The risk axis table is not generated, whatever `risk-scoring.md` claims.** See M1's trap.
+* **The risk axis table is generated as of `e12.2`.** It was not — see M1's trap — and the merge wrote
+  the generator rather than deleting the claim, so the page's sentence is now the truth it was pretending
+  to be.
 
 ---
 
 ## 6. The redirect list
 
-### 6.1 The mechanism, built once (M0)
+### 6.1 The mechanism, built once (M0) — **built by `e12.2`**
 
 Retired paths become **pointer pages**, in the shape `docs/adr/0001-product-thesis.md` already is: one `# `
 title matching the old page's, one sentence saying where the prose went and naming the bead, and a list
 mapping each old section to its new home. Nothing else. `docs/index.md` gains a `Retired page names`
 section that links them (which is what keeps `check_docs_site.py`'s reachability rule off their backs), and
-`tools/check_docs_site.py` gains the `RELOCATIONS` table and the `check_relocations` rule described in M0.
+`tools/check_docs_site.py` gained the `RELOCATIONS` table, the `check_relocations` rule and the
+`--self-test` that breaks a copy of the documentation four ways to prove the rule can fail. The threshold
+came out at 24 non-empty lines rather than fifteen, because `risk-ranking.md` had fourteen sections to
+map and a section map with a dropped row is the lie a section map exists to prevent.
 
 A pointer page is not allowed to restate a claim. It is a signpost with a section map, and its whole value is
 that a reader who arrives at an old URL — from a bookmark, a CHANGELOG line, a bead description or a
@@ -702,9 +718,9 @@ must be rewritten to the target; the pointer page is linked only from `docs/inde
 
 | Retired path | Target | Links | Fragment links into it |
 |---|---|---|---|
-| `docs/concepts/risk-score.md` | `concepts/risk.md` | 18 | — |
-| `docs/concepts/risk-scoring.md` | `concepts/risk.md` | 20 | `#2-the-twelve-features` (from `risk-score.md`), `#who-wrote-it-the-axis-that-used-to-be-called-authorship` (from `risk-score.md`, `risk-ranking.md`, `harness/pi.md`, `harness/git-hook.md`) |
-| `docs/concepts/risk-ranking.md` | `concepts/risk.md` | 20 | — |
+| `docs/concepts/risk-score.md` | `concepts/risk.md` | 18 ✓ | — |
+| `docs/concepts/risk-scoring.md` | `concepts/risk.md` | 20 ✓ | ✓ — the `authorship` heading text crossed verbatim, so the four links citing `#who-wrote-it-the-axis-that-used-to-be-called-authorship` needed only their path rewritten; `#2-the-twelve-features` was internal to the merge |
+| `docs/concepts/risk-ranking.md` | `concepts/risk.md` | 20 ✓ | — |
 | `docs/concepts/delta-model.md` | `concepts/delta.md` | 16 | — |
 | `docs/concepts/episode-segmentation.md` | `concepts/episode-derivation.md` | 10 | — |
 | `docs/concepts/episode-relink.md` | `concepts/episode-derivation.md` | 2 | — |
@@ -741,7 +757,7 @@ from.
 
 | Checker | What it refuses | Guards | Run |
 |---|---|---|---|
-| `tools/check_docs_site.py` | orphan pages (reachability from `docs/index.md`/`README.md`), a page without exactly one `# ` title, `TODO`/`TBD` in prose, dangling fragment links, stale or incomplete generated pages, a shipped verb/view/detector/build-feature with no doc entry, a front door that does not link the pages it must, and a Pages render that drops words or emits raw HTML. **Gains `check_relocations` (M0)** | **every merge**: pointer pages, rewritten links, anchors, `docs/index.md` | `python3 tools/check_docs_site.py` (`--no-html` to skip the render) |
+| `tools/check_docs_site.py` | orphan pages (reachability from `docs/index.md`/`README.md`), a page without exactly one `# ` title, `TODO`/`TBD` in prose, dangling fragment links, stale or incomplete generated pages, a shipped verb/view/detector/build-feature with no doc entry, a front door that does not link the pages it must, and a Pages render that drops words or emits raw HTML. **Runs `check_relocations`** (`e12.2`); `--self-test` proves it can fail | **every merge**: pointer pages, rewritten links, anchors, `docs/index.md` | `python3 tools/check_docs_site.py` (`--no-html` to skip the render) |
 | `tools/gen_docs.py check` | a generated page that disagrees with its source; a shipped verb with no page entry | M1 (`VERB_DOCS["why"]`), M2 (`analyze`, `cmp`), M3 (`narrative`, `show`, `attribution`), M6, M7 | `python3 tools/gen_docs.py check` (add `--page cli` with a built binary) |
 | `tools/check_ticket_claims.py` | a sentence naming a plan key and claiming the thing is missing or still to come, in `docs/concepts/`, `docs/recipes/`, `README.md` or `crates/*/src` | M1 (`risk-ranking.md` §10's replaced-by table, the `blast`/"will fill" sentences), M2 (`Supplied`'s "arrive when X lands" phrasings), M3 (spike pages' deferral language) | `python3 tools/check_ticket_claims.py` |
 | `tools/check_docs_commands.py` | a `fathom …` command in a `bash`/`sh`/`console` fence that clap will not parse — a invented subverb or a invented flag | every merged page's "read it this way" command blocks | `python3 tools/check_docs_commands.py` |
@@ -749,7 +765,7 @@ from.
 | the family generators' `check` (§5) | a table that drifted from its committed report | M3 (`gen_segment_tables`, `gen_relink_tables`), M4 (`gen_rename_tables`, `gen_rename_pairing_tables`), M5 (`check_workspace`, `gen_adr_tables`, `recommender.tui doc`) | listed per row in §5 |
 | the spike re-measures | a spike number that no longer reproduces (`s2`, `s4`, `s6`, `s1`) | M3, M4 | `contracts.yml`, `nightly.yml`; the commands are printed in each spike page's reproduction section |
 | the per-page contract tests | a page that stopped quoting a blessed number: `test_g3_calibration_contract.py` (needles from the G3 report in `false-positive-calibration.md`), `test_rename_pairing_contract.py`, `test_rename_spike_contract.py`, `test_segmentation_spike_contract.py`, `test_relink_spike_contract.py`, `test_structure_{core,spike,tail}_contract.py`, `test_structure_delta_contract.py`, `test_config_contract.py`, `test_taxonomy_contract.py`, `test_summary_card_contract.py`, `test_test_surface_contract.py`, `test_noncode_contract.py`, `test_noise_suppression_contract.py`, `test_change_classifier_contract.py`, `test_deprisk_contract.py`, `test_ci_gate_contract.py`, `test_cli_contract.py`, `test_extensibility_contract.py`, `test_pathology_contract.py`, `test_privacy_contract.py`, `test_beta_loop_contract.py`, `test_queue_era_fixture_contract.py`, `test_release_contract.py`, `test_packaging_contract.py`, `test_complexity_fill_contract.py`, `test_docs_html_contract.py`, `test_docs_site_contract.py`; and the ADRs' — `test_workspace_contract.py`, `test_storage_contract.py`, `test_tui_contract.py`, `test_episode_identity_contract.py`, `test_hooks_contract.py`, `test_epic8_contract.py`, `test_build_features_contract.py` | the page each names; a retired path must be repointed in the same commit or the test quietly stops asserting | `python3 -m pytest tests/ -k <name>` |
-| Rust tests that quote a page | `risk_score.rs` asserts the worked example `risk-scoring.md` §4 quotes (`total 39.28`, `score 39`); `risk.rs` and `risk/feature.rs` doc comments link the three risk pages | M1 — the numbers move only if the code moves, and the doc comments are links a rustdoc build can break | `cargo test -p fathom-analyze --test risk_score` |
+| Rust tests that quote a page | `risk_score.rs` asserts the worked example `risk.md`'s *A worked example* quotes (`total 39.28`, `score 39`); `risk.rs` and `risk/feature.rs` doc comments link the risk page | M1 — the numbers move only if the code moves, and the doc comments are links a rustdoc build can break | `cargo test -p fathom-analyze --test risk_score` |
 | `tools/gen_changelog.py audit` / `lint` | a commit since the last release that `[Unreleased]` does not account for (`C03`), and a second copy of a gated step (`C01`) | **every commit in this epic**, including M0 | `python3 tools/gen_changelog.py audit` |
 
 ---
@@ -759,10 +775,10 @@ from.
 The order is not cosmetic: M0 is a dependency, and M1 is the pilot that proves the protocol before three
 more people attempt it.
 
-1. **M0 — the relocation mechanism** (`e12.2`, first commit): `RELOCATIONS`, `check_relocations`, the
+1. **M0 — the relocation mechanism** (`e12.2`, first commit) — **done**: `RELOCATIONS`, `check_relocations`, the
    `Retired page names` section in `docs/index.md`, this page linked from the Reference table, and a
    self-test that proves the rule can fail. No pointer page exists before this lands.
-2. **M1 — risk** (`e12.2`): `risk.md`, three pointer pages, 58 links rewritten, `VERB_DOCS` and
+2. **M1 — risk** (`e12.2`) — **done**: `risk.md`, three pointer pages, 58 links rewritten, `VERB_DOCS` and
    `RETIRED_TOKENS` moved, three code comments repointed, the generated-vs-prose axis table resolved. One
    commit per merge, gates green, `[Unreleased]` entry naming the bead.
 3. **M2 — delta** (`e12.3`): `delta-model.md` into `delta.md`; 16 links.
@@ -791,8 +807,8 @@ criterion, and the reason a merged page cannot average two conflicting claims in
 * **It refuses to let the map drift silently.** Any merge that contradicts a row here changes this page in the
   same commit. A map with no owner is a snapshot; `reco-msv1` owns it until epic 12 closes.
 * **Four things are left open, deliberately, each with the bead that has to answer it:**
-  1. whether the twelve-axis table becomes a real generated block or keeps a prose claim with a test behind
-     it (M1, and it is the same question `check_docs_site.py` would answer for any other table);
+  1. ~~whether the twelve-axis table becomes a real generated block or keeps a prose claim with a test
+     behind it~~ — answered by `e12.2`, which wrote `tools/gen_risk_tables.py`;
   2. whether a concept page may draw a frame layout at all, or must link ADR-006's generated one (§4.5's
      normativity decision — `e12.4` picks);
   3. the exact `check_relocations` failure message and its threshold ("≤ 15 lines" is a starting number, not

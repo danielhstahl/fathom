@@ -116,6 +116,6 @@ Each entry came with a reason in its commit message, didn't it? If not, the ledg
 a reason that cannot be counted is a reason nobody audits.
 
 **Next**: [the catalogue](../detectors/index.md) for what each detector will and will not forgive ·
-[risk score](../concepts/risk-score.md) for what a silenced finding does to the ranking — which is: it
+[risk score](../concepts/risk.md) for what a silenced finding does to the ranking — which is: it
 disappears from the `findings` axis, and that row's score moves, so silence is a tuning act with
 consequences.

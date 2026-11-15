@@ -93,7 +93,7 @@ KEYMAP = ROOT / ".plan" / "keymap.json"
 
 #: The six concept pages the quickstart promises a stranger can name at the end of five minutes, and
 #: links out to (`docs/quickstart.md`, "the six nouns").
-SIX_NOUNS = ["concepts/episode.md", "concepts/delta.md", "concepts/risk-score.md",
+SIX_NOUNS = ["concepts/episode.md", "concepts/delta.md", "concepts/risk.md",
              "concepts/review-ledger.md", "concepts/ratchet.md", "concepts/ambient-mode.md"]
 
 #: The fixture ceiling the memory ticket promised, from `reco-93w`'s first acceptance criterion.

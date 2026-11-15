@@ -314,7 +314,7 @@ fn the_reasons_are_ordered_by_contribution_and_quote_something() {
     assert_eq!(points, sorted, "the reasons are not printed worst-first");
     for line in score::render(&scored) {
         // Every printed reason names something: a digit, a path, or an explicit refusal. The point is
-        // that no reason is an adjective (`risk-ranking.md` §2).
+        // that no reason is an adjective (`docs/concepts/risk.md`, *The scale*).
         if line.starts_with(" 1. ") || line.starts_with(" 2. ") {
             assert!(
                 line.chars().any(char::is_numeric) || line.contains("no "),
@@ -1124,7 +1124,7 @@ fn a_worked_example_adds_up_by_hand() {
             .vector()
             .starts_with(&format!("{MODEL} {} = ", scored.score))
     );
-    // …and the number itself, quoted by `docs/concepts/risk-scoring.md` §4. `reco-ydek.5` took
+    // …and the number itself, quoted by `docs/concepts/risk.md` (*A worked example*). `reco-ydek.5` took
     // `authorship` out and put its 0.04 on `findings` and `surface`, so the same ten measurements now
     // add to 39.28 rather than the 35.71 `features-2` printed: the denominator is unchanged at 0.84 and
     // the two axes that were paid moved from 9.52 and 15.48 to 10.71 and 17.86.

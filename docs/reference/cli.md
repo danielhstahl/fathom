@@ -39,7 +39,7 @@ not a wall, and the reason it appears here rather than being quietly hidden unti
 | **[`analyze`](#fathom-analyze)** | Print one episode's delta document — the model the TUI, the export and an agent all read | shipped | [*delta*](../concepts/delta.md) · [*delta-model*](../concepts/delta-model.md) |
 | **[`narrative`](#fathom-narrative)** | Read one episode: the narrative every claim in it cites its evidence from (e4.7) | shipped | [*episode-narrative*](../concepts/episode-narrative.md) · [*episode*](../concepts/episode.md) |
 | **[`drift`](#fathom-drift)** | What the plan said against what the session did — the contradictions, both sides linked (e4.8) | shipped | [*plan-drift*](../concepts/plan-drift.md) · [*session-state*](../concepts/session-state.md) |
-| **[`why`](#fathom-why)** | Print one episode's risk score with every feature, its weight and its contribution (e4.4) | shipped | [*risk-score*](../concepts/risk-score.md) · [*risk-scoring*](../concepts/risk-scoring.md) |
+| **[`why`](#fathom-why)** | Print one episode's risk score with every feature, its weight and its contribution (e4.4) | shipped | [*risk*](../concepts/risk.md) · [*cli*](cli.md) |
 | **[`stats`](#fathom-stats)** | Report repo scale, index state and cache hit rate | shipped | [*cli*](../concepts/cli.md) · [*0004-storage*](../adr/0004-storage.md) |
 | **[`check`](#fathom-check)** | Run the checks CI cares about; findings above the threshold exit 7 | shipped | [*ci-gate*](../concepts/ci-gate.md) · [*gate-a-pipeline*](../recipes/gate-a-pipeline.md) |
 | **[`doctor`](#fathom-doctor)** | Describe this build, its environment and its index, with a remedy per finding | shipped | [*troubleshooting*](../troubleshooting.md) · [*cli*](../concepts/cli.md) |
@@ -779,7 +779,7 @@ Options:
 ## `fathom why`
 
 The risk score as an auditable sum: every feature, its weight, its contribution, the reason behind
-each, and the axes the model could not measure ([risk score](../concepts/risk-score.md)).
+each, and the axes the model could not measure ([risk score](../concepts/risk.md)).
 `--weight NAME=VALUE` is a what-if, `--calibrate` is the corpus that turns retuning from a feeling into
 a number.
 

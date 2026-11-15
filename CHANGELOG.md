@@ -16,6 +16,48 @@ fails CI if the version in `Cargo.toml` has no dated section here, because the s
 body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
+### Three risk pages became one, the pointers that replaced them are gated, and the axis table is generated for real (`reco-msv1.2`, `e12.2`)
+
+A reviewer asking "how does risk work" was sent to `risk-score.md`, `risk-scoring.md` and `risk-ranking.md`,
+each answering one slice and none saying why there were three. M1 from the merge map is done: the three are
+now [docs/concepts/risk.md](docs/concepts/risk.md), which opens with **the two numbers and why there are
+two** — a `spine-3` ranking that exists in a build with no analysis layer, and a `features-3` score that
+needs one — and gives each its model string, its component or axis table, its calibration evidence, its
+blind spots and its measurements, then states the boundary at the
+[scorecard](docs/concepts/scorecard.md): the repository's number, not the episode's. Prose moved rather
+than being retyped, so a reviewer can diff a paragraph travelling, and the four claims that were stated in
+three places each — the `author`/`authorship` removal, no-zero-for-not-measured, "the noun has to be in the
+diff", the `queue-1` retirement — now have one home each and pointers from the rest.
+
+* **The relocation mechanism landed first, and it can fail on purpose.** `tools/check_docs_site.py` gained
+  `RELOCATIONS` (one row per retired path, one place), `check_relocations` (a pointer must exist, hold one
+  `# ` title, stay under the cap, name its target, hold **no table row and no generated block**, be linked
+  from `docs/index.md`, and be linked by nothing else in the tree), and `--self-test`, which copies `docs/`,
+  breaks it four ways — retired path deleted, pointer grown into a second copy, pointer unlinked from the
+  front door, a real page leaning on the redirect — and fails unless each break is named, with the clean
+  copy passing between them. The threshold is 24 non-empty lines, not the map's fifteen: `risk-ranking.md`
+  had fourteen sections to map, and a section map with a dropped row is the lie it exists to prevent.
+* **58 inbound links rewritten, not redirected.** `README.md`, `docs/adr/0006-tui.md`, three recipes, the
+  quickstart, the detector catalogue, six concept pages and the generated CLI reference now link
+  `concepts/risk.md`; the `#who-wrote-it-the-axis-that-used-to-be-called-authorship` fragment crossed
+  verbatim because the heading text did, so the four pages citing it needed only their path changed. Every
+  pin the map promised moved in the same commit: `VERB_DOCS["why"]`, the seven `RETIRED_TOKENS` exemptions
+  `risk-ranking.md` held, five comments in `risk.rs`, `risk/feature.rs` and `risk_score.rs`, the six nouns
+  in `epic7_acceptance.py` and `test_docs_site_contract.py`, and `risk/feature.rs`'s comment naming a
+  `tests/test_risk_score_contract.py` that has never existed.
+* **A page claiming to be generated is generated now.** The merged page's twelve-axis table carried the
+  sentence "this table is generated, not typed" with no block and no generator behind it, so the merge wrote
+  one instead of deleting the claim: `tools/gen_risk_tables.py` parses `risk::feature::SPECS` as text — the
+  way `features.rs` is read for `features.md`, so it gates in the job that compiles no Rust — and renders
+  the rows between `features_axes` markers, refusing a `SPECS` array whose declared length it cannot read
+  and a weight set that no longer sums to `1.00`. The table also got the header row it never had, which is
+  why its twelve rows had never rendered as a table at all.
+
+`check_docs.py`, `check_docs_site.py` (with the Pages render and the new relocation rule and self-test),
+`check_ticket_claims.py`, `check_workflows.py`, `check_workspace.py`, both generators' `check` and the
+regenerated `cli.md` are green; the three retired paths still resolve, as pointers, from the index's new
+`Retired page names` section.
+
 ### The documentation merge map: 65 pages censused, four merges scheduled, and a list of what each merge is forbidden to lose (`reco-msv1.1`, `e12.1`)
 
 Epic 12 opens with "half the documentation, none of the truth lost" and four children ready to merge, and the

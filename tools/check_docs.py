@@ -41,22 +41,24 @@ LINK_DEFINITION = re.compile(r"^ {0,3}(?:> ?)*\[([^\]^]+)\]:\s*<?([^>\s]+)>?", r
 #: exists, and no test of the binary can catch that because the binary prints the right thing.
 #:
 #: The allowance is per page, not per phrase. ADR-006 keeps the layout of a pane it deleted and
-#: [risk-ranking](../concepts/risk-ranking.md) keeps a retired ordering function's arithmetic — both are
+#: [risk](../concepts/risk.md) keeps a retired ordering function's arithmetic — both are
 #: records, deliberately, and an unversioned deletion of the record is the other way a page lies. A page
-#: outside the list printing one of these is a page that has not been told the pane is gone.
+#: outside the list printing one of these is a page that has not been told the pane is gone. And because
+#: the exemption is keyed by path, a merge that retires a record page moves its exemption in the same
+#: commit: `reco-msv1.2` merged `risk-ranking.md` into `risk.md`, and these seven rows moved with it.
 RETIRED_TOKENS = {
     "order: risk × staleness × blast radius": {
-        "docs/adr/0006-tui.md", "docs/concepts/risk-ranking.md"},
-    "rank N of M": {"docs/adr/0006-tui.md", "docs/concepts/risk-ranking.md",
+        "docs/adr/0006-tui.md", "docs/concepts/risk.md"},
+    "rank N of M": {"docs/adr/0006-tui.md", "docs/concepts/risk.md",
                     "docs/concepts/thesis.md"},
     "fathom queue": {"docs/adr/0006-tui.md"},
     "`q` queue": set(),
     "queue_open": set(),
-    "fathom_analyze::queue": {"docs/adr/0006-tui.md", "docs/concepts/risk-ranking.md"},
-    "fathom-tui::worklist": {"docs/adr/0006-tui.md", "docs/concepts/risk-ranking.md"},
-    "rank_queue": {"docs/adr/0006-tui.md", "docs/concepts/risk-ranking.md"},
-    "QueuePolicy": {"docs/adr/0006-tui.md", "docs/concepts/risk-ranking.md"},
-    "QueuePlacement": {"docs/adr/0006-tui.md", "docs/concepts/risk-ranking.md"},
+    "fathom_analyze::queue": {"docs/adr/0006-tui.md", "docs/concepts/risk.md"},
+    "fathom-tui::worklist": {"docs/adr/0006-tui.md", "docs/concepts/risk.md"},
+    "rank_queue": {"docs/adr/0006-tui.md", "docs/concepts/risk.md"},
+    "QueuePolicy": {"docs/adr/0006-tui.md", "docs/concepts/risk.md"},
+    "QueuePlacement": {"docs/adr/0006-tui.md", "docs/concepts/risk.md"},
 }
 
 

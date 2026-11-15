@@ -163,4 +163,4 @@ refusal floor is part of the layout contract ([ADR-006 §6](../adr/0006-tui.md))
 
 **Next**: [the recipe for running Fathom beside an agent](../recipes/run-beside-the-agent.md) ·
 [ADR-006 §5.7](../adr/0006-tui.md) for the layout as measured ·
-[risk score](risk-score.md) for what the `risk 82 ✱` on that first line means.
+[risk score](risk.md) for what the `risk 82 ✱` on that first line means.

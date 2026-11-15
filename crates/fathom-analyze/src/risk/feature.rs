@@ -5,9 +5,10 @@
 //! that turns the measurement into a 0..=1 risk value, the sentence that says what the ruler means, and
 //! the row the measurement came from. [`Feature::normalise`] and [`Feature::spec`] live in this file
 //! beside the ruler they apply, so a document cannot describe a ruler the code does not implement —
-//! `tests/test_risk_score_contract.py` reads the table below and compares it to
-//! [`docs/concepts/risk-scoring.md`](../../../../docs/concepts/risk-scoring.md) and to the default
-//! weights in the config key spec.
+//! `tools/gen_risk_tables.py check` renders the table in
+//! [`docs/concepts/risk.md`](../../../../docs/concepts/risk.md) out of `SPECS` itself — the page's axis
+//! table is generated from here, so a document cannot carry a weight the code does not, and it is
+//! checked against the default weights in the config key spec.
 //!
 //! # Three rules every feature here obeys
 //!

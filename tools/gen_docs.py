@@ -451,7 +451,7 @@ VERB_DOCS = {
                   "the prose, with a citation per claim"),
     "drift": (["docs/concepts/plan-drift.md", "docs/concepts/session-state.md"],
               "what the plan promised against what landed"),
-    "why": (["docs/concepts/risk-score.md", "docs/concepts/risk-scoring.md"],
+    "why": (["docs/concepts/risk.md", "docs/reference/cli.md"],
             "the risk score as an auditable sum"),
     # `e7.4` (reco-3q4): the verb that prints the shell's own copy of this grammar. It is in VERB_DOCS
     # for the same reason every verb is: a shipped verb with no page is an undocumented feature, and this

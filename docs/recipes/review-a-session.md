@@ -32,13 +32,13 @@ The rail is a chronology, not a worklist: it shows what happened in the order it
 figure on the row is what makes *which three are riskiest* answerable on the first screen. The kind of file
 outranks the amount of file — a three-line CI edit and a migration that drops a column come before a 400-line
 documentation edit — and every row's figure has a reason naming a file you can open
-([risk ranking](../concepts/risk-ranking.md)). To work only what is still open, `F` and set `state=unread`: it
+([risk ranking](../concepts/risk.md)). To work only what is still open, `F` and set `state=unread`: it
 is the filter the acts read, so a row you sign off leaves the list rather than waiting for you to walk past it.
 (There is no second list: `e10.3` deleted the ranked worklist, and `q` is the reviewer's letter now —
 [ADR-006 §5.1.2](../adr/0006-tui.md) is the decision.)
 
 Press `w` on the selected episode and the model shows its arithmetic: the feature vector, the ceiling it was
-measured under, and the list of what it could not see ([risk score](../concepts/risk-score.md)). An episode
+measured under, and the list of what it could not see ([risk score](../concepts/risk.md)). An episode
 nothing scored prints `?`, rather than a `0` standing in for "nobody looked".
 
 ## 3 · Read the episode, in the order the model puts it

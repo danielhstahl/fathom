@@ -351,7 +351,7 @@ is: `findings` and `surface` now count about a tenth more, every other axis abou
 this corpus that is ±1 to 2 points on most episodes. None of the spine half of the change is visible in this
 harness at all — it scores `risk::score::score` under `Weights::defaults()`, never `risk::rank` — so what
 follows is the vector's movement and nothing else; the ranking's own claim is in
-[risk-ranking.md](risk-ranking.md).
+[the risk page](risk.md).
 
 What that measured, against the report it replaced:
 
@@ -388,7 +388,7 @@ this corpus that string is a local git identity on 448 of 540 episodes — for t
 changed only the denominator. The claim the product used to make — that a reviewer can be told which turn was
 written by something other than a person — is now made only where it can be stood up, in
 `attribution`'s confidence and in the printed identity, and the thing the axis used to score is stated as a
-blind spot in [risk-scoring.md](risk-scoring.md) and [risk-ranking.md](risk-ranking.md) instead.
+blind spot in [the risk page](risk.md) instead.
 
 
 ## 4. Per detector, and the defaults the measurement does *not* flip

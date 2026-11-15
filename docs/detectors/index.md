@@ -681,7 +681,7 @@ M src/billing/ledger.rs  +24 −0
 
 The same `Finding` value, four doors: the attention section of
 [the episode card](../concepts/summary-card.md); the rail's risk column, whose model consumes
-severities ([risk score](../concepts/risk-score.md)); the delta document's `findings` section, evidence pointers and
+severities ([risk score](../concepts/risk.md)); the delta document's `findings` section, evidence pointers and
 all ([the delta model](../concepts/delta-model.md)); and the export, where a finding travels with its
 suppression key so the person reading a PR can act on it. A finding that arrives in a pane also carries a
 jump target, which is the mechanism behind "every figure is a button".
@@ -706,6 +706,6 @@ than a documentation debt.
 
 ---
 
-**Next**: [risk score](../concepts/risk-score.md) for how severities become a ranking ·
+**Next**: [risk score](../concepts/risk.md) for how severities become a ranking ·
 [false-positive calibration](../concepts/false-positive-calibration.md) for what a detector's cost means ·
 [the recipe for silencing a finding](../recipes/silence-a-finding.md).

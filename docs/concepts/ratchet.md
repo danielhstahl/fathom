@@ -173,4 +173,4 @@ the branch it was written on has been rebased into an unreachable blob.
 
 **Next**: [dependency risk](dependency-risk.md) for the same "baseline, then alarm only on new" idea applied to
 licences · [config](config.md) for how a key like `ratchet.mode` is layered and traced ·
-[risk score](risk-score.md) for how a new violation becomes a number on its row.
+[risk score](risk.md) for how a new violation becomes a number on its row.
