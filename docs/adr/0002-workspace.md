@@ -670,27 +670,27 @@ are contracts, and an undocumented contract is a negotiation.
 ### 8.1 The gate list
 
 <!-- BEGIN GENERATED: ci -->
-| Required step | Text that must appear in a step that runs (`run:` / `uses:` / `with:`) | When it must run |
-|---|---|---|
-| `workspace-boundary-lint` | `tools/check_workspace.py lint` | pull_request |
-| `workspace-boundary-check` | `tools/check_workspace.py check` | pull_request |
-| `cargo-deny` | `EmbarkStudios/cargo-deny-action` | pull_request |
-| `cargo-msrv-build` | `cargo +$MSRV` | pull_request |
-| `clippy-strict` | `clippy::unwrap_used` | pull_request |
-| `fmt` | `cargo fmt` | pull_request |
-| `headless-minimal-tests` | `cargo test -p fathom-cli --no-default-features --features minimal` | pull_request |
-| `changelog-audit` | `tools/gen_changelog.py audit` | pull_request |
-| `cli-reference-page` | `gen_docs.py check --page cli` | pull_request |
-| `spike-s1-report` | `--example s1_spike` | scheduled |
-| `spike-s2-report` | `--example s2_spike` | scheduled |
-| `spike-s6-report` | `--example s6_spike` | scheduled |
-| `structure-core-report` | `--example structure_harness` | scheduled |
-| `g3-calibration-check` | `--example g3_calibration` | scheduled |
-| `out-of-tree-plugin` | `plugins/acme-detectors/Cargo.toml` | scheduled |
-| `beta-channel-build` | `rustup toolchain install beta` | scheduled |
-| `perf-measurement` | `tools/perf_gate.py --check` | scheduled |
-| `fuzz-campaign` | `cargo +nightly fuzz run` | scheduled |
-| `release-artifact-matrix` | `workflow run release.yml` | scheduled |
+| Required step | Text that must appear in a step that runs (`run:` / `uses:` / `with:`) | When it must run | The one workflow that runs it |
+|---|---|---|---|
+| `workspace-boundary-lint` | `tools/check_workspace.py lint` | pull_request | any pull_request workflow |
+| `workspace-boundary-check` | `tools/check_workspace.py check` | pull_request | `contracts.yml` |
+| `cargo-deny` | `EmbarkStudios/cargo-deny-action` | pull_request | `ci.yml` |
+| `cargo-msrv-build` | `cargo +$MSRV` | pull_request | `ci.yml` |
+| `clippy-strict` | `clippy::unwrap_used` | pull_request | `ci.yml` |
+| `fmt` | `cargo fmt` | pull_request | `ci.yml` |
+| `headless-minimal-tests` | `cargo test -p fathom-cli --no-default-features --features minimal` | pull_request | `ci.yml` |
+| `changelog-audit` | `tools/gen_changelog.py audit` | pull_request | `contracts.yml` |
+| `cli-reference-page` | `gen_docs.py check --page cli` | pull_request | `ci.yml` |
+| `spike-s1-report` | `--example s1_spike` | scheduled | `nightly.yml` |
+| `spike-s2-report` | `--example s2_spike` | scheduled | `nightly.yml` |
+| `spike-s6-report` | `--example s6_spike` | scheduled | `nightly.yml` |
+| `structure-core-report` | `--example structure_harness` | scheduled | `nightly.yml` |
+| `g3-calibration-check` | `--example g3_calibration` | scheduled | `nightly.yml` |
+| `out-of-tree-plugin` | `plugins/acme-detectors/Cargo.toml` | scheduled | `nightly.yml` |
+| `beta-channel-build` | `rustup toolchain install beta` | scheduled | `nightly.yml` |
+| `perf-measurement` | `tools/perf_gate.py --check` | scheduled | `perf.yml` |
+| `fuzz-campaign` | `cargo +nightly fuzz run` | scheduled | `fuzz.yml` |
+| `release-artifact-matrix` | `workflow run release.yml` | scheduled | any scheduled workflow |
 <!-- END GENERATED: ci -->
 
 `tools/check_workspace.py check` fails (`C01`) if any of those strings disappears from
@@ -699,7 +699,8 @@ criterion is *"cargo-deny + module-boundary lint in CI"*, and a lint that exists
 the most common way such a criterion is quietly missed. So the presence of the invocation is itself a
 test.
 
-Two sharpnesses the first version of the rule lacked, both of them measured (`e11.1` §3, then `e11.2`):
+Three sharpnesses the rule has acquired, each one added after a measurement (`e11.1` §3, then `e11.2`,
+then `e11.3`):
 
 * **the match is against the steps that execute** — a step's `run:`, `uses:` or `with:` value — and never
   against prose. A substring test over the concatenated YAML was satisfied by the words `cargo deny check`
@@ -716,6 +717,17 @@ Two sharpnesses the first version of the rule lacked, both of them measured (`e1
   when a *per-PR* gate had drifted the same way by accident. The cadence column is the decision, written
   down where a lint can enforce it: `C01` fails a required step that survives only at the cadence it does
   not belong to.
+* **a step can name the one workflow that runs it.** The fourth column is `e11.3`'s (`reco-374v.3`) and one
+  row is why it exists: `tools/gen_changelog.py audit` ran in `ci.yml`'s `e7.7` beta-loop step *and* inside
+  `contracts.yml`'s pytest mirror, and `e11.1` §4 found three consecutive commits where one `C03` finding — a
+  commit with no `[Unreleased]` entry — reddened both jobs, so a paragraph nobody wrote cost two tickets, two
+  triage threads and two "which check was that?" detours. A cadence-only list cannot refuse that: the needle
+  was present where it was required to be, and again somewhere else. So a row may name a home, and `C01` then
+  refuses both halves of the accident — the needle missing from its home, and the needle turning up in a
+  second workflow. Rows where two copies are deliberate stay unpinned (the boundary lint answers a question
+  two jobs ask; the release matrix is dispatched from two files), and the model comments each one so the
+  duplication is written down rather than inferred. The column also answers the question a red actually asks,
+  *where do I look* — which is the same reason §8.1 prints the list at all.
 
 The prose list of what a pull request actually pays for is the header of `.github/workflows/ci.yml`; the
 scheduled half explains itself in `.github/workflows/nightly.yml`, `perf.yml` and `fuzz.yml`, and

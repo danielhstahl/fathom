@@ -2,7 +2,8 @@
 #
 # ADR-002 §8 says the boundary lint must be *in CI*, and `tools/check_workspace.py check` fails (rule
 # C01) if the required invocations disappear from `.github/workflows/*.yml` — or survive only at the wrong
-# cadence — that is what makes "the lint is wired up" a checked fact. `e0.7` (reco-e77) took the option
+# cadence, or turn up in a second workflow when the model pins them to one — that is what makes "the lint is
+# wired up" a checked fact. `e0.7` (reco-e77) took the option
 # this file offered: the placeholder `rust` job that used to live here is now `ci.yml`'s matrix, and no step
 # was dropped — the Rust half of §8.1's list (`cargo fmt`, the two `clippy` invocations,
 # `EmbarkStudios/cargo-deny-action`, `cargo +$MSRV`) is in `ci.yml`, this half is here.
@@ -15,6 +16,12 @@
 #
 # The `contracts` job deliberately needs no Rust toolchain: a gate that only runs after a 4-minute
 # dependency build is a gate that people skip.
+#
+# Since `e11.3` (`reco-374v.3`) it is also the **one** job the changelog gate reports from — `gen_changelog.py
+# audit`, `lint` and the draft smoke, moved out of `ci.yml`'s `e7.7` beta-loop step, which had been running
+# them a second time behind a workspace build. `AGENTS.md`'s rule is that every commit carries its
+# `[Unreleased]` entry; a rule is worth one red check per mistake, and `C01` now pins this gate's needle to
+# this file so a second copy is a rule violation rather than a reasonable-looking addition.
 
 name: contracts
 
@@ -41,18 +48,41 @@ jobs:
     timeout-minutes: 30
     runs-on: ubuntu-latest
     steps:
-      # Full history, not a depth-1 clone. This job ends in `python3 -m pytest -q`, and the suite contains
-      # gates that read the *history* rather than the tree — `tests/test_beta_loop_contract.py` asks
-      # `tools/gen_changelog.py audit` whether every commit since the last release is accounted for in
+      # Full history, not a depth-1 clone, for two consumers in this job. The `e7.7 changelog gate` step below
+      # asks `tools/gen_changelog.py audit` whether every commit since the last release is accounted for in
       # `CHANGELOG.md`, and a claim about a range of commits cannot be checked against a clone that was cut
-      # short. On a default checkout the audit died inside `git log` with `Invalid revision range`, which
-      # reached pytest as a `SystemExit` and hid every real finding behind it (**reco-ghao**).
+      # short. And this job ends in `python3 -m pytest -q`, whose suite contains gates that read the *history*
+      # rather than the tree. On a default checkout the audit died inside `git log` with `Invalid revision
+      # range`, which reached pytest as a `SystemExit` and hid every real finding behind it (**reco-ghao**);
+      # the audit now refuses a shallow clone by name (`C06`).
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: "e7.7 changelog gate: every commit since the last release has its [Unreleased] entry"
+        # `AGENTS.md`'s rule, and the job that reports it. `audit` (`C03`) reads the history and nothing
+        # else, so it belongs in the job that compiles no Rust and is already standing on a full checkout:
+        # a missing release note should be named in seconds, at the top of the log, in the audit's own words
+        # — not eight minutes after a workspace build that had nothing to do with the missing paragraph.
+        # It used to run in both places, and `e11.1` §4 counted what that cost: three consecutive commits
+        # with the same `C03` finding red in `ci.yml` *and* here, and `reco-s6ge` filed because one mistake
+        # buys one ticket per job. `e11.3` (`reco-374v.3`) deleted the second copy and pinned the first:
+        # `C01` now refuses this needle in any other workflow.
+        #
+        # `tests/test_beta_loop_contract.py` calls the same `audit()` in the pytest step at the end of this
+        # job. That is a mirror, not a second gate: one job, one check, one red — the half that was deleted
+        # was the other *job*.
+        #
+        # `lint` is advisory on purpose — this repository's commit style is a sentence, and a tool that
+        # demanded `fix(area):` before it could describe one would be a tool that gets bypassed — so it runs
+        # without `--strict`, prints `::warning::` annotations and exits 0, and the `draft` is a smoke test
+        # that the generator still runs.
+        run: |
+          python3 tools/gen_changelog.py audit
+          python3 tools/gen_changelog.py lint
+          python3 tools/gen_changelog.py draft --version Unreleased | head -3
       - name: glossary, plan references and link consistency
         run: python3 tools/check_docs.py
       - name: "e7.5 docs site: no orphan page, no dangling anchor, no undocumented shipped feature"

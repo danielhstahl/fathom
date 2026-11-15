@@ -676,7 +676,8 @@ CI_CADENCE_TRIGGER: dict[str, str] = {"pull_request": "pull_request", "scheduled
 #: Strings the boundary lint requires to find in `.github/workflows/*.yml` — this is what makes
 #: "the lint is in CI" a checked fact rather than an intention.
 #:
-#: Three fields: the step, the text that has to appear, and the cadence it has to appear at.
+#: Four fields: the step, the text that has to appear, the cadence it has to appear at, and the one
+#: workflow that is allowed to run it — `""` when any workflow of the right cadence may run it.
 #:
 #: *The text is matched inside the steps that execute* — a step's `uses:`, `run:` or `with:` value — and
 #: not anywhere in the file. `e11.1` §3 measured why: the rule used to be a substring test over the
@@ -691,33 +692,57 @@ CI_CADENCE_TRIGGER: dict[str, str] = {"pull_request": "pull_request", "scheduled
 #: satisfied either way, which is the exact accident to prevent: a per-PR gate that quietly becomes a
 #: nightly gate is a gate that stops guarding merges without anybody deciding. So the list now says which
 #: cadence each step owes its answer to, and `C01` fails a step that survives only at the wrong one.
-CI_REQUIRED_STEPS: tuple[tuple[str, str, str], ...] = (
+#:
+#: *The home workflow is the half `e11.3` (`reco-374v.3`) added*, and it exists because of one row. The
+#: changelog audit ran in two jobs, and `e11.1` §4 counted what that costs: three consecutive commits
+#: where both jobs went red on the same `C03` finding, and a ticket filed per job per mistake —
+#: `reco-s6ge` is that ticket. A cadence-only list could not refuse it: `tools/gen_changelog.py audit` in
+#: a second `pull_request` workflow keeps `C01` green, because the needle appears where it is required to
+#: appear *and* somewhere else. So a step whose duplication is the defect names the one workflow that runs
+#: it, and `C01` refuses both halves of the accident — the needle missing from its home, and the needle
+#: running anywhere else. The needle stays unpinned (`""`) where two copies are the point: the boundary
+#: lint runs in `ci.yml`'s `deny` job and in `contracts.yml` on purpose, and the release matrix is
+#: dispatched from two files. Pin a row when one report is the requirement, not when it happens to be
+#: true today.
+CI_REQUIRED_STEPS: tuple[tuple[str, str, str, str], ...] = (
     # The per-pull-request set. This is the list `.github/workflows/ci.yml`'s header writes down in prose
     # and ADR-002 §8.1 prints as a table; the three must agree, and `C01` is what makes them.
-    ("workspace-boundary-lint", "tools/check_workspace.py lint", "pull_request"),
-    ("workspace-boundary-check", "tools/check_workspace.py check", "pull_request"),
-    ("cargo-deny", "EmbarkStudios/cargo-deny-action", "pull_request"),
-    ("cargo-msrv-build", "cargo +$MSRV", "pull_request"),
-    ("clippy-strict", "clippy::unwrap_used", "pull_request"),
-    ("fmt", "cargo fmt", "pull_request"),
+    #
+    # The homes below name where a contributor looks when the check is red, which is the second half of why
+    # `e11.1` §4 wrote the list down at all: a gate whose reporter is a rumour gets looked for in the wrong
+    # run. `tools/check_workspace.py lint` is the one `pull_request` row left unpinned, because it runs in
+    # two workflows deliberately — `contracts.yml` as the boundary lint, `ci.yml`'s `deny` job as the
+    # `deny.toml` discipline that shares it.
+    ("workspace-boundary-lint", "tools/check_workspace.py lint", "pull_request", ""),
+    ("workspace-boundary-check", "tools/check_workspace.py check", "pull_request", "contracts.yml"),
+    ("cargo-deny", "EmbarkStudios/cargo-deny-action", "pull_request", "ci.yml"),
+    ("cargo-msrv-build", "cargo +$MSRV", "pull_request", "ci.yml"),
+    ("clippy-strict", "clippy::unwrap_used", "pull_request", "ci.yml"),
+    ("fmt", "cargo fmt", "pull_request", "ci.yml"),
     ("headless-minimal-tests", "cargo test -p fathom-cli --no-default-features --features minimal",
-     "pull_request"),
-    ("changelog-audit", "tools/gen_changelog.py audit", "pull_request"),
-    ("cli-reference-page", "gen_docs.py check --page cli", "pull_request"),
+     "pull_request", "ci.yml"),
+    # The one job the release-note gate reports from: `contracts.yml`'s `docs + workspace contracts`, which
+    # builds no Rust, already fetches the whole history the audit reads, and is the job `AGENTS.md` points a
+    # contributor at. `e11.3` (`reco-374v.3`) took it out of `ci.yml`'s `e7.7` beta-loop step for the reason
+    # in the paragraph above: one missing `[Unreleased]` entry is one red, in one place.
+    ("changelog-audit", "tools/gen_changelog.py audit", "pull_request", "contracts.yml"),
+    ("cli-reference-page", "gen_docs.py check --page cli", "pull_request", "ci.yml"),
     # The scheduled set: the checks that reproduce a committed measurement, re-measure a calibration, build
     # a second workspace, fuzz, measure, or build the whole package matrix. Daily, on the default branch,
     # plus `workflow_dispatch` — see the header of `.github/workflows/nightly.yml` for the measurement
     # behind each line.
-    ("spike-s1-report", "--example s1_spike", "scheduled"),
-    ("spike-s2-report", "--example s2_spike", "scheduled"),
-    ("spike-s6-report", "--example s6_spike", "scheduled"),
-    ("structure-core-report", "--example structure_harness", "scheduled"),
-    ("g3-calibration-check", "--example g3_calibration", "scheduled"),
-    ("out-of-tree-plugin", "plugins/acme-detectors/Cargo.toml", "scheduled"),
-    ("beta-channel-build", "rustup toolchain install beta", "scheduled"),
-    ("perf-measurement", "tools/perf_gate.py --check", "scheduled"),
-    ("fuzz-campaign", "cargo +nightly fuzz run", "scheduled"),
-    ("release-artifact-matrix", "workflow run release.yml", "scheduled"),
+    # The one unpinned scheduled row has two honest homes: `release.yml` is dispatched both by
+    # `nightly.yml`'s dry-run and by `publish.yml` after a green default branch.
+    ("spike-s1-report", "--example s1_spike", "scheduled", "nightly.yml"),
+    ("spike-s2-report", "--example s2_spike", "scheduled", "nightly.yml"),
+    ("spike-s6-report", "--example s6_spike", "scheduled", "nightly.yml"),
+    ("structure-core-report", "--example structure_harness", "scheduled", "nightly.yml"),
+    ("g3-calibration-check", "--example g3_calibration", "scheduled", "nightly.yml"),
+    ("out-of-tree-plugin", "plugins/acme-detectors/Cargo.toml", "scheduled", "nightly.yml"),
+    ("beta-channel-build", "rustup toolchain install beta", "scheduled", "nightly.yml"),
+    ("perf-measurement", "tools/perf_gate.py --check", "scheduled", "perf.yml"),
+    ("fuzz-campaign", "cargo +nightly fuzz run", "scheduled", "fuzz.yml"),
+    ("release-artifact-matrix", "workflow run release.yml", "scheduled", ""),
 )
 
 # ---------------------------------------------------------------------------

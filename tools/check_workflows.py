@@ -1620,7 +1620,7 @@ def rule_budget_table(files: list[Workflow], problems: list[str]) -> None:
             )
 
 
-def required_step_cadences() -> tuple[tuple[str, str, str], ...] | None:
+def required_step_cadences() -> tuple[tuple[str, ...], ...] | None:
     """`CI_REQUIRED_STEPS` from the workspace model, or None when the model cannot be read.
 
     Imported lazily and defensively: `check_workflows.py` is run standalone as often as `check_workspace.py`
@@ -1658,7 +1658,8 @@ def rule_step_cadence(wf: Workflow, problems: list[str]) -> None:
         + [part for job in wf.jobs.values() for step in job.steps
            for part in [step.uses, step.run, *step.with_.values()]]
     )
-    for name, needle, cadence in model:
+    for entry in model:
+        name, needle, cadence = entry[0], entry[1], entry[2]
         if cadence != "scheduled" or needle not in executable:
             continue
         problems.append(

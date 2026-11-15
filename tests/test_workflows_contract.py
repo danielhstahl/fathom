@@ -508,7 +508,7 @@ def test_scheduled_work_stays_off_the_pull_request_path():
     assert not problems, "\n".join(problems)
     cadences = check_workflows.required_step_cadences()
     assert cadences, "the required-step model gave no cadences; `R06` is checking nothing"
-    assert any(cadence == "scheduled" for _name, _needle, cadence in cadences), (
+    assert any(entry[2] == "scheduled" for entry in cadences), (
         "no required step is `scheduled`, which is the claim `R06` and `e11.2` both rest on"
     )
 

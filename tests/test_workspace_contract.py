@@ -31,6 +31,7 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
 
 import check_workspace as CW          # noqa: E402
+import check_workflows as WF          # noqa: E402
 import workspace_model as M           # noqa: E402
 
 ADR_TEXT = (ROOT / "docs" / "adr" / "0002-workspace.md").read_text()
@@ -260,24 +261,92 @@ def test_the_adr_names_its_own_rule_ids():
 def test_ci_wiring_is_present_and_agrees_on_the_msrv():
     assert CW.check_ci_wiring() == []
     workflows = "\n".join(p.read_text() for p in sorted((ROOT / ".github" / "workflows").glob("*.yml")))
-    for _name, needle, _cadence in M.CI_REQUIRED_STEPS:
+    for _name, needle, _cadence, _home in M.CI_REQUIRED_STEPS:
         assert needle in workflows, "%s: %r is in no workflow" % (_name, needle)
     assert "EmbarkStudios/cargo-deny-action" in workflows
     assert "tools/check_workspace.py lint" in workflows
 
 
 def test_the_required_step_list_says_which_cadence_each_step_owes():
-    """`e11.2`: every required step names a cadence, and both cadences are actually used.
+    """`e11.2` and `e11.3`: every required step names a cadence and a home, and both are real.
 
     A list where everything says `pull_request` would enforce nothing about the schedule and vice versa, so
     the split is asserted to be a split: the per-PR half is the gate a contributor waits behind, the
     scheduled half is the long tail that reproduces a committed measurement or re-measures a calibration.
+    The home is the other half: an empty string is a deliberate "any workflow of that cadence", anything else
+    is a file that must exist and must be the only one running the needle.
     """
-    cadences = {cadence for _name, _needle, cadence in M.CI_REQUIRED_STEPS}
+    cadences = {cadence for _name, _needle, cadence, _home in M.CI_REQUIRED_STEPS}
     assert cadences == set(M.CI_CADENCES), "every cadence must be exercised by at least one step"
-    for name, needle, cadence in M.CI_REQUIRED_STEPS:
+    files = {p.name for p in (ROOT / ".github" / "workflows").glob("*.yml")}
+    for name, needle, cadence, home in M.CI_REQUIRED_STEPS:
         assert cadence in M.CI_CADENCES, "%s: unknown cadence %r" % (name, cadence)
         assert needle.strip(), "%s: empty needle" % name
+        assert home == "" or home in files, "%s: home %r is not a workflow file" % (name, home)
+
+
+def test_the_changelog_gate_reports_from_one_job_of_one_workflow():
+    """`e11.3` (**reco-374v.3**): one missing `[Unreleased]` entry is one red, in one place.
+
+    The audit used to run in `ci.yml`'s `e7.7` beta-loop step *and* in `contracts.yml`'s contract suite, and
+    `e11.1` §4 counted the bill: the same `C03` finding reddened two jobs on three consecutive commits, and a
+    ticket was filed per job. This is the acceptance criterion written as a test: the needle lives in exactly
+    one workflow, in exactly one job of it, and that workflow is the cheap one that fetches the whole history
+    the audit reads. `tests/test_beta_loop_contract.py` calls the same `audit()` inside the same job, which is
+    a mirror; the copy that was deleted was the other *job*.
+    """
+    needles = {name: needle for name, needle, _c, _h in M.CI_REQUIRED_STEPS}
+    needle = needles["changelog-audit"]
+    home = {name: h for name, _n, _c, h in M.CI_REQUIRED_STEPS}["changelog-audit"]
+    assert home == "contracts.yml", "the release-note gate belongs to the job that compiles no Rust"
+
+    hits = []
+    for path in sorted((ROOT / ".github" / "workflows").glob("*.yml")):
+        wf = WF.Workflow(path)
+        for job in wf.jobs.values():
+            for step in job.steps:
+                executed = "\n".join([step.uses, step.run, *[str(v) for v in step.with_.values()]])
+                if needle in executed:
+                    hits.append((path.name, job.id, step.name))
+    assert len(hits) == 1, "the changelog audit runs in %s; it must run once" % (hits,)
+    assert hits[0][0] == home, hits
+    assert "changelog gate" in hits[0][2].lower(), hits
+
+    # ...and the step that audits still carries the `lint` and the draft smoke that came with it here.
+    step_run = next(s.run for p in (ROOT / ".github" / "workflows").glob("*.yml")
+                    for j in WF.Workflow(p).jobs.values() for s in j.steps if needle in s.run)
+    assert "gen_changelog.py lint" in step_run and "gen_changelog.py draft" in step_run, step_run
+
+
+def test_a_pinned_step_that_turns_up_in_a_second_workflow_is_red(tmp_path, monkeypatch):
+    """`C01`'s home half: a second copy of a pinned gate is a failure, not a free addition.
+
+    The cadence half cannot see this at all — the needle is still where it is required, and also somewhere
+    else — which is precisely how the changelog audit ended up reporting from two jobs.
+    """
+    real = ROOT / ".github" / "workflows"
+    fake = tmp_path / "workflows"
+    fake.mkdir()
+    for path in real.glob("*.yml"):
+        shutil.copy(path, fake / path.name)
+    monkeypatch.setattr(CW, "WORKFLOWS", fake)
+    assert not any(p.rule == "C01" for p in CW.check_ci_wiring()), "the copied fleet must start clean"
+
+    needle = {n: needle for n, needle, _c, _h in M.CI_REQUIRED_STEPS}["changelog-audit"]
+    # Add the audit back to `ci.yml`, the way it was before `e11.3`: a step that looks reasonable.
+    (fake / "ci.yml").write_text(
+        (fake / "ci.yml").read_text()
+        + "\n  changelog-again:\n    name: the changelog audit, run a second time\n"
+          "    runs-on: ubuntu-latest\n    steps:\n      - run: python3 %s\n" % needle)
+    problems = [p for p in CW.check_ci_wiring() if p.rule == "C01" and p.where == "changelog-audit"]
+    assert len(problems) == 1, problems
+    assert "ci.yml" in problems[0].message and "only home" in problems[0].message, problems[0].message
+
+    # And the other half: a gate that vanishes from its home is refused even while it still runs somewhere.
+    (fake / "contracts.yml").write_text(
+        (fake / "contracts.yml").read_text().replace("python3 tools/gen_changelog.py audit", "run: echo later"))
+    problems = [p for p in CW.check_ci_wiring() if p.rule == "C01" and p.where == "changelog-audit"]
+    assert any("does not run in `contracts.yml`" in p.message for p in problems), problems
 
 
 def test_a_required_step_that_only_runs_on_the_wrong_cadence_is_red(tmp_path, monkeypatch):
@@ -303,9 +372,12 @@ def test_a_required_step_that_only_runs_on_the_wrong_cadence_is_red(tmp_path, mo
         + "\n  fmt-moved:\n    name: fmt, moved to the schedule by mistake\n"
           "    runs-on: ubuntu-latest\n    steps:\n      - run: cargo fmt --all --check\n")
     problems = [p for p in CW.check_ci_wiring() if p.rule == "C01"]
-    assert len(problems) == 1, problems
-    assert problems[0].where == "fmt", problems
-    assert "pull_request" in problems[0].message, problems[0].message
+    assert [p.where for p in problems] == ["fmt", "fmt", "fmt"], problems
+    assert any("pull_request" in p.message for p in problems), problems
+    # Two of the three are the new home clauses, and they are the same finding seen twice: the gate left the
+    # workflow it is pinned to (`e11.3`), so it is missing from its home *and* running where it is not wanted.
+    assert sum(1 for p in problems if "does not run in" in p.message) == 1, problems
+    assert sum(1 for p in problems if "only home" in p.message) == 1, problems
 
 
 def test_a_comment_cannot_satisfy_a_required_step(tmp_path, monkeypatch):

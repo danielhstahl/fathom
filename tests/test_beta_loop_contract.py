@@ -21,9 +21,13 @@ first:
   product's own verbs, keeps the `0 or 7` exit-code contract and uploads to the release — asserted through
   `check_ci_gate`'s own rule, so the workflow and its checker cannot drift apart.
 
-The same rules run in CI as `python3 tools/check_beta_loop.py`, `tools/beta_intake.py ledger`,
-`tools/gen_changelog.py audit` and `tools/check_ci_gate.py` (`.github/workflows/contracts.yml`); this file is
-their pytest mirror, with the failure messages a contributor sees.
+The same rules run in CI as named steps — `tools/check_beta_loop.py` and `tools/beta_intake.py ledger` in
+`.github/workflows/ci.yml`'s `e7.7 beta loop` step, `tools/gen_changelog.py audit` in the changelog gate of
+`.github/workflows/contracts.yml`, and `tools/check_ci_gate.py` in both — and this file is their pytest mirror,
+with the failure messages a contributor sees. The mirror runs in `contracts.yml`, in the same job as the audit
+step above it: one job, one red per finding. The other copy of the audit — a second *job*, in `ci.yml` behind a
+workspace build — is what `e11.3` (**reco-374v.3**) deleted, because one missing `[Unreleased]` entry was
+buying two tickets.
 
 Run: python3 -m pytest tests/test_beta_loop_contract.py -q
 """

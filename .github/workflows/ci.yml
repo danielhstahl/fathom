@@ -14,7 +14,6 @@
 #     discipline (`D01`-`D08`) checked beside it.
 #   * `build+test` on `ubuntu-latest` × {`stable`, the MSRV}: the workspace with every feature, the MSRV
 #     floor built on the floor itself (§2), and the headless `minimal` binary built and tested (§6.1).
-#   * the changelog gate (`gen_changelog.py audit`, `lint`, `draft`) — `AGENTS.md`'s release-note rule.
 #   * the docs generation checks that keep a committed page from lying about a shipped flag
 #     (`gen_docs.py check --page cli`, `check_docs_site.py`, `gen_shell_artifacts.py check`).
 #   * `check-gate` — `fathom check` over this repository's own history (`e6.6`'s criterion), timed.
@@ -24,7 +23,9 @@
 #   * `release-skeleton` — the generated release workflow is its config's output, and the release path's
 #     negative controls, none of which needs a toolchain to answer.
 #   * `contracts.yml`, `docs.yml`, `privacy.yml`, `sbom.yml` — the lints and generated-document checks that
-#     need no build: 0 reds in 56 runs, 0.3-1.3 minutes each (`e11.1` §1), which is why they stay.
+#     need no build: 0 reds in 56 runs, 0.3-1.3 minutes each (`e11.1` §1), which is why they stay. The
+#     **changelog gate** is one of them since `e11.3` (`reco-374v.3`): `gen_changelog.py audit`, `lint` and the
+#     draft smoke run once per commit in `contracts.yml`, and are not this file's business any more.
 #
 # # What moved, and where it went
 #
@@ -44,11 +45,18 @@
 #   * the six-target package matrix → off `pull_request` entirely (`pr-run-mode = "skip"`), dispatched
 #     daily by `nightly.yml` in cargo-dist's dry-run mode.
 #
+# One move on this branch is not to the schedule. `e11.3` (`reco-374v.3`) took the **changelog gate** out of the
+# `e7.7` beta-loop step below and into `contracts.yml`, where it still runs on every pull request: it had been
+# running in both jobs, so one commit with no `[Unreleased]` entry went red twice and bought two tickets and two
+# triage threads for one missing paragraph (`e11.1` §4, `reco-s6ge`). The copy that stays answers in seconds on
+# a checkout that compiles nothing, and rule `C01` now pins the gate to that file so it cannot creep back here.
+#
 # # The rules this file enforces
 #
 #   * §8.1's required-step list is a *checked* list: `tools/check_workspace.py check` (rule `C01`) fails
-#     if any of these invocations disappears from `.github/workflows/*.yml`, and rule `T07` fails if the
-#     `MSRV` pin below disagrees with the number in `tools/workspace_model.py`. One number, in the model.
+#     if any of these invocations disappears from `.github/workflows/*.yml`, if one that names a home
+#     workflow stops running in it or turns up in a second file, and if rule `T07` finds the `MSRV` pin below
+#     disagreeing with the number in `tools/workspace_model.py`. One number, in the model; one job per gate.
 #   * §2's supported window: `stable` and the MSRV both build here; `beta` builds on the schedule, where a
 #     break is written into that run's job summary rather than gated, so a regression is known before it
 #     ships rather than in the week after — and so the nightly that finds one is a report rather than a
@@ -523,13 +531,13 @@ jobs:
       run:
         shell: bash
     steps:
-      # Full history, because of the `e7.7 beta loop` step below: `tools/gen_changelog.py audit` asks what
-      # every commit since the last release did for the release notes, and a depth-1 clone cannot answer —
-      # the audit died in `git log` with "Invalid revision range" (`reco-ghao`). The history here is a few
-      # hundred commits; this job's time goes on cargo, not on the clone.
+      # A depth-1 checkout, which is enough for every step in this job: since `e11.3` (`reco-374v.3`) the
+      # changelog audit — the one step here that read history rather than the tree — runs in `contracts.yml`,
+      # and everything else in the job either reads the working tree or builds its own throwaway repository
+      # (the demo's miniature, the fixture histories the spike suites replay). Checked rather than assumed:
+      # every python step in this job was run against a `--depth 1` clone and answered identically to the
+      # full one — `.plan/evidence/reco-374v.3/one-red-check.md`.
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
       - uses: Swatinem/rust-cache@v2
         with:
           # The lever and the save. `prefix-key` is the one hand-written half of the derived key and it comes
@@ -598,19 +606,17 @@ jobs:
         if: matrix.channel == 'stable' && matrix.os == 'ubuntu-latest'
         run: python3 tools/check_ci_gate.py
 
-      # `e7.7` (`reco-rny`): the beta loop, as a build. The channel, the forms, the weekly register, the
-      # dispositions and the changelog all exist to be drifted, and a drift here is a beta report that lands
-      # somewhere nobody reads or a release whose notes dropped a ticket. Nothing in this step needs the
-      # binary; `lint` is advisory on purpose — this repository's commit style is a sentence, and a tool that
-      # demanded `fix(area):` before it could describe one would be a tool that gets bypassed.
-      - name: "e7.7 beta loop: one channel, one vocabulary, a register, and a changelog that covers its commits"
+      # `e7.7` (`reco-rny`): the beta loop, as a build. The channel, the forms and the weekly register all
+      # exist to be drifted, and a drift here is a beta report that lands somewhere nobody reads. Nothing in
+      # this step needs the binary. The changelog half of `e7.7` used to sit here too and no longer does:
+      # `gen_changelog.py audit`, `lint` and the draft smoke are `contracts.yml`'s, once per commit, because a
+      # second job reporting the same missing `[Unreleased]` entry buys a second ticket and nothing else
+      # (`e11.3`, `reco-374v.3`).
+      - name: "e7.7 beta loop: one channel, one vocabulary and a register that validates"
         if: matrix.channel == 'stable' && matrix.os == 'ubuntu-latest'
         run: |
           python3 tools/check_beta_loop.py
           python3 tools/beta_intake.py ledger
-          python3 tools/gen_changelog.py audit
-          python3 tools/gen_changelog.py lint
-          python3 tools/gen_changelog.py draft --version Unreleased | head -3
 
       # The five-minute criterion, as a run rather than as an adjective: eight steps over the miniature,
       # each asserting its own exit code (two of them 7, on purpose), the whole thing inside 300 s, and

@@ -219,9 +219,10 @@ def render_teams() -> str:
 
 def render_ci() -> str:
     rows = ["| Required step | Text that must appear in a step that runs (`run:` / `uses:` / `with:`) "
-            "| When it must run |", "|---|---|---|"]
-    for name, needle, cadence in M.CI_REQUIRED_STEPS:
-        rows.append("| `%s` | `%s` | %s |" % (name, needle, cadence))
+            "| When it must run | The one workflow that runs it |", "|---|---|---|---|"]
+    for name, needle, cadence, home in M.CI_REQUIRED_STEPS:
+        rows.append("| `%s` | `%s` | %s | %s |" % (
+            name, needle, cadence, "`%s`" % home if home else "any %s workflow" % cadence))
     return "\n".join(rows)
 
 
@@ -456,7 +457,7 @@ def check_ci_wiring() -> list[Problem]:
 
     executables = {name: workflow_executables(wf) for name, wf in workflows.items()}
 
-    for name, needle, cadence in M.CI_REQUIRED_STEPS:
+    for name, needle, cadence, home in M.CI_REQUIRED_STEPS:
         if cadence not in M.CI_CADENCES:
             problems.append(Problem("C01", name, "cadence %r is not one of %s — the model itself is "
                                     "mis-wired" % (cadence, ", ".join(M.CI_CADENCES))))
@@ -478,6 +479,15 @@ def check_ci_wiring() -> list[Problem]:
                                     "it belongs)"
                                     % (needle, ", ".join(homes), trigger, cadence)))
 
+        # The `home` half, which is what `C01` had to grow to say "exactly one job" rather than "somewhere".
+        # The cadence check above cannot see a duplicate: a second copy of a per-PR gate in a second
+        # `pull_request` workflow leaves it green, because the needle is present where it is required *and*
+        # present again somewhere else. That duplicate is the defect `e11.3` (`reco-374v.3`) was written
+        # for — the changelog audit reporting the same missing `[Unreleased]` entry from two jobs, which is
+        # two tickets and two triage threads per mistake (`e11.1` §4, `reco-s6ge`).
+        if home:
+            problems.extend(check_step_home(name, needle, cadence, home, workflows, executables))
+
     declared = re.findall(r'MSRV:\s*"([\d.]+)"', text)
     for value in declared:
         if value != M.MSRV:
@@ -497,6 +507,42 @@ def check_ci_wiring() -> list[Problem]:
             problems.append(Problem("T07", ".github/workflows", "workflow matrix names toolchain %s, which "
                                     "is not the MSRV %s in ADR-002 §2; state it once and let the model own "
                                     "it" % (value, M.MSRV)))
+    return problems
+
+
+def check_step_home(name: str, needle: str, cadence: str, home: str, workflows: dict,
+                    executables: dict) -> list[Problem]:
+    """`C01`, pinned half: a required step with a home workflow runs there, and runs nowhere else.
+
+    Split out of `check_ci_wiring` because the message has to be long enough to be actionable: the fix for
+    a second copy is either to delete it or to make the duplication deliberate in the model, and the rule
+    has to say which of the two it is refusing.
+    """
+    trigger = M.CI_CADENCE_TRIGGER[cadence]
+    if home not in workflows:
+        return [Problem("C01", name, "names `%s` as its home workflow and no such workflow exists; the "
+                        "model, the table ADR-002 §8.1 prints and `.github/workflows/` are one statement"
+                        % home)]
+    problems: list[Problem] = []
+    if trigger not in workflows[home].triggers:
+        problems.append(Problem("C01", name, "is pinned to `%s`, which has no `%s` trigger, so the step "
+                                "cannot run at the `%s` cadence the same row requires" % (home, trigger,
+                                           cadence)))
+    if needle not in executables[home]:
+        problems.append(Problem("C01", name, "`%s` does not run in `%s`, the one workflow the model pins it "
+                                "to: the gate is not wired to the job that is supposed to report it "
+                                "(ADR-002 §8.1)" % (needle, home)))
+    elsewhere = [n for n in sorted(executables) if needle in executables[n] and n != home]
+    if elsewhere:
+        problems.append(Problem("C01", name, "`%s` also runs in %s, and `%s` is its only home: a required "
+                                "step with a declared home reports from that one workflow, because a gate "
+                                "that runs twice does not guard twice — it only files twice. This is the "
+                                "rule `e11.3` (`reco-374v.3`) added after `gen_changelog.py audit` went red "
+                                "in two jobs on the same commit three runs in a row (`e11.1` §4, "
+                                "`reco-s6ge`); either delete the copy in %s or set this row's home to `\"\"` "
+                                "in `tools/workspace_model.py` and say why the two reports are both wanted"
+                                % (needle, ", ".join("`%s`" % n for n in elsewhere), home,
+                                   " and ".join("`%s`" % n for n in elsewhere))))
     return problems
 
 

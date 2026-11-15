@@ -16,6 +16,53 @@ fails CI if the version in `Cargo.toml` has no dated section here, because the s
 body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
+### The changelog gate reported from two jobs; it reports from one, and `C01` is what keeps it there (`reco-374v.3`)
+
+The gate is good and the second copy was pure cost. `tools/gen_changelog.py audit` ran in `contracts.yml` *and*
+in `ci.yml`'s `e7.7` beta-loop step, and `e11.1` §4 had already counted the bill: three consecutive commits
+where one missing `[Unreleased]` paragraph reddened both jobs, and `reco-s6ge` exists because a mistake that
+reports twice gets filed twice — two tickets, two triage threads, one sentence nobody wrote. This is the
+deduplication the census asked for (`.plan/ci-triage-reco-374v.md` §5, "keep `gen_changelog.py audit` in
+`contracts.yml` only … the C01 needle list moves in the same commit"), done with the rule in the same commit as
+the move.
+
+* **One job.** `contracts.yml · docs + workspace contracts` now owns `audit`, `lint` and the `draft` smoke, as
+  a named step placed first, before the document gates: the job compiles no Rust and was already a
+  `fetch-depth: 0` checkout for the contract suite's history-reading gates, so the finding lands in seconds,
+  at the top of the log, in the audit's own words instead of eight minutes behind a workspace build that had
+  nothing to do with the missing paragraph (`reco-ghao` is why the history matters and why the audit now
+  refuses a shallow clone as `C06` rather than dying in `git log`). `ci.yml`'s beta-loop step keeps what it was
+  the beta loop — `check_beta_loop.py`, `beta_intake.py ledger` — and its name no longer promises a changelog
+  gate it does not run.
+* **Enforced, not narrated.** `CI_REQUIRED_STEPS` gained a fourth field, the **one workflow** a required step
+  may run in, and rule `C01` now refuses both halves of the accident: a pinned needle missing from its home,
+  and a pinned needle turning up in a second workflow. The cadence column could not see the duplicate at all —
+  the gate was present where it was required *and* present again somewhere else. Every row now names its file
+  except two where two homes are the truth (`workspace-boundary-lint`, which two jobs ask for different
+  reasons, and `release-artifact-matrix`, dispatched from two files), and each is commented as such rather than
+  left to be inferred. ADR-002 §8.1's generated table prints the column, so the ADR, the lint and the YAML stay
+  one statement, and `tests/test_workspace_contract.py` breaks both directions on purpose.
+* **A stale instruction is worse than none, so three were rewritten.** `AGENTS.md` told every contributor that
+  two jobs ran the audit and that one red commit bought two tickets; [docs/concepts/release.md](docs/concepts/release.md)
+  §9 hedged with "wherever the gate runs"; [docs/concepts/ci-gate.md](docs/concepts/ci-gate.md)'s fleet table
+  listed the changelog gate under `ci.yml`. All three now name the one job, and the `ci.yml` header says where
+  it went and why.
+* **The checkout that only the audit was using.** With the audit gone, nothing left in `build-test` reads
+  history — its steps read the tree or build their own throwaway repositories — so that job went back to
+  actions/checkout's default depth. Verified rather than assumed: all eleven python steps were run in a full
+  clone and in a `--depth 1` one and answered identically, and no Rust test or build script asks the checkout
+  for a commit it does not have.
+* **Proved on the failure path, once.** A scratch clone of this repository, the changed workflows copied in,
+  and one commit naming a bead `[Unreleased]` never heard of: the `contracts.yml` gate step exits 1 with
+  `C03 … reco-jvv is not accounted for in ## [Unreleased]`, and the `ci.yml` beta step exits 0. The same
+  commit reddened both before this change. Transcript, the depth-1 table, and the honest limit — no GitHub
+  check-run list, because no pull request exists for this branch and `master` is still the frozen default
+  branch — are in [`.plan/evidence/reco-374v.3/one-red-check.md`](.plan/evidence/reco-374v.3/one-red-check.md).
+
+One copy stays on purpose: `tests/test_beta_loop_contract.py` calls the same `audit()` from the pytest step at
+the end of the same job. That is a mirror with contributor-shaped failure messages, not a second gate — one
+job is one check, and the thing deleted was the other *job*.
+
 ### The fixture cold index was over its budget because the complexity pass parsed one blob twice; it parses it once (`reco-xsog`)
 
 `reco-15wk` put `cold.index.ms.small` on the register of consciously-relaxed budgets when it re-blessed the

@@ -550,17 +550,20 @@ python3 tools/gen_changelog.py cut --version 0.1.0-alpha.2   # rename the headin
 python3 tools/gen_changelog.py self-test        # two consecutive cuts, in a throwaway repository
 ```
 
-`audit` reads commits, so it needs them: the CI job that runs it — and the pytest suite that mirrors it —
-checks out with `fetch-depth: 0`, the same sentence [the CI-gate page](ci-gate.md) makes about `fathom
-check`. At actions/checkout's default depth of one the audit cannot see the release it is measuring from,
-and says so as a `C06` naming `fetch-depth: 0` rather than dying inside `git log` (`reco-ghao`).
+`audit` reads commits, so it needs them: the one job that runs it — `docs + workspace contracts`, the
+contract suite's own job in `.github/workflows/contracts.yml` — checks out with `fetch-depth: 0`, the same
+sentence [the CI-gate page](ci-gate.md) makes about `fathom check`. At actions/checkout's default depth of one
+the audit cannot see the release it is measuring from, and says so as a `C06` naming `fetch-depth: 0` rather
+than dying inside `git log` (`reco-ghao`).
 
 **An entry lands in the commit that is the work, and `audit` is the command that says whether it did.** The
-audit counts commits, not diffs, so a branch that carries the code and postpones the prose is a red build
-wherever the gate runs — and the doorbell is the `docs + workspace contracts` job, not the release cut. That
-is what a leg's worth of CLI feature gates left behind (`reco-kltg`): the change was right, the note was never
-written, and `C03` named the commit on a job that had nothing else to complain about (`reco-0qq9`). So run
-`audit` in the branch, before the pull request: it needs nothing but the history, and a reminder you see
+audit counts commits, not diffs, so a branch that carries the code and postpones the prose is a red build on
+the one job that reports it — the `docs + workspace contracts` job, named in `AGENTS.md` and pinned there by
+`C01` since `e11.3` (`reco-374v.3`), which is where it answers in seconds instead of behind a workspace build
+that had nothing to do with the missing paragraph. It is not the release cut that finds this.
+That is what a leg's worth of CLI feature gates left behind (`reco-kltg`): the change was right, the note was
+never written, and `C03` named the commit on a job that had nothing else to complain about (`reco-0qq9`). So
+run `audit` in the branch, before the pull request: it needs nothing but the history, and a reminder you see
 locally is worth more than the same finding waiting on somebody else's runner.
 
 **Conventional commits, and the house style they have to share a file with.** The header grammar is the usual

@@ -202,8 +202,8 @@ branch, and it runs daily.
 
 | Workflow | When it runs | What it is the gate for |
 |---|---|---|
-| `.github/workflows/ci.yml` | every pull request, and every push to the default branch | `fmt`, `clippy`, `cargo-deny`, the workspace build and tests on `stable` and on the MSRV, the headless `minimal` binary, the changelog gate, `fathom check` over this repository, the `.deb`/`.rpm`/installer rehearsal, and the release skeleton. The list is written out in the file's header and enforced by rule `C01`. |
-| `.github/workflows/contracts.yml` | every pull request | the documents and the ADRs as executable checks, the boundary lint, the 2 226-test contract suite, and — since `e11.2` — the **cheap proofs about the expensive gates**: `perf_gate.py --self-test`, `gen_budgets.py check`, `gen_adr_tables.py check`, `gen_fuzz_corpus.py check`, none of which needs a build. |
+| `.github/workflows/ci.yml` | every pull request, and every push to the default branch | `fmt`, `clippy`, `cargo-deny`, the workspace build and tests on `stable` and on the MSRV, the headless `minimal` binary, `fathom check` over this repository, the `.deb`/`.rpm`/installer rehearsal, and the release skeleton. The list is written out in the file's header and enforced by rule `C01`. |
+| `.github/workflows/contracts.yml` | every pull request | the documents and the ADRs as executable checks, the boundary lint, the 2 226-test contract suite, the **changelog gate** — `gen_changelog.py audit`, `lint` and the draft smoke, and the only place a missing `[Unreleased]` entry is reported since `e11.3` — and, since `e11.2`, the **cheap proofs about the expensive gates**: `perf_gate.py --self-test`, `gen_budgets.py check`, `gen_adr_tables.py check`, `gen_fuzz_corpus.py check`, none of which needs a build. |
 | `.github/workflows/complexity.yml`, `docs.yml`, `privacy.yml`, `sbom.yml` | every pull request (the first also daily) | the complexity corpus, the generated docs pages and the Pages build, the no-egress claim, the SBOM. Zero reds in 56 measured runs and 0.3–1.3 minutes each: these are not the cost and cutting them would be theatre. |
 | `.github/workflows/fathom-check.yml` | called with `workflow_call` by a repository that installs the gate | the reusable gate itself — the recipe on [this page](../recipes/gate-a-pipeline.md). |
 | `.github/workflows/nightly.yml` | daily at 02:37 UTC, and on `workflow_dispatch` | **the long tail.** Spike `s1`, `s2` and `s6` report reproductions, the `e3.1` structure core/tail legs, the Guardrail 3 calibration `--check`, the out-of-tree plugin build, the `beta` toolchain lane, and the daily `workflow_dispatch` of the six-target release matrix in cargo-dist's dry-run mode. |
@@ -224,9 +224,19 @@ this page's, `fuzz`'s, `perf`'s, `complexity`'s and `dogfood`'s — is measuring
 to test a change to one of these files.
 
 **The split is enforced, not remembered.** `tools/workspace_model.py::CI_REQUIRED_STEPS` lists every required
-invocation with the cadence it owes, and rule `C01` fails a required step that disappears *or* that survives
-only at the cadence it does not belong to — so a per-PR gate cannot drift onto the nightly, and a nightly
-reproduction cannot be deleted, without a red build saying which one. ADR-002 §8.1 prints the same list.
+invocation with the cadence it owes and the one workflow allowed to run it, and rule `C01` fails a required
+step that disappears, *or* that survives only at the cadence it does not belong to, *or* that turns up in a
+second workflow when its row names a home — so a per-PR gate cannot drift onto the nightly, a nightly
+reproduction cannot be deleted, and one question cannot be asked twice, all without a red build saying which
+one. ADR-002 §8.1 prints the same list, home column included.
+
+The third clause is `e11.3`'s (`reco-374v.3`), and it was bought by the changelog audit, which was asking the
+same question in `ci.yml`'s beta-loop step and in `contracts.yml`'s contract suite: three consecutive commits
+with one missing release-note paragraph and two red jobs per commit — two tickets, two triage threads, no
+extra safety. The gate is not the problem; the second copy is. It lives in `contracts.yml` now, the job that
+compiles nothing and already fetches the history the audit reads, and a duplicate is a `C01` failure rather
+than a plausible-looking addition. A gate nobody can locate is a gate that gets deleted twice; a gate that
+reports from two jobs is a mistake that gets filed twice.
 
 ## What a job owes the runner
 
