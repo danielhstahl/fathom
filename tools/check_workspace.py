@@ -218,9 +218,10 @@ def render_teams() -> str:
 
 
 def render_ci() -> str:
-    rows = ["| Required step | Text that must appear in `.github/workflows/*.yml` |", "|---|---|"]
-    for name, needle in M.CI_REQUIRED_STEPS:
-        rows.append("| `%s` | `%s` |" % (name, needle))
+    rows = ["| Required step | Text that must appear in a step that runs (`run:` / `uses:` / `with:`) "
+            "| When it must run |", "|---|---|---|"]
+    for name, needle, cadence in M.CI_REQUIRED_STEPS:
+        rows.append("| `%s` | `%s` | %s |" % (name, needle, cadence))
     return "\n".join(rows)
 
 
@@ -416,25 +417,86 @@ def check_ticket_map() -> list[Problem]:
     return problems
 
 
+def workflow_executables(workflow) -> str:
+    """The text a runner actually executes in one workflow: every step's `uses:`, `run:` and `with:`.
+
+    This is what rule `C01` searches, and the exclusion of everything else is the point. The rule used to
+    be a substring test over the whole file, so a header comment naming `cargo deny check` satisfied the
+    rule whose entire purpose is refusing a missing gate while the real check was an action in a different
+    file — measured in `e11.1` §3, and the kind of lie a comment can tell forever. Job-level `uses:` is
+    included because a reusable-workflow call (`fathom-check.yml`) is an execution too.
+    """
+    parts: list[str] = []
+    for job in workflow.jobs.values():
+        if job.uses:
+            parts.append(job.uses)
+        for step in job.steps:
+            parts.extend([step.uses, step.run])
+            parts.extend(str(value) for value in step.with_.values())
+    return "\n".join(parts)
+
+
 def check_ci_wiring() -> list[Problem]:
     if not WORKFLOWS.exists():
         return [Problem("C01", ".github/workflows", "no CI workflow exists, so nothing can fail on an "
                         "uphill import; ADR-002 §8 is a hard gate, not a nicety")]
-    text = "\n".join(p.read_text() for p in sorted(WORKFLOWS.glob("*.yml")))
+    files = sorted(WORKFLOWS.glob("*.yml"))
+    text = "\n".join(p.read_text() for p in files)
     problems = []
-    for name, needle in M.CI_REQUIRED_STEPS:
-        if needle not in text:
-            problems.append(Problem("C01", name, "`%s` appears in no workflow: the boundary lint, "
-                                    "cargo-deny, fmt, clippy and the MSRV build must run on every PR"
-                                    % needle))
+
+    # `check_workflows.py` already owns a parser for the YAML these files use, and both tools are
+    # stdlib-only and in the same directory. If that parser cannot load, the wiring is *not* known-good:
+    # a rule that cannot run says so, because the failure this one exists to catch is a silent one.
+    try:
+        import check_workflows as WF
+        workflows = {p.name: WF.Workflow(p) for p in files}
+    except Exception as exc:                                    # pragma: no cover - import guard
+        return [Problem("C01", ".github/workflows", "cannot parse the workflows (%s), so no required step "
+                        "can be confirmed to run" % exc)]
+
+    executables = {name: workflow_executables(wf) for name, wf in workflows.items()}
+
+    for name, needle, cadence in M.CI_REQUIRED_STEPS:
+        if cadence not in M.CI_CADENCES:
+            problems.append(Problem("C01", name, "cadence %r is not one of %s — the model itself is "
+                                    "mis-wired" % (cadence, ", ".join(M.CI_CADENCES))))
+            continue
+        trigger = M.CI_CADENCE_TRIGGER[cadence]
+        homes = sorted(n for n, body in executables.items() if needle in body)
+        if not homes:
+            problems.append(Problem("C01", name, "`%s` appears in no workflow's steps (matched against "
+                                    "`run:`, `uses:` and `with:`, never against a comment): the boundary "
+                                    "lint, cargo-deny, fmt, clippy and the MSRV build must run on every PR "
+                                    "— ADR-002 §8.1" % needle))
+            continue
+        runs_at = [n for n in homes if trigger in workflows[n].triggers]
+        if not runs_at:
+            problems.append(Problem("C01", name, "`%s` runs only in %s, and none of those is triggered by "
+                                    "`%s`: a step required at the `%s` cadence cannot live only where it "
+                                    "does not run (ADR-002 §8.1; `e11.2` moved the long tail to the "
+                                    "schedule and this is the rule that keeps the rest of the list where "
+                                    "it belongs)"
+                                    % (needle, ", ".join(homes), trigger, cadence)))
+
     declared = re.findall(r'MSRV:\s*"([\d.]+)"', text)
     for value in declared:
         if value != M.MSRV:
             problems.append(Problem("T07", ".github/workflows", "workflow pins MSRV %s but ADR-002 §2 "
                                     "declares %s; there is one number, in the model" % (value, M.MSRV)))
-    if not declared:
-        problems.append(Problem("T07", ".github/workflows", "no `MSRV: ` value in any workflow, so the "
-                                "MSRV build is building whatever the runner feels like"))
+    # The floor has to be pinned where the floor is *built*: an `MSRV:` env line that only exists in a
+    # scheduled workflow leaves the pull-request leg building whatever the runner feels like. `MSRV:` is a
+    # workflow-level `env:` key, so it is read from the file rather than from the steps `C01` scans.
+    pr_pins = [name for name, wf in workflows.items()
+               if "pull_request" in wf.triggers and re.search(r'MSRV:\s*"[\d.]+"', wf.text)]
+    if not pr_pins:
+        problems.append(Problem("T07", ".github/workflows", "no `MSRV: ` value in any pull-request "
+                                "workflow, so the MSRV build is building whatever the runner feels like"))
+    # A matrix that spells the floor out again is a second copy of the number, and a second copy drifts.
+    for value in re.findall(r'toolchain:\s*"([\d.]+)"', text):
+        if value != M.MSRV:
+            problems.append(Problem("T07", ".github/workflows", "workflow matrix names toolchain %s, which "
+                                    "is not the MSRV %s in ADR-002 §2; state it once and let the model own "
+                                    "it" % (value, M.MSRV)))
     return problems
 
 

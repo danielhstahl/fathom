@@ -25,6 +25,14 @@ fails if the committed pages disagree with the program (`python3 tools/gen_docs.
 `.github/workflows/docs.yml`, built by `python3 tools/build_docs_site.py`, whose output directory is a build
 artefact and never committed ([publishing the docs as HTML](docs/reference/site.md)).
 
+The gates that decide whether a change merges are in `.github/workflows/`, and the split is written down: the
+pull-request set in the header of `.github/workflows/ci.yml`, the daily long tail — the spike and calibration
+report reproductions, the out-of-tree plugin, the `beta` toolchain lane, the six-target package matrix, the
+perf budgets and the fuzzing campaigns — in `.github/workflows/nightly.yml`, `perf.yml` and `fuzz.yml`. All of
+it, with when each one runs, is the fleet table in
+[the CI gate page](docs/concepts/ci-gate.md#the-fleet-what-runs-on-a-pull-request-and-what-runs-nightly)
+(`docs/concepts/ci-gate.md`).
+
 ## Quickstart
 
 Two ways in. **Install the alpha** if you want to use the thing; **build from source** if you want to

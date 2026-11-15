@@ -185,6 +185,49 @@ The same job is the second half of the decision, and this page used to leave it 
 advisory — flipping that one line to `deny` would have changed the log and not the build. A mode change and
 that tolerance are one edit, and `fathom.toml` says so where the mode is written.
 
+### The fleet: what runs on a pull request, and what runs nightly
+
+![ci](https://img.shields.io/github/actions/workflow/status/danielhstahl/fathom/ci.yml?branch=master&label=ci)
+![nightly](https://img.shields.io/github/actions/workflow/status/danielhstahl/fathom/nightly.yml?label=nightly)
+![perf](https://img.shields.io/github/actions/workflow/status/danielhstahl/fathom/perf.yml?label=perf)
+![fuzz](https://img.shields.io/github/actions/workflow/status/danielhstahl/fathom/fuzz.yml?label=fuzz)
+
+A gate nobody can locate is a gate that gets deleted twice, so the whole fleet is one table. The split is
+`e11.2`'s (`reco-374v.2`), and the measurement behind it is the thirty-day census in
+`.plan/ci-triage-reco-374v.md`: 3 367 runner-minutes, 83 red runs, and two findings that decided the shape —
+33 of those reds were a gate whose *own inputs* had moved rather than a commit being wrong, and 43 % of the
+minutes went to four hung jobs. What a pull request pays for is what a pull request can inform; a check that
+re-measures a committed report, a pinned corpus or the published crate is a daily fact about the default
+branch, and it runs daily.
+
+| Workflow | When it runs | What it is the gate for |
+|---|---|---|
+| `.github/workflows/ci.yml` | every pull request, and every push to the default branch | `fmt`, `clippy`, `cargo-deny`, the workspace build and tests on `stable` and on the MSRV, the headless `minimal` binary, the changelog gate, `fathom check` over this repository, the `.deb`/`.rpm`/installer rehearsal, and the release skeleton. The list is written out in the file's header and enforced by rule `C01`. |
+| `.github/workflows/contracts.yml` | every pull request | the documents and the ADRs as executable checks, the boundary lint, the 2 226-test contract suite, and — since `e11.2` — the **cheap proofs about the expensive gates**: `perf_gate.py --self-test`, `gen_budgets.py check`, `gen_adr_tables.py check`, `gen_fuzz_corpus.py check`, none of which needs a build. |
+| `.github/workflows/complexity.yml`, `docs.yml`, `privacy.yml`, `sbom.yml` | every pull request (the first also daily) | the complexity corpus, the generated docs pages and the Pages build, the no-egress claim, the SBOM. Zero reds in 56 measured runs and 0.3–1.3 minutes each: these are not the cost and cutting them would be theatre. |
+| `.github/workflows/fathom-check.yml` | called with `workflow_call` by a repository that installs the gate | the reusable gate itself — the recipe on [this page](../recipes/gate-a-pipeline.md). |
+| `.github/workflows/nightly.yml` | daily at 02:37 UTC, and on `workflow_dispatch` | **the long tail.** Spike `s1`, `s2` and `s6` report reproductions, the `e3.1` structure core/tail legs, the Guardrail 3 calibration `--check`, the out-of-tree plugin build, the `beta` toolchain lane, and the daily `workflow_dispatch` of the six-target release matrix in cargo-dist's dry-run mode. |
+| `.github/workflows/perf.yml` | daily at 04:11 UTC, and on `workflow_dispatch` | the ADR-004 §11 budgets measured against `benchmarks/baselines/perf-gate.json`, and the trend artefact. On a shared runner the gate was red on 17 of 19 pull requests and green twice, the second green two runs before going red again on a commit that only edited `ci.yml`; the measurement is a daily statement about the default branch now, and its no-build proofs stayed per-PR in `contracts.yml`. |
+| `.github/workflows/fuzz.yml` | daily at 03:17 UTC, and on `workflow_dispatch` | thirty minutes per target (`lockfile`, `hooks`, `paths`) on the nightly toolchain. The one-minute-per-target per-PR smoke is gone; the corpus proof and the `P03`/`P04` workflow rules are per-PR in `contracts.yml`. |
+| `.github/workflows/dogfood.yml` | weekly, on the default branch | the gate installed the way an outsider installs it, run over the corpus. |
+| `.github/workflows/release.yml` | on `workflow_dispatch`, on a tag, and daily by dispatch from `nightly.yml` | the six-target artifact matrix. `pr-run-mode = "skip"` since `e11.2`: it ran 18 times on pull requests in thirty days, went green zero times, and cost 451.5 runner-minutes doing it. |
+| `.github/workflows/publish.yml` | after a green `ci` on the default branch, and on `workflow_dispatch` | the version-bump-to-release cutter. It dispatches `release.yml`; it never publishes anything itself. |
+| `.github/workflows/self-review.yml` | on `release: published` | what a release publishes about itself. |
+
+Two things about the scheduled half are worth saying where a reader will meet them.
+
+**A schedule runs on the default branch, so the work has to reach it.** GitHub fires `schedule:` on the
+repository's default branch only, and the census found the default branch here had not moved in three weeks
+while the work was on a branch that is not on the remote at all. Until that is fixed, every daily job here —
+this page's, `fuzz`'s, `perf`'s, `complexity`'s and `dogfood`'s — is measuring a frozen commit.
+`workflow_dispatch` is the way to run them against the tree you are actually standing on, and it is the way
+to test a change to one of these files.
+
+**The split is enforced, not remembered.** `tools/workspace_model.py::CI_REQUIRED_STEPS` lists every required
+invocation with the cadence it owes, and rule `C01` fails a required step that disappears *or* that survives
+only at the cadence it does not belong to — so a per-PR gate cannot drift onto the nightly, and a nightly
+reproduction cannot be deleted, without a red build saying which one. ADR-002 §8.1 prints the same list.
+
 ## No silent passes
 
 Four invariants, each one tested, because "it did not fail" and "it did not look" look identical from the

@@ -664,15 +664,60 @@ INLINE_NAMESPACE_MODULES: dict[str, tuple[str, ...]] = {
 # §8 CI contract
 # ---------------------------------------------------------------------------
 
+#: The cadences a required step can be required *at*. A cadence is a property of the workflow the step
+#: lives in, read off its `on:` block: `pull_request` means GitHub runs it on every pull request,
+#: `scheduled` means the workflow has a `schedule:` trigger (the daily long tail: `nightly.yml`,
+#: `perf.yml`, `fuzz.yml`).
+CI_CADENCES: tuple[str, ...] = ("pull_request", "scheduled")
+
+#: The trigger each cadence needs, as read from a workflow's `on:` block.
+CI_CADENCE_TRIGGER: dict[str, str] = {"pull_request": "pull_request", "scheduled": "schedule"}
+
 #: Strings the boundary lint requires to find in `.github/workflows/*.yml` — this is what makes
 #: "the lint is in CI" a checked fact rather than an intention.
-CI_REQUIRED_STEPS: tuple[tuple[str, str], ...] = (
-    ("workspace-boundary-lint", "tools/check_workspace.py lint"),
-    ("workspace-boundary-check", "tools/check_workspace.py check"),
-    ("cargo-deny", "cargo deny check"),
-    ("cargo-msrv-build", "cargo +$MSRV"),
-    ("clippy-strict", "clippy::unwrap_used"),
-    ("fmt", "cargo fmt"),
+#:
+#: Three fields: the step, the text that has to appear, and the cadence it has to appear at.
+#:
+#: *The text is matched inside the steps that execute* — a step's `uses:`, `run:` or `with:` value — and
+#: not anywhere in the file. `e11.1` §3 measured why: the rule used to be a substring test over the
+#: concatenated YAML, so `cargo deny check` satisfied it from a header **comment** while the real
+#: advisories/licence check was `EmbarkStudios/cargo-deny-action` in another file. Prose satisfied the one
+#: rule whose whole job is refusing a missing gate, and the needle for cargo-deny below is the action that
+#: actually runs, not a sentence about it.
+#:
+#: *The cadence is the half `e11.2` (`reco-374v.2`) added.* That ticket moved the reproductions, the G3
+#: calibration, the package matrix, the plugin build, fuzz and perf off every pull request and onto the
+#: daily schedule. A list that only asked "does this string appear in some workflow?" would have been
+#: satisfied either way, which is the exact accident to prevent: a per-PR gate that quietly becomes a
+#: nightly gate is a gate that stops guarding merges without anybody deciding. So the list now says which
+#: cadence each step owes its answer to, and `C01` fails a step that survives only at the wrong one.
+CI_REQUIRED_STEPS: tuple[tuple[str, str, str], ...] = (
+    # The per-pull-request set. This is the list `.github/workflows/ci.yml`'s header writes down in prose
+    # and ADR-002 §8.1 prints as a table; the three must agree, and `C01` is what makes them.
+    ("workspace-boundary-lint", "tools/check_workspace.py lint", "pull_request"),
+    ("workspace-boundary-check", "tools/check_workspace.py check", "pull_request"),
+    ("cargo-deny", "EmbarkStudios/cargo-deny-action", "pull_request"),
+    ("cargo-msrv-build", "cargo +$MSRV", "pull_request"),
+    ("clippy-strict", "clippy::unwrap_used", "pull_request"),
+    ("fmt", "cargo fmt", "pull_request"),
+    ("headless-minimal-tests", "cargo test -p fathom-cli --no-default-features --features minimal",
+     "pull_request"),
+    ("changelog-audit", "tools/gen_changelog.py audit", "pull_request"),
+    ("cli-reference-page", "gen_docs.py check --page cli", "pull_request"),
+    # The scheduled set: the checks that reproduce a committed measurement, re-measure a calibration, build
+    # a second workspace, fuzz, measure, or build the whole package matrix. Daily, on the default branch,
+    # plus `workflow_dispatch` — see the header of `.github/workflows/nightly.yml` for the measurement
+    # behind each line.
+    ("spike-s1-report", "--example s1_spike", "scheduled"),
+    ("spike-s2-report", "--example s2_spike", "scheduled"),
+    ("spike-s6-report", "--example s6_spike", "scheduled"),
+    ("structure-core-report", "--example structure_harness", "scheduled"),
+    ("g3-calibration-check", "--example g3_calibration", "scheduled"),
+    ("out-of-tree-plugin", "plugins/acme-detectors/Cargo.toml", "scheduled"),
+    ("beta-channel-build", "rustup toolchain install beta", "scheduled"),
+    ("perf-measurement", "tools/perf_gate.py --check", "scheduled"),
+    ("fuzz-campaign", "cargo +nightly fuzz run", "scheduled"),
+    ("release-artifact-matrix", "workflow run release.yml", "scheduled"),
 )
 
 # ---------------------------------------------------------------------------

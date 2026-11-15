@@ -1,9 +1,31 @@
-# The perf budget gate (`e0.11`, `reco-pef`): ADR-004 §11's budgets, asserted on every PR.
+# The perf budget gate (`e0.11`, `reco-pef`): ADR-004 §11's budgets, asserted once a day on the default
+# branch — and, since `e11.2` (`reco-374v.2`), *not* on every PR.
 #
-# Why a workflow of its own rather than a step in `ci.yml`: this one needs a release binary *and* a
-# Python interpreter *and* a pty, it is the slowest thing in the build that is still a gate, and its
-# artefact (the trend) is the reason anybody reads the result. Keeping it separate also means a perf
-# failure says "perf" in the check name instead of hiding inside `build+test (linux · stable)`.
+# # Why the measurement left the pull request
+#
+# The gate is good. Its input is a wall clock, and a shared two-core runner is not a machine a wall clock
+# can be compared against across runs. `e11.1` measured it: **red on 17 of its 19 runs, green exactly
+# twice**, and 99.2 minutes of wall time on the PR path. The two greens are the tell — it was green at
+# `a3ac95637a` and `c8010923da` and red again at `59a0079c60`, a commit whose only changed file was
+# `.github/workflows/ci.yml`. Same binary, two runs apart, one verdict each way. The branch's own commit
+# titles are the record: "the search box's latency budget went red on a two-core runner", "the mac leg's
+# keystroke budget went red over 50 ms", "the perf job's +17.5 % on the TUI's RSS was the machine, not the
+# code" (ADR-004 §11.8 models exactly this with its runner calibration, which is the half that stays).
+#
+# So the measurement is a daily verdict about the default branch, which is what it can actually say, and the
+# part of it a pull request can be blamed for — the proofs, which need no build and run in a second — stayed
+# on the PR path by moving into `contracts.yml`:
+#
+#   * `python3 tools/perf_gate.py --self-test` — the gate can still fail (deliberate regressions, every
+#     rule); neutering it reddens the contracts job in seconds.
+#   * `python3 tools/gen_budgets.py check` and `python3 tools/gen_adr_tables.py check` — `budgets.json`,
+#     `BUDGETS.md` and the ADR table are one generator's output.
+#
+# # Why a workflow of its own rather than a step in `ci.yml`
+#
+# This one needs a release binary *and* a Python interpreter *and* a pty, it is the slowest thing that is
+# still a gate, and its artefact (the trend) is the reason anybody reads the result. Keeping it separate
+# also means a perf failure says "perf" in the check name instead of hiding inside a build leg.
 #
 # What the ADR says this job is for (ADR-004 §11.8, D14):
 #
@@ -14,16 +36,18 @@
 #   * scale time budgets by the runner factor the calibration bench measures, and never scale RSS;
 #   * publish the trend as a job artefact, so growth is visible before it is accidental.
 #
-# The first step is the gate's own self-test: it needs no build and proves the gate is capable of
-# failing. That is the acceptance criterion "a deliberate regression turns CI red", checked on every
-# runner in milliseconds rather than assumed from a one-off experiment nobody can re-run.
+# A red here is a trend to read, not a door that closed: the numbers are daily, so a breach names a range of
+# commits rather than one, and re-blessing a baseline is a reviewed diff. If a budget must be enforced per
+# commit, the thing to change is the baseline's tolerance or the runner class, not the cadence.
 
 name: perf
 
 on:
-  pull_request:
-  push:
-    branches: [master]
+  schedule:
+    # 04:11 UTC daily — after `nightly.yml`'s builds and clear of `fuzz.yml`'s 03:17, so the perf run gets
+    # a quieter machine than it did on a pull request.
+    - cron: "11 4 * * *"
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -51,7 +75,9 @@ jobs:
       - name: "the gate can fail: self-test (no build, no fixture)"
         # Synthetic numbers, every rule: budget breach, regression, improvement-past-the-baseline, RSS
         # never scaled, wall clocks scaled, and a throughput drop read as a regression. Exits non-zero
-        # if the gate has been neutered, which is the failure this step exists to catch.
+        # if the gate has been neutered, which is the failure this step exists to catch. It is also the
+        # first step of `contracts.yml`'s perf proof on the pull path, for the reason just given — a gate
+        # that cannot fail should not wait for a nightly to be found neutered.
         run: python3 tools/perf_gate.py --self-test
 
       - name: "budgets.json, BUDGETS.md and the ADR table agree (generated, not hand-copied)"

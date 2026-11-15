@@ -16,6 +16,67 @@ fails CI if the version in `Cargo.toml` has no dated section here, because the s
 body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
+### The long tail is off every pull request: the reproductions, the package matrix, fuzz and perf are a daily schedule now (`reco-374v.2`)
+
+`e11.1` measured the fleet; this is the cut it authorised, executed against its own cut list. The rule that
+makes a moved gate a deliberate act moved in the same commit as the gates, which is the only way that rule
+means anything.
+
+* **The cut.** Spike `s1`, `s2` and `s6` report reproductions, the `e3.1` structure core and tail legs, the
+  Guardrail 3 calibration `--check`, the out-of-tree plugin build and the `beta` toolchain lane moved from
+  `ci.yml` to `.github/workflows/nightly.yml` (daily, `workflow_dispatch`, on the default branch). The
+  perf *measurement* moved to `perf.yml`'s daily schedule and the fuzz smoke to `fuzz.yml`'s — each keeping
+  the half a pull request can be blamed for in `contracts.yml` as a one-second no-build proof
+  (`perf_gate.py --self-test`, `gen_budgets.py check`, `gen_adr_tables.py check`, `gen_fuzz_corpus.py check`).
+  The six-target package matrix left `pull_request` through the config that generates it
+  (`pr-run-mode = "skip"`; `release.yml` and the captured plan are `dist`'s output, not hand-edits), and runs
+  on dispatch, on a tag, and daily — `nightly.yml` dispatches it in cargo-dist's dry-run mode rather than
+  duplicating six runners here.
+* **What a pull request still pays for, written down** in `ci.yml`'s header: `fmt`, `clippy`, `cargo-deny`,
+  `build+test` on linux × {stable, MSRV}, the headless `minimal` build and test, the changelog gate, the
+  generated-page checks that keep a committed flag list from lying, `check-gate`, and the `.deb`/`.rpm`/installer
+  job that caught six real defects in five days (`reco-hzr`, `reco-ndf`) — which is why it stays.
+* **Measured, with `e11.1`'s own tooling** (`ci_census.py prwall`, same window, same payloads; one push is one
+  unit because its workflows run at once): median PR wall **13.42 → 11.92 min**, median runner-minutes per push
+  **126.88 → 110.28**, total measured runner-minutes **3 355.7 → 2 352.1 — a 30 % cut**. The wall median moves
+  less than the minutes do, and the honest reason is in the numbers: on a warm-cache push the critical path is
+  the workspace build, which is not on any cut list, while the tail ran beside it — where it *was* the critical
+  path the cut is worth minutes immediately (`4a14c7cfcc` 17.9 → 1.95 min, `54bf439f38` 14.18 → 1.25). The p95
+  is unchanged at 362 min because the p95 is the four hung jobs, and those are `timeout-minutes` — `e11.4`'s
+  one-line-per-job fix, worth more than this. Evidence:
+  [`.plan/ci-triage-reco-374v.2.md`](.plan/ci-triage-reco-374v.2.md) and
+  [`benchmarks/reports/ci-triage-reco-374v.2-prwall.json`](benchmarks/reports/ci-triage-reco-374v.2-prwall.json).
+* **`C01` got sharp before any needle moved**, because it is the rule every cut is argued against. Needles are
+  now matched against the steps that execute (`run:` / `uses:` / `with:`) and never against prose — `e11.1` §3
+  caught a header comment satisfying the cargo-deny needle while an action was the real gate — and every needle
+  carries a **cadence**: `pull_request` or `scheduled`, read off the workflow's own `on:` block. A required step
+  that survives only at the cadence it does not belong to is now a red build, which is precisely the drift this
+  ticket could have caused. The list went from six to nineteen entries; `T07` also refuses a matrix that spells
+  a second copy of the MSRV and wants the pin in a pull-request workflow. ADR-002 §8.1's table is generated from
+  the model, §8.3's stale three-OS sentence is gone with the test that asserted it, and
+  `tests/test_workspace_contract.py` breaks both halves of the new rule on purpose to prove they fire.
+* **Discoverable, because a gate nobody can locate gets deleted twice.** The whole fleet, cadence and all, is a
+  table with status badges in [docs/concepts/ci-gate.md](docs/concepts/ci-gate.md) and linked from the README;
+  [docs/concepts/release.md](docs/concepts/release.md) §1.2 and §3.1 say when the package matrix runs, and each
+  workflow's header says why its cadence is its cadence.
+* **Three contracts that asserted a frozen past now assert something they can win** — the other half of the
+  census's drift family (`e11.1` §2.2, §5.4: “a gate that cannot be turned green is not a gate”).
+  `test_ci_builds_on_all_three_operating_systems_and_both_channels` had been red at every commit since `e7.4`
+  deleted the macOS and Windows legs, and it now checks the `strategy:` block for the two channels the pull
+  request really runs plus the `beta` lane on the schedule (a comment is allowed to *name* a runner without
+  running on one, so it reads structure, not prose). `test_the_changelog_has_an_entry_for_this_ticket_and_for_the_five_it_found`
+  demanded five 2026-10-18 bead ids inside `[Unreleased]`, which rotates under them at every release cut; it
+  checks traceability in the file and leaves “is this commit accounted for“ to `gen_changelog.py audit`'s `C03`,
+  which is CI's own gate. And `test_the_ignore_matcher_agrees_with_git` was red *here* because this clone
+  carries `target` in `.git/info/exclude` — a gate about the repository reporting on the workstation — so git
+  is now asked in a throwaway repository holding this repository's `.gitignore`, which is also what `P01` is
+  making a claim about: a runner gets a checkout, not somebody's clone.
+* **Not done here, on purpose:** timeouts and concurrency groups (`e11.4`), the changelog-audit duplicate
+  (`e11.3`), a perf baseline that assumes a real machine rather than a shared two-core one, and the fact that
+  the default branch has not moved since 2026-10-26 — a `schedule:` fires there, so every daily job here
+  measures a frozen commit until the work reaches it. `workflow_dispatch` is the way to run them against the
+  tree you are standing on.
+
 ### Thirty days of CI, measured instead of remembered: what actually went red, and the cut list that follows (`reco-374v.1`)
 
 The claim that the actions "cover too much and are flaky" was a feeling, and `C01` is the rule that makes

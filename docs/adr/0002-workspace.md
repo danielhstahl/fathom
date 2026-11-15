@@ -670,14 +670,27 @@ are contracts, and an undocumented contract is a negotiation.
 ### 8.1 The gate list
 
 <!-- BEGIN GENERATED: ci -->
-| Required step | Text that must appear in `.github/workflows/*.yml` |
-|---|---|
-| `workspace-boundary-lint` | `tools/check_workspace.py lint` |
-| `workspace-boundary-check` | `tools/check_workspace.py check` |
-| `cargo-deny` | `cargo deny check` |
-| `cargo-msrv-build` | `cargo +$MSRV` |
-| `clippy-strict` | `clippy::unwrap_used` |
-| `fmt` | `cargo fmt` |
+| Required step | Text that must appear in a step that runs (`run:` / `uses:` / `with:`) | When it must run |
+|---|---|---|
+| `workspace-boundary-lint` | `tools/check_workspace.py lint` | pull_request |
+| `workspace-boundary-check` | `tools/check_workspace.py check` | pull_request |
+| `cargo-deny` | `EmbarkStudios/cargo-deny-action` | pull_request |
+| `cargo-msrv-build` | `cargo +$MSRV` | pull_request |
+| `clippy-strict` | `clippy::unwrap_used` | pull_request |
+| `fmt` | `cargo fmt` | pull_request |
+| `headless-minimal-tests` | `cargo test -p fathom-cli --no-default-features --features minimal` | pull_request |
+| `changelog-audit` | `tools/gen_changelog.py audit` | pull_request |
+| `cli-reference-page` | `gen_docs.py check --page cli` | pull_request |
+| `spike-s1-report` | `--example s1_spike` | scheduled |
+| `spike-s2-report` | `--example s2_spike` | scheduled |
+| `spike-s6-report` | `--example s6_spike` | scheduled |
+| `structure-core-report` | `--example structure_harness` | scheduled |
+| `g3-calibration-check` | `--example g3_calibration` | scheduled |
+| `out-of-tree-plugin` | `plugins/acme-detectors/Cargo.toml` | scheduled |
+| `beta-channel-build` | `rustup toolchain install beta` | scheduled |
+| `perf-measurement` | `tools/perf_gate.py --check` | scheduled |
+| `fuzz-campaign` | `cargo +nightly fuzz run` | scheduled |
+| `release-artifact-matrix` | `workflow run release.yml` | scheduled |
 <!-- END GENERATED: ci -->
 
 `tools/check_workspace.py check` fails (`C01`) if any of those strings disappears from
@@ -685,6 +698,28 @@ are contracts, and an undocumented contract is a negotiation.
 criterion is *"cargo-deny + module-boundary lint in CI"*, and a lint that exists but is never invoked is
 the most common way such a criterion is quietly missed. So the presence of the invocation is itself a
 test.
+
+Two sharpnesses the first version of the rule lacked, both of them measured (`e11.1` §3, then `e11.2`):
+
+* **the match is against the steps that execute** — a step's `run:`, `uses:` or `with:` value — and never
+  against prose. A substring test over the concatenated YAML was satisfied by the words `cargo deny check`
+  in a file's header comment while the real licence and advisory gate was
+  `EmbarkStudios/cargo-deny-action` in another file: the rule that exists to refuse a vanished gate could
+  be fed a sentence. Comments now satisfy nothing, which is also why the cargo-deny needle above names the
+  action.
+* **every step carries a cadence.** `pull_request` means the needle must live in a workflow with a
+  `pull_request` trigger; `scheduled` means it must live in one with a `schedule:` trigger. When `e11.2`
+  moved the long tail — the spike-report reproductions, the Guardrail 3 calibration `--check`, the
+  out-of-tree plugin, the six-target package matrix, the fuzzing campaigns, the perf measurement and the
+  `beta` build — into the daily schedule, a list that only asked "does this string appear somewhere" would
+  have been equally content with the new arrangement, and would have been just as content a month later
+  when a *per-PR* gate had drifted the same way by accident. The cadence column is the decision, written
+  down where a lint can enforce it: `C01` fails a required step that survives only at the cadence it does
+  not belong to.
+
+The prose list of what a pull request actually pays for is the header of `.github/workflows/ci.yml`; the
+scheduled half explains itself in `.github/workflows/nightly.yml`, `perf.yml` and `fuzz.yml`, and
+[the CI gate](../concepts/ci-gate.md) and [release](../concepts/release.md) pages say when each fleet runs.
 
 ### 8.2 The boundary lint, in three sentences
 
@@ -719,7 +754,14 @@ python3 tools/check_privacy.py check          # V01-V07: closure, consent table,
 python3 tools/gen_sbom.py check                # the committed SBOM and licence report match the lockfile
 ```
 
-Matrix: `linux` × `macOS` × `windows`, on `stable` and on the MSRV; `beta` allowed to fail. The
+Matrix: `linux` × {`stable`, the MSRV}, per `C01`'s needles. The macOS and Windows legs went in `e7.4`
+(`59a0079c60`): three operating systems bought three queues to answer a question the same source answers
+once, and the platform-specific build is where a platform-specific break can only be seen — the
+six-target release matrix, which builds all three on a tag, on `workflow_dispatch`, and once a day
+(`e11.2`: `pr-run-mode = "skip"`, `nightly.yml` dispatching `release.yml` in cargo-dist's dry-run mode).
+`beta` builds on the same daily schedule and is allowed to fail, so a regression is known before it ships
+rather than in the week after; a lane that cannot fail a run cannot gate a merge either, which is why it no
+longer buys a fourth toolchain build on every push. The
 headless `minimal` build is built and tested on every PR because `e6.6`'s CI-gate binary is what users
 put inside pipelines, and a TUI-only test suite would never notice that `fathom check` had grown a
 dependency on a terminal.

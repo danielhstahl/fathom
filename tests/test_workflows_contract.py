@@ -239,12 +239,21 @@ def test_the_ignore_file_is_read_the_way_git_reads_it():
     shutil.which("git") is None or not (ROOT / ".git").exists(),
     reason="asks git what it thinks, and git is not available here",
 )
-def test_the_ignore_matcher_agrees_with_git():
+def test_the_ignore_matcher_agrees_with_git(tmp_path):
     """Where git can be asked, it is the oracle.
 
     The gate does not shell out to git — that is the point of the matcher — but a matcher that drifts from
     the real thing is a rule nobody can predict, so this compares the two over a list that covers every
     shape `.gitignore` in this repository actually uses, plus the shapes it does not.
+
+    git is asked in a throwaway repository holding this repository's `.gitignore`, not in this working
+    copy. `e11.1` §2.2 counted this gate among the three reds the suite carried, and the cause was the
+    machine: a clone whose `.git/info/exclude` carries `target` makes `git check-ignore` say "ignored" for
+    `crates/fathom-cli/target/x` in a checkout no fresh clone would ignore, so a gate about the repository
+    was reporting on the workstation. Same `.gitignore`, same probes, none of the local configuration a
+    developer's clone accumulates — which is also what `P01` is making a claim about, since a runner gets a
+    checkout and not somebody's clone. `core.excludesFile` goes to `/dev/null` so a global ignores file
+    cannot leak in through the same door.
     """
     probes = [
         # Every probe is a path *under* an excluded directory, never one of the directories themselves:
@@ -262,12 +271,21 @@ def test_the_ignore_matcher_agrees_with_git():
         ".fathom/store.sqlite3", ".fathom/a/b/c.tmp", "tmp.txt", ".docs-site/index.html",
     ]
     rules = check_workflows.gitignore_rules(check_workflows.GITIGNORE)
+    oracle = tmp_path / "oracle"
+    oracle.mkdir()
+    (oracle / ".gitignore").write_text(check_workflows.GITIGNORE.read_text(encoding="utf-8"), encoding="utf-8")
+    subprocess.run(["git", "init", "-q", str(oracle)], check=True, capture_output=True)
+
+    def git_ignores(probe: str) -> bool:
+        return subprocess.run(
+            ["git", "-c", "core.excludesFile=/dev/null", "check-ignore", "-q", probe],
+            cwd=oracle, capture_output=True, check=False,
+        ).returncode == 0
+
     disagreements = []
     for probe in probes:
         mine = check_workflows.path_is_ignored(probe, rules)
-        theirs = subprocess.run(
-            ["git", "check-ignore", "-q", probe], cwd=ROOT, capture_output=True, check=False
-        ).returncode == 0
+        theirs = git_ignores(probe)
         if mine != theirs:
             disagreements.append(f"{probe}: matcher={mine} git={theirs}")
     assert not disagreements, "`.gitignore` read two ways: " + "; ".join(disagreements)

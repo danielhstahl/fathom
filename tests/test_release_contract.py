@@ -162,7 +162,11 @@ def test_the_target_set_covers_three_operating_systems():
     assert any("windows" in t for t in targets)
     assert "x86_64-apple-darwin" in targets, "Intel Macs exist; an x86_64-only Mac build is a broken install"
     assert "aarch64-apple-darwin" in targets
-    assert dist_config()["pr-run-mode"] == "upload", "e0.7's criterion: every PR builds every target"
+    # `e11.2` (`reco-374v.2`): the six-target matrix is off the pull request. It ran 18 times in thirty
+    # days, went green zero times, cost 451.5 runner-minutes and was cancelled by the next push ten times.
+    # It runs on dispatch, on a tag, and daily from `nightly.yml` (`tag=dry-run`); `R04` is the rule.
+    assert dist_config()["pr-run-mode"] == "skip", \
+        "the release matrix must not run per PR (e11.2): dispatch, tag and the nightly dry-run only"
 
 
 def test_both_installers_exist_and_the_plan_names_the_runners():

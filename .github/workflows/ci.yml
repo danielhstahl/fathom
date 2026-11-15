@@ -1,15 +1,58 @@
-# The ADR-002 §8.3 CI: build and test on linux, macOS and windows for every PR, with `fmt` and `clippy`
-# as hard failures, cargo-deny over the lockfile, and the MSRV floor built on the floor itself.
+# The pull-request gate: the ADR-002 §8.3 CI a contributor's change is judged by, and — since `e11.2`
+# (`reco-374v.2`) — deliberately only that. Everything in this file is either a hard style gate, a build of
+# the shipped product, or a check whose answer can only change because of the diff under review.
 #
-# Which ADR-002 rules this file is the enforcement of:
+# # The per-PR set, written down
+#
+# This is the list. `tools/workspace_model.py::CI_REQUIRED_STEPS` records it and rule `C01` fails a build
+# when a required invocation disappears *or loses its cadence* (a per-PR step that quietly becomes
+# nightly-only), so the comment, the lint and ADR-002 §8.1's generated table are one statement:
+#
+#   * `fmt` — `cargo fmt --all --check`, a hard failure (§8.3).
+#   * `clippy (strict)` — libs and bins with `unwrap_used`/`expect_used` denied, then `--all-targets`.
+#   * `cargo-deny` — licences, advisories, bans and sources over the lockfile (§8.4), with `deny.toml`'s own
+#     discipline (`D01`-`D08`) checked beside it.
+#   * `build+test` on `ubuntu-latest` × {`stable`, the MSRV}: the workspace with every feature, the MSRV
+#     floor built on the floor itself (§2), and the headless `minimal` binary built and tested (§6.1).
+#   * the changelog gate (`gen_changelog.py audit`, `lint`, `draft`) — `AGENTS.md`'s release-note rule.
+#   * the docs generation checks that keep a committed page from lying about a shipped flag
+#     (`gen_docs.py check --page cli`, `check_docs_site.py`, `gen_shell_artifacts.py check`).
+#   * `check-gate` — `fathom check` over this repository's own history (`e6.6`'s criterion), timed.
+#   * `packaging` — the `.deb` and the `.rpm` this runner can really build, installed the way a user installs
+#     them, and the curl installer rehearsed against a local mirror. Nine reds in five days, every one of
+#     them a real defect (`reco-hzr`, `reco-ndf`): the most useful job in the fleet.
+#   * `release-skeleton` — the generated release workflow is its config's output, and the release path's
+#     negative controls, none of which needs a toolchain to answer.
+#   * `contracts.yml`, `docs.yml`, `privacy.yml`, `sbom.yml` — the lints and generated-document checks that
+#     need no build: 0 reds in 56 runs, 0.3-1.3 minutes each (`e11.1` §1), which is why they stay.
+#
+# # What moved, and where it went
+#
+# `e11.1`'s census (`.plan/ci-triage-reco-374v.md`) measured 3 367 runner-minutes in thirty days and found
+# that the long tail — the checks that reproduce a committed report, re-measure a calibration, build a
+# second workspace, build the six-target package matrix, fuzz, or measure performance — was most of the
+# queue and none of the signal: 33 of the 83 reds were a gate whose own inputs moved, and the single
+# largest cost was four hung jobs. They run daily now, and on `workflow_dispatch`:
+#
+#   * spike `s1`, `s2`, `s6`, the `e3.1` structure core/tail legs, the G3 calibration `--check`, the
+#     out-of-tree plugin and `beta` → `.github/workflows/nightly.yml`;
+#   * the perf *measurement* → `perf.yml`'s schedule, with its no-build proofs (`perf_gate.py --self-test`,
+#     `gen_budgets.py check`, `gen_adr_tables.py check`) moved into `contracts.yml` so the pull request
+#     still learns in seconds if the gate has been neutered;
+#   * the fuzz smoke matrix → `fuzz.yml`'s nightly, with `gen_fuzz_corpus.py check` moved into
+#     `contracts.yml` for the same reason;
+#   * the six-target package matrix → off `pull_request` entirely (`pr-run-mode = "skip"`), dispatched
+#     daily by `nightly.yml` in cargo-dist's dry-run mode.
+#
+# # The rules this file enforces
 #
 #   * §8.1's required-step list is a *checked* list: `tools/check_workspace.py check` (rule `C01`) fails
 #     if any of these invocations disappears from `.github/workflows/*.yml`, and rule `T07` fails if the
 #     `MSRV` pin below disagrees with the number in `tools/workspace_model.py`. One number, in the model.
-#   * §2's supported window: `stable` and the MSRV both build; `beta` runs and is allowed to fail, so a
-#     regression is known before it ships rather than in the week after.
+#   * §2's supported window: `stable` and the MSRV both build here; `beta` builds on the schedule and is
+#     allowed to fail, so a regression is known before it ships rather than in the week after.
 #   * §6.1: a feature-less library build and the headless `minimal` binary are valid configurations, so
-#     they are built and tested, on three operating systems, rather than assumed.
+#     they are built and tested rather than assumed.
 #
 # `e0.7` (reco-e77) folded `contracts.yml`'s placeholder `rust` job into this matrix, as that file's own
 # comment allowed; no step was dropped — `contracts.yml` still runs the docs/workspace gates, this file
@@ -17,8 +60,10 @@
 #
 # One trap worth naming, because it silently neuters a matrix: `rust-toolchain.toml` pins the MSRV for
 # local builds (ADR-002 §2), and a toolchain file outranks `rustup default`. Every leg below therefore
-# states its toolchain through `RUSTUP_TOOLCHAIN`, which outranks the file. Without that, all three
-# operating systems would quietly test one compiler.
+# states its toolchain through `RUSTUP_TOOLCHAIN`, which outranks the file. Without that, every leg would
+# quietly test one compiler. `e7.4` cut the macOS and Windows legs (`59a0079c60`): three operating systems
+# cost three queues to answer a question the same source answers once, and the release matrix — which does
+# run on all three, on a tag and on the nightly dry-run — is where a platform-specific build is caught.
 
 name: ci
 
@@ -86,101 +131,6 @@ jobs:
         run: >-
           cargo clippy --workspace --all-targets --
           -D warnings -A clippy::print_stdout
-
-  structure-spike:
-    name: spike s1 reproduces (six grammars)
-    runs-on: ubuntu-latest
-    env:
-      RUSTUP_TOOLCHAIN: stable
-    steps:
-      - uses: actions/checkout@v4
-      - uses: Swatinem/rust-cache@v2
-      - name: "spike s1: the committed accuracy report reproduces"
-        # Spike `s1` (`reco-alj`) decided which tree-sitter grammars ship (ADR-002 §6.5) and what
-        # each language's fallback is (docs/concepts/structure-extraction.md). The report is a
-        # measurement, so CI re-measures it: relation counts and verdicts must match the committed
-        # report exactly. Throughput is excluded on purpose — a busy runner is not a regression —
-        # and the debug profile is allowed because `--check` never writes the file it audits.
-        run: >
-          cargo run --locked -p fathom-analyze --features langs-all --example s1_spike --
-          --repo . --report benchmarks/reports/s1-tree-sitter-accuracy.json --check
-      - name: "spike s1: the harness itself builds with every grammar"
-        # `sqlite-bundled` is here because `--all-targets` means *every* target, and `tests/graph_index.rs`
-        # drives the graph pass through `fathom_store`'s SQLite backend (`spine::Store`, `graph::…`,
-        # `Availability::probe`), which §6.2 gates behind a store feature. A build of the library alone has
-        # no opinion about it; a build of the test suite without one fails to compile, and the honest fix is
-        # to say which features the targets need rather than to drop the target from the claim.
-        run: cargo build --locked -p fathom-analyze --features langs-all,sqlite-bundled --all-targets
-
-  structure-core:
-    name: structural extractor core and tail reproduce (six languages)
-    runs-on: ubuntu-latest
-    env:
-      RUSTUP_TOOLCHAIN: stable
-    steps:
-      - uses: actions/checkout@v4
-      - uses: Swatinem/rust-cache@v2
-      - name: "e3.1: the committed accuracy-and-mechanism report reproduces"
-        # `e3.1` (`reco-zoz`) is the extractor spike `s1` decided the shape of. `--check` compares
-        # every relation count, the four mechanism checks (synthetic scopes, wildcard edges, the
-        # resolution bound including the forced-one-pass demonstration, and the fallback battery)
-        # and the verdicts, and never throughput: a busy runner is not a regression, and a debug
-        # build measures the borrow checker rather than the grammar.
-        # `e3.1b` (`reco-dlp.1`) added Go, Ruby and Java to the same harness and the same report, so
-        # `--check` now needs all six grammars: a report with six languages cannot be reproduced by a
-        # build that speaks three, and the answer to that is not to compare three of them.
-        run: >
-          cargo run --locked -p fathom-analyze --features langs-all
-          --example structure_harness -- --repo .
-          --report benchmarks/reports/e3-1-structure-core.json --check
-      - name: "e3.1: the byte contract and the corpus properties"
-        # The golden canonical-JSON file (AC 6) and the model properties. Gated behind the three
-        # grammars in `Cargo.toml`, so this step names them; a default `cargo test` does not pay for
-        # three C builds it was never asked to exercise (ADR-002 §6.5).
-        run: >
-          cargo test --locked -p fathom-analyze
-          --features lang-rust,lang-python,lang-typescript --test structure_core
-      - name: "e3.1b: the tail contract — go granularity, the ruby scan budget, the java same-package budget"
-        # The three things `e3.1b` added, each asserted against the report and against `thresholds.json`
-        # rather than against a paragraph: package-granular Go edges, the Ruby per-run scan budget and the
-        # Java same-package false-positive budget.
-        run: >
-          cargo test --locked -p fathom-analyze
-          --features langs-all --test structure_tail
-      - name: "e3.1b: the harness builds with every grammar, including the three corpora generators"
-        # Same `sqlite-bundled` as the `spike s1` leg above: `--all-targets` compiles `tests/graph_index.rs`,
-        # and that target needs a store backend to compile at all.
-        run: cargo build --locked -p fathom-analyze --features langs-all,sqlite-bundled --all-targets
-
-  g3-calibration:
-    name: Guardrail 3 calibration reproduces (three real repositories)
-    runs-on: ubuntu-latest
-    env:
-      RUSTUP_TOOLCHAIN: stable
-    steps:
-      - uses: actions/checkout@v4
-      - uses: Swatinem/rust-cache@v2
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - name: fetch the pinned corpus
-        # The clones are not checked in — they are other people's history, and the repository is not
-        # allowed to be the place their commits are warehoused. `corpus/*/pin.json` is the artifact and
-        # the fetcher re-materialises it, refusing a remote that returns anything but the pinned oid.
-        # `--check` separately fails loudly when a pin can no longer be fetched at all, which is the
-        # difference between a corpus that expired and a measurement that quietly stopped existing.
-        run: |
-          python3 tools/fetch_g3_corpus.py
-          python3 tools/fetch_g3_corpus.py --check
-      - name: "G3, the miss rate and every gate reproduce from the corpus and the shipped code"
-        # Spike `e4.9` (`reco-mkl.1`) is what `e4.3` and `m1` defer to for "the threshold agreed in
-        # `e0.12`" (ADR-001 §5.4), so the number is only a gate if CI can re-measure it: the score and
-        # the findings come from the shipped code, the dispositions from the hand-authored truth files,
-        # and `--check` refuses a byte of difference in the committed report or a gate that came out
-        # other than its declared `expected`. See docs/concepts/false-positive-calibration.md.
-        run: >
-          cargo run --locked -p fathom-analyze --features sqlite-bundled,langs-all --example g3_calibration --
-          --root . --check
 
   deny:
     name: cargo-deny (licences, advisories, bans, sources)
@@ -456,62 +406,6 @@ jobs:
         run: cargo test --locked -p fathom-cli --no-default-features --features sqlite-bundled,langs-all,deps-all --test check_verb
 
   # ---------------------------------------------------------------------------
-  # The extensibility criterion, as a build (`e6.7`, `reco-raw`): the example plugin is a *second
-  # workspace*, excluded from the root one, that depends on `fathom-analyze` the way a third party's
-  # manifest does. Nothing else in this file catches a plugin API that only works from inside the
-  # workspace it lives in — a `pub(crate)` that leaked, a type a plugin cannot name, a helper that is
-  # actually a private path dependency. Here it fails as a stranger fails.
-  #
-  # It is its own job rather than a step in the matrix because the criterion is about the *boundary*, and a
-  # boundary check that only runs after a nine-minute build is a boundary check that nobody reads.
-  # ---------------------------------------------------------------------------
-  out-of-tree-plugin:
-    name: out-of-tree-plugin (the example plugin builds and runs against the published crate)
-    needs: [fmt, clippy]
-    runs-on: ubuntu-latest
-    env:
-      RUSTUP_TOOLCHAIN: stable
-    steps:
-      - uses: actions/checkout@v4
-      - uses: Swatinem/rust-cache@v2
-        with:
-          # The root workspace, for the `fathom-cli` build at the end of the job.
-          workspaces: .
-      - uses: Swatinem/rust-cache@v2
-        with:
-          # And its own: its own lock file, its own target directory, its own cache. The point of the job is
-          # that this is not the root workspace.
-          workspaces: plugins/acme-detectors
-      - name: and lint it under its own lint set
-        # Its own `#![warn]` list, not the workspace's — see `plugins/acme-detectors/Cargo.toml`. A third
-        # party's code style is its own business; what the job checks is that it is not silently broken.
-        run: cargo clippy --manifest-path plugins/acme-detectors/Cargo.toml --all-targets -- -D warnings
-      - name: build and test the plugin in its own workspace
-        run: cargo test --manifest-path plugins/acme-detectors/Cargo.toml
-      - name: run it the way a reviewer does — a delta document in, findings out
-        run: |
-          cargo run --quiet --manifest-path plugins/acme-detectors/Cargo.toml -- --list
-          cargo run --quiet --manifest-path plugins/acme-detectors/Cargo.toml --             --delta plugins/acme-detectors/fixtures/miniature.json             --check plugins/acme-detectors/fixtures/miniature.expected.jsonl
-      - name: and refuse a document that is not a delta document, with a sentence that says so
-        # The pipeline's failure mode: `fathom analyze` printed an error instead of a document, and the
-        # plugin's stderr is the only thing the reviewer will read.
-        run: |
-          if echo 'not a delta document' | cargo run --quiet --manifest-path plugins/acme-detectors/Cargo.toml --; then
-            echo "the plugin accepted a document that is not one" >&2; exit 1
-          fi
-      - name: and against a delta document the freshly built binary printed, byte for byte
-        # The fixture above is a checked-in document, which is the right thing for a unit test and the wrong
-        # thing for the acceptance criterion. This is the criterion: the *product's own* published document,
-        # printed by the binary built from this checkout, put on the plugin's stdin in a shell pipeline,
-        # yields the findings the plugin is blessed to yield. `--demo` is the miniature repository embedded
-        # in the binary (`assets/fathom-demo.pack`), so this needs no network and no fixture repository.
-        run: |
-          cargo build --locked -p fathom-cli
-          cargo run --quiet -p fathom-cli -- --demo analyze ep-7090b6693637812919bd --json 2>/dev/null \
-            | cargo run --quiet --manifest-path plugins/acme-detectors/Cargo.toml -- --json \
-                --check plugins/acme-detectors/fixtures/miniature.expected.jsonl
-
-  # ---------------------------------------------------------------------------
   # The matrix: linux × {stable, MSRV}, per §8.3.
   # ---------------------------------------------------------------------------
   build-test:
@@ -555,22 +449,6 @@ jobs:
       - name: test (everything, all features)
         if: matrix.channel == 'stable'
         run: cargo test --workspace --all-features
-
-      # Spike `s2`'s report is the artifact ADR-003 §18 quotes and `tests/test_segmentation_spike_contract.py`
-      # asserts against; the harness scores its `shipped` strategy with `fathom_ingest::segment` itself and
-      # then refuses to write a report that differs from the corpus byte-for-byte. Same claim, here rather
-      # than in the contracts job, because it needs the workspace built.
-      - name: "spike s2: the committed segmentation report reproduces"
-        if: matrix.channel == 'stable'
-        run: cargo run -q -p fathom-analyze --example s2_spike -- --check
-
-      # Spike `s6` (`reco-f5a`) is the same claim about rewrites instead of boundaries: the committed report
-      # in `benchmarks/reports/s6-relink-accuracy.json` must be what the relink corpus and the shipped
-      # relink pass produce, and its gates must come out as declared. It needs the bundled SQLite because
-      # the harness pins its own copy of §6.2's ladder against `fathom_store`'s on every event.
-      - name: "spike s6: the committed relink report reproduces"
-        if: matrix.channel == 'stable'
-        run: cargo run -q -p fathom-analyze --features sqlite-bundled --example s6_spike -- --check
 
       # The headless CI-gate binary `e6.6` puts inside pipelines (§6.1), built on both channels: a
       # TUI-only test suite would never notice that `fathom check` had grown a dependency on a terminal.
@@ -695,21 +573,3 @@ jobs:
               echo "::error::default build links $banned — ADR-002 R6"; exit 1
             fi
           done
-
-  # §2's third channel: known before it ships, rather than in the week after.
-  beta:
-    name: beta (allowed to fail)
-    needs: [fmt, clippy]
-    continue-on-error: true
-    runs-on: ubuntu-latest
-    env:
-      RUSTUP_TOOLCHAIN: beta
-    steps:
-      - uses: actions/checkout@v4
-      - uses: Swatinem/rust-cache@v2
-      - name: install beta
-        run: rustup toolchain install beta --profile minimal
-      - name: build (everything, on beta)
-        run: cargo build --workspace --all-features
-      - name: test (everything, on beta)
-        run: cargo test --workspace --all-features

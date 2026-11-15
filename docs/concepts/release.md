@@ -106,7 +106,11 @@ writing down because it has been misunderstood twice: GitHub **workflow artefact
 uploads) require a signed-in human, and no `cargo-dist` setting changes that. The auth-free artefact is
 the GitHub **release** a tag produces — public assets, plus the installers and the formula. A per-PR link
 that needs no login needs an object store this project does not have, and that half of the sentence is
-still true: `pr-run-mode = "upload"` gives a reviewer a build of every target on every PR, behind a login.
+still true, and it is now the only half of the sentence that was ever true about a pull request: since
+`e11.2` (`reco-374v.2`) `pr-run-mode = "skip"`, so a pull request gets **no** per-target build at all. The
+matrix runs on `workflow_dispatch`, on a tag, and once a day against `master` — `nightly.yml` dispatches
+`release.yml` with `tag=dry-run` (§3.1); what a PR still proves about packaging is the `.deb`, the `.rpm`
+and the installer, which is `ci.yml`'s `packaging` job.
 
 The four `.deb` and `.rpm` rows are `[[dist.extra-artifacts]]`: `cargo-dist` has no deb or rpm target, so
 `packaging/linux-packages.sh` builds them (§1.3). They carry their own `.sha256` beside them, in the same
@@ -311,8 +315,9 @@ offline); the target set still covers three operating systems (`R02`) and the tw
 (`R14`); the msi can still be built, because its `upgrade-guid` survived (`R14`); the system packages
 are still named for the version being released (`R15`); the completions and man pages exist, are not
 empty, and are still `include`d (`R16`) — and are byte-identical to what the binary renders, checked by
-`tools/gen_shell_artifacts.py` in its own CI job; every PR builds every target and uploads it (`R04`,
-`pr-run-mode = "upload"`); one crate is releasable and it is the binary (`R06`); the documented install
+`tools/gen_shell_artifacts.py` in its own CI job; the six-target matrix is **not** built per PR, and `R04`
+is what keeps it off (`pr-run-mode = "skip"`, `e11.2`) — it is built on dispatch, on a tag, and daily from
+`nightly.yml`; one crate is releasable and it is the binary (`R06`); the documented install
 URL is the baked one (`R09`); the captured plan still describes the config (`R10`); a prerelease cannot
 publish itself as latest (`R12`); and the document still says which steps need a secret (§8, `R17`).
 

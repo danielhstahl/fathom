@@ -154,11 +154,19 @@ def load_dist_config(root: pathlib.Path) -> tuple[dict, list[Problem]]:
                                     "installers is missing %r, which is how %s gets installed"
                                     % (installer, "/".join(families))))
 
-    # R04 — e0.7's acceptance criterion: every PR builds and uploads the artefacts, so the release path
-    # is exercised on the way to a release rather than discovered at tag time.
-    if str(dist.get("pr-run-mode", "")) != "upload":
+    # R04 — the release matrix does not run on a pull request (`e11.2`, `reco-374v.2`). The sentence this
+    # rule used to enforce was `e0.7`'s criterion — "every PR builds and uploads the artefacts" — and it was
+    # measured over thirty days and found to be unaffordable and unfinishable: 18 runs, 0 green, 451.5
+    # runner-minutes, the Windows leg never building (`reco-hzr`) and ten runs cancelled by the next push.
+    # `dist plan` on a branch with no tag is a release act asked of a commit that cannot answer it. The
+    # matrix is still exercised — on `workflow_dispatch`, on a tag, and daily against `master`, which is
+    # `.github/workflows/nightly.yml` dispatching this workflow with `tag=dry-run` — and `R10` is what keeps
+    # the captured plan honest about which of those modes the config actually asks for.
+    if str(dist.get("pr-run-mode", "")) != "skip":
         problems.append(Problem("R04", "dist-workspace.toml",
-                                "pr-run-mode must be \"upload\" (e0.7: a per-PR build of every target)"))
+                                "pr-run-mode is %r: the six-target matrix must not run per PR (`e11.2`); "
+                                "it belongs on dispatch, on a tag, and on the nightly dry-run"
+                                % dist.get("pr-run-mode")))
     if dist.get("source-tarball") is not True:
         problems.append(Problem("R04", "dist-workspace.toml",
                                 "source-tarball must be on: it is the artefact a distro builds from"))
@@ -326,6 +334,25 @@ def load_readme(root: pathlib.Path, version: str, dist_config: dict) -> tuple[li
     return problems, notes
 
 
+#: An array of plain strings, as `json.dumps(indent=2)` writes one: the key, then every item on its own
+#: line. `dump_captured` folds these back onto the key's line.
+SCALAR_ARRAY = re.compile(r'"([a-z_]+)": \[\s+("(?:[^"\\]|\\.)*"(?:\s*,\s*"(?:[^"\\]|\\.)*")+)\s*\]', re.S)
+
+
+def dump_captured(projection: dict) -> str:
+    """`json.dumps(indent=2, sort_keys=True)`, with an array of plain strings kept on one line.
+
+    This capture is a reviewed file. Exploding `installers` and every target's `contents` across four lines
+    each turned a one-word config change into an 80-line diff, and an 80-line diff is where the one line that
+    matters — `pr_run_mode`, since `e11.2` — would have been hidden. Names of things read as names.
+    """
+    def fold(match: re.Match) -> str:
+        items = ", ".join(part.strip() for part in match.group(2).split(","))
+        return '"%s": [%s]' % (match.group(1), items)
+
+    return SCALAR_ARRAY.sub(fold, json.dumps(projection, indent=2, sort_keys=True)) + "\n"
+
+
 def load_captured(root: pathlib.Path) -> dict:
     path = root / "benchmarks" / "reports" / "dist-release-plan.json"
     if not path.exists():
@@ -370,6 +397,14 @@ def check_captured(root: pathlib.Path, version: str, dist_config: dict) -> tuple
     if got_installers != {str(i) for i in dist.get("installers", [])}:
         problems.append(Problem("R10", "dist-release-plan.json", "captured installers %s, config says %s"
                                 % (sorted(got_installers), sorted(str(i) for i in dist.get("installers", [])))))
+    # `e11.2` moved the matrix off the pull request, and the capture is the file the documents quote about
+    # when the matrix runs. A capture that still says `upload` is a document describing a pipeline that no
+    # longer exists, which is the exact failure this rule exists for.
+    if str(captured.get("pr_run_mode", "")) != str(dist.get("pr-run-mode", "")):
+        problems.append(Problem("R10", "dist-release-plan.json",
+                                "captured pr_run_mode %r, config says pr-run-mode=%r; re-capture with "
+                                "`dist plan --output-format=json | python3 tools/check_release.py capture"
+                                "`" % (captured.get("pr_run_mode"), dist.get("pr-run-mode"))))
 
     # R12 — an alpha must not become somebody's default install. A prerelease tag is what makes GitHub
     # mark the release a prerelease; `force_latest` or `publish_prereleases` would undo it silently, and
@@ -752,7 +787,7 @@ def command_capture(root: pathlib.Path, stream) -> int:
     }
     path = root / "benchmarks" / "reports" / "dist-release-plan.json"
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(projection, indent=2, sort_keys=True) + "\n")
+    path.write_text(dump_captured(projection))
     print("captured %s: %d targets, tag %s"
           % (path.relative_to(root).as_posix(), len(targets), projection["announcement"]["tag"]))
     return 0
@@ -973,13 +1008,15 @@ def command_self_test(root: pathlib.Path) -> int:
                                 ("x86_64-unknown-linux-gnu", "aarch64-unknown-linux-gnu",
                                  "x86_64-unknown-linux-musl")), "Linux gets no artefact"),
         ("R03", lambda r: _drop_installer(r, "powershell"), "Windows users are told to run a shell script"),
-        ("R04", lambda r: _set_dist(r, "pr-run-mode", "plan"), "PRs stop building the artefacts"),
+        ("R04", lambda r: _set_dist(r, "pr-run-mode", "upload"),
+         "the six-target matrix is back on every pull request"),
         ("R05", lambda r: _set_version(r, "9.9.9"), "the version moved and the path deps did not"),
         ("R06", lambda r: _dist_enable(r, "fathom-store"), "a second crate became releasable"),
         ("R07", lambda r: _pin_workflow(r, "0.1.0"), "the workflow installs a different dist than the config"),
         ("R08", lambda r: _undate_changelog(r), "the release section lost its date"),
         ("R09", lambda r: _stale_readme(r), "README still quotes an old tag"),
         ("R10", lambda r: _stale_capture(r), "the config moved and the captured plan did not"),
+        ("R10", lambda r: _stale_pr_mode(r), "the capture still says the whole matrix builds per PR"),
         ("R11", lambda r: _drop_block(r, "targets"), "the document dropped its generated block"),
         ("R12", lambda r: _force_latest(r), "a prerelease would publish itself as latest"),
         ("R14", lambda r: _drop_installer(r, "msi"), "Windows users are back to a zip and no installer"),
@@ -1142,6 +1179,19 @@ def _stale_capture(tree: pathlib.Path) -> None:
     path = tree / "benchmarks" / "reports" / "dist-release-plan.json"
     data = json.loads(path.read_text())
     data["targets"] = data["targets"][:-1]
+    path.write_text(json.dumps(data, indent=2, sort_keys=True))
+
+
+def _stale_pr_mode(tree: pathlib.Path) -> None:
+    """The capture still says the six-target matrix builds on every pull request (`e11.2`).
+
+    The capture is the file the release document quotes about what the pipeline does, so a capture left
+    behind by a config change is a document describing a pipeline that no longer exists — which is the
+    failure `R10` was written for, in the one field `e11.2` moved.
+    """
+    path = tree / "benchmarks" / "reports" / "dist-release-plan.json"
+    data = json.loads(path.read_text())
+    data["pr_run_mode"] = "upload"
     path.write_text(json.dumps(data, indent=2, sort_keys=True))
 
 

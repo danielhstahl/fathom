@@ -1,11 +1,17 @@
 # Contract gates: the documents and the architecture decisions, as executable checks.
 #
 # ADR-002 §8 says the boundary lint must be *in CI*, and `tools/check_workspace.py check` fails (rule
-# C01) if the required invocations disappear from `.github/workflows/*.yml` — that is what makes "the
-# lint is wired up" a checked fact. `e0.7` (reco-e77) took the option this file offered: the placeholder
-# `rust` job that used to live here is now `ci.yml`'s three-OS matrix, and no step was dropped — the
-# remaining half of §8.1's list (`cargo fmt`, the two `clippy` invocations, `cargo deny check`,
-# `cargo +$MSRV`) is in `ci.yml`, this half is here.
+# C01) if the required invocations disappear from `.github/workflows/*.yml` — or survive only at the wrong
+# cadence — that is what makes "the lint is wired up" a checked fact. `e0.7` (reco-e77) took the option
+# this file offered: the placeholder `rust` job that used to live here is now `ci.yml`'s matrix, and no step
+# was dropped — the Rust half of §8.1's list (`cargo fmt`, the two `clippy` invocations,
+# `EmbarkStudios/cargo-deny-action`, `cargo +$MSRV`) is in `ci.yml`, this half is here.
+#
+# Since `e11.2` (`reco-374v.2`) this file is also where the *cheap proofs about expensive gates* live. The
+# perf gate and the fuzzers moved to the daily schedule, and the part of them a pull request can be blamed
+# for — "the gate can still fail", "the budgets and the ADR table are one generator's output", "the seed
+# corpus is the generated one" — runs here in about a second, with no build in front of it. See the
+# `perf and fuzz proofs` step.
 #
 # The `contracts` job deliberately needs no Rust toolchain: a gate that only runs after a 4-minute
 # dependency build is a gate that people skip.
@@ -95,6 +101,25 @@ jobs:
         run: python3 tools/check_workspace.py check
       - name: module-boundary lint (fails a crate importing uphill)
         run: python3 tools/check_workspace.py lint
+      - name: "perf and fuzz proofs: the gate can still fail, and the corpus is the generated one"
+        # `e11.2` (`reco-374v.2`) moved the *measurements* off the pull request — the perf budget gate
+        # (`perf.yml`, red on 17 of 19 PR runs because a shared runner is not a stopwatch) and the fuzz smoke
+        # (403 runner-minutes a fortnight of nightly toolchains, `fuzz.yml`). What stays here is the part a
+        # pull request can be blamed for, which needs no build, no nightly toolchain and about a second:
+        #
+        #   * `perf_gate.py --self-test` — the perf gate's own negative controls. A gate that has been
+        #     neutered should be found out here, in the cheap job, and not on a nightly three days later.
+        #   * `gen_budgets.py check` / `gen_adr_tables.py check` — `budgets.json`, `BUDGETS.md` and the
+        #     ADR-004 table are one generator's output (ADR-002 §8.4: a generated file is checked by
+        #     regenerating it).
+        #   * `gen_fuzz_corpus.py check` — the committed seed corpus is what the generator writes, which is
+        #     the claim that makes the nightly run mean something. `check_workflows.py`'s `P03`/`P04` cover
+        #     the other half of "the fuzzing setup is real" in the same job.
+        run: |
+          python3 tools/perf_gate.py --self-test
+          python3 tools/gen_budgets.py check
+          python3 tools/gen_adr_tables.py check
+          python3 tools/gen_fuzz_corpus.py check
       - name: "e2.11 delta model: the version policy refuses a breaking change with no version bump"
         # `reco-tt4`'s acceptance criterion 4, as a step. `schemas/episode-delta.schema.json` is the one
         # document the TUI, the CLI, the export and an MCP tool result all read, so "additive keeps the

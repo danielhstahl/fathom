@@ -60,6 +60,7 @@ PLUGIN_CRATE = ROOT / "plugins/acme-detectors"
 PLUGIN_MANIFEST = PLUGIN_CRATE / "Cargo.toml"
 PLUGIN_README = ROOT / "plugins/README.md"
 CI = ROOT / ".github/workflows/ci.yml"
+NIGHTLY = ROOT / ".github/workflows/nightly.yml"
 
 
 def _text(path: pathlib.Path) -> str:
@@ -305,9 +306,13 @@ def test_the_example_plugin_is_a_separate_workspace() -> None:
 
 
 def test_ci_builds_and_runs_the_example_plugin() -> None:
-    ci = _text(CI)
+    # `e11.2` (`reco-374v.2`) moved this job to the daily schedule: the plugin resolves `fathom-analyze`
+    # the way a stranger's manifest does, so what it proves changes when the *published crate* changes,
+    # which is a thing that happens on a schedule and not a thing a diff to the TUI does. The rule that
+    # refuses this job disappearing is `C01`'s `out-of-tree-plugin` needle.
+    ci = _text(NIGHTLY)
     assert "plugins/acme-detectors" in ci, "the example plugin is not built in CI"
-    assert "out-of-tree-plugin:" in ci, "ci.yml has no `out-of-tree-plugin` job"
+    assert "out-of-tree-plugin:" in ci, "nightly.yml has no `out-of-tree-plugin` job"
     body = re.split(r"\n  [a-z][a-z-]*:\n", ci.split("out-of-tree-plugin:", 1)[1], maxsplit=1)[0]
     assert "cargo test" in body and "cargo run" in body, (
         "the criterion is that it builds *and runs*: a build-only job proves the types, not the pipeline"

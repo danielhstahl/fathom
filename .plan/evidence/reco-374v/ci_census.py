@@ -899,6 +899,256 @@ def splice(census: pathlib.Path, doc: pathlib.Path) -> None:
     log(f"spliced generated blocks into {doc}")
 
 
+# --------------------------------------------------------------------------- before/after: PR wall time
+
+#: What `e11.2` (`reco-374v.2`) took off the pull request, as data rather than as a story. `prwall`
+#: verifies every name here against both trees — the workflows at a git ref and the workflows in the
+#: working tree — and refuses to report a number if the list has rotted, because a measurement of a cut
+#: that was not made is worse than no measurement.
+#:
+#   * `jobs`  — a job the workflow still has, but no longer on a pull request.
+#   * `steps` — a step inside a job that survives on the pull request.
+#: A workflow file that stopped being `pull_request`-triggered at all is named in `PR_SET_LEFT` instead,
+#: and its runs leave the per-push maximum entirely.
+PR_CUT: dict[str, dict[str, list[str]]] = {
+    "ci.yml": {
+        "jobs": [
+            "spike s1 reproduces (six grammars)",
+            "structural extractor core and tail reproduce (six languages)",
+            "Guardrail 3 calibration reproduces (three real repositories)",
+            "out-of-tree-plugin (the example plugin builds and runs against the published crate)",
+            "beta (allowed to fail)",
+        ],
+        "steps": [
+            "spike s2: the committed segmentation report reproduces",
+            "spike s6: the committed relink report reproduces",
+        ],
+    },
+}
+
+#: Workflow files that no longer run on a pull request (`perf.yml` and `fuzz.yml` keep their jobs and
+#: gained a schedule; `release.yml` stopped being generated with a `pull_request` trigger at all).
+PR_SET_LEFT = ["perf.yml", "fuzz.yml", "release.yml"]
+
+
+def _workflow_names(text: str) -> tuple[set, set]:
+    """The `name:` values and step `name:` values written in one workflow file, as raw text.
+
+    Text, not parsed YAML: this is a presence check on both trees, and the two spellings of a name —
+    `name: "x"` and `- name: x` — are exactly what a substring test distinguishes correctly here.
+    """
+    return set(re.findall(r"^\s{4}name:\s*\"?(.*?)\"?\s*$", text, re.M)), \
+        set(re.findall(r"^\s{6}-\s+name:\s*\"?(.*?)\"?\s*$", text, re.M))
+
+
+def _triggered_by_pull_request(text: str) -> bool:
+    """Does this workflow file list `pull_request` as a trigger? A text scan of the `on:` block, which is
+    all this check needs and does not need a YAML parser's opinion about `on:` being the boolean `true`.
+    """
+    block = re.search(r"^on:\n((?:^\s.*\n?)*)", text, re.M)
+    return bool(block and re.search(r"^\s{2}pull_request:\s*$|^\s{2}pull_request:\s*\S", block.group(1), re.M))
+
+
+def verify_pr_cut(before: dict[str, str], after: dict[str, str]) -> list[str]:
+    """Every entry of `PR_CUT`/`PR_SET_LEFT` really moved between these two trees, or the number is a lie."""
+    bad: list[str] = []
+    for wf, cut in PR_CUT.items():
+        if wf not in before or wf not in after:
+            bad.append(f"{wf}: not present in both trees")
+            continue
+        jobs_b, steps_b = _workflow_names(before[wf])
+        jobs_a, steps_a = _workflow_names(after[wf])
+        for name in cut["jobs"]:
+            if name not in jobs_b:
+                bad.append(f"{wf}: moved job {name!r} was not in the before tree")
+            if name in jobs_a:
+                bad.append(f"{wf}: {name!r} is still a job of the per-PR workflow")
+        for name in cut["steps"]:
+            if name not in steps_b:
+                bad.append(f"{wf}: moved step {name!r} was not in the before tree")
+            if name in steps_a:
+                bad.append(f"{wf}: step {name!r} still runs in the per-PR workflow")
+    for wf in PR_SET_LEFT:
+        if wf not in before or wf not in after:
+            bad.append(f"{wf}: not present in both trees")
+            continue
+        if not _triggered_by_pull_request(before[wf]):
+            bad.append(f"{wf}: was not pull_request-triggered before, so nothing left the PR set")
+        if _triggered_by_pull_request(after[wf]):
+            bad.append(f"{wf}: is still pull_request-triggered")
+    return bad
+
+
+def _push_groups(runs, payloads):
+    """Group the window's pull-request-shaped runs by the push that caused them.
+
+    One developer action — `git push` onto a branch with a pull request open — starts one run of every
+    workflow that listens for `pull_request`, all at once. The thing the developer waits for is the
+    slowest of them, so a push is the unit of a wall-time claim, and the median over pushes is what
+    `e11.2`'s acceptance criterion asks for.
+    """
+    groups: dict[tuple[str, str], list] = collections.defaultdict(list)
+    for r in runs:
+        if r["event"] not in ("pull_request", "push"):
+            continue
+        w = r["path"].replace(".github/workflows/", "")
+        groups[(r["event"], r["head_sha"])].append((w, r))
+    return groups
+
+
+def after_run_minutes(run, payload, wf: str) -> dict:
+    """What one run of one workflow would have cost with the moved work taken out, measured.
+
+    The workflow ends when its last *kept* job ends: the census's own definition of run wall is
+    `run_started_at → updated_at`, so the after-spine here is `run_started_at → last kept job's
+    completed_at`, read off the same payload the census measured. Nothing is modelled or averaged: the
+    jobs that stay are the jobs that ran, with the durations they had. A step that moved out of a job
+    that survives is subtracted from that job's span, because it sat inside it.
+
+    A run with no cached payload (a green run the unauthenticated API never gave the job list for) is
+    reported with `payload: false` and keeps its measured wall, except for the workflows in
+    `PR_SET_LEFT`, which leave the per-push maximum whatever their internals are.
+    """
+    cut = PR_CUT.get(wf, {"jobs": [], "steps": []})
+    wall = mins(run.get("run_started_at"), run.get("updated_at"))
+    if payload is None:
+        return {"wall_before": wall, "wall_after": wall, "payload": False,
+                "runner_before": None, "runner_after": None}
+    start = ts(run.get("run_started_at"))
+    kept_end, runner_before, runner_after, moved = None, 0.0, 0.0, []
+    for j in payload["jobs"]:
+        d = mins(j.get("started_at"), j.get("completed_at")) or 0.0
+        runner_before += d
+        if j["name"] in cut["jobs"]:
+            moved.append(j["name"])
+            continue
+        if j.get("completed_at"):
+            end = (ts(j["completed_at"]) - start).total_seconds() / 60.0
+            for step in j.get("steps", []):
+                if step.get("name") in cut["steps"]:
+                    end -= mins(step.get("started_at"), step.get("completed_at")) or 0.0
+                    moved.append(step["name"])
+            kept_end = end if kept_end is None else max(kept_end, end)
+        runner_after += d
+        for step in j.get("steps", []):
+            if step.get("name") in cut["steps"]:
+                runner_after -= mins(step.get("started_at"), step.get("completed_at")) or 0.0
+    after = wall if kept_end is None else max(0.0, round(kept_end, 3))
+    return {"wall_before": wall, "wall_after": after, "payload": True, "moved": sorted(set(moved)),
+            "runner_before": r3(runner_before), "runner_after": r3(max(0.0, runner_after))}
+
+
+def cmd_prwall(cache: pathlib.Path, census: pathlib.Path, before_ref: str, after_dir: pathlib.Path,
+               out: pathlib.Path) -> None:
+    """Median pull-request wall time, measured before and after the `e11.2` cut, from one window.
+
+    Both numbers come from the same payloads: each push's runs, each run's jobs, each job's clock. The
+    before is the tree at `--before-ref`; the after is the same window's runs with the moved work taken
+    out of them — the jobs that no longer run, and the steps that no longer sit inside a job that does.
+    """
+    runs, payloads = build_cache_records(cache)
+    c = json.loads(census.read_text()) if census and census.exists() else {}
+    before, after = {}, {}
+    for wf in sorted(set(r["path"].replace(".github/workflows/", "") for r in runs)):
+        r = subprocess.run(["git", "show", f"{before_ref}:.github/workflows/{wf}"],
+                           capture_output=True, text=True)
+        if r.returncode == 0:
+            before[wf] = r.stdout
+        after_path = after_dir / wf
+        after[wf] = after_path.read_text() if after_path.exists() else ""
+    bad = verify_pr_cut(before, after)
+    if bad:
+        for b in bad:
+            log("CUT CHECK FAILED: " + b)
+        raise SystemExit("the cut list in this script does not match the two trees; fix the list")
+
+    groups = _push_groups(runs, payloads)
+    pushes = []
+    for (event, sha), rows in sorted(groups.items(), key=lambda kv: min(x[1]["created_at"] for x in kv[1])):
+        per_wf = {}
+        for w, r in rows:
+            m = after_run_minutes(r, payloads.get(str(r["id"])), w)
+            m["workflow"] = w
+            m["left_pr_set"] = w in PR_SET_LEFT
+            m["run_number"] = r["run_number"]
+            per_wf[w] = m
+        stay = [m for m in per_wf.values() if not m["left_pr_set"]]
+        if not stay:
+            continue
+        before_wall = max(m["wall_before"] for m in per_wf.values())
+        after_wall = max(m["wall_after"] for m in stay)
+        pushes.append({
+            "event": event, "sha": sha[:10],
+            "created": min(r["created_at"] for _w, r in rows),
+            "workflows": sorted(per_wf),
+            "left_pr_set": sorted(m["workflow"] for m in per_wf.values() if m["left_pr_set"]),
+            "wall_before": r3(before_wall), "wall_after": r3(after_wall),
+            "runner_before": r3(sum(m["runner_before"] or 0 for m in per_wf.values() if m["payload"])),
+            "runner_after": r3(sum(m["runner_after"] or 0 for m in per_wf.values() if m["payload"])),
+            "unpriced": sorted(m["workflow"] for m in per_wf.values() if not m["payload"]),
+        })
+
+    wb = [p["wall_before"] for p in pushes if p["wall_before"] is not None]
+    wa = [p["wall_after"] for p in pushes]
+    rb = [p["runner_before"] for p in pushes if p["runner_before"]]
+    ra = [p["runner_after"] for p in pushes if p["runner_after"]]
+    # The two pushes that hung for six hours (the census's four hung `ci.yml` jobs) are the p95 and the
+    # mean of `before`, and they survive every cut in this ticket because the hung job is the workspace
+    # build, which stays on the pull request by design. They are `e11.4`'s to fix (`timeout-minutes`), so
+    # the medians are printed twice: over everything, and with the hangs left out so a reader can see what
+    # an ordinary push gained.
+    TIMEHUNG = 300.0
+    calm = [p for p in pushes if (p["wall_before"] or 0) < TIMEHUNG]
+    cb, ca = [p["wall_before"] for p in calm], [p["wall_after"] for p in calm]
+    result = {
+        "schema": "fathom.ci-prwall.v1", "spike": "reco-374v.2",
+        "generated": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"),
+        "window": c.get("window", {}), "before_ref": before_ref,
+        "method": [
+            "one push is the unit: every workflow it starts runs at once, so the wall a developer waits "
+            "for is the slowest run of the push, and the acceptance figure is the median over pushes",
+            "before is the workflow tree at `before_ref`, measured; after is the same runs with the moved "
+            "work removed from them — a workflow that left the pull-request set drops out of the maximum, "
+            "a job that moved ends the run where the last kept job ended (the job's own measured clock), "
+            "and a step that moved out of a surviving job is subtracted from that job's span",
+            "green runs whose job payload the unauthenticated API did not give are counted at their "
+            "measured wall and listed per push under `unpriced`; they are the cheap workflows, and none "
+            "of them gained work",
+            "wall time is `run_started_at` to the last kept job's `completed_at`, so time spent queued for "
+            "a runner is included on both sides, exactly as `e11.1` measured it",
+        ],
+        "cut": {"moved": PR_CUT, "left_the_pr_set": PR_SET_LEFT},
+        "summary": {
+            "pushes": len(pushes),
+            "wall_min_median_before": r3(pct(wb, 0.5)), "wall_min_median_after": r3(pct(wa, 0.5)),
+            "wall_min_median_before_without_timeouts": r3(pct(cb, 0.5)),
+            "wall_min_median_after_without_timeouts": r3(pct(ca, 0.5)),
+            "pushes_without_timeouts": len(calm),
+            "wall_min_mean_before": r3(sum(wb) / len(wb) if wb else None),
+            "wall_min_mean_after": r3(sum(wa) / len(wa) if wa else None),
+            "wall_min_p95_before": r3(pct(wb, 0.95)), "wall_min_p95_after": r3(pct(wa, 0.95)),
+            "wall_min_total_before": r3(sum(wb)), "wall_min_total_after": r3(sum(wa)),
+            "runner_min_median_before": r3(pct(rb, 0.5)), "runner_min_median_after": r3(pct(ra, 0.5)),
+            "runner_min_total_before": r3(sum(rb)), "runner_min_total_after": r3(sum(ra)),
+        },
+        "pushes": pushes,
+    }
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(result, indent=1) + "\n")
+    log(f"wrote {out} ({out.stat().st_size} bytes)")
+    s = result["summary"]
+    print(f"pushes measured: {s['pushes']} (window {result['window'].get('start')} → "
+          f"{result['window'].get('end')}, before = {before_ref})")
+    print(f"  median PR wall   {s['wall_min_median_before']} → {s['wall_min_median_after']} min")
+    print(f"  median, {s['pushes_without_timeouts']} pushes without the six-hour hangs: "
+          f"{s['wall_min_median_before_without_timeouts']} → "
+          f"{s['wall_min_median_after_without_timeouts']} min")
+    print(f"  mean   PR wall   {s['wall_min_mean_before']} → {s['wall_min_mean_after']} min")
+    print(f"  p95    PR wall   {s['wall_min_p95_before']} → {s['wall_min_p95_after']} min")
+    print(f"  median runner-min per push  {s['runner_min_median_before']} → {s['runner_min_median_after']}")
+    print(f"  total runner-min            {s['runner_min_total_before']} → {s['runner_min_total_after']}")
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -923,6 +1173,12 @@ def main() -> int:
     sp = sub.add_parser("splice", help="write the generated tables into the recommendation document")
     sp.add_argument("--census", required=True)
     sp.add_argument("--doc", required=True)
+    pw = sub.add_parser("prwall", help="median pull-request wall time, before and after the e11.2 cut")
+    pw.add_argument("--cache", required=True)
+    pw.add_argument("--census", default=None, help="the census JSON, to carry its window forward")
+    pw.add_argument("--before-ref", default="HEAD", help="the ref whose workflow tree is `before`")
+    pw.add_argument("--workflows", default=".github/workflows", help="the `after` workflow directory")
+    pw.add_argument("--out", required=True)
     a = ap.parse_args()
     if a.cmd == "fetch":
         cmd_fetch(pathlib.Path(a.cache), a.since, a.all_jobs)
@@ -943,6 +1199,9 @@ def main() -> int:
         full_tables(pathlib.Path(a.census))
     elif a.cmd == "splice":
         splice(pathlib.Path(a.census), pathlib.Path(a.doc))
+    elif a.cmd == "prwall":
+        cmd_prwall(pathlib.Path(a.cache), pathlib.Path(a.census) if a.census else None, a.before_ref,
+                   pathlib.Path(a.workflows), pathlib.Path(a.out))
     return 0
 
 

@@ -1,13 +1,23 @@
 # Fuzzing: the readers that take repository content, driven with bytes nobody wrote (`e7.8`, `reco-41a`).
 #
-# Two cadences, because one cadence is always the wrong one:
+# One cadence, since `e11.2` (`reco-374v.2`): **nightly, and on `workflow_dispatch`** — thirty minutes per
+# target, on a matrix so the wall clock stays inside a nightly's budget. That is the "30-minute smoke runs
+# in CI" the ticket asked for, and the run that finds the shape no seed contained.
 #
-# * **pull_request — a smoke.** One minute per target on a seed corpus of ~50 shapes. Long enough to catch
-#   "this change made a parser crash on a shape we already had", short enough that nobody learns to ignore
-#   the job. This is the half of the acceptance criterion that runs on the pull.
-# * **nightly — the 30-minute run.** Thirty minutes per target, on a matrix so the wall clock stays inside
-#   a nightly's budget. This is the "30-minute smoke runs in CI" the ticket asks for, and the run that finds
-#   the shape no seed contained.
+# The per-PR smoke (one minute per target, three targets) is gone, and the measurement is why
+# (`e11.1`, `.plan/ci-triage-reco-374v.md`): 403 measured runner-minutes over 19 runs with a
+# `cargo install cargo-fuzz` and a nightly toolchain in every one of them and no cache at all, and its
+# failures were the two things a pull request cannot act on — nine job-legs that died on a
+# `fuzz/Cargo.toml` with no `cargo-fuzz = true` marker (`reco-com`, `reco-yuk`), and three
+# `One minute per target` legs on the lockfile target that failed on three consecutive runs and then never
+# again, with nothing about fuzzing in between. It is the only job in the fleet whose failure the census
+# could not explain from the tree, which is the definition of a gate people learn to ignore.
+#
+# What a pull request still has to prove about fuzzing is in `contracts.yml`, in seconds and with no nightly
+# toolchain to wait for: `python3 tools/gen_fuzz_corpus.py check` (the committed corpus is the generated
+# one), and `check_workflows.py`'s `P03`/`P04`, which refuse a fuzz step run from inside `fuzz/` and a fuzz
+# manifest cargo-fuzz will not open. Those are the checks that catch a *neutered* fuzzing setup; the
+# minutes are here.
 #
 # The corpus grows in only one direction: a crash artefact becomes a regression test in
 # `crates/fathom-analyze/tests/hardening.rs` (or `…/fathom-ingest/tests/hooks_hardening.rs`) and, if it is a
@@ -42,12 +52,6 @@
 name: fuzz
 
 on:
-  pull_request:
-    paths:
-      - "crates/fathom-analyze/**"
-      - "crates/fathom-ingest/**"
-      - "fuzz/**"
-      - ".github/workflows/fuzz.yml"
   schedule:
     # 03:17 UTC, every day. A prime-ish minute so the run does not collide with the hour's traffic.
     - cron: "17 3 * * *"
@@ -65,49 +69,8 @@ env:
   RUST_BACKTRACE: 1
 
 jobs:
-  smoke:
-    name: smoke (${{ matrix.target }})
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    timeout-minutes: 25
-    strategy:
-      fail-fast: false
-      matrix:
-        target: [lockfile, hooks, paths]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: rui314/setup-mold@v1
-      - name: Install nightly (libFuzzer needs -Zsanitizer)
-        run: rustup toolchain install nightly --profile minimal --component llvm-tools
-      - name: Install cargo-fuzz
-        run: cargo +nightly install cargo-fuzz --locked
-      - name: The committed corpus is the generated one
-        run: python3 tools/gen_fuzz_corpus.py check
-      - name: Seed the corpus cargo-fuzz will run
-        # A copy, into a scratch directory, for the reason `fuzz/README.md` gives: the fuzzer appends what
-        # it discovers to the directory it is pointed at, and a discovered byte sequence is not something
-        # this repository reviews. Pointing it straight at `fuzz/corpus/<target>` would make a local run
-        # dirty the committed corpus and turn `gen_fuzz_corpus.py check` red for the next person.
-        run: |
-          mkdir -p "$RUNNER_TEMP/seeds"
-          cp -R fuzz/corpus/. "$RUNNER_TEMP/seeds/"
-      - name: Build the targets
-        run: cargo +nightly fuzz build --dev ${{ matrix.target }}
-      - name: One minute per target
-        run: >-
-          cargo +nightly fuzz run ${{ matrix.target }} "$RUNNER_TEMP/seeds/${{ matrix.target }}" --
-          -max_total_time=60 -rss_limit_mb=4096 -timeout=10 -error_exitcode=86
-      - name: Keep the artefact if it crashed
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: fuzz-crash-${{ matrix.target }}
-          path: fuzz/artifacts/${{ matrix.target }}
-          if-no-files-found: ignore
-
   nightly:
     name: 30 minutes (${{ matrix.target }})
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 90
     strategy:

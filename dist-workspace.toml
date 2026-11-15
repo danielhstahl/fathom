@@ -12,7 +12,7 @@
 # say `[package.metadata.dist] dist = true` because `publish = false` would otherwise hide the binary
 # from a tool whose whole job is publishing.
 #
-# Per PR: `pr-run-mode = "upload"` builds every target and uploads them as workflow artefacts. One
+# Per PR: `pr-run-mode = "skip"` — the matrix does not run on a pull request at all (`e11.2`). One
 # honesty note, because the ticket's criterion said "downloadable without auth": GitHub *artefacts* need a
 # signed-in human, and no cargo-dist setting changes that. The auth-free artefact is the GitHub **release**
 # a tag produces — public assets, no login, plus the `install.sh` / `install.ps1` the installers below
@@ -74,9 +74,19 @@ targets = [
   "aarch64-apple-darwin",
   "x86_64-pc-windows-msvc",
 ]
-# Every PR gets a build of every target, uploaded as workflow artefacts, before it merges. This is the
-# half of the release criterion that is expressible without infrastructure.
-pr-run-mode = "upload"
+# The release matrix does not run on a pull request (`e11.2`, `reco-374v.2`; the measurement behind it is
+# `.plan/ci-triage-reco-374v.md`). `upload` asked six machines to finish a cross-target build on a branch
+# that merges in eleven minutes: over the 2026-10-16 → 2026-11-15 window that cost 451.5 runner-minutes
+# across 18 runs, **none of which went green** — 8 failed (the `x86_64-pc-windows-msvc` leg would not build
+# at all, `reco-hzr`) and 10 were cancelled because the next push arrived before the artefacts did. `dist
+# plan` on a branch with no tag is an act of cutting a release asked of a commit that cannot answer it.
+#
+# `skip` is not "untested". The matrix still runs on `workflow_dispatch`, on a tag, and once a day against
+# `master`: `.github/workflows/nightly.yml` dispatches this workflow with `tag=dry-run`, cargo-dist's own
+# rehearsal mode — build everything, publish nothing. What a pull request still has to prove about
+# packaging is proved by `ci.yml`'s `packaging` job (the `.deb` and `.rpm` this runner can actually build,
+# and the installer that fetches them), which is where six real packaging defects were caught in five days.
+pr-run-mode = "skip"
 # A release that makes itself "latest" before a human has looked at it is how a scaffold becomes
 # somebody's default install. Tagging announces; the first real release stays a decision.
 dispatch-releases = true

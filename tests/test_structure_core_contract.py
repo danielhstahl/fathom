@@ -41,7 +41,7 @@ GOLDEN = ROOT / "crates" / "fathom-analyze" / "tests" / "golden" / "structure" /
 DOC = ROOT / "docs" / "concepts" / "structure-extraction.md"
 CONFIG_DOC = ROOT / "docs" / "concepts" / "config.md"
 CARGO_TOML = ROOT / "crates" / "fathom-analyze" / "Cargo.toml"
-WORKFLOW = ROOT / ".github" / "workflows" / "ci.yml"
+WORKFLOW = ROOT / ".github" / "workflows" / "nightly.yml"
 
 LANGUAGES = ["rust", "python", "typescript"]
 EXTS = {"rust": [".rs"], "python": [".py"], "typescript": [".ts"]}

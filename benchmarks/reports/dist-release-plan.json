@@ -102,7 +102,7 @@
     }
   ],
   "installers": ["homebrew", "msi", "powershell", "shell"],
-  "pr_run_mode": "upload",
+  "pr_run_mode": "skip",
   "targets": [
     {
       "archive": "fathom-cli-aarch64-apple-darwin.tar.xz",

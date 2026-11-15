@@ -287,10 +287,23 @@ def test_two_consecutive_release_cuts_are_performed_and_the_gate_bites():
     assert "two releases cut" in result.stdout
 
 
-def test_the_changelog_has_an_entry_for_this_ticket_and_for_the_five_it_found():
-    unreleased = (ROOT / "CHANGELOG.md").read_text().split("## [Unreleased]")[1].split("\n## [")[0]
+def test_the_changelog_still_carries_the_beads_the_beta_loop_filed():
+    """Five beads the beta loop filed stay findable in the release history.
+
+    This test used to demand them inside `## [Unreleased]`, and `[Unreleased]` rotates: all five were cut
+    into `0.1.0-alpha.1` on 2026-10-18, so every commit since has been red against a past nobody can put
+    back. `e11.1` §2.2 names it as one of the two contracts in this suite asserting a frozen past and §5.4
+    says what to do with it: a gate that cannot be turned green is not a gate. The claim a reviewer wants
+    is two claims, and they have two owners now — whether a *commit* is accounted for is
+    `tools/gen_changelog.py audit`'s rule `C03`, asserted elsewhere in this file and run by CI on every
+    push; whether a filed bead is still traceable is this one, over the whole file rather than over a
+    heading that moves.
+    """
+    changelog = (ROOT / "CHANGELOG.md").read_text()
     for ref in ("reco-rny", "reco-p5u", "reco-7f4", "reco-2fv", "reco-41a"):
-        assert ref in unreleased, f"`{ref}` still has no trace in [Unreleased]"
+        assert ref in changelog, f"`{ref}` has no trace anywhere in CHANGELOG.md"
+    unreleased = changelog.split("## [Unreleased]")[1].split("\n## [")[0]
+    assert "reco-374v" in unreleased, "epic 11's own work has no trace in [Unreleased]"
 
 
 def test_the_runbook_carries_the_cadence_and_the_generator():
