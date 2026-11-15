@@ -16,6 +16,42 @@ fails CI if the version in `Cargo.toml` has no dated section here, because the s
 body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
+### Thirty days of CI, measured instead of remembered: what actually went red, and the cut list that follows (`reco-374v.1`)
+
+The claim that the actions "cover too much and are flaky" was a feeling, and `C01` is the rule that makes
+deleting a step a deliberate act — so the spike measured before it proposed. 172 runs in the window, 83 of them
+red, 3 367 runner-minutes, every red classified with its evidence: the case is
+[`.plan/ci-triage-reco-374v.md`](.plan/ci-triage-reco-374v.md), the numbers are
+[`benchmarks/reports/ci-triage-reco-374v.json`](benchmarks/reports/ci-triage-reco-374v.json), and
+[`.plan/evidence/reco-374v/ci_census.py`](.plan/evidence/reco-374v/ci_census.py) makes the whole thing again.
+
+* **The flake signature is not in the data.** Zero reds were re-run to green on the same commit; the one second
+  attempt in thirty days is `fuzz.yml` #16. What gets called flaky is drift — 33 of the 83 reds against 32
+  that were the commit's own fault — and `perf.yml` is the proof: it reddened on a commit whose only file was
+  `.github/workflows/ci.yml`, two runs after passing the identical build. A retry policy would have bought
+  nothing and hidden everything.
+* **The largest cost is a hang, not a failure.** Four jobs in two runs ran to GitHub's six-hour default and were
+  cancelled: 1 441 runner-minutes, 43 % of everything measured, and more than `ci.yml`'s nineteen pushes spent
+  on everything else — because no job in `ci.yml`, `contracts.yml`, `privacy.yml`, `sbom.yml`, `release.yml` or
+  `docs.yml` declares `timeout-minutes`. That is the cheapest item in the report and it is not a cut.
+* **One red workflow is quietly stopping four others.** `publish.yml` triggers on `ci` completing and its `if`
+  requires `ci` green; `ci` was never green, so 19 of 19 runs are `skipped`, `git tag` lists zero tags, and
+  `self-review.yml`, `sbom.yml`'s publish job and `dogfood.yml`'s installer step all wait on a release that has
+  never been possible. `dogfood` has gated the same frozen default-branch commit three Tuesdays running.
+* **CI has not run at all since 2026-11-08**, because the triggers are `pull_request` and `push: master`, master
+  stopped moving on 2026-10-26, and the branch the work is on has never been pushed. Any cut made from this list
+  is invisible until that is fixed, which is why it is item 2 of the order of work and not item 9.
+* **The duplicated gates are named with their copies.** `gen_changelog.py audit` runs in `ci.yml`'s `e7.7` step
+  *and* inside `contracts.yml`'s pytest — which is how three consecutive commits each filed two tickets, already
+  recorded as `reco-s6ge`; `gen_docs.py check --page cheatsheet --page detectors --page features` is byte-identical
+  in `contracts.yml` and `docs.yml`; `check_docs_site.py` is asked up to six times a push across three files; and
+  `check_workspace.py lint` runs in two jobs when `C01` requires it in one.
+* **The cut list**, each row naming the gate that still pays for it: delete `release.yml`'s pull-request trigger
+  (18 runs, 0 green, and the source of every `superseded` red in the window), move the perf measurement, the fuzz
+  smoke, the `beta` lane and `g3-calibration` to the schedule, re-point the gates that assert a frozen past, and
+  leave `docs.yml`, `sbom.yml` and `privacy.yml · posture` alone — 56 runs between them, zero red, under two
+  minutes each. Nothing was implemented here: the implementing tickets are the ones after this.
+
 ### Epic 10 closes: the queue and the badge are gone, and the pages that deleted them are the pages that had to be told (`reco-ydek`, `e10`)
 
 Five tickets retired a view and a label, and each one moved the code, the goldens and its own share of the
