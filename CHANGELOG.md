@@ -16,6 +16,56 @@ fails CI if the version in `Cargo.toml` has no dated section here, because the s
 body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
+### The documentation merge map: 65 pages censused, four merges scheduled, and a list of what each merge is forbidden to lose (`reco-msv1.1`, `e12.1`)
+
+Epic 12 opens with "half the documentation, none of the truth lost" and four children ready to merge, and the
+one thing that would have made that fail is four people merging the same family without comparing notes. So the
+map came first: **every page read** — 57 in `docs/concepts/` (18 352 lines), 7 ADRs and their README in
+`docs/adr/` (9 760), 183 generated blocks in 19 pages — and one table written giving the page, the noun it is
+about, the page that should own that noun afterwards, and what must survive. It is
+[docs/reference/doc-map.md](docs/reference/doc-map.md), and `e12.2`–`e12.4` cite it rather than re-derive it.
+Two numbers in the epic's own framing were wrong the way framings go stale: the census found **57** concept
+pages, not 56, and **seven** ADRs, not five — `ADR-007` arrived after the epic was written, and
+`docs/concepts/thesis.md` *is* ADR-001's body, which is why `docs/adr/0001-product-thesis.md` is thirteen
+lines and why that stub is the pattern the ADR merge follows.
+
+* **Five merges scheduled, three recorded-but-unscheduled, twelve refused, and the refusals are the deliverable.**
+  M1 risk (3 → 1), M2 delta (2 → 1), M3 episode (3 → 2, spikes kept whole), M4 renames (2 → 1), M5 ADR slimming
+  in place; then M6 dependencies, M7 the committed review record and M8 the declared architecture, each with its
+  target and cost written down and *no bead*, which is what stops a fifth person discovering the same family.
+  The non-merge table is where the epics' recurring temptations get answered once: the scorecard is the
+  repository's number and not the episode's; a spike is a dated measurement and folding it into its subject page
+  is the loss the epic is defined by.
+* **A path a checker names is a path a merge must edit in the same commit, and nobody had written that down.**
+  `docs/concepts/*` paths appear in forty tools, tests, comments and workflow steps: `tools/gen_docs.py`'s
+  `VERB_DOCS` maps every shipped verb to the pages that explain it (so retiring a risk page moves
+  `why → risk.md`), `tests/test_g3_calibration_contract.py` asserts numbers quoted out of
+  `false-positive-calibration.md` by needle, `crates/fathom-analyze/tests/risk_score.rs` asserts the worked
+  example `risk-scoring.md` §4 quotes, and `tools/check_docs.py` allowlists retired queue tokens *by page path*
+  — seven of them held by `risk-ranking.md`, so merging that page moves an allowlist entry or the gate goes red
+  on a page that has only changed its name.
+* **A page claiming to be generated is not generated.** `risk-scoring.md` says its twelve-axis table "is
+  generated, not typed"; it carries no `BEGIN GENERATED` marker and no tool writes it, and what actually holds
+  it is `fathom why --weights` plus one Rust assertion. The map names that as the trap for the risk merge —
+  write the generator or fix the sentence — because a merge that copies the claim forward is epic 12 failing in
+  the act of being fixed.
+* **Normativity, decided where two pages draw the same object.** ADR-006's per-view layouts are generated and
+  `docs/concepts/timeline.md` hand-draws 113 lines of similar ones; the map picks the generated block as
+  normative (the checker already exists) rather than growing a second one, and refuses the status quo, where a
+  hand-drawn frame can drift from the shipped binary and nothing notices.
+* **Redirects need a rule before they need a page.** `check_docs_site.py` refuses a page unreachable from
+  `docs/index.md`, so a pointer page invented by one merge is an orphan in the next one's build: M0 is one
+  `RELOCATIONS` table, one `check_relocations` rule (pointer exists, is short, says where it moved, is linked
+  only from the index — which is what forces all **100** inbound markdown links in the scheduled set to be
+  rewritten rather than leaned on), and the index's `Retired page names` section. `build_docs_site.py` needs no
+  change: a pointer page builds at the path it replaces, so old URLs keep resolving and a stale reference stays
+  a hard failure instead of a redirect that hides it.
+
+The order of work is in the map, with the two rules that make a merge reviewable restated in it: move, do not
+retype, and name every disagreement resolved against the code in the commit message — an averaged sentence is
+how two pages that disagree become one page that is wrong. This commit adds the map and its link from
+`docs/index.md`; `check_docs.py`, `check_docs_site.py` and `check_ticket_claims.py` are green over it.
+
 ### Epic 11 closes: four gates were asking a question twice, they ask it once now, and `C01` refuses a second copy (`reco-374v`, `e11`)
 
 `e11.1`'s census wrote the duplicate table (`.plan/ci-triage-reco-374v.md` §3, nine places where CI asked one

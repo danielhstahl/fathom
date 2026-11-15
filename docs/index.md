@@ -44,6 +44,7 @@ first; each links down to the deeper reference page that owns the detail.
 | [Detector catalogue](detectors/index.md) | all twelve detectors: what they look at, why they matter for agent-written code, a worked example from the fixtures, and how to tune or silence each |
 | [Troubleshooting](troubleshooting.md) | symptoms, exit codes, what is not a bug, and how to file something worth reading |
 | [Publishing the docs as HTML](reference/site.md) | how this tree becomes the GitHub Pages site, what the builder refuses to guess, and what the gate holds against the render |
+| [The documentation merge map](reference/doc-map.md) | every page in `docs/concepts/` and `docs/adr/`, the noun it is about, the page that should own that noun, what each merge must keep, which tool owns each generated block, and the order the merges go in |
 
 ## Recipes
 
