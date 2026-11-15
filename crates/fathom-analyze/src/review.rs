@@ -51,9 +51,7 @@ mod counts;
 mod disposition;
 mod retrospect;
 
-pub use counts::{
-    ReviewCounts, ReviewRow, SEVERITY_HIGH, SEVERITY_MEDIUM, Severity, count_rows,
-};
+pub use counts::{ReviewCounts, ReviewRow, SEVERITY_HIGH, SEVERITY_MEDIUM, Severity, count_rows};
 pub use disposition::{
     CONDITIONS, DismissReason, Disposition, REASONS, ReasonVocabulary, SnoozeSituation,
     SnoozeUntil, TriageAct, TriageRecord, is_code, newest_first, who_and_when,

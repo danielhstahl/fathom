@@ -699,8 +699,10 @@ impl Reader {
                     risk: episode
                         .risk()
                         .and_then(|risk| u8::try_from(risk.score.max(0)).ok()),
-                    risk_model: episode.risk().map_or_else(String::new, |risk| risk.model.clone()),
-                    disposition: state.disposition(episode).into(),
+                    risk_model: episode
+                        .risk()
+                        .map_or_else(String::new, |risk| risk.model.clone()),
+                    disposition: state.disposition(episode),
                 })
                 .collect::<Vec<_>>(),
             |_| false,
@@ -841,7 +843,9 @@ impl Top {
     #[cfg(feature = "sqlite-bundled")]
     fn of(episode: &fathom_tui::timeline::Episode) -> Top {
         use fathom_analyze::insight::Severity;
-        let score = episode.risk().and_then(|risk| u8::try_from(risk.score.max(0)).ok());
+        let score = episode
+            .risk()
+            .and_then(|risk| u8::try_from(risk.score.max(0)).ok());
         let kind = match score.map(Severity::of) {
             Some(Severity::High) => Need::HighRisk,
             Some(Severity::Medium) | Some(Severity::Low) => Need::OpenWork,

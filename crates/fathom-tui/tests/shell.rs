@@ -38,16 +38,18 @@ fn app_with_rail(size: (u16, u16), rows: usize) -> App {
     let base = 1_760_443_200_000_000_i64;
     let batch = fathom_tui::timeline::Batch::new(
         "fixture index",
-        (0..rows).map(|i| {
-            let created = fathom_core::time::Timestamp::from_unix_micros(base - i as i64 * 60_000_000);
-            let mut episode = fathom_tui::timeline::Episode::new(
-                format!("e{i:04x}"),
-                created,
-                format!("episode {i}"),
-            );
-            episode.last = created;
-            episode
-        })
+        (0..rows)
+            .map(|i| {
+                let created =
+                    fathom_core::time::Timestamp::from_unix_micros(base - i as i64 * 60_000_000);
+                let mut episode = fathom_tui::timeline::Episode::new(
+                    format!("e{i:04x}"),
+                    created,
+                    format!("episode {i}"),
+                );
+                episode.last = created;
+                episode
+            })
             .collect::<Vec<_>>(),
     );
     app.load_episodes(batch);

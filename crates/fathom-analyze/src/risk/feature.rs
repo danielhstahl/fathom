@@ -34,9 +34,9 @@ use serde::{Deserialize, Serialize};
 
 /// The model's name, printed beside every number it produces.
 ///
-/// `spine-3` ([`super::MODEL`]) is the ordering the rail and the queue use today; `features-3` is the
+/// `spine-3` ([`super::MODEL`]) is the ordering the rail prints today; `features-3` is the
 /// vector this ticket owns. Both names appear on purpose: a screenshot has to say which of the two
-/// produced it, and `e4.5` switches the queue from one to the other without changing a pane.
+/// produced it, and `e4.5` switches the rail from one to the other without changing a pane.
 ///
 /// `features-1` was this vector from `reco-884` until `reco-l9bz.7`, which added the `complexity` axis
 /// and became `features-2`; `features-2` was it until `reco-ydek.5` dropped `authorship`. A component
@@ -230,7 +230,9 @@ pub const SPECS: [Spec; 12] = [
 ///
 /// These are the numbers a repository gets when it writes nothing. They are an argument, not a
 /// measurement: findings and kind-of-file carry the score because those are the two things a reviewer
-/// acts on, and size carries the least of the seven because size is what the *queue* already buries. A
+/// acts on, and size carries the least of the twelve because the rail row already prints size twice over
+/// — the `+412 −90` cell and the sparkline, which is that same figure scaled to the rail — so a score that
+/// weighted it heavily was paying a third time for a number the reviewer has read. A
 /// repository that disagrees edits `[risk.weights]`, and `fathom why --calibrate` is how the disagreement
 /// gets measured instead of felt.
 ///

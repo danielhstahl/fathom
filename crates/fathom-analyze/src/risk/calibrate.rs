@@ -53,7 +53,8 @@ use super::weights::{Origin, Weights};
 /// numbers CI asserts are read from one place.
 pub const EMBEDDED: &str = include_str!("../../tests/fixtures/risk/calibration.json");
 
-/// The cut: "the top ten percent by score", which is the queue a reviewer actually reads first.
+/// The cut: "the top ten percent by score" — a **set**, not an order, since `e10.3` deleted the ranked
+/// pane that used to make it the first thing a reviewer read.
 pub const DEFAULT_FRACTION: f64 = 0.10;
 
 /// The grid a retune may move a weight to.
@@ -213,7 +214,8 @@ impl Cut {
 
 /// Score every case with `weights`, cut at the top `fraction`, and measure the cut against the labels.
 ///
-/// The ranking is the queue's ranking: exact total first, then the integer score, then case id, so two
+/// The order is the retired queue's ordering, kept because it is total: exact total first, then the
+/// integer score, then case id, so two
 /// cases that tie land the same way in every run and in every report.
 #[must_use]
 pub fn evaluate(set: &Set, weights: &Weights, fraction: f64) -> Cut {
@@ -365,7 +367,7 @@ pub fn calibrate(set: &Set, shipped: &Weights, fraction: f64) -> Comparison {
     let mut proposal = retune(set, shipped, fraction);
     let after = evaluate(set, &proposal, fraction);
     // The threshold travels with the weights. A retune that moved the scores and left `risk.tau` where it
-    // was would propose a queue in which nothing is flagged — so the proposal's τ is the retuned cut's own
+    // was would propose a cut in which nothing is flagged — so the proposal's τ is the retuned cut's own
     // floor, the lowest score that is still in the top decile. That is a measured number, not a taste, and
     // `render` prints how many cases each side of it flags.
     if let Some(floor) = after

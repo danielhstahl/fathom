@@ -1295,7 +1295,11 @@ def golden_audit() -> tuple[list[str], list[str]]:
     changed_files: list[str] = []
     globs = [str(p.relative_to(ROOT)) for p in PROTECTED_GOLDENS]
     for sha, subject, body in epic_commits():
-        run = subprocess.run(["git", "show", "--format=", "--", *globs], cwd=ROOT,
+        # `sha`, not nothing. Omitted, `git show` diffs HEAD, so every iteration audited whichever commit
+        # this gate happens to run on and the epic's own commits were never read at all. It passed for a
+        # release of the same reason a vacuous check passes: the commit it closed touched no golden. A
+        # later epic re-blessed 24 of them, and the gate read that diff as this epic's (**reco-ydek**).
+        run = subprocess.run(["git", "show", "--format=", sha, "--", *globs], cwd=ROOT,
                              capture_output=True, text=True, check=False)
         current = ""
         for line in run.stdout.splitlines():

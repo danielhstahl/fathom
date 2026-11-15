@@ -540,7 +540,9 @@ pub(crate) fn dismiss_reasons(root: &std::path::Path) -> (Vec<String>, Vec<Strin
     let Some(reasons) = reasons.as_array() else {
         return (
             Vec::new(),
-            vec![format!("{section}.dismiss_reasons must be a list of reason codes")],
+            vec![format!(
+                "{section}.dismiss_reasons must be a list of reason codes"
+            )],
         );
     };
     let mut out = Vec::new();

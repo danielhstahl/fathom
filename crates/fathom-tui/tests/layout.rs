@@ -358,7 +358,10 @@ fn the_degradation_notice_fits_the_width_it_is_printed_in() {
     let dropped = rail14.dropped();
     assert!(!dropped.is_empty(), "the 64×14 rail sold something: {wide}");
     for part in &dropped {
-        assert!(wide.contains(part), "`{part}` is not named in the notice: {wide}");
+        assert!(
+            wide.contains(part),
+            "`{part}` is not named in the notice: {wide}"
+        );
     }
     assert!(
         wide.contains("hint line"),

@@ -49,10 +49,10 @@ pub mod layout;
 pub mod materialize;
 /// The progress row: a percentage and a time estimate that converges (`e5.9`, ADR-006 §10.3).
 pub mod progress;
+pub mod render;
 /// The review ledger's shell side (`e4.5` `reco-wsj`, renamed by `e10.3` `reco-ydek.3`): the acts, the
 /// write that makes them real, and the retrospective. The ordering the queue needed is gone, not renamed.
 pub mod review;
-pub mod render;
 /// The `/` box: the corpus it scores against, how its rows read, and where `<Enter>` goes (`e5.2`,
 /// `reco-mkc`). The scoring itself belongs to `fathom_analyze::search`; this module is the overlay.
 pub mod search;

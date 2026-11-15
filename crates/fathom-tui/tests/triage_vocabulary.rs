@@ -15,7 +15,7 @@
 //! * **what is here** is the vocabulary a keystroke chooses from and the conditions a snooze is stamped
 //!   with: `other` cannot be taken without its note, a `next-index` stamp carries the baseline it will be
 //!   checked against, and a shell handed nothing is still honest about writing nothing. Those are
-//!     properties of the ledger, which epic 10 kept.
+//!   properties of the ledger, which epic 10 kept.
 //!
 //! The tests still play the composition root's role and install a [`Ledger`] of their own — the shell is
 //! not allowed to open a store (ADR-002 §3, lint `E01`), so a fake is the only thing that can stand in
@@ -228,15 +228,17 @@ fn dismiss_opens_the_vocabulary_and_writes_the_claim_it_was_given() {
     dispatch(&mut app, "-");
     let chooser = frame(&app);
     for code in ["not-my-area", "other"] {
-        assert!(chooser.contains(code), "the shipped codes are offered: {chooser}");
+        assert!(
+            chooser.contains(code),
+            "the shipped codes are offered: {chooser}"
+        );
     }
     // Read off the list *before* the act, because the order is by usage and the act is usage: asking
     // afterwards would compare the ledger against a list the act itself re-sorted.
     let second = app
         .review
         .reasons()
-        .iter()
-        .nth(1)
+        .get(1)
         .map_or_else(String::new, |reason| reason.code.clone());
     dispatch(&mut app, "j");
     dispatch(&mut app, "<Enter>");

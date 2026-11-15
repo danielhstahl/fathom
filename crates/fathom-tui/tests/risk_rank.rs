@@ -81,10 +81,30 @@ fn rows() -> Vec<Episode> {
         episode
     };
     vec![
-        make("e-aaaa", 4 * MINUTE, 41, "a workflow change travels with the artefact"),
-        make("e-bbbb", 3 * MINUTE, 88, "a schema migration that may not roll back"),
-        make("e-cccc", 2 * MINUTE, 0, "nothing ranked this episode at all"),
-        make("e-dddd", MINUTE, 64, "a lockfile the reviewer did not choose"),
+        make(
+            "e-aaaa",
+            4 * MINUTE,
+            41,
+            "a workflow change travels with the artefact",
+        ),
+        make(
+            "e-bbbb",
+            3 * MINUTE,
+            88,
+            "a schema migration that may not roll back",
+        ),
+        make(
+            "e-cccc",
+            2 * MINUTE,
+            0,
+            "nothing ranked this episode at all",
+        ),
+        make(
+            "e-dddd",
+            MINUTE,
+            64,
+            "a lockfile the reviewer did not choose",
+        ),
     ]
 }
 
@@ -152,7 +172,7 @@ fn the_rail_is_chronological_and_prints_each_rows_own_score() {
             .cloned()
             .unwrap_or_default();
         assert!(
-            row.split_whitespace().any(|word| word == &score.to_string()),
+            row.split_whitespace().any(|word| word == score.to_string()),
             "{id} carries its own score, not the highest one: {row}\n{text}"
         );
     }
@@ -419,16 +439,11 @@ fn a_refresh_keeps_the_reviewer_on_the_episode_they_were_reading() {
     // position would move the reviewer off the episode they were reading mid-keystroke.
     let app = &mut loaded(rows());
     keystroke(app, "j");
-    let before = app
-        .timeline
-        .selected()
-        .map(|episode| episode.id.clone());
+    let before = app.timeline.selected().map(|episode| episode.id.clone());
     assert_eq!(before.as_deref(), Some("e-cccc"));
     app.load_episodes(Batch::new("fixture index", rows()));
     assert_eq!(
-        app.timeline
-            .selected()
-            .map(|episode| episode.id.clone()),
+        app.timeline.selected().map(|episode| episode.id.clone()),
         before,
         "a refreshed rail keeps the reviewer where they were"
     );

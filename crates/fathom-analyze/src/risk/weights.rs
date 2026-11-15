@@ -233,14 +233,15 @@ impl Weights {
 /// top-decile cuts (33 / 40 / 40), which makes it the *lowest* threshold whose whole flag population
 /// the corpus's hand-authored dispositions can answer for — at τ 35 eight flags have no label, and an
 /// unlabelled flag is a hole in the guardrail rather than a rate. At τ 40 the flag arm fires on 49 of
-/// 540 episodes (9.1 %): the queue a reviewer actually reads first, which is what makes §5.4's rate a
-/// rate. The `--check` in that harness compares this constant against `thresholds.json` and refuses to
+/// 540 episodes (9.1 %): the population §5.4's rate is a rate over — a set since `e10.3` deleted the
+/// ranked pane that used to put these rows first. The `--check` in that harness compares this constant against `thresholds.json` and refuses to
 /// run when they disagree, and it is also what `calibrate` re-derives per corpus.
 ///
 /// The key is one key shared by three readers, and all three moved in the same commit: this constant,
 /// `thresholds.json`'s `tau_alpha` / `tau_1_0`, ADR-001 §5.4, `fathom.toml`, and the reference policy
 /// in `src/recommender/card/policy.py`. `spine-3` reads the same key and its scores run higher; the
-/// queue's own `high`/`medium` buckets are [`super::super::queue`'s] severity floors, which are stated
+/// queue's own `high`/`medium` buckets are [`super::super::review::SEVERITY_HIGH`]'s and
+/// [`super::super::review::SEVERITY_MEDIUM`]'s floors, which are stated
 /// against `spine-3`'s range and deliberately not this number.
 pub const DEFAULT_TAU: u8 = 40;
 

@@ -161,7 +161,9 @@ pub fn read(
     let blast = Availability::probe(store, episode.files.iter().map(|file| file.path.as_str()))?;
     // The same join the card reads, so the score's complexity axis and the card's complexity figure are
     // one figure (ADR-001 §7.10). One episode, one id, one query.
-    let complexity = store.episode_complexity(&[row.id.clone()])?.remove(&row.id);
+    let complexity = store
+        .episode_complexity(std::slice::from_ref(&row.id))?
+        .remove(&row.id);
     let vector = vector(&row, &episode, &report, supply, &blast, complexity.as_ref());
     Ok(Some(Read { vector, report }))
 }

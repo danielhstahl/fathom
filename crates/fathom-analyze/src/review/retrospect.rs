@@ -28,8 +28,8 @@ use std::collections::BTreeMap;
 use fathom_core::time::Timestamp;
 use serde::Serialize;
 
-use super::disposition::{Disposition, ReasonVocabulary, TriageRecord};
 use super::counts::Severity;
+use super::disposition::{Disposition, ReasonVocabulary, TriageRecord};
 
 /// One reason's bucket while the rollup is being accumulated.
 #[derive(Debug, Default)]

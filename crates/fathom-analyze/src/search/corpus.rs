@@ -11,8 +11,8 @@
 //!
 //! ADR-006 §5.8 budgets `query.search.ms` at a 50 ms p95 *while typing*, which is a statement about the
 //! corpus as much as about the scorer. So the corpus is one page of episodes and nothing more
-//! ([`EPISODE_PAGE`], the façade's own page ceiling — the same ceiling the rail and the queue already
-//! accept, ADR-002 §5.3), one path-join query, and one per-file rollup: the same four reads
+//! ([`EPISODE_PAGE`], the façade's own page ceiling — the same ceiling the rail has always
+//! accepted, ADR-002 §5.3), one path-join query, and one per-file rollup: the same four reads
 //! `fathom-cli`'s first frame runs, and no more. A repository with 10 000 episodes searches the newest
 //! 500 of them and says so in [`super::Report::documents`] versus [`super::Report::scanned`]; a search
 //! that indexed the whole history to answer one keystroke would miss the budget it is graded against.

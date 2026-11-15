@@ -151,7 +151,15 @@ pub fn show(root: &str, target: &str, as_json: bool) -> eyre::Result<ExitCode> {
         // Paths and the commit go through the link printer (`e5.8`): clickable where the terminal
         // advertised, byte-identical to these same lines where it did not.
         let links = crate::links::Printer::for_root(root_path);
-        for line in show_text(&snapshot, &redactor, &store_path, &row, &read, target, &links) {
+        for line in show_text(
+            &snapshot,
+            &redactor,
+            &store_path,
+            &row,
+            &read,
+            target,
+            &links,
+        ) {
             output::line(format_args!("{line}"));
         }
         Ok(snapshot.worst_code())

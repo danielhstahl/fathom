@@ -188,9 +188,7 @@ fn action(view: ViewId, pane: &Pane, facts: &Facts, reason: &Reason) -> String {
     // second is copy that gets cut, and the whole point of these lines is that the half a reviewer can
     // act on survives being read.
     match (view, pane.name) {
-        (ViewId::Timeline, "card") => {
-            "`j`/`k` choose one, `<Enter>` opens its card".to_owned()
-        }
+        (ViewId::Timeline, "card") => "`j`/`k` choose one, `<Enter>` opens its card".to_owned(),
         (ViewId::Timeline, "rail") => {
             "`F` edits the filter that hid them; `fathom stats` counts the index".to_owned()
         }

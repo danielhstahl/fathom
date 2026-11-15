@@ -109,7 +109,7 @@ pub const DEFAULT_MIN_TESTED_RATIO: f64 = 0.5;
 
 /// The risk score at or over which an episode is "high-risk" for the sign-off check.
 ///
-/// Not `risk.tau`, deliberately: `tau` routes a queue ([`crate::risk::score`]), and the pipeline recipe is
+/// Not `risk.tau`, deliberately: `tau` routes attention to the flagged set ([`crate::risk::score`]), and the pipeline recipe is
 /// explicit that a routing knob must not become a merge threshold, because a repository-wide number on it
 /// fails a large honest change and passes a small dishonest one. This threshold is paired with *"and nobody
 /// signed it off"*, which is what makes it a claim about the review rather than about the size of a diff.

@@ -244,7 +244,7 @@ pub use crate::risk::{
 // ship (`rank_queue`, `QueuePolicy`, `QueueRanking`, `QueuePlacement`, `BlastInput`) is gone rather than
 // renamed: a place in a ranked set nothing ranks is not a fact (ADR-006 §5.1.2 §5).
 pub use crate::review::{
-    CONDITIONS, DismissReason, Disposition, REASONS, ReasonVocabulary, ReviewCounts, ReviewRetrospective,
-    ReviewRow, ReviewWindow, SEVERITY_HIGH, SEVERITY_MEDIUM, Severity, SnoozeSituation, SnoozeUntil,
-    TriageAct, TriageRecord, count_rows, retrospect,
+    CONDITIONS, DismissReason, Disposition, REASONS, ReasonVocabulary, ReviewCounts,
+    ReviewRetrospective, ReviewRow, ReviewWindow, SEVERITY_HIGH, SEVERITY_MEDIUM, Severity,
+    SnoozeSituation, SnoozeUntil, TriageAct, TriageRecord, count_rows, retrospect,
 };

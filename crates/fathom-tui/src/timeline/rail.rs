@@ -961,10 +961,10 @@ impl Rail {
         // Part 4 of §5.1.2 §3, and last for the same reason: a score with no named model beside it is the
         // recommendation ADR-001 §7.9 forbids, so the rows' number gets a citation — but only while the
         // rows print a number at all. A model name beside no figure is a citation to nothing.
-        if self.risked > 0 {
-            if let Some(model) = self.risk_model() {
-                out.push_str(&format!(" · risk {model}"));
-            }
+        if self.risked > 0
+            && let Some(model) = self.risk_model()
+        {
+            out.push_str(&format!(" · risk {model}"));
         }
         format!("{} · {}", self.order_words(), out)
     }

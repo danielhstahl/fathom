@@ -13,8 +13,8 @@ use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use fathom_analyze::insight::{ReviewCounts, RiskView};
 use fathom_core::time::Timestamp;
 use fathom_tui::ambient::{
-    self, End, FLOOR, Feed, Glance, HeadlessSink, IDEAL, IndexState, Latest, Mode, Need,
-    OpenWork, Reason, RunOptions,
+    self, End, FLOOR, Feed, Glance, HeadlessSink, IDEAL, IndexState, Latest, Mode, Need, OpenWork,
+    Reason, RunOptions,
 };
 use fathom_tui::event::{Bus, Message};
 use fathom_tui::index::Read;

@@ -32,8 +32,8 @@ use fathom_tui::app::{App, Model, Overlay};
 use fathom_tui::compare::{CompareProvider, Provider as CompareShell};
 use fathom_tui::diff::{BytesSource, PatchProvider, PatchSource, Provider, Unavailable};
 use fathom_tui::keymap::Keymap;
-use fathom_tui::review::{Ledger, LedgerHandle, Setup};
 use fathom_tui::render::frame_lines;
+use fathom_tui::review::{Ledger, LedgerHandle, Setup};
 use fathom_tui::timeline::{AuthorKind, Batch, Episode, ReviewState};
 use fathom_tui::views::ViewId;
 

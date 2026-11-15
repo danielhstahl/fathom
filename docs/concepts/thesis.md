@@ -368,12 +368,14 @@ untested new logic, shotgun edits, rework loops, test weakening, copy-paste grow
 hand-edited generated files, secret-shaped strings, disabled lint or type checks. — `e4.3`.
 
 **Risk score** — the explainable 0–100 per-episode score: a documented feature vector (findings and
-severities, size and blast radius, dependency and migration exposure, test ratio, attribution confidence,
-noise share) times transparent, clamped, per-repo-tunable weights. No opaque model in v1: if we cannot
-say why an episode is 82, it must not be 82. *The attribution input retires in `e10.5` (`e10.1` records
-it here): a component for a label no human is shown may not stay in the arithmetic, and may not be struck
-from the printed vector before the points go — the explanation is where a reviewer can check the claim.*
-— `e4.4`, calibration `e4.4`.
+severities, size and blast radius, dependency and migration exposure, test ratio, noise share) times
+transparent, clamped, per-repo-tunable weights. No opaque model in v1: if we cannot
+say why an episode is 82, it must not be 82. *Attribution is not an input: `e10.1` decided it here and
+`reco-ydek.5` executed it — a component for a label no human is shown may not stay in the arithmetic,
+and may not be struck from the printed vector before the points go, because the explanation is where a
+reviewer can check the claim. Both models now put authorship where a reviewer can read it: a named
+blind spot, not a term.*
+— `e4.4`, calibration `e4.4`, attribution term retired by `e10.5`.
 
 **`fathom why`** — the command that prints an episode's risk feature vector, weights and each
 contribution. The user-facing form of "explainable". — `e4.4`.
@@ -1079,16 +1081,19 @@ Amendment 2 edited §4.3.
    back with its excluded count printed; the collapsed verdict may not. The CLI keeps `episodes --kind` for
    exactly this reason, and the git **author name** filters (`author=`) are untouched, because git records a
    name rather than inferring one.
-4. **The third part is the one a later ticket could otherwise miss: the risk vector still spends 8 points on
-   authorship, and they go in `e10.5`, not silently.** Between the label's removal and the component's
-   removal the points fire while the word is gone from the row, and the only thing that keeps that honest is
+4. **The third part is the one a later ticket could otherwise miss: the risk vector spent 8 points on
+   authorship, and they went in `e10.5`, not silently.** Between the label's removal and the component's
+   removal the points fired while the word was gone from the row, and the only thing that kept that honest is
    that the *component* keeps its name in the printed vector (`spine-1 62 = surfaces 50 + author 8 + size
    4`). Striking the word before the points go would hide a live component inside the explanation of a
    number — the exact inversion of §7.9 that this amendment's rule forbids. So the component and its name
    leave in one commit, which records what happened to the freed cap and re-measures every gate that quotes
    the arithmetic, and authorship joins the blind-spot list if it is a gap at all: a reviewer reading the
    blind spots should learn that the tool does not know who wrote this, which is the truth the badge was
-   covering for.
+   covering for. **As executed (`reco-ydek.5`):** `spine-2` → `spine-3`, five components, ceiling 92, the
+   freed 8 points deliberately *not* redistributed; `features-2` → `features-3`, twelve axes, the freed
+   `0.04` paid to `findings` and `surface` rather than back to `attribution`, which would have spent the
+   same money twice on the subject this epic stopped trusting.
 5. **What must outlive the pane, and how that is checked rather than promised.** The review ledger is
    untouched and remains class **M**; the store's act tables keep their names and `SCHEMA_VERSION` does not
    move, because the tables are about *acts* and the queue was a pane over them — a rename would be a

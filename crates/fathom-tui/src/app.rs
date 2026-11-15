@@ -1311,7 +1311,10 @@ impl App {
             return None;
         }
         if self.review.retrospective {
-            return Some(crate::review::ledger_strip(&self.review, self.timeline.now()));
+            return Some(crate::review::ledger_strip(
+                &self.review,
+                self.timeline.now(),
+            ));
         }
         Some(self.timeline.strip())
     }

@@ -113,7 +113,7 @@ pub const MODEL: &str = "spine-3";
 /// The components, in the order they are printed, with the cap each can contribute.
 ///
 /// The caps sum to [`SCORE_CEILING`], which is the whole of the score: nothing is multiplied and nothing
-/// is hidden, so `spine-3 88 = surfaces 50 + complexity 12 + size 12 + deletions 10 + breadth 4` is
+/// is hidden, so `spine-3 92 = surfaces 50 + complexity 12 + size 12 + deletions 10 + breadth 8` is
 /// arithmetic a reviewer can redo from the reasons printed under it.
 ///
 /// The ordering of the caps is the argument: **surfaces first, then the two accounts of how much a
@@ -933,7 +933,7 @@ impl Risk {
         u64::from(self.score)
     }
 
-    /// `spine-3 88 = surfaces 50 + complexity 12 + size 12 + deletions 8 + breadth 6`.
+    /// `spine-3 92 = surfaces 50 + complexity 12 + size 12 + deletions 10 + breadth 8`.
     ///
     /// Printed under the reasons everywhere a score appears: the arithmetic has to be checkable, or
     /// the explainability is decorative.

@@ -287,7 +287,7 @@ pub fn document() -> Value {
                 "model": {"description": "Which ranking produced the number (`spine-3` today).", "type": "string"},
                 "score": {"maximum": 100, "minimum": 0, "type": "integer"},
                 "surfaces": {"items": {"enum": surface_names(), "type": "string"}, "type": "array"},
-                "vector": {"description": "`spine-3 88 = surfaces 50 + size 12 + …` — the arithmetic, checkable from the row.", "type": "string"}
+                "vector": {"description": "`spine-3 92 = surfaces 50 + complexity 12 + …` — the arithmetic, checkable from the row.", "type": "string"}
             },
             "required": ["blind_spots", "components", "model", "score", "surfaces", "vector"],
             "type": "object"

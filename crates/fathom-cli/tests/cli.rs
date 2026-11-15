@@ -14,7 +14,6 @@ use std::process::{Command, Output, Stdio};
 /// The frame reader shared with `tests/tui_data.rs`; see `tests/frame.rs` for why it is one file.
 mod frame;
 
-
 fn fathom(args: &[&str]) -> Output {
     Command::new(env!("CARGO_BIN_EXE_fathom"))
         .args(args)

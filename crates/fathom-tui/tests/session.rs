@@ -279,7 +279,11 @@ fn a_run_with_no_rows_at_all_is_a_first_session_not_a_damaged_one() {
         "nothing to restore — this is a first session in this repository",
         "and it says which of the three empties it is"
     );
-    assert_eq!(app.view, ViewId::Timeline, "and the defaults are the defaults");
+    assert_eq!(
+        app.view,
+        ViewId::Timeline,
+        "and the defaults are the defaults"
+    );
 }
 
 // --- damage and mismatch ---------------------------------------------------------------------------

@@ -1276,7 +1276,7 @@ pub struct RiskView {
     pub model: String,
     /// The score: `0..=92` under `spine-3`, whose caps sum to `risk::SCORE_CEILING`.
     pub score: i64,
-    /// `spine-3 88 = surfaces 50 + size 12 + deletions 10 + breadth 8 + complexity 8`.
+    /// `spine-3 92 = surfaces 50 + complexity 12 + size 12 + deletions 10 + breadth 8`.
     pub vector: String,
     /// The components that contributed, largest first — the feature vector, in order.
     pub components: Vec<RiskComponent>,

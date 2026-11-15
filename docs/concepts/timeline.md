@@ -333,14 +333,16 @@ cannot fill:
 
 ```
 delta    no document was handed to this card — `fathom analyze <episode>` is the one source
-risk     spine-3 74 = surfaces 50 + size 12 + complexity 12 · rank 1 of 21
+risk     ~ attention spine-3 74 = surfaces 50 + complexity 12 + size 12
 ```
 
 That is the whole design constraint in two lines: a pane whose data has not been handed to it says which
 verb produces it, rather than rendering a confident `0` or an empty box. The `risk` row
-is the one that changed: it is a spine ranking rather than `e4.4`'s findings, so it prints its model
+is the one that changed twice: it is a spine ranking rather than `e4.4`'s findings, so it prints its model
 name, its vector and its own ceiling, and `w` opens all of it
-([risk-ranking.md](risk-ranking.md)). What it *can*
+([risk-ranking.md](risk-ranking.md)). `e10.3` then took `rank 1 of 21` off the end of it — a place in a set
+nothing ranks any more is not a fact (ADR-006 §5.1.2 §5) — and `e10.5` changed what the vector adds up, so
+the row names `spine-3` and its five components rather than `spine-2`'s six. What it *can*
 say it says precisely: commit count, age, review state, the timezone
 the day bounds use, where the change landed (top path prefixes with file counts), the boundary rule and
 its confidence labelled "a rule, not a fact" (ADR-003 §4.7), the session and turn, and the member SHAs
@@ -482,8 +484,9 @@ in the card is still the spine-only ranking, and its published ceiling is
 no longer describes what the product ranks by. `e10.4` took the `human`/`agent` badge out of this view's
 row, out of the card's header and out of the `F` editor, and spent the six freed cells on the ladder's
 thresholds instead of on new content ([ADR-006 §5.1.2
-§6](../adr/0006-tui.md)) — and `e10.5` replaces what the risk number is computed from, including the
-`author` component §8's line still spends points on.
+§6](../adr/0006-tui.md)). `e10.5` then changed what the risk number on a row is computed from — the
+`author` component is gone from the spine, so §8's line no longer spends points on who wrote the change,
+and the model name beside the figure reads `spine-3`.
 
 `delta.*` and `findings[]` rows in the card (`e2.11`, `e4.3`); the *finding-shaped* risk number the
 queue once ordered by — what it orders by is the spine-only ranking and its stated ceiling

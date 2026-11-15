@@ -16,6 +16,81 @@ fails CI if the version in `Cargo.toml` has no dated section here, because the s
 body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
+### Epic 10 closes: the queue and the badge are gone, and the pages that deleted them are the pages that had to be told (`reco-ydek`, `e10`)
+
+Five tickets retired a view and a label, and each one moved the code, the goldens and its own share of the
+documentation. What no child owned was the rest of the surface: the ADR section that *lists the commands the
+epic is accepted by* still told a reviewer to run three commands against a deleted pane, and two other
+epics' gates were reading arithmetic and goldens this epic had already moved, and the two style gates every
+PR has to pass had been red since the first of the five. Every claim below was run on
+this tree; the record is [`.plan/evidence/reco-ydek/epic10-exit-criteria.md`](.plan/evidence/reco-ydek/epic10-exit-criteria.md).
+
+* **The constraints, checked rather than assumed.** Not one of the five epic commits touched
+  `crates/fathom-store` — no migration, `SCHEMA_VERSION` still 12, `triage_event`/`review_state`/
+  `ledger_entry` under their own names — so a store written with the queue reads back whole and
+  `triage_ledger` (8) and `review_verb` (12) still pass over it. The write-before-state-change rule left
+  `queue.rs` with the acts and is now `review.rs`'s, with its three proofs `timeline_acts.rs` walking them
+  from the rail. The `d` diff view was touched by none of the five: the only diff golden that moved moved
+  because the shared status strip changed word (`queue unknown open` → `unread unknown`), and the rail row
+  kept every cell it had except the badge — `e8f1a2 0:12 agent +412 −90 ●●●●●● ? ⚑` became
+  `e8f1a2 0:12 +412 −90 ●●●●●● ? ⚑`, age, churn, sparkline, risk and state all intact.
+* **ADR-006 §14 was a list of commands that were acceptance criteria and are now wrong.** It ran
+  `layout queue`, `fit queue 60x12` and `press "q <Enter> x"` — the first two print `unknown view 'queue'`
+  and the third resolves `q` to nothing at all since `e10.3` gave the letter back to the user — and named
+  `cargo test --test queue_triage`, a file `e10.3` split and renamed. It is now `layout timeline`,
+  `fit timeline 60x12`, `press "t j <Enter> d x"` and `--test triage_vocabulary`, which is the half of the
+  old file that outlived the pane. Six more places still counted nine views after the inventory went to
+  eight, §5.1's header still said everything was "prospective until `e10.2`–`e10.5` land", and §5.2 — the
+  protected rail row — still listed `author` as a rung in the width ladder that `Columns::for_width`
+  stopped having, in an order that also had the complexity/sparkline pair inverted from the commit that
+  added the complexity rung.
+* **Forward-looking prose that its own children made false, rewritten as landed.** §5.1.2(c)'s "until then
+  `fathom why` prints `author 8`" and ADR-001's risk-score glossary, which still named *attribution
+  confidence* a vector input, now say what `e10.5` actually did: `spine-3` with five components and a 92
+  ceiling, the freed 8 points deliberately not redistributed, `features-3`'s twelve axes with the `0.04`
+  paid to `findings` and `surface`, and authorship printed as a blind spot. Amendment 3 item 4 carries an
+  *as executed* line for the same reason.
+* **Two other epics' gates were red because of this epic's arithmetic, and were re-measured rather than
+  re-stated by hand.** `reco-6t7`'s gate asserted the MCP risk report ranked the agent's own change first;
+  8 points of `author` is what held it there, and with the term gone a three-line human commit beside it
+  outscores it — so the clause now asserts what a clause about *"is it risky"* is about: the report answers
+  about the change that was asked about, is ordered by the scores it prints, and cites evidence and a model
+  for it. `reco-l9bz`'s golden audit ran `git show -- <goldens>` with no sha, which diffs HEAD, so it had
+  audited the tree it ran on rather than epic 8's commits and passed vacuously on a close commit that
+  touched no golden; pointed at each commit properly it reads 6 changed goldens and 0 unexplained, where
+  before this fix it read 216 unexplained lines off epic 10's own re-bless.
+* **The two hard style gates were red for the whole of the epic, and nothing that runs before CI says
+  so.** ADR-002 §2 makes rustfmt and clippy-strict hard failures and `ci.yml` runs both as gates every PR
+  must pass, but nothing local checks them: the contract suites only assert that the ADR *claims* the gate
+  exists (`check_workspace.py` matches the §2 table row), this tree carries no git hook, and
+  `tools/release.py` runs `cargo fmt` as release step 12, which would have folded the whole reflow into a
+  release commit attributable to nothing. Measured commit by commit, the tree was fmt-clean at `e10.1`'s
+  parent and is clean again here, and the debt is mostly epic 10's own: `c25642e` and `957730a` (epic 8's
+  complexity work, landing between `e10.2` and `e10.3`) took it to 4 sites, `e10.3`'s rename of `queue` →
+  `review` and its split of the queue's tests took it to 36, and `e10.5` left 28. `cargo fmt --all` is run
+  here — 28 sites in 20 files, every one an import re-flow or a re-wrap and none of them behaviour
+  (`fathom-tui/src/lib.rs` listed `pub mod render` after `pub mod review` only because `review` is what
+  `queue` was renamed to, and rustfmt sorts module lists). Clippy, run with `ci.yml`'s two invocations and
+  nothing else, was red on six sites — five of them in code `e10.3` wrote or split out of `queue_triage.rs`:
+  a nested `if … if let` in the strip under the rail, `.into()` on a value that was already a `Disposition` in the
+  ambient open-work row, `.iter().nth(1)` on a `Vec`, an over-indented list item in the module doc of the
+  half of that split which outlived the pane, and `word == &score.to_string()` in `risk_rank.rs`
+  (`clippy::op_ref`); the sixth is `risk::collect`'s `&[row.id.clone()]`, which
+  `clippy::cloned_ref_to_slice_refs` rejects on the pinned 1.97 toolchain, on the line `e10.5` had just
+  re-flowed. All six now read the way the rest of the workspace already does — `std::slice::from_ref`, a
+  let-chain, `.get(1)`, one `&` taken off a comparison — and both CI clippy invocations are green here.
+* **Code documentation the facade rename walked past.** Two intra-doc links still pointed at
+  `fathom_analyze::queue` (`ledger`, `risk::weights`'s `DEFAULT_TAU`), and the plugin-facing finding
+  schema advertised `queue` as one of `view`'s legal names while `view::ALL` has four — a plugin naming it
+  gets `None`, which is rule R7, not a guess.
+* **Still owed, and named as owed rather than closed quietly** — now held by tickets rather than by prose:
+  `reco-o884` for the byte-frozen store fixture ADR-006 §5.1.2 §7 asks for, and `reco-15wk` for the perf
+  budget keys (`cold.queue_visible.ms`, `query.queue.ms`) whose probes now press `t` and whose description
+  still cites a `v_queue` view that no longer exists. Both need a runner and a fixtures decision, not a
+  documentation commit. Ten contract tests were already red on the commit
+  this one follows — the packaging man page's feature set (`e7.4`), `ci.yml`'s dropped macOS/windows legs,
+  the beta-loop changelog reader, the perf and frame-budget gates on a debug build, and an MCP write-audit
+  fixture whose search returns nothing here — and each was re-run red with this commit's diff stashed.
 ### Who wrote it stopped being a risk, so the arithmetic lost a term and every number that quotes it had to be re-measured (`reco-ydek.5`)
 
 ADR-001 §7.3 is the reason `fathom` separates a person's turn from a machine's at all: a reviewer reads an

@@ -25,7 +25,6 @@ use std::process::{Command, Output, Stdio};
 /// The frame reader shared with `tests/cli.rs`; see `tests/frame.rs` for why it is one file.
 mod frame;
 
-
 /// The fixture's size: Epic 1's own number, so what this asserts is what the epic promises.
 #[cfg(feature = "sqlite-bundled")]
 const COMMITS: usize = 500;
@@ -564,10 +563,7 @@ fn the_strip_prints_the_facts_the_store_knows() {
         bits[1].ends_with(" eps") && episodes > 0,
         "the index's episode count: {known}"
     );
-    assert!(
-        bits[2].ends_with(" unread"),
-        "the open-work count: {known}"
-    );
+    assert!(bits[2].ends_with(" unread"), "the open-work count: {known}");
     assert_eq!(
         digits(bits[2]),
         episodes,

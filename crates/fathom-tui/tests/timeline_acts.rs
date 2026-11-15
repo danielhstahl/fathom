@@ -28,8 +28,8 @@ use fathom_analyze::insight::{
 use fathom_core::time::Timestamp;
 use fathom_tui::app::{App, Model};
 use fathom_tui::keymap::Keymap;
-use fathom_tui::review::{Ledger, LedgerHandle, Setup, State};
 use fathom_tui::render::frame_lines;
+use fathom_tui::review::{Ledger, LedgerHandle, Setup, State};
 use fathom_tui::timeline::{AuthorKind, Batch, Episode, Filter, GroupBy, ReviewState};
 use fathom_tui::views::{self, ViewId};
 

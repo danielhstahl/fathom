@@ -732,7 +732,7 @@
           "type": "array"
         },
         "vector": {
-          "description": "`spine-3 88 = surfaces 50 + size 12 + …` — the arithmetic, checkable from the row.",
+          "description": "`spine-3 92 = surfaces 50 + complexity 12 + …` — the arithmetic, checkable from the row.",
           "type": "string"
         }
       },

@@ -17,7 +17,7 @@ So three things are specified rather than left to whoever wrote each view: **the
 ([§3](#3-the-guided-index--a-percentage-with-an-estimate-that-converges)), **the miniature**
 ([§2](#2---demo--a-repository-that-comes-with-the-binary)) and **the rule every empty state and every error
 follows** ([§4](#4-every-empty-state-as-one-batch), [§5](#5-error-copy--every-refusal-names-the-next-action)).
-The rule is the part that scales: nine views and forty-odd refusal sites are too much copy to review one at
+The rule is the part that scales: eight views and forty-odd refusal sites are too much copy to review one at
 a time, and copy written one pane at a time says nine different things about the same emptiness.
 
 ## 1 The first run, in the order it happens
