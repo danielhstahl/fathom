@@ -1,0 +1,1066 @@
+{
+  "schema": "fathom.queue-era-fixture/1",
+  "bead": "reco-o884",
+  "frozen_utc": "2026-11-15T16:46:10Z",
+  "produced_by": {
+    "commit": "81eba3bfbdee053c3e89a54b805ebed872d461f6",
+    "subject": "The queue was a pane, not the job: what is home once it goes, and what the badge was covering for (`reco-ydek.1`)",
+    "command": "python3 tools/freeze_queue_era_store.py --pinned 81eba3bfbdee053c3e89a54b805ebed872d461f6",
+    "version_line": "fathom 0.1.0-alpha.1 features: tui mcp watch sqlite-bundled langs-all deps-all",
+    "store_schema_version": 12,
+    "note": "Everything in `artefacts` was written by this commit's code: its `fathom index`, its `fathom-store::Store::record_triage`, its `fathom review sync`. The tree was a detached worktree of this commit with exactly one file added — crates/fathom-store/examples/freeze_queue_era_store.rs, copied from tools/."
+  },
+  "repository": {
+    "authored_by": "tools/freeze_queue_era_store.py: forty fixed-clock commits, one per episode, with a cycling file count, change size and surface class so the stamped risk is not a constant",
+    "head": "cfe525eca2decd5bf0a74cabb830e3c194c0714f",
+    "commits": 41,
+    "indexed_commits": 40,
+    "episodes": 40,
+    "note": "The store indexes the first forty commits, one episode each. The forty-first is the reviewer committing the ledger her own `fathom review sync` wrote, because ADR-004 §10.1 is right and a sign-off git does not hold is one `git clean -fdx` from never having happened; nothing re-indexed after it, which is why the store still holds forty episodes and not forty-one.",
+    "reviewer": "Dana Stahl <dana@example.com>",
+    "episodes_by_ordinal": [
+      {
+        "ordinal": 0,
+        "id": "ep-71520944056837be8190",
+        "paths": [
+          ".gitignore",
+          "README.md",
+          "src/mod0.py"
+        ]
+      },
+      {
+        "ordinal": 1,
+        "id": "ep-476b8bed2623bc36d363",
+        "paths": [
+          "src/mod1.py",
+          "tests/test_mod1.py"
+        ]
+      },
+      {
+        "ordinal": 2,
+        "id": "ep-a4bd1672d00f3be1b1fe",
+        "paths": [
+          "docs/notes2.md",
+          "src/mod2.py"
+        ]
+      },
+      {
+        "ordinal": 3,
+        "id": "ep-6daa66ff5d57e969a3b0",
+        "paths": [
+          "src/mod3.py"
+        ]
+      },
+      {
+        "ordinal": 4,
+        "id": "ep-7f56e0929e7e2f3c9c62",
+        "paths": [
+          "src/mod3.py",
+          "src/mod4.py",
+          "tests/test_mod4.py"
+        ]
+      },
+      {
+        "ordinal": 5,
+        "id": "ep-9aa0075d4ba4fb56332d",
+        "paths": [
+          "docs/notes5.md",
+          "src/mod5.py"
+        ]
+      },
+      {
+        "ordinal": 6,
+        "id": "ep-aa5aa6c5032920ffea74",
+        "paths": [
+          "src/mod6.py"
+        ]
+      },
+      {
+        "ordinal": 7,
+        "id": "ep-b4a71bd60b6bfa3de4b2",
+        "paths": [
+          "src/mod7.py",
+          "tests/test_mod7.py"
+        ]
+      },
+      {
+        "ordinal": 8,
+        "id": "ep-ad4c4a666197deca88f6",
+        "paths": [
+          "docs/notes8.md",
+          "src/mod7.py",
+          "src/mod8.py"
+        ]
+      },
+      {
+        "ordinal": 9,
+        "id": "ep-41aedbc357ac00de4c88",
+        "paths": [
+          "src/mod9.py"
+        ]
+      },
+      {
+        "ordinal": 10,
+        "id": "ep-88f04b02322be448fe15",
+        "paths": [
+          "src/mod10.py",
+          "tests/test_mod10.py"
+        ]
+      },
+      {
+        "ordinal": 11,
+        "id": "ep-b21a56f3d7d3061b6c64",
+        "paths": [
+          "docs/notes11.md",
+          "src/mod11.py"
+        ]
+      },
+      {
+        "ordinal": 12,
+        "id": "ep-c7ae72157eaee406a175",
+        "paths": [
+          "src/mod11.py",
+          "src/mod12.py"
+        ]
+      },
+      {
+        "ordinal": 13,
+        "id": "ep-68af57fbe5ebb34b018c",
+        "paths": [
+          "src/mod13.py",
+          "tests/test_mod13.py"
+        ]
+      },
+      {
+        "ordinal": 14,
+        "id": "ep-b98bd14030751065eb79",
+        "paths": [
+          "docs/notes14.md",
+          "src/mod14.py"
+        ]
+      },
+      {
+        "ordinal": 15,
+        "id": "ep-4fc02c20ade00f16ba17",
+        "paths": [
+          "src/mod15.py"
+        ]
+      },
+      {
+        "ordinal": 16,
+        "id": "ep-55459b21e70af911f63b",
+        "paths": [
+          "src/mod15.py",
+          "src/mod16.py",
+          "tests/test_mod16.py"
+        ]
+      },
+      {
+        "ordinal": 17,
+        "id": "ep-df4912b19b86f72f52c9",
+        "paths": [
+          "docs/notes17.md",
+          "src/mod17.py"
+        ]
+      },
+      {
+        "ordinal": 18,
+        "id": "ep-62408475bd57c74ec781",
+        "paths": [
+          "src/mod18.py"
+        ]
+      },
+      {
+        "ordinal": 19,
+        "id": "ep-8099edbd19fb36abd749",
+        "paths": [
+          "src/mod19.py",
+          "tests/test_mod19.py"
+        ]
+      },
+      {
+        "ordinal": 20,
+        "id": "ep-90acb7fa900a512b9a6d",
+        "paths": [
+          "docs/notes20.md",
+          "src/mod19.py",
+          "src/mod20.py"
+        ]
+      },
+      {
+        "ordinal": 21,
+        "id": "ep-c957b0cf1a46e0b726e6",
+        "paths": [
+          "src/mod21.py"
+        ]
+      },
+      {
+        "ordinal": 22,
+        "id": "ep-9e5b594739d4411e1cda",
+        "paths": [
+          "src/mod22.py",
+          "tests/test_mod22.py"
+        ]
+      },
+      {
+        "ordinal": 23,
+        "id": "ep-b9ccf07ca3afd9a04e16",
+        "paths": [
+          "docs/notes23.md",
+          "src/mod23.py"
+        ]
+      },
+      {
+        "ordinal": 24,
+        "id": "ep-81a9c63c0f4cf23779cc",
+        "paths": [
+          "src/mod23.py",
+          "src/mod24.py"
+        ]
+      },
+      {
+        "ordinal": 25,
+        "id": "ep-d2fa5de65fa24d7da011",
+        "paths": [
+          "src/mod25.py",
+          "tests/test_mod25.py"
+        ]
+      },
+      {
+        "ordinal": 26,
+        "id": "ep-a5b2e1a337d5e9ac66a1",
+        "paths": [
+          "docs/notes26.md",
+          "src/mod26.py"
+        ]
+      },
+      {
+        "ordinal": 27,
+        "id": "ep-b9ada7eede03202e1526",
+        "paths": [
+          "src/mod27.py"
+        ]
+      },
+      {
+        "ordinal": 28,
+        "id": "ep-bbfcea399df47d42cf8f",
+        "paths": [
+          "src/mod27.py",
+          "src/mod28.py",
+          "tests/test_mod28.py"
+        ]
+      },
+      {
+        "ordinal": 29,
+        "id": "ep-9b6912a01945b72c5641",
+        "paths": [
+          "docs/notes29.md",
+          "src/mod29.py"
+        ]
+      },
+      {
+        "ordinal": 30,
+        "id": "ep-3ce72de68c5b400881d1",
+        "paths": [
+          "src/mod30.py"
+        ]
+      },
+      {
+        "ordinal": 31,
+        "id": "ep-6418bca63c9ce91b55a0",
+        "paths": [
+          "src/mod31.py",
+          "tests/test_mod31.py"
+        ]
+      },
+      {
+        "ordinal": 32,
+        "id": "ep-f667b8fe768bb4e55d0f",
+        "paths": [
+          "docs/notes32.md",
+          "src/mod31.py",
+          "src/mod32.py"
+        ]
+      },
+      {
+        "ordinal": 33,
+        "id": "ep-d402a0b38a89df9feec4",
+        "paths": [
+          "src/mod33.py"
+        ]
+      },
+      {
+        "ordinal": 34,
+        "id": "ep-d6d87c53f23fe3d750af",
+        "paths": [
+          "src/mod34.py",
+          "tests/test_mod34.py"
+        ]
+      },
+      {
+        "ordinal": 35,
+        "id": "ep-094ea1435045f9681bc1",
+        "paths": [
+          "docs/notes35.md",
+          "src/mod35.py"
+        ]
+      },
+      {
+        "ordinal": 36,
+        "id": "ep-5a4528d14148bdce2f1b",
+        "paths": [
+          "src/mod35.py",
+          "src/mod36.py"
+        ]
+      },
+      {
+        "ordinal": 37,
+        "id": "ep-0a86d86c76733a901321",
+        "paths": [
+          "src/mod37.py",
+          "tests/test_mod37.py"
+        ]
+      },
+      {
+        "ordinal": 38,
+        "id": "ep-2977dfff338f4f44b714",
+        "paths": [
+          "docs/notes38.md",
+          "src/mod38.py"
+        ]
+      },
+      {
+        "ordinal": 39,
+        "id": "ep-781636df74527490f124",
+        "paths": [
+          "src/mod39.py"
+        ]
+      }
+    ]
+  },
+  "artefacts": {
+    "store.sqlite3": {
+      "bytes": 778240,
+      "sha256": "e2ed73575f7340c4853e0ee65a83f99322639d1519a50363332bf2f881e641e3"
+    },
+    "ledger.md": {
+      "bytes": 32420,
+      "sha256": "7595a704d3fd2366506c18138c3aa83010bad8bff50e97dc0bd82497a79a4c7e"
+    }
+  },
+  "expectations": {
+    "triage_event_count": 40,
+    "acts": [
+      {
+        "actor": "Dana Stahl <dana@example.com>",
+        "disposition": "accepted",
+        "episode": "ep-71520944056837be8190",
+        "fingerprint": "71520944056837be81902a53fc6be2662dedb06388d3cc3ce6cecc8332454a06",
+        "note": "",
+        "reason": "",
+        "risk": 26,
+        "risk_model": "spine-1",
+        "until": "",
+        "utc": 1700200000000
+      },
+      {
+        "actor": "Dana Stahl <dana@example.com>",
+        "disposition": "accepted",
+        "episode": "ep-476b8bed2623bc36d363",
+        "fingerprint": "476b8bed2623bc36d36326df1dc7fce1cd941fa73b3de9e7bf3e29233da22312",
+        "note": "",
+        "reason": "",
+        "risk": 24,
+        "risk_model": "spine-1",
+        "until": "",
+        "utc": 1700203600000
+      },
+      {
+        "actor": "Dana Stahl <dana@example.com>",
+        "disposition": "accepted",
+        "episode": "ep-a4bd1672d00f3be1b1fe",
+        "fingerprint": "a4bd1672d00f3be1b1feaf6fe49934c07f2927765a6759f4290f3849c200f4a1",
+        "note": "read the diff; the retry ceiling is what the pager budget needs",
+        "reason": "",
+        "risk": 25,
+        "risk_model": "spine-1",
+        "until": "",
+        "utc": 1700207200000
+      },
+      {
+        "actor": "Dana Stahl <dana@example.com>",
+        "disposition": "accepted",
+        "episode": "ep-6daa66ff5d57e969a3b0",
+        "fingerprint": "6daa66ff5d57e969a3b045df56222314b16cea80a4a055119f74c3e07b311c10",
+        "note": "",
+        "reason": "",
+        "risk": 15,
+        "risk_model": "spine-1",
+        "until": "",
+        "utc": 1700210800000
+      },
+      {
+        "actor": "Dana Stahl <dana@example.com>",
+        "disposition": "accepted",
+        "episode": "ep-7f56e0929e7e2f3c9c62",
+        "fingerprint": "7f56e0929e7e2f3c9c627b06e9a5234ac06a89740df98928c5d369b8fb8996a1",
+        "note": "",
+        "reason": "",
+        "risk": 27,
+        "risk_model": "spine-1",
+        "until": "",
+        "utc": 1700214400000
+      },
+      {
+        "actor": "Dana Stahl <dana@example.com>",
+        "disposition": "accepted",
+        "episode": "ep-9aa0075d4ba4fb56332d",
+        "fingerprint": "9aa0075d4ba4fb56332dbd50e7b5157bcb6ca53e295e064d3ddc65b63143106a",
+        "note": "third pass over this one; it is what the ticket asked for",
+        "reason": "",
+        "risk": 26,
+        "risk_model": "spine-1",
+        "until": "",
+        "utc": 1700218000000
+      },
+      {
+        "actor": "Dana Stahl <dana@example.com>",
+        "disposition": "flagged",
+        "episode": "ep-aa5aa6c5032920ffea74",
+        "fingerprint": "aa5aa6c5032920ffea741b28a764c10f2b303e53be2f1745c1a243f48b1a2814",
+        "note": "the migration has no down step and the runbook is not written",
+        "reason": "",
+        "risk": 21,
+        "risk_model": "spine-1",
+        "until": "",
+        "utc": 1700221600000
+      },
+      {
+        "actor": "Dana Stahl <dana@example.com>",
+        "disposition": "flagged",
+        "episode": "ep-b4a71bd60b6bfa3de4b2",
+        "fingerprint": "b4a71bd60b6bfa3de4b2894c983a2328dfd9890ed79fd7fed402310091ea065a",
+        "note": "two agents touched this file in one session and neither said why",
+        "reason": "",
+        "risk": 17,
+        "risk_model": "spine-1",
+        "until": "",
+        "utc": 1700225200000
+      },
+      {
+        "actor": "Dana Stahl <dana@example.com>",
+        "disposition": "flagged",
+        "episode": "ep-ad4c4a666197deca88f6",
+        "fingerprint": "ad4c4a666197deca88f6e97a9a6f12a8769dba14c3a6e59c9ae7bb022e6b25ae",
+        "note": "the test that covers this is deleted in the same turn",
+        "reason": "",
+        "risk": 26,
+        "risk_model": "spine-1",
+        "until": "",
+        "utc": 1700228800000
+      },
+      {
+        "actor": "Dana Stahl <dana@example.com>",
+        "disposition": "flagged",
+        "episode": "ep-41aedbc357ac00de4c88",
+        "fingerprint": "41aedbc357ac00de4c88f61157c2a96a12581ccd6ae17e4ba56c5c2b551c05b9",
+        "note": "1.1k lines of generated output hide the one line that changed",
+        "reason": "",
+        "risk": 23,
+        "risk_model": "spine-1",
+        "until": "",
+        "utc": 1700232400000
+      },
+      {
+        "actor": "Dana Stahl <dana@example.com>",
+        "disposition": "flagged",
+        "episode": "ep-88f04b02322be448fe15",
+        "fingerprint": "88f04b02322be448fe15be0cb68b8ed00e49925cfb439bddfa13f8fdff47a394",
+        "note": "blast says 3 and the graph stopped early; I do not believe the 3",
+        "reason": "",
+        "risk": 26,
+        "risk_model": "spine-1",
+        "until": "",
+        "utc": 1700236000000
+      },
+      {
+        "actor": "Dana Stahl <dana@example.com>",
+        "disposition": "accepted",
+        "episode": "ep-b21a56f3d7d3061b6c64",
+        "fingerprint": "b21a56f3d7d3061b6c648f11661fc37f3f114559517485dd8d2ad9735e81329a",
+        "note": "",
+        "reason": "",
+        "risk": 18,
+        "risk_model": "spine-1",
+        "until": "",
+        "utc": 1700239600000
+      },
+      {
+        "actor": "Dana Stahl <dana@example.com>",
+        "disposition": "accepted",
+        "episode": "ep-c7ae72157eaee406a175",
+        "fingerprint": "c7ae72157eaee406a17595ab8651e3c71a5d34f03dc0f13a9fe53d4b90376956",
+        "note": "",
+        "reason": "",
+        "risk": 24,
+        "risk_model": "spine-1",
+        "until": "",
+        "utc": 1700243200000
+      },
+      {
+        "actor": "Dana Stahl <dana@example.com>",
+        "disposition": "accepted",
+        "episode": "ep-68af57fbe5ebb34b018c",
+        "fingerprint": "68af57fbe5ebb34b018c25fcca7ecd3c222154fdc70065a588132dc95ae7650d",
+        "note": "",
+        "reason": "",
+        "risk": 25,
+        "risk_model": "spine-1",
+        "until": "",
+        "utc": 1700246800000
+      },
+      {
+        "actor": "Dana Stahl <dana@example.com>",
+        "disposition": "accepted",
+        "episode": "ep-b98bd14030751065eb79",
+        "fingerprint": "b98bd14030751065eb79e4f59b9ef15c0e17faf241e26273378c05d89fb016b2",
+        "note": "",
+        "reason": "",
+        "risk": 25,
+        "risk_model": "spine-1",
+        "until": "",
+        "utc": 1700250400000
+      },
+      {
+        "actor": "Dana Stahl <dana@example.com>",
+        "disposition": "accepted",
+        "episode": "ep-4fc02c20ade00f16ba17",
+        "fingerprint": "4fc02c20ade00f16ba170cc05bd9071a6ba1922dfe864afa3aa9fb86a7a0c60e",
+        "note": "",
+        "reason": "",
+        "risk": 15,
+        "risk_model": "spine-1",
+        "until": "",
+        "utc": 1700254000000
+      },
+      {
+        "actor": "Dana Stahl <dana@example.com>",
+        "disposition": "dismissed",
+        "episode": "ep-55459b21e70af911f63b",
+        "fingerprint": "55459b21e70af911f63b30198f52648d06fc10b272af24d87656d7fcb53f3734",
+        "note": "",
+        "reason": "not-my-area",
+        "risk": 27,
+        "risk_model": "spine-1",
+        "until": "",
+        "utc": 1700257600000
+      },
+      {
+        "actor": "Dana Stahl <dana@example.com>",
+        "disposition": "dismissed",
+        "episode": "ep-df4912b19b86f72f52c9",
+        "fingerprint": "df4912b19b86f72f52c9452f8e6a510aa7ce4551a6f918f16c3fd825f0aee1f9",
+        "note": "",
+        "reason": "not-my-area",
+        "risk": 26,
+        "risk_model": "spine-1",
+        "until": "",
+        "utc": 1700261200000
+      },
+      {
+        "actor": "Dana Stahl <dana@example.com>",
+        "disposition": "dismissed",
+        "episode": "ep-62408475bd57c74ec781",
+        "fingerprint": "62408475bd57c74ec78133234e59fa1cc9ff0dcd8d90f8a2539e247729a0d312",
+        "note": "",
+        "reason": "already-known",
+        "risk": 22,
+        "risk_model": "spine-1",
+        "until": "",
+        "utc": 1700264800000
+      },
+      {
+        "actor": "Dana Stahl <dana@example.com>",
+        "disposition": "dismissed",
+        "episode": "ep-8099edbd19fb36abd749",
+        "fingerprint": "8099edbd19fb36abd7494d8e0bb524e7328459db53c7f6a68fb9c6876a667b20",
+        "note": "",
+        "reason": "already-known",
+        "risk": 17,
+        "risk_model": "spine-1",
+        "until": "",
+        "utc": 1700268400000
+      },
+      {
+        "actor": "Dana Stahl <dana@example.com>",
+        "disposition": "dismissed",
+        "episode": "ep-90acb7fa900a512b9a6d",
+        "fingerprint": "90acb7fa900a512b9a6dccf8ff1e447e76ec61f304fb69ba522299613c09d5db",
+        "note": "the widened retry is what I asked for",
+        "reason": "intentional",
+        "risk": 26,
+        "risk_model": "spine-1",
+        "until": "",
+        "utc": 1700272000000
+      },
+      {
+        "actor": "Dana Stahl <dana@example.com>",
+        "disposition": "dismissed",
+        "episode": "ep-c957b0cf1a46e0b726e6",
+        "fingerprint": "c957b0cf1a46e0b726e6c56db9ba01ef60ac4ae4444b5d71c9a07a02f32dc399",
+        "note": "the cycle runs through a test fixture the analyser reads as production",
+        "reason": "false-positive",
+        "risk": 24,
+        "risk_model": "spine-1",
+        "until": "",
+        "utc": 1700275600000
+      },
+      {
+        "actor": "Dana Stahl <dana@example.com>",
+        "disposition": "dismissed",
+        "episode": "ep-9e5b594739d4411e1cda",
+        "fingerprint": "9e5b594739d4411e1cda8864c0b144baa8ecd9a65cea6da77aea4caa68e83a77",
+        "note": "",
+        "reason": "low-stakes",
+        "risk": 26,
+        "risk_model": "spine-1",
+        "until": "",
+        "utc": 1700279200000
+      },
+      {
+        "actor": "Dana Stahl <dana@example.com>",
+        "disposition": "dismissed",
+        "episode": "ep-b9ccf07ca3afd9a04e16",
+        "fingerprint": "b9ccf07ca3afd9a04e168747f10bb8350c63efc8a66287a48c6d86b09bffc5d7",
+        "note": "",
+        "reason": "low-stakes",
+        "risk": 16,
+        "risk_model": "spine-1",
+        "until": "",
+        "utc": 1700282800000
+      },
+      {
+        "actor": "Dana Stahl <dana@example.com>",
+        "disposition": "dismissed",
+        "episode": "ep-81a9c63c0f4cf23779cc",
+        "fingerprint": "81a9c63c0f4cf23779cc8e131a5963238a87badd09630d7583628c015db1a6f7",
+        "note": "",
+        "reason": "superseded",
+        "risk": 22,
+        "risk_model": "spine-1",
+        "until": "",
+        "utc": 1700286400000
+      },
+      {
+        "actor": "Dana Stahl <dana@example.com>",
+        "disposition": "dismissed",
+        "episode": "ep-d2fa5de65fa24d7da011",
+        "fingerprint": "d2fa5de65fa24d7da011641eabb7dce5e4d392b364264c9bb24eb27f8b72d56c",
+        "note": "the whole flag comes out before the merge",
+        "reason": "will-revert",
+        "risk": 25,
+        "risk_model": "spine-1",
+        "until": "",
+        "utc": 1700290000000
+      },
+      {
+        "actor": "Dana Stahl <dana@example.com>",
+        "disposition": "dismissed",
+        "episode": "ep-a5b2e1a337d5e9ac66a1",
+        "fingerprint": "a5b2e1a337d5e9ac66a1722881ea0bb306d9ae0eac6fb1913bf76157b86a971d",
+        "note": "the vendor stream for this session is half written; I will re-read when it is whole",
+        "reason": "other",
+        "risk": 26,
+        "risk_model": "spine-1",
+        "until": "",
+        "utc": 1700293600000
+      },
+      {
+        "actor": "Dana Stahl <dana@example.com>",
+        "disposition": "accepted",
+        "episode": "ep-b9ada7eede03202e1526",
+        "fingerprint": "b9ada7eede03202e152645d88ca1badfa2e38a2c79854bf446ea324ed4b181dd",
+        "note": "",
+        "reason": "",
+        "risk": 16,
+        "risk_model": "spine-1",
+        "until": "",
+        "utc": 1700297200000
+      },
+      {
+        "actor": "Dana Stahl <dana@example.com>",
+        "disposition": "accepted",
+        "episode": "ep-bbfcea399df47d42cf8f",
+        "fingerprint": "bbfcea399df47d42cf8f737c91d5ba22fe4a2882de0b7471768d3290e88b96a3",
+        "note": "",
+        "reason": "",
+        "risk": 27,
+        "risk_model": "spine-1",
+        "until": "",
+        "utc": 1700300800000
+      },
+      {
+        "actor": "Dana Stahl <dana@example.com>",
+        "disposition": "accepted",
+        "episode": "ep-9b6912a01945b72c5641",
+        "fingerprint": "9b6912a01945b72c564152e9d83458c7895144bb82fac8392563aa6ed6525eb1",
+        "note": "",
+        "reason": "",
+        "risk": 24,
+        "risk_model": "spine-1",
+        "until": "",
+        "utc": 1700304400000
+      },
+      {
+        "actor": "Dana Stahl <dana@example.com>",
+        "disposition": "accepted",
+        "episode": "ep-3ce72de68c5b400881d1",
+        "fingerprint": "3ce72de68c5b400881d169afd9c00567d9741872f4cf8f54dde4b67d68780d05",
+        "note": "",
+        "reason": "",
+        "risk": 22,
+        "risk_model": "spine-1",
+        "until": "",
+        "utc": 1700308000000
+      },
+      {
+        "actor": "Dana Stahl <dana@example.com>",
+        "disposition": "accepted",
+        "episode": "ep-6418bca63c9ce91b55a0",
+        "fingerprint": "6418bca63c9ce91b55a0df8208d56502bf15c00e8a6046b34c1cdc2d81e140fa",
+        "note": "",
+        "reason": "",
+        "risk": 17,
+        "risk_model": "spine-1",
+        "until": "",
+        "utc": 1700311600000
+      },
+      {
+        "actor": "Dana Stahl <dana@example.com>",
+        "disposition": "snoozed",
+        "episode": "ep-f667b8fe768bb4e55d0f",
+        "fingerprint": "f667b8fe768bb4e55d0f41c7c8437409eb432b5dd9046cc51dceeaffb4dd6405",
+        "note": "",
+        "reason": "",
+        "risk": 26,
+        "risk_model": "spine-1",
+        "until": "7d",
+        "utc": 1700315200000
+      },
+      {
+        "actor": "Dana Stahl <dana@example.com>",
+        "disposition": "snoozed",
+        "episode": "ep-d402a0b38a89df9feec4",
+        "fingerprint": "d402a0b38a89df9feec41cef36f77d4b584341f364a9b88bca0651caf3863fb4",
+        "note": "",
+        "reason": "",
+        "risk": 24,
+        "risk_model": "spine-1",
+        "until": "1d",
+        "utc": 1700318800000
+      },
+      {
+        "actor": "Dana Stahl <dana@example.com>",
+        "disposition": "snoozed",
+        "episode": "ep-d6d87c53f23fe3d750af",
+        "fingerprint": "d6d87c53f23fe3d750af2bc14d8729c074d2c68ec38d1d474c858e87609c9b97",
+        "note": "",
+        "reason": "",
+        "risk": 26,
+        "risk_model": "spine-1",
+        "until": "next-index:1",
+        "utc": 1700322400000
+      },
+      {
+        "actor": "Dana Stahl <dana@example.com>",
+        "disposition": "snoozed",
+        "episode": "ep-094ea1435045f9681bc1",
+        "fingerprint": "094ea1435045f9681bc1eeae132677b0a23607f8e6c16fcf7af1f1862eb16a9a",
+        "note": "",
+        "reason": "",
+        "risk": 16,
+        "risk_model": "spine-1",
+        "until": "new-in-session:1",
+        "utc": 1700326000000
+      },
+      {
+        "actor": "Dana Stahl <dana@example.com>",
+        "disposition": "accepted",
+        "episode": "ep-5a4528d14148bdce2f1b",
+        "fingerprint": "5a4528d14148bdce2f1bfbe5bf0f85eaadf49c02b72a09db3cbd10d5b8349ce9",
+        "note": "",
+        "reason": "",
+        "risk": 23,
+        "risk_model": "spine-1",
+        "until": "",
+        "utc": 1700329600000
+      },
+      {
+        "actor": "Dana Stahl <dana@example.com>",
+        "disposition": "accepted",
+        "episode": "ep-0a86d86c76733a901321",
+        "fingerprint": "0a86d86c76733a901321be5bcd326012a1cc4a25219c7bec17a15a8c24784566",
+        "note": "",
+        "reason": "",
+        "risk": 25,
+        "risk_model": "spine-1",
+        "until": "",
+        "utc": 1700333200000
+      },
+      {
+        "actor": "Dana Stahl <dana@example.com>",
+        "disposition": "accepted",
+        "episode": "ep-2977dfff338f4f44b714",
+        "fingerprint": "2977dfff338f4f44b7148213b9c432f64bc93df7f51b0ccfab914cc829db4d4d",
+        "note": "",
+        "reason": "",
+        "risk": 26,
+        "risk_model": "spine-1",
+        "until": "",
+        "utc": 1700336800000
+      },
+      {
+        "actor": "Dana Stahl <dana@example.com>",
+        "disposition": "accepted",
+        "episode": "ep-781636df74527490f124",
+        "fingerprint": "781636df74527490f124fcb37de40e60ecca439eae1b9062d1a24338eb97256c",
+        "note": "",
+        "reason": "",
+        "risk": 16,
+        "risk_model": "spine-1",
+        "until": "",
+        "utc": 1700340400000
+      }
+    ],
+    "markers": [
+      {
+        "episode": "ep-781636df74527490f124",
+        "marker_state": "accepted"
+      },
+      {
+        "episode": "ep-2977dfff338f4f44b714",
+        "marker_state": "accepted"
+      },
+      {
+        "episode": "ep-0a86d86c76733a901321",
+        "marker_state": "accepted"
+      },
+      {
+        "episode": "ep-5a4528d14148bdce2f1b",
+        "marker_state": "accepted"
+      },
+      {
+        "episode": "ep-094ea1435045f9681bc1",
+        "marker_state": "snoozed"
+      },
+      {
+        "episode": "ep-d6d87c53f23fe3d750af",
+        "marker_state": "snoozed"
+      },
+      {
+        "episode": "ep-d402a0b38a89df9feec4",
+        "marker_state": "snoozed"
+      },
+      {
+        "episode": "ep-f667b8fe768bb4e55d0f",
+        "marker_state": "snoozed"
+      },
+      {
+        "episode": "ep-6418bca63c9ce91b55a0",
+        "marker_state": "accepted"
+      },
+      {
+        "episode": "ep-3ce72de68c5b400881d1",
+        "marker_state": "accepted"
+      },
+      {
+        "episode": "ep-9b6912a01945b72c5641",
+        "marker_state": "accepted"
+      },
+      {
+        "episode": "ep-bbfcea399df47d42cf8f",
+        "marker_state": "accepted"
+      },
+      {
+        "episode": "ep-b9ada7eede03202e1526",
+        "marker_state": "accepted"
+      },
+      {
+        "episode": "ep-a5b2e1a337d5e9ac66a1",
+        "marker_state": "dismissed"
+      },
+      {
+        "episode": "ep-d2fa5de65fa24d7da011",
+        "marker_state": "dismissed"
+      },
+      {
+        "episode": "ep-81a9c63c0f4cf23779cc",
+        "marker_state": "dismissed"
+      },
+      {
+        "episode": "ep-b9ccf07ca3afd9a04e16",
+        "marker_state": "dismissed"
+      },
+      {
+        "episode": "ep-9e5b594739d4411e1cda",
+        "marker_state": "dismissed"
+      },
+      {
+        "episode": "ep-c957b0cf1a46e0b726e6",
+        "marker_state": "dismissed"
+      },
+      {
+        "episode": "ep-90acb7fa900a512b9a6d",
+        "marker_state": "dismissed"
+      },
+      {
+        "episode": "ep-8099edbd19fb36abd749",
+        "marker_state": "dismissed"
+      },
+      {
+        "episode": "ep-62408475bd57c74ec781",
+        "marker_state": "dismissed"
+      },
+      {
+        "episode": "ep-df4912b19b86f72f52c9",
+        "marker_state": "dismissed"
+      },
+      {
+        "episode": "ep-55459b21e70af911f63b",
+        "marker_state": "dismissed"
+      },
+      {
+        "episode": "ep-4fc02c20ade00f16ba17",
+        "marker_state": "accepted"
+      },
+      {
+        "episode": "ep-b98bd14030751065eb79",
+        "marker_state": "accepted"
+      },
+      {
+        "episode": "ep-68af57fbe5ebb34b018c",
+        "marker_state": "accepted"
+      },
+      {
+        "episode": "ep-c7ae72157eaee406a175",
+        "marker_state": "accepted"
+      },
+      {
+        "episode": "ep-b21a56f3d7d3061b6c64",
+        "marker_state": "accepted"
+      },
+      {
+        "episode": "ep-88f04b02322be448fe15",
+        "marker_state": "flagged"
+      },
+      {
+        "episode": "ep-41aedbc357ac00de4c88",
+        "marker_state": "flagged"
+      },
+      {
+        "episode": "ep-ad4c4a666197deca88f6",
+        "marker_state": "flagged"
+      },
+      {
+        "episode": "ep-b4a71bd60b6bfa3de4b2",
+        "marker_state": "flagged"
+      },
+      {
+        "episode": "ep-aa5aa6c5032920ffea74",
+        "marker_state": "flagged"
+      },
+      {
+        "episode": "ep-9aa0075d4ba4fb56332d",
+        "marker_state": "accepted"
+      },
+      {
+        "episode": "ep-7f56e0929e7e2f3c9c62",
+        "marker_state": "accepted"
+      },
+      {
+        "episode": "ep-6daa66ff5d57e969a3b0",
+        "marker_state": "accepted"
+      },
+      {
+        "episode": "ep-a4bd1672d00f3be1b1fe",
+        "marker_state": "accepted"
+      },
+      {
+        "episode": "ep-476b8bed2623bc36d363",
+        "marker_state": "accepted"
+      },
+      {
+        "episode": "ep-71520944056837be8190",
+        "marker_state": "accepted"
+      }
+    ]
+  },
+  "pinned_verdicts": {
+    "ledger_committed": true,
+    "sync": {
+      "args": [
+        "sync"
+      ],
+      "exit": 0,
+      "stdout": "rendered 40 act(s) into the ledger; 0 act(s) had no describable episode and stay act-log only\n  sg-8bbb8edb887f5147  accepted  ep-71520944056837be8190\n  sg-a200e3f913dfb03f  accepted  ep-476b8bed2623bc36d363\n  sg-8570731787201763  accepted  ep-a4bd1672d00f3be1b1fe\n  sg-837deb298f6d72be  accepted  ep-6daa66ff5d57e969a3b0\n  sg-b4830eb3b3b8a5fd  accepted  ep-7f56e0929e7e2f3c9c62\n  sg-2d08d8a25fa1f88f  accepted  ep-9aa0075d4ba4fb56332d\n  sg-74554ed4881c69c5  flagged   ep-aa5aa6c5032920ffea74\n  sg-0e29836eea0a41c7  flagged   ep-b4a71bd60b6bfa3de4b2\n  sg-f2e03af6c8b7619d  flagged   ep-ad4c4a666197deca88f6\n  sg-79295b7a6e70c2be  flagged   ep-41aedbc357ac00de4c88\n  … and 30 more\n",
+      "stderr": ""
+    },
+    "sync_again": {
+      "args": [
+        "sync"
+      ],
+      "exit": 0,
+      "stdout": "rendered 0 act(s) into the ledger; 0 act(s) had no describable episode and stay act-log only\n",
+      "stderr": ""
+    },
+    "status": {
+      "args": [
+        "status"
+      ],
+      "exit": 7,
+      "stdout": "ledger    1 file(s) · 40 entries · 40 fresh · 0 stale · 0 orphan · 0 tampered\nepisodes  40 live · 20 with a fresh sign-off · 20 without\nverdict   NOT ALL REVIEWED\n  blocks: 20 of 40 live episodes have no fresh sign-off\n",
+      "stderr": ""
+    },
+    "status_json": {
+      "args": [
+        "status",
+        "--json"
+      ],
+      "exit": 7,
+      "stdout": "{\"action\":\"status\",\"blocking\":[\"20 of 40 live episodes have no fresh sign-off\"],\"clean\":false,\"complaints\":[],\"contract\":\"fathom.cli.review/1\",\"entries\":40,\"entries_detail\":[{\"actor\":\"Dana Stahl <dana@example.com>\",\"actor_kind\":\"human\",\"content\":\"f2287d2a26af706a8410d2309dc4018ad8cbd9fea49c3ad50b57c6341f7f54a2\",\"dead\":false,\"decision\":\"accepted\",\"episode\":\"ep-71520944056837be8190\",\"file\":\".fathom/reviews/ledger.md\",\"fingerprint\":\"71520944056837be81902a53fc6be2662dedb06388d3cc3ce6cecc8332454a06\",\"id\":\"sg-8bbb8edb887f5147\",\"link_method\":\"exact\",\"link_score\":1.0,\"linked_episode\":\"ep-71520944056837be8190\",\"members\":[\"dfa76c79\"],\"note\":\"\",\"paths\":[\".gitignore@38867c575160\",\"README.md@921e62b71405\",\"src/mod0.py@6f798d45536c\"],\"reason\":\"\",\"relinked_from\":null,\"signed\":\"2023-11-17T05:46:40Z\",\"signed_utc\":1700200000000,\"stale_reason\":\"\",\"state\":\"fresh\",\"tampered\":false},{\"actor\":\"Dana Stahl <dana@example.com>\",\"actor_kind\":\"human\",\"content\":\"e6a875d0e779ecbfceae882c86a3e021d2c88cb3eb797e762353f55f06182071\",\"dead\":false,\"decision\":\"accepted\",\"episode\":\"ep-476b8bed2623bc36d363\",\"file\":\".fathom/reviews/ledger.md\",\"fingerprint\":\"476b8bed2623bc36d36326df1dc7fce1cd941fa73b3de9e7bf3e29233da22312\",\"id\":\"sg-a200e3f913dfb03f\",\"link_method\":\"exact\",\"link_score\":1.0,\"linked_episode\":\"ep-476b8bed2623bc36d363\",\"members\":[\"727fde8f\"],\"note\":\"\",\"paths\":[\"src/mod1.py@2287110d3507\",\"tests/test_mod1.py@48ea1b3c5ae4\"],\"reason\":\"\",\"relinked_from\":null,\"signed\":\"2023-11-17T06:46:40Z\",\"signed_utc\":1700203600000,\"stale_reason\":\"\",\"state\":\"fresh\",\"tampered\":false},{\"actor\":\"Dana Stahl <dana@example.com>\",\"actor_kind\":\"human\",\"content\":\"b318dcf8f276c3eae4659c70e0c1e6d7e8b9c2a430c6dbaf8bf0d6332d43f559\",\"dead\":false,\"decision\":\"accepted\",\"episode\":\"ep-a4bd1672d00f3be1b1fe\",\"file\":\".fathom/reviews/ledger.md\",\"fingerprint\":\"a4bd1672d00f3be1b1feaf6fe49934c07f2927765a6759f4290f3849c200f4a1\",\"id\":\"sg-8570731787201763\",\"link_method\":\"exact\",\"link_score\":1.0,\"linked_episode\":\"ep-a4bd1672d00f3be1b1fe\",\"members\":[\"6f38544f\"],\"note\":\"read the diff; the retry ceiling is what the pager budget needs\",\"paths\":[\"docs/notes2.md@58c91984b5e3\",\"src/mod2.py@49af83c80113\"],\"reason\":\"\",\"relinked_from\":null,\"signed\":\"2023-11-17T07:46:40Z\",\"signed_utc\":1700207200000,\"stale_reason\":\"\",\"state\":\"fresh\",\"tampered\":false},{\"actor\":\"Dana Stahl <dana@example.com>\",\"actor_kind\":\"human\",\"content\":\"66120c7d645c142e59a9c3ca38442f514de09b80cde92308849c48ecccd1d099\",\"dead\":false,\"decision\":\"accepted\",\"episode\":\"ep-6daa66ff5d57e969a3b0\",\"file\":\".fathom/reviews/ledger.md\",\"fingerprint\":\"6daa66ff5d57e969a3b045df56222314b16cea80a4a055119f74c3e07b311c10\",\"id\":\"sg-837deb298f6d72be\",\"link_method\":\"exact\",\"link_score\":1.0,\"linked_episode\":\"ep-6daa66ff5d57e969a3b0\",\"members\":[\"0412cc08\"],\"note\":\"\",\"paths\":[\"src/mod3.py@61b1013add2c\"],\"reason\":\"\",\"relinked_from\":null,\"signed\":\"2023-11-17T08:46:40Z\",\"signed_utc\":1700210800000,\"stale_reason\":\"\",\"state\":\"fresh\",\"tampered\":false},{\"actor\":\"Dana Stahl <dana@example.com>\",\"actor_kind\":\"human\",\"content\":\"294693c64928e029047a529ffa22642f9ae87d836cad0b3d2ad816f14a54e71b\",\"dead\":false,\"decision\":\"accepted\",\"episode\":\"ep-7f56e0929e7e2f3c9c62\",\"file\":\".fathom/reviews/ledger.md\",\"fingerprint\":\"7f56e0929e7e2f3c9c627b06e9a5234ac06a89740df98928c5d369b8fb8996a1\",\"id\":\"sg-b4830eb3b3b8a5fd\",\"link_method\":\"exact\",\"link_score\":1.0,\"linked_episode\":\"ep-7f56e0929e7e2f3c9c62\",\"members\":[\"54cc9fbb\"],\"note\":\"\",\"paths\":[\"src/mod3.py@533d1af92b90\",\"src/mod4.py@1f01231a7955\",\"tests/test_mod4.py@65917b8365c8\"],\"reason\":\"\",\"relinked_from\":null,\"signed\":\"2023-11-17T09:46:40Z\",\"signed_utc\":1700214400000,\"stale_reason\":\"\",\"state\":\"fresh\",\"tampered\":false},{\"actor\":\"Dana Stahl <dana@example.com>\",\"actor_kind\":\"human\",\"content\":\"348bdd70ee60b3d6aef7cacc6e8ec18bb7002e10afdc45eeb63f1a9453573790\",\"dead\":false,\"decision\":\"accepted\",\"episode\":\"ep-9aa0075d4ba4fb56332d\",\"file\":\".fathom/reviews/ledger.md\",\"fingerprint\":\"9aa0075d4ba4fb56332dbd50e7b5157bcb6ca53e295e064d3ddc65b63143106a\",\"id\":\"sg-2d08d8a25fa1f88f\",\"link_method\":\"exact\",\"link_score\":1.0,\"linked_episode\":\"ep-9aa0075d4ba4fb56332d\",\"members\":[\"675006e5\"],\"note\":\"third pass over this one; it is what the ticket asked for\",\"paths\":[\"docs/notes5.md@39a7c8d2f599\",\"src/mod5.py@343c1cab5423\"],\"reason\":\"\",\"relinked_from\":null,\"signed\":\"2023-11-17T10:46:40Z\",\"signed_utc\":1700218000000,\"stale_reason\":\"\",\"state\":\"fresh\",\"tampered\":false},{\"actor\":\"Dana Stahl <dana@example.com>\",\"actor_kind\":\"human\",\"content\":\"45717ab8e048a5af7a7533f35c82d675df638bd3993816d6a61a1fc837449585\",\"dead\":false,\"decision\":\"flagged\",\"episode\":\"ep-aa5aa6c5032920ffea74\",\"file\":\".fathom/reviews/ledger.md\",\"fingerprint\":\"aa5aa6c5032920ffea741b28a764c10f2b303e53be2f1745c1a243f48b1a2814\",\"id\":\"sg-74554ed4881c69c5\",\"link_method\":\"exact\",\"link_score\":1.0,\"linked_episode\":\"ep-aa5aa6c5032920ffea74\",\"members\":[\"d6bc5755\"],\"note\":\"the migration has no down step and the runbook is not written\",\"paths\":[\"src/mod6.py@5b45fd0f1333\"],\"reason\":\"\",\"relinked_from\":null,\"signed\":\"2023-11-17T11:46:40Z\",\"signed_utc\":1700221600000,\"stale_reason\":\"\",\"state\":\"fresh\",\"tampered\":false},{\"actor\":\"Dana Stahl <dana@example.com>\",\"actor_kind\":\"human\",\"content\":\"cfb0a4c829d06b6c05d10437097f03b327557c816c446628ef8666cda79462b4\",\"dead\":false,\"decision\":\"flagged\",\"episode\":\"ep-b4a71bd60b6bfa3de4b2\",\"file\":\".fathom/reviews/ledger.md\",\"fingerprint\":\"b4a71bd60b6bfa3de4b2894c983a2328dfd9890ed79fd7fed402310091ea065a\",\"id\":\"sg-0e29836eea0a41c7\",\"link_method\":\"exact\",\"link_score\":1.0,\"linked_episode\":\"ep-b4a71bd60b6bfa3de4b2\",\"members\":[\"b3347efc\"],\"note\":\"two agents touched this file in one session and neither said why\",\"paths\":[\"src/mod7.py@5eb77fce80b7\",\"tests/test_mod7.py@c588b97c77ca\"],\"reason\":\"\",\"relinked_from\":null,\"signed\":\"2023-11-17T12:46:40Z\",\"signed_utc\":1700225200000,\"stale_reason\":\"\",\"state\":\"fresh\",\"tampered\":false},{\"actor\":\"Dana Stahl <dana@example.com>\",\"actor_kind\":\"human\",\"content\":\"820a152230e32acad5c4320d78468a46058643f9fb28e4dc3db1ade2e8825305\",\"dead\":false,\"decision\":\"flagged\",\"episode\":\"ep-ad4c4a666197deca88f6\",\"file\":\".fathom/reviews/ledger.md\",\"fingerprint\":\"ad4c4a666197deca88f6e97a9a6f12a8769dba14c3a6e59c9ae7bb022e6b25ae\",\"id\":\"sg-f2e03af6c8b7619d\",\"link_method\":\"exact\",\"link_score\":1.0,\"linked_episode\":\"ep-ad4c4a666197deca88f6\",\"members\":[\"b575ae88\"],\"note\":\"the test that covers this is deleted in the same turn\",\"paths\":[\"docs/notes8.md@da03dacfe17b\",\"src/mod7.py@533d1af92b90\",\"src/mod8.py@11e9e8e85592\"],\"reason\":\"\",\"relinked_from\":null,\"signed\":\"2023-11-17T13:46:40Z\",\"signed_utc\":1700228800000,\"stale_reason\":\"\",\"state\":\"fresh\",\"tampered\":false},{\"actor\":\"Dana Stahl <dana@example.com>\",\"actor_kind\":\"human\",\"content\":\"4c2f67b192fae75f6eb3f953c32c353aa9d58557e682431a32bf96c9c1d69c2f\",\"dead\":false,\"decision\":\"flagged\",\"episode\":\"ep-41aedbc357ac00de4c88\",\"file\":\".fathom/reviews/ledger.md\",\"fingerprint\":\"41aedbc357ac00de4c88f61157c2a96a12581ccd6ae17e4ba56c5c2b551c05b9\",\"id\":\"sg-79295b7a6e70c2be\",\"link_method\":\"exact\",\"link_score\":1.0,\"linked_episode\":\"ep-41aedbc357ac00de4c88\",\"members\":[\"ac83889d\"],\"note\":\"1.1k lines of generated output hide the one line that changed\",\"paths\":[\"src/mod9.py@a1c34519106e\"],\"reason\":\"\",\"relinked_from\":null,\"signed\":\"2023-11-17T14:46:40Z\",\"signed_utc\":1700232400000,\"stale_reason\":\"\",\"state\":\"fresh\",\"tampered\":false},{\"actor\":\"Dana Stahl <dana@example.com>\",\"actor_kind\":\"human\",\"content\":\"5030baff5a7f63ffbe325e83f52ccea356baae5215b0a3ca969759f71f04a3ec\",\"dead\":false,\"decision\":\"flagged\",\"episode\":\"ep-88f04b02322be448fe15\",\"file\":\".fathom/reviews/ledger.md\",\"fingerprint\":\"88f04b02322be448fe15be0cb68b8ed00e49925cfb439bddfa13f8fdff47a394\",\"id\":\"sg-96f7be383991a825\",\"link_method\":\"exact\",\"link_score\":1.0,\"linked_episode\":\"ep-88f04b02322be448fe15\",\"members\":[\"897f4b0b\"],\"note\":\"blast says 3 and the graph stopped early; I do not believe the 3\",\"paths\":[\"src/mod10.py@f8278d4f34e0\",\"tests/test_mod10.py@7b7e3d30d5c1\"],\"reason\":\"\",\"relinked_from\":null,\"signed\":\"2023-11-17T15:46:40Z\",\"signed_utc\":1700236000000,\"stale_reason\":\"\",\"state\":\"fresh\",\"tampered\":false},{\"actor\":\"Dana Stahl <dana@example.com>\",\"actor_kind\":\"human\",\"content\":\"0ead6ea7b2a1004ea90ee692d2ba6e7dac562f085206bb50f7075eaa98fd0bfe\",\"dead\":false,\"decision\":\"accepted\",\"episode\":\"ep-b21a56f3d7d3061b6c64\",\"file\":\".fathom/reviews/ledger.md\",\"fingerprint\":\"b21a56f3d7d3061b6c648f11661fc37f3f114559517485dd8d2ad9735e81329a\",\"id\":\"sg-5950d2dea386cb18\",\"link_method\":\"exact\",\"link_score\":1.0,\"linked_episode\":\"ep-b21a56f3d7d3061b6c64\",\"members\":[\"42f902d2\"],\"note\":\"\",\"paths\":[\"docs/notes11.md@e92d07a41536\",\"src/mod11.py@7d9398d0829b\"],\"reason\":\"\",\"relinked_from\":null,\"signed\":\"2023-11-17T16:46:40Z\",\"signed_utc\":1700239600000,\"stale_reason\":\"\",\"state\":\"fresh\",\"tampered\":false},{\"actor\":\"Dana Stahl <dana@example.com>\",\"actor_kind\":\"human\",\"content\":\"e9b37dbb2a5ae5eac4fa6ea259963be85a439532e92e42c7135c26bb63d0354d\",\"dead\":false,\"decision\":\"accepted\",\"episode\":\"ep-c7ae72157eaee406a175\",\"file\":\".fathom/reviews/ledger.md\",\"fingerprint\":\"c7ae72157eaee406a17595ab8651e3c71a5d34f03dc0f13a9fe53d4b90376956\",\"id\":\"sg-2a1d0a4d42d030ad\",\"link_method\":\"exact\",\"link_score\":1.0,\"linked_episode\":\"ep-c7ae72157eaee406a175\",\"members\":[\"37078ccd\"],\"note\":\"\",\"paths\":[\"src/mod11.py@533d1af92b90\",\"src/mod12.py@458d181f1bc3\"],\"reason\":\"\",\"relinked_from\":null,\"signed\":\"2023-11-17T17:46:40Z\",\"signed_utc\":1700243200000,\"stale_reason\":\"\",\"state\":\"fresh\",\"tampered\":false},{\"actor\":\"Dana Stahl <dana@example.com>\",\"actor_kind\":\"human\",\"content\":\"c72cd3e53d8d35a054063d3a367c0e9cfd3209524511a27605d1ae0d7f73c17f\",\"dead\":false,\"decision\":\"accepted\",\"episode\":\"ep-68af57fbe5ebb34b018c\",\"file\":\".fathom/reviews/ledger.md\",\"fingerprint\":\"68af57fbe5ebb34b018c25fcca7ecd3c222154fdc70065a588132dc95ae7650d\",\"id\":\"sg-482fc4977ed8193a\",\"link_method\":\"exact\",\"link_score\":1.0,\"linked_episode\":\"ep-68af57fbe5ebb34b018c\",\"members\":[\"ac1a23f7\"],\"note\":\"\",\"paths\":[\"src/mod13.py@72a3cd1622e6\",\"tests/test_mod13.py@b1251871dbdb\"],\"reason\":\"\",\"relinked_from\":null,\"signed\":\"2023-11-17T18:46:40Z\",\"signed_utc\":1700246800000,\"stale_reason\":\"\",\"state\":\"fresh\",\"tampered\":false},{\"actor\":\"Dana Stahl <dana@example.com>\",\"actor_kind\":\"human\",\"content\":\"a8bac9c3d3923a0193278576405ab4889367e7abc4cad895d702d8df5f54a6f3\",\"dead\":false,\"decision\":\"accepted\",\"episode\":\"ep-b98bd14030751065eb79\",\"file\":\".fathom/reviews/ledger.md\",\"fingerprint\":\"b98bd14030751065eb79e4f59b9ef15c0e17faf241e26273378c05d89fb016b2\",\"id\":\"sg-52cef48055918eef\",\"link_method\":\"exact\",\"link_score\":1.0,\"linked_episode\":\"ep-b98bd14030751065eb79\",\"members\":[\"2051cd95\"],\"note\":\"\",\"paths\":[\"docs/notes14.md@367cb26527d3\",\"src/mod14.py@fbcf89cd7081\"],\"reason\":\"\",\"relinked_from\":null,\"signed\":\"2023-11-17T19:46:40Z\",\"signed_utc\":1700250400000,\"stale_reason\":\"\",\"state\":\"fresh\",\"tampered\":false},{\"actor\":\"Dana Stahl <dana@example.com>\",\"actor_kind\":\"human\",\"content\":\"806f03a2faedc6539189de8b76c42c99c283c30d668b7b79f5c6da99798ca6c5\",\"dead\":false,\"decision\":\"accepted\",\"episode\":\"ep-4fc02c20ade00f16ba17\",\"file\":\".fathom/reviews/ledger.md\",\"fingerprint\":\"4fc02c20ade00f16ba170cc05bd9071a6ba1922dfe864afa3aa9fb86a7a0c60e\",\"id\":\"sg-4240979df16c574a\",\"link_method\":\"exact\",\"link_score\":1.0,\"linked_episode\":\"ep-4fc02c20ade00f16ba17\",\"members\":[\"190a7817\"],\"note\":\"\",\"paths\":[\"src/mod15.py@d2c0a9d6f24e\"],\"reason\":\"\",\"relinked_from\":null,\"signed\":\"2023-11-17T20:46:40Z\",\"signed_utc\":1700254000000,\"stale_reason\":\"\",\"state\":\"fresh\",\"tampered\":false},{\"actor\":\"Dana Stahl <dana@example.com>\",\"actor_kind\":\"human\",\"content\":\"d68d205a8e9e94bcc690d10f4ac0467478cd4b873df09e4442bfab9bb60b5e0a\",\"dead\":false,\"decision\":\"dismissed\",\"episode\":\"ep-55459b21e70af911f63b\",\"file\":\".fathom/reviews/ledger.md\",\"fingerprint\":\"55459b21e70af911f63b30198f52648d06fc10b272af24d87656d7fcb53f3734\",\"id\":\"sg-8e2c3ec21fc78d6a\",\"link_method\":\"exact\",\"link_score\":1.0,\"linked_episode\":\"ep-55459b21e70af911f63b\",\"members\":[\"c17be9db\"],\"note\":\"not-my-area\",\"paths\":[\"src/mod15.py@533d1af92b90\",\"src/mod16.py@4a00ce6ea8a4\",\"tests/test_mod16.py@48ea1b3c5ae4\"],\"reason\":\"\",\"relinked_from\":null,\"signed\":\"2023-11-17T21:46:40Z\",\"signed_utc\":1700257600000,\"stale_reason\":\"\",\"state\":\"fresh\",\"tampered\":false},{\"actor\":\"Dana Stahl <dana@example.com>\",\"actor_kind\":\"human\",\"content\":\"da4ee53934c57bedf22ca659529dc3e0aa9f853b3367c2bc30a4ddbd32d9672c\",\"dead\":false,\"decision\":\"dismissed\",\"episode\":\"ep-df4912b19b86f72f52c9\",\"file\":\".fathom/reviews/ledger.md\",\"fingerprint\":\"df4912b19b86f72f52c9452f8e6a510aa7ce4551a6f918f16c3fd825f0aee1f9\",\"id\":\"sg-9f652bdef9c19038\",\"link_method\":\"exact\",\"link_score\":1.0,\"linked_episode\":\"ep-df4912b19b86f72f52c9\",\"members\":[\"6bbd4efb\"],\"note\":\"not-my-area\",\"paths\":[\"docs/notes17.md@6cc9e34d7e75\",\"src/mod17.py@98b4f2d53959\"],\"reason\":\"\",\"relinked_from\":null,\"signed\":\"2023-11-17T22:46:40Z\",\"signed_utc\":1700261200000,\"stale_reason\":\"\",\"state\":\"fresh\",\"tampered\":false},{\"actor\":\"Dana Stahl <dana@example.com>\",\"actor_kind\":\"human\",\"content\":\"61ab63104a042a19d71f1374f1799f89daf13c485cb4ad6fa7471fd3bd221b26\",\"dead\":false,\"decision\":\"dismissed\",\"episode\":\"ep-62408475bd57c74ec781\",\"file\":\".fathom/reviews/ledger.md\",\"fingerprint\":\"62408475bd57c74ec78133234e59fa1cc9ff0dcd8d90f8a2539e247729a0d312\",\"id\":\"sg-34f09d183512b585\",\"link_method\":\"exact\",\"link_score\":1.0,\"linked_episode\":\"ep-62408475bd57c74ec781\",\"members\":[\"51b1323b\"],\"note\":\"already-known\",\"paths\":[\"src/mod18.py@71df2323fe3b\"],\"reason\":\"\",\"relinked_from\":null,\"signed\":\"2023-11-17T23:46:40Z\",\"signed_utc\":1700264800000,\"stale_reason\":\"\",\"state\":\"fresh\",\"tampered\":false},{\"actor\":\"Dana Stahl <dana@example.com>\",\"actor_kind\":\"human\",\"content\":\"52a213212b13b93c839d23b1955c77a8481ac10fdd9ee6dc0fbfe41f463fbcbe\",\"dead\":false,\"decision\":\"dismissed\",\"episode\":\"ep-8099edbd19fb36abd749\",\"file\":\".fathom/reviews/ledger.md\",\"fingerprint\":\"8099edbd19fb36abd7494d8e0bb524e7328459db53c7f6a68fb9c6876a667b20\",\"id\":\"sg-68ae33b6a467e8ca\",\"link_method\":\"exact\",\"link_score\":1.0,\"linked_episode\":\"ep-8099edbd19fb36abd749\",\"members\":[\"17ff6331\"],\"note\":\"already-known\",\"paths\":[\"src/mod19.py@5c4a8517ed7b\",\"tests/test_mod19.py@65917b8365c8\"],\"reason\":\"\",\"relinked_from\":null,\"signed\":\"2023-11-18T00:46:40Z\",\"signed_utc\":1700268400000,\"stale_reason\":\"\",\"state\":\"fresh\",\"tampered\":false},{\"actor\":\"Dana Stahl <dana@example.com>\",\"actor_kind\":\"human\",\"content\":\"1de3280e67dfca6044607e30f4e13e546c9e2020c4a9cc0672eb36d9179f9557\",\"dead\":false,\"decision\":\"dismissed\",\"episode\":\"ep-90acb7fa900a512b9a6d\",\"file\":\".fathom/reviews/ledger.md\",\"fingerprint\":\"90acb7fa900a512b9a6dccf8ff1e447e76ec61f304fb69ba522299613c09d5db\",\"id\":\"sg-cb309e11b00937c5\",\"link_method\":\"exact\",\"link_score\":1.0,\"linked_episode\":\"ep-90acb7fa900a512b9a6d\",\"members\":[\"dbaae247\"],\"note\":\"the widened retry is what I asked for\",\"paths\":[\"docs/notes20.md@942fa5ae9379\",\"src/mod19.py@533d1af92b90\",\"src/mod20.py@fee570883549\"],\"reason\":\"\",\"relinked_from\":null,\"signed\":\"2023-11-18T01:46:40Z\",\"signed_utc\":1700272000000,\"stale_reason\":\"\",\"state\":\"fresh\",\"tampered\":false},{\"actor\":\"Dana Stahl <dana@example.com>\",\"actor_kind\":\"human\",\"content\":\"3adb61797df59463b3de537274c0087af579d99beee13b2344f1f13f87344f1d\",\"dead\":false,\"decision\":\"dismissed\",\"episode\":\"ep-c957b0cf1a46e0b726e6\",\"file\":\".fathom/reviews/ledger.md\",\"fingerprint\":\"c957b0cf1a46e0b726e6c56db9ba01ef60ac4ae4444b5d71c9a07a02f32dc399\",\"id\":\"sg-9d31aa21f0a65b10\",\"link_method\":\"exact\",\"link_score\":1.0,\"linked_episode\":\"ep-c957b0cf1a46e0b726e6\",\"members\":[\"0fb07ea6\"],\"note\":\"the cycle runs through a test fixture the analyser reads as production\",\"paths\":[\"src/mod21.py@2ba4d80f2929\"],\"reason\":\"\",\"relinked_from\":null,\"signed\":\"2023-11-18T02:46:40Z\",\"signed_utc\":1700275600000,\"stale_reason\":\"\",\"state\":\"fresh\",\"tampered\":false},{\"actor\":\"Dana Stahl <dana@example.com>\",\"actor_kind\":\"human\",\"content\":\"370c096cc73cbe18627914fcecfa0c148adb77e7c102066c01f91d305bf89bee\",\"dead\":false,\"decision\":\"dismissed\",\"episode\":\"ep-9e5b594739d4411e1cda\",\"file\":\".fathom/reviews/ledger.md\",\"fingerprint\":\"9e5b594739d4411e1cda8864c0b144baa8ecd9a65cea6da77aea4caa68e83a77\",\"id\":\"sg-b329e14fd98e76e1\",\"link_method\":\"exact\",\"link_score\":1.0,\"linked_episode\":\"ep-9e5b594739d4411e1cda\",\"members\":[\"f334ef68\"],\"note\":\"low-stakes\",\"paths\":[\"src/mod22.py@408a2f2eb313\",\"tests/test_mod22.py@c588b97c77ca\"],\"reason\":\"\",\"relinked_from\":null,\"signed\":\"2023-11-18T03:46:40Z\",\"signed_utc\":1700279200000,\"stale_reason\":\"\",\"state\":\"fresh\",\"tampered\":false},{\"actor\":\"Dana Stahl <dana@example.com>\",\"actor_kind\":\"human\",\"content\":\"ffd2257239c4ef4d7b934df17205b7ff7718702d92a9ce9df204be53c3a0b0e0\",\"dead\":false,\"decision\":\"dismissed\",\"episode\":\"ep-b9ccf07ca3afd9a04e16\",\"file\":\".fathom/reviews/ledger.md\",\"fingerprint\":\"b9ccf07ca3afd9a04e168747f10bb8350c63efc8a66287a48c6d86b09bffc5d7\",\"id\":\"sg-beab54aaa800ddf1\",\"link_method\":\"exact\",\"link_score\":1.0,\"linked_episode\":\"ep-b9ccf07ca3afd9a04e16\",\"members\":[\"98c63803\"],\"note\":\"low-stakes\",\"paths\":[\"docs/notes23.md@58c91984b5e3\",\"src/mod23.py@cb5658297875\"],\"reason\":\"\",\"relinked_from\":null,\"signed\":\"2023-11-18T04:46:40Z\",\"signed_utc\":1700282800000,\"stale_reason\":\"\",\"state\":\"fresh\",\"tampered\":false},{\"actor\":\"Dana Stahl <dana@example.com>\",\"actor_kind\":\"human\",\"content\":\"1cf5003812ebb9fc9b9971f307d7f81a62f3f027703de6d4a06cd422a8367afc\",\"dead\":false,\"decision\":\"dismissed\",\"episode\":\"ep-81a9c63c0f4cf23779cc\",\"file\":\".fathom/reviews/ledger.md\",\"fingerprint\":\"81a9c63c0f4cf23779cc8e131a5963238a87badd09630d7583628c015db1a6f7\",\"id\":\"sg-553785ded9f8dd3b\",\"link_method\":\"exact\",\"link_score\":1.0,\"linked_episode\":\"ep-81a9c63c0f4cf23779cc\",\"members\":[\"2cbab6fc\"],\"note\":\"superseded\",\"paths\":[\"src/mod23.py@533d1af92b90\",\"src/mod24.py@0c107d988cda\"],\"reason\":\"\",\"relinked_from\":null,\"signed\":\"2023-11-18T05:46:40Z\",\"signed_utc\":1700286400000,\"stale_reason\":\"\",\"state\":\"fresh\",\"tampered\":false},{\"actor\":\"Dana Stahl <dana@example.com>\",\"actor_kind\":\"human\",\"content\":\"a4034458a3e999c87acfa9ea590d5de307b5baa1b5b1ad6d3b0e644a0d1c0e00\",\"dead\":false,\"decision\":\"dismissed\",\"episode\":\"ep-d2fa5de65fa24d7da011\",\"file\":\".fathom/reviews/ledger.md\",\"fingerprint\":\"d2fa5de65fa24d7da011641eabb7dce5e4d392b364264c9bb24eb27f8b72d56c\",\"id\":\"sg-f14e2dfa56bdad23\",\"link_method\":\"exact\",\"link_score\":1.0,\"linked_episode\":\"ep-d2fa5de65fa24d7da011\",\"members\":[\"3136dd88\"],\"note\":\"the whole flag comes out before the merge\",\"paths\":[\"src/mod25.py@7ef056910b7c\",\"tests/test_mod25.py@7b7e3d30d5c1\"],\"reason\":\"\",\"relinked_from\":null,\"signed\":\"2023-11-18T06:46:40Z\",\"signed_utc\":1700290000000,\"stale_reason\":\"\",\"state\":\"fresh\",\"tampered\":false},{\"actor\":\"Dana Stahl <dana@example.com>\",\"actor_kind\":\"human\",\"content\":\"47e7b121c77f42e7650226a81e94b40cb8704e9908c4dda3eec86565052720cd\",\"dead\":false,\"decision\":\"dismissed\",\"episode\":\"ep-a5b2e1a337d5e9ac66a1\",\"file\":\".fathom/reviews/ledger.md\",\"fingerprint\":\"a5b2e1a337d5e9ac66a1722881ea0bb306d9ae0eac6fb1913bf76157b86a971d\",\"id\":\"sg-b92605cd4f68e552\",\"link_method\":\"exact\",\"link_score\":1.0,\"linked_episode\":\"ep-a5b2e1a337d5e9ac66a1\",\"members\":[\"85d0b1cf\"],\"note\":\"the vendor stream for this session is half written; I will re-read when it is whole\",\"paths\":[\"docs/notes26.md@39a7c8d2f599\",\"src/mod26.py@7ced34d793a6\"],\"reason\":\"\",\"relinked_from\":null,\"signed\":\"2023-11-18T07:46:40Z\",\"signed_utc\":1700293600000,\"stale_reason\":\"\",\"state\":\"fresh\",\"tampered\":false},{\"actor\":\"Dana Stahl <dana@example.com>\",\"actor_kind\":\"human\",\"content\":\"aff51be1ca48b04ec7f1cb5e206eb40ef8ad77d133d2044d713c29564bab2bc0\",\"dead\":false,\"decision\":\"accepted\",\"episode\":\"ep-b9ada7eede03202e1526\",\"file\":\".fathom/reviews/ledger.md\",\"fingerprint\":\"b9ada7eede03202e152645d88ca1badfa2e38a2c79854bf446ea324ed4b181dd\",\"id\":\"sg-b521b650849c99e2\",\"link_method\":\"exact\",\"link_score\":1.0,\"linked_episode\":\"ep-b9ada7eede03202e1526\",\"members\":[\"1fb800f0\"],\"note\":\"\",\"paths\":[\"src/mod27.py@58c9d4178241\"],\"reason\":\"\",\"relinked_from\":null,\"signed\":\"2023-11-18T08:46:40Z\",\"signed_utc\":1700297200000,\"stale_reason\":\"\",\"state\":\"fresh\",\"tampered\":false},{\"actor\":\"Dana Stahl <dana@example.com>\",\"actor_kind\":\"human\",\"content\":\"e86dd98055d31c7e4919d2afe0ead57f6563b07713900661eb017668d2bfb729\",\"dead\":false,\"decision\":\"accepted\",\"episode\":\"ep-bbfcea399df47d42cf8f\",\"file\":\".fathom/reviews/ledger.md\",\"fingerprint\":\"bbfcea399df47d42cf8f737c91d5ba22fe4a2882de0b7471768d3290e88b96a3\",\"id\":\"sg-e557e5eb25d04434\",\"link_method\":\"exact\",\"link_score\":1.0,\"linked_episode\":\"ep-bbfcea399df47d42cf8f\",\"members\":[\"751defbb\"],\"note\":\"\",\"paths\":[\"src/mod27.py@533d1af92b90\",\"src/mod28.py@ca023ed5a12b\",\"tests/test_mod28.py@b1251871dbdb\"],\"reason\":\"\",\"relinked_from\":null,\"signed\":\"2023-11-18T09:46:40Z\",\"signed_utc\":1700300800000,\"stale_reason\":\"\",\"state\":\"fresh\",\"tampered\":false},{\"actor\":\"Dana Stahl <dana@example.com>\",\"actor_kind\":\"human\",\"content\":\"f96bc4bec23520085e4e43e84a106c1a2917534245d972bb36d31da5afc65837\",\"dead\":false,\"decision\":\"accepted\",\"episode\":\"ep-9b6912a01945b72c5641\",\"file\":\".fathom/reviews/ledger.md\",\"fingerprint\":\"9b6912a01945b72c564152e9d83458c7895144bb82fac8392563aa6ed6525eb1\",\"id\":\"sg-ae7a8d5c92e2e7c8\",\"link_method\":\"exact\",\"link_score\":1.0,\"linked_episode\":\"ep-9b6912a01945b72c5641\",\"members\":[\"927ab938\"],\"note\":\"\",\"paths\":[\"docs/notes29.md@da03dacfe17b\",\"src/mod29.py@82ccc9d3b88e\"],\"reason\":\"\",\"relinked_from\":null,\"signed\":\"2023-11-18T10:46:40Z\",\"signed_utc\":1700304400000,\"stale_reason\":\"\",\"state\":\"fresh\",\"tampered\":false},{\"actor\":\"Dana Stahl <dana@example.com>\",\"actor_kind\":\"human\",\"content\":\"24471d73a89d359a8823dce3e9ba27642f35844604d83f13898f039930d1a79e\",\"dead\":false,\"decision\":\"accepted\",\"episode\":\"ep-3ce72de68c5b400881d1\",\"file\":\".fathom/reviews/ledger.md\",\"fingerprint\":\"3ce72de68c5b400881d169afd9c00567d9741872f4cf8f54dde4b67d68780d05\",\"id\":\"sg-8437b16212cef713\",\"link_method\":\"exact\",\"link_score\":1.0,\"linked_episode\":\"ep-3ce72de68c5b400881d1\",\"members\":[\"f8fd296d\"],\"note\":\"\",\"paths\":[\"src/mod30.py@0dabcb118d33\"],\"reason\":\"\",\"relinked_from\":null,\"signed\":\"2023-11-18T11:46:40Z\",\"signed_utc\":1700308000000,\"stale_reason\":\"\",\"state\":\"fresh\",\"tampered\":false},{\"actor\":\"Dana Stahl <dana@example.com>\",\"actor_kind\":\"human\",\"content\":\"8d1f7f5d97bf8d157c1c7ecad9d81f2ea76586816ed48101b35f35a7ec8a4d08\",\"dead\":false,\"decision\":\"accepted\",\"episode\":\"ep-6418bca63c9ce91b55a0\",\"file\":\".fathom/reviews/ledger.md\",\"fingerprint\":\"6418bca63c9ce91b55a0df8208d56502bf15c00e8a6046b34c1cdc2d81e140fa\",\"id\":\"sg-68f3d586cb7cd9c5\",\"link_method\":\"exact\",\"link_score\":1.0,\"linked_episode\":\"ep-6418bca63c9ce91b55a0\",\"members\":[\"6cbfab97\"],\"note\":\"\",\"paths\":[\"src/mod31.py@c8acf4d1756a\",\"tests/test_mod31.py@48ea1b3c5ae4\"],\"reason\":\"\",\"relinked_from\":null,\"signed\":\"2023-11-18T12:46:40Z\",\"signed_utc\":1700311600000,\"stale_reason\":\"\",\"state\":\"fresh\",\"tampered\":false},{\"actor\":\"Dana Stahl <dana@example.com>\",\"actor_kind\":\"human\",\"content\":\"da6ad292e5f3477d0099a2030b6da1d869bf79ae7f7b615a95b348ba17e0c47f\",\"dead\":false,\"decision\":\"snoozed\",\"episode\":\"ep-f667b8fe768bb4e55d0f\",\"file\":\".fathom/reviews/ledger.md\",\"fingerprint\":\"f667b8fe768bb4e55d0f41c7c8437409eb432b5dd9046cc51dceeaffb4dd6405\",\"id\":\"sg-03272f5eba20ed51\",\"link_method\":\"exact\",\"link_score\":1.0,\"linked_episode\":\"ep-f667b8fe768bb4e55d0f\",\"members\":[\"74a672eb\"],\"note\":\"\",\"paths\":[\"docs/notes32.md@e92d07a41536\",\"src/mod31.py@533d1af92b90\",\"src/mod32.py@66cf31b7f6cc\"],\"reason\":\"\",\"relinked_from\":null,\"signed\":\"2023-11-18T13:46:40Z\",\"signed_utc\":1700315200000,\"stale_reason\":\"\",\"state\":\"fresh\",\"tampered\":false},{\"actor\":\"Dana Stahl <dana@example.com>\",\"actor_kind\":\"human\",\"content\":\"eedb585f9b485652499149dbbb938a2d5cb96864f9dc5cfae8652ed2f4562437\",\"dead\":false,\"decision\":\"snoozed\",\"episode\":\"ep-d402a0b38a89df9feec4\",\"file\":\".fathom/reviews/ledger.md\",\"fingerprint\":\"d402a0b38a89df9feec41cef36f77d4b584341f364a9b88bca0651caf3863fb4\",\"id\":\"sg-f13e1a8f7901597c\",\"link_method\":\"exact\",\"link_score\":1.0,\"linked_episode\":\"ep-d402a0b38a89df9feec4\",\"members\":[\"e6101117\"],\"note\":\"\",\"paths\":[\"src/mod33.py@8f4104c30521\"],\"reason\":\"\",\"relinked_from\":null,\"signed\":\"2023-11-18T14:46:40Z\",\"signed_utc\":1700318800000,\"stale_reason\":\"\",\"state\":\"fresh\",\"tampered\":false},{\"actor\":\"Dana Stahl <dana@example.com>\",\"actor_kind\":\"human\",\"content\":\"0e6b4a53906d97a5095f463ec6f460fdda0b3cd65642d0ececf7cd808bc98426\",\"dead\":false,\"decision\":\"snoozed\",\"episode\":\"ep-d6d87c53f23fe3d750af\",\"file\":\".fathom/reviews/ledger.md\",\"fingerprint\":\"d6d87c53f23fe3d750af2bc14d8729c074d2c68ec38d1d474c858e87609c9b97\",\"id\":\"sg-dd56a42cc448c629\",\"link_method\":\"exact\",\"link_score\":1.0,\"linked_episode\":\"ep-d6d87c53f23fe3d750af\",\"members\":[\"bd978393\"],\"note\":\"\",\"paths\":[\"src/mod34.py@259de4c4e158\",\"tests/test_mod34.py@65917b8365c8\"],\"reason\":\"\",\"relinked_from\":null,\"signed\":\"2023-11-18T15:46:40Z\",\"signed_utc\":1700322400000,\"stale_reason\":\"\",\"state\":\"fresh\",\"tampered\":false},{\"actor\":\"Dana Stahl <dana@example.com>\",\"actor_kind\":\"human\",\"content\":\"6d568f47e242be0b8f47acf6aedb2fcf62a03507f5e332db7cad9142edf5ab4a\",\"dead\":false,\"decision\":\"snoozed\",\"episode\":\"ep-094ea1435045f9681bc1\",\"file\":\".fathom/reviews/ledger.md\",\"fingerprint\":\"094ea1435045f9681bc1eeae132677b0a23607f8e6c16fcf7af1f1862eb16a9a\",\"id\":\"sg-57171e04df9b6203\",\"link_method\":\"exact\",\"link_score\":1.0,\"linked_episode\":\"ep-094ea1435045f9681bc1\",\"members\":[\"70bb041d\"],\"note\":\"\",\"paths\":[\"docs/notes35.md@367cb26527d3\",\"src/mod35.py@3fdf216acb4b\"],\"reason\":\"\",\"relinked_from\":null,\"signed\":\"2023-11-18T16:46:40Z\",\"signed_utc\":1700326000000,\"stale_reason\":\"\",\"state\":\"fresh\",\"tampered\":false},{\"actor\":\"Dana Stahl <dana@example.com>\",\"actor_kind\":\"human\",\"content\":\"460612056f98b04de602bf7025d1bd687806b7096b24d46fd1eac4912c6d930a\",\"dead\":false,\"decision\":\"accepted\",\"episode\":\"ep-5a4528d14148bdce2f1b\",\"file\":\".fathom/reviews/ledger.md\",\"fingerprint\":\"5a4528d14148bdce2f1bfbe5bf0f85eaadf49c02b72a09db3cbd10d5b8349ce9\",\"id\":\"sg-00ab25021c026666\",\"link_method\":\"exact\",\"link_score\":1.0,\"linked_episode\":\"ep-5a4528d14148bdce2f1b\",\"members\":[\"6686b65f\"],\"note\":\"\",\"paths\":[\"src/mod35.py@533d1af92b90\",\"src/mod36.py@995870f4c8c4\"],\"reason\":\"\",\"relinked_from\":null,\"signed\":\"2023-11-18T17:46:40Z\",\"signed_utc\":1700329600000,\"stale_reason\":\"\",\"state\":\"fresh\",\"tampered\":false},{\"actor\":\"Dana Stahl <dana@example.com>\",\"actor_kind\":\"human\",\"content\":\"4740454d3485789622e8fbfe39ae46e825c96a4487655aab21dd875ae24f763c\",\"dead\":false,\"decision\":\"accepted\",\"episode\":\"ep-0a86d86c76733a901321\",\"file\":\".fathom/reviews/ledger.md\",\"fingerprint\":\"0a86d86c76733a901321be5bcd326012a1cc4a25219c7bec17a15a8c24784566\",\"id\":\"sg-7bfc3a059917122f\",\"link_method\":\"exact\",\"link_score\":1.0,\"linked_episode\":\"ep-0a86d86c76733a901321\",\"members\":[\"155de556\"],\"note\":\"\",\"paths\":[\"src/mod37.py@2e4a1b9e5b6d\",\"tests/test_mod37.py@c588b97c77ca\"],\"reason\":\"\",\"relinked_from\":null,\"signed\":\"2023-11-18T18:46:40Z\",\"signed_utc\":1700333200000,\"stale_reason\":\"\",\"state\":\"fresh\",\"tampered\":false},{\"actor\":\"Dana Stahl <dana@example.com>\",\"actor_kind\":\"human\",\"content\":\"2c27132859140c5dcf07de2f2ffec4058132d15a11972845613a016ed1568fe6\",\"dead\":false,\"decision\":\"accepted\",\"episode\":\"ep-2977dfff338f4f44b714\",\"file\":\".fathom/reviews/ledger.md\",\"fingerprint\":\"2977dfff338f4f44b7148213b9c432f64bc93df7f51b0ccfab914cc829db4d4d\",\"id\":\"sg-937c750a4e637a97\",\"link_method\":\"exact\",\"link_score\":1.0,\"linked_episode\":\"ep-2977dfff338f4f44b714\",\"members\":[\"7a050de7\"],\"note\":\"\",\"paths\":[\"docs/notes38.md@6cc9e34d7e75\",\"src/mod38.py@2354500b20ca\"],\"reason\":\"\",\"relinked_from\":null,\"signed\":\"2023-11-18T19:46:40Z\",\"signed_utc\":1700336800000,\"stale_reason\":\"\",\"state\":\"fresh\",\"tampered\":false},{\"actor\":\"Dana Stahl <dana@example.com>\",\"actor_kind\":\"human\",\"content\":\"de3c536f9889d13d0ce513af0a0351b78dd48b48371d875920eeb46b8de6b91a\",\"dead\":false,\"decision\":\"accepted\",\"episode\":\"ep-781636df74527490f124\",\"file\":\".fathom/reviews/ledger.md\",\"fingerprint\":\"781636df74527490f124fcb37de40e60ecca439eae1b9062d1a24338eb97256c\",\"id\":\"sg-c818fc62ac0b9c7a\",\"link_method\":\"exact\",\"link_score\":1.0,\"linked_episode\":\"ep-781636df74527490f124\",\"members\":[\"9aaa45fa\"],\"note\":\"\",\"paths\":[\"src/mod39.py@01ef28c2e436\"],\"reason\":\"\",\"relinked_from\":null,\"signed\":\"2023-11-18T20:46:40Z\",\"signed_utc\":1700340400000,\"stale_reason\":\"\",\"state\":\"fresh\",\"tampered\":false}],\"fresh\":40,\"ledger_files\":[\".fathom/reviews/ledger.md\"],\"live_episodes\":40,\"orphan\":0,\"stale\":0,\"tampered\":0,\"unsettled_acts\":0,\"unsigned\":20,\"unsigned_examples\":[\"ep-094ea1435045f9681bc1\",\"ep-d6d87c53f23fe3d750af\",\"ep-d402a0b38a89df9feec4\",\"ep-f667b8fe768bb4e55d0f\",\"ep-a5b2e1a337d5e9ac66a1\"]}\n",
+      "stderr": "",
+      "summary": {
+        "entries": 40,
+        "fresh": 40,
+        "stale": 0,
+        "orphan": 0,
+        "tampered": 0,
+        "live_episodes": 40,
+        "unsigned": 20,
+        "unsettled_acts": 0,
+        "clean": false
+      }
+    },
+    "verify": {
+      "args": [
+        "verify"
+      ],
+      "exit": 0,
+      "stdout": "checked   40 ledger entries\nverdict   every entry hashes to its own digest\n",
+      "stderr": ""
+    }
+  },
+  "not_byte_reproducible": {
+    "columns": [
+      "index_run.started_utc / finished_utc",
+      "episode.seen_utc",
+      "git_commit.ingested_utc",
+      "blob.created_utc",
+      "cache.built_utc / last_used_utc / cost_ms",
+      "counter.updated_utc, and counter.value for the two cache.cost_ms.* counters",
+      "ledger_entry.mirrored_utc",
+      "ref_tip.updated_utc"
+    ],
+    "why": "`fathom index` stamps the run, the rows it writes and the counters it bumps with one read of the system clock, and `crates/fathom-cli/src/clock.rs` — the workspace's single clock read, ADR-002 §4.4 — has no override. The list is measured rather than guessed: a second freeze of this repository was diffed table by table against the committed store (31 tables), and these are the only columns that moved — instants, and two counters that measure elapsed milliseconds. Every other column reproduced byte for byte, including every episode digest, every act, the ledger file and every pinned verdict. The committed bytes are pinned by `artefacts.store.sqlite3.sha256`, which is what `tests/test_queue_era_fixture_contract.py` checks; no test compares a column listed above."
+  }
+}

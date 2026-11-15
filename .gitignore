@@ -9,6 +9,14 @@ __pycache__/
 .fathom/**/*.tmp
 .fathom/**/*.sqlite3-*
 # --- end Fathom -------------------------------------------------------------------
+# --- Frozen fixture (`reco-o884`, docs/concepts/fixtures.md §7) --------------------------------------
+# `fixtures/queue-era/` is three committed files: the store, the ledger and the manifest that pins them.
+# SQLite grows `-wal` and `-shm` beside a WAL-mode store the moment anything opens it — a read-only
+# inspection is enough, and a `git add -A` right after one would commit them — but they are not part of the
+# fixture: `manifest.json` digests three files, and `fathom-store` copies one. The contract test fails if a
+# fourth `.sqlite3` anything is tracked.
+fixtures/**/*.sqlite3-*
+# --- end frozen fixture --------------------------------------------------------------------------------
 tmp.txt
 # --- Rust (ADR-002 §2: the toolchain is pinned, the build output is not) -------------------------
 /target/

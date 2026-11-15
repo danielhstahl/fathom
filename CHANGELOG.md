@@ -16,6 +16,48 @@ fails CI if the version in `Cargo.toml` has no dated section here, because the s
 body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
+### A store written by the build that had the queue is now a committed file, so a queue-era read cannot be broken silently (`reco-o884`)
+
+Epic 10 retired the attention queue and shipped every check that could be shipped without one file: a store
+written *by the build that still had the pane*, read back by the build that deleted it. ADR-006 §5.1.2 §7 and
+[docs/concepts/review-ledger.md](docs/concepts/review-ledger.md) named it as owed, and named the reason —
+a store this build writes agrees with this build for the only reason that matters, so it cannot catch the
+failure the check exists for, which is a **later** migration quietly changing what an old store means. This
+closes it by building the old build.
+
+* **`fixtures/queue-era/`** is three committed files — `store.sqlite3` (forty commits, forty episodes, forty
+  acts, the `review_state` markers, the `ledger_entry` mirror), the class-M `ledger.md` those acts rendered,
+  and a `manifest.json` that records the pinned commit, each file's SHA-256, and what *that* build's own
+  `fathom review sync`/`verify`/`status` printed. It was produced by `81eba3b`, epic 10's decision commit and
+  the last tree that shipped the queue, and nothing in it was written by a build that has seen the deletion.
+  Three files and no fourth: the store is WAL-mode, so SQLite's `-wal`/`-shm` sidecars are git-ignored, the
+  freeze tool refuses to copy a store whose WAL still holds frames, and a contract test fails if any other
+  `.sqlite3` file is tracked.
+* **`tools/freeze_queue_era_store.py`** is how it is reproduced: a detached worktree of the pinned commit
+  beside the checkout, `cargo build --locked` from that commit's lock, a fixed-clock forty-commit repository
+  indexed by the pinned binary, acts written through the pinned `Store::record_triage` — the door `x` `f`
+  `-` `z` used, and the only one that keeps the act log and the marker in one transaction — and the ledger
+  rendered by the pinned `fathom review sync`. `tools/freeze_queue_era_store.rs` is the one file the pinned
+  tree gains, as an `examples/` target of `fathom-store`; this workspace never compiles it.
+* **The expectations are the pinned build's.** `crates/fathom-store/tests/queue_era_store.rs` reads every act
+  back — disposition, actor, reason, note, stamped snooze condition, stamped score and the model name that
+  scored it (`spine-1`, a name this build no longer writes for a fresh act) — and `triage_event_count` says
+  the number it said before the pane went away.
+  `crates/fathom-cli/tests/queue_era_review.rs` drives the verbs: `verify` checks forty entries and calls them
+  intact, `status` prints the queue-era sentence byte for byte (`40 entries · 40 fresh`, `40 live · 20 with a
+  fresh sign-off · 20 without`, the same exit `7`), and `sync` over the act log with the ledger deleted
+  re-renders a file **identical to the queue-era ledger, byte for byte** — never `0 with a fresh sign-off`
+  printed over somebody who had forty. `tests/test_queue_era_fixture_contract.py` pins the bytes by digest,
+  proves from git that the producer commit really predates the deletion, and fails if the pages start
+  calling the check owed again.
+* **What it is not, said in the same breath.** The store is frozen by commitment and digest, not
+  bit-reproducible: `fathom index` stamps its run and its cache rows with the one system clock read in the
+  workspace, which has no fake, so a re-run of the freeze tool is a **re-bless** and wants a reason in the
+  commit that carries the new bytes. `manifest.json` lists the clock columns that move, and
+  [docs/concepts/fixtures.md](docs/concepts/fixtures.md) gains the §7 that argues for this second fixture
+  class — why a store file rather than a SQL dump, why the workspace root rather than a crate, and why the
+  generator builds a whole binary instead of writing rows.
+
 ### Every job now says how long it may take, cancels the run it made obsolete, and pays for its own cache and artefacts (`reco-374v.4`)
 
 `e11.1` measured what the fleet spends; this is the budget that measurement made possible, and the lint that
