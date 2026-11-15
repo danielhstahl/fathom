@@ -306,8 +306,13 @@ def test_the_changelog_still_carries_the_beads_the_beta_loop_filed():
     changelog = (ROOT / "CHANGELOG.md").read_text()
     for ref in ("reco-rny", "reco-p5u", "reco-7f4", "reco-2fv", "reco-41a"):
         assert ref in changelog, f"`{ref}` has no trace anywhere in CHANGELOG.md"
-    unreleased = changelog.split("## [Unreleased]")[1].split("\n## [")[0]
-    assert "reco-374v" in unreleased, "epic 11's own work has no trace in [Unreleased]"
+    # The same rule applied to this epic's own work, and stated over the file for the reason the docstring
+    # gives: `[Unreleased]` is renamed by the next `gen_changelog.py cut`, so a claim pinned to that heading
+    # goes red at the cut instead of at the commit — which is the frozen past this test was rewritten away
+    # from, arriving back through a different door (`e11.1` §2.2). Whether a *commit* carries its note is
+    # rule `C03`'s, asserted elsewhere in this file and run by CI on every push; this half is traceability.
+    for ref in ("reco-374v", "reco-374v.1", "reco-374v.2", "reco-374v.3", "reco-374v.4"):
+        assert ref in changelog, f"epic 11's `{ref}` has no trace anywhere in CHANGELOG.md"
 
 
 def test_the_runbook_carries_the_cadence_and_the_generator():

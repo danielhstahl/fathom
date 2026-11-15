@@ -16,6 +16,61 @@ fails CI if the version in `Cargo.toml` has no dated section here, because the s
 body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
+### Epic 11 closes: four gates were asking a question twice, they ask it once now, and `C01` refuses a second copy (`reco-374v`, `e11`)
+
+`e11.1`'s census wrote the duplicate table (`.plan/ci-triage-reco-374v.md` §3, nine places where CI asked one
+question twice) and no child owned it, while the epic's own constraint was that every removal name the job
+that still pays for it. Working the table row by row, against what each step can prove with a compiler and
+without one, produced **four real duplicates, two rows that are not duplicates at all, and three already
+deliberate**. Record, with every number below reproduced: `.plan/evidence/reco-374v/epic11-exit-criteria.md`.
+
+* **The four deletions, each with its survivor named.** The default build's egress closure — `cargo tree -p
+  fathom-cli --no-default-features --features minimal`, against the same banned list — ran **byte-identical**
+  in `ci.yml · build-test` and `privacy.yml · offline`; `privacy.yml` keeps it, because it is the workflow
+  whose name says what it protects and it asks on a runner with no network. The demo repository's assembly is
+  `git` over the committed pack — 0.09 s, no toolchain — so `contracts.yml`'s m2 step answers it and `ci.yml`
+  stopped paying a second time on the leg that had just built a binary the check never consulted. The three
+  generated docs pages were checked in `contracts.yml` *above* the `check_docs_site.py` that calls the same
+  generator check inside itself (`check_generated_fresh`), and again in `docs.yml`; the named step in the
+  workflow whose subject is the site is the one kept. And the packager's negative controls ran in `ci.yml`'
+  `release-skeleton` and then again four minutes of archive build later in `packaging`, so the job with no
+  toolchain in front of it keeps them.
+* **A home names a workflow, so the job half needed its own guard.** `C01`'s home column (`e11.3`) cannot see
+  two copies inside one file, so `tests/test_workspace_contract.py` now refuses the packager's controls
+  appearing in two jobs of `ci.yml`, and refuses each of the four deduplicated gates running in a second
+  workflow — asserted from `CI_REQUIRED_STEPS` rather than from a pair hard-coded in the test. The four new
+  model rows (`egress-closure-query`, `demo-repo-assembly`, `generated-docs-pages`, `packager-negative-controls`)
+  and the regenerated ADR-002 §8.1 table land in this commit with the YAML, which is what the epic's first
+  constraint asked for and the only arrangement that makes the ADR, the lint and the workflows one statement.
+* **Two rows of that table were re-read and left alone, and that is the finding.** `check_ci_gate.py` and
+  `check_docs_site.py` each run in `ci.yml` *and* `contracts.yml` because half of each needs a compiled binary
+  — the verb-and-flag rules, and the documented-command check — and prints that it skipped when there is none.
+  `e11.1`'s table could not tell those from copies because it was built from workflow text, not from what a
+  step can answer. A duplicate is one question asked twice; a repeated file name is not.
+* **A comment inside a `run:` block is still a comment.** Proving the deletions stay deleted found the hole:
+  `C01` was rewritten in `e11.2` so a header comment could not discharge a gate, but a `#` line inside a step's
+  shell script is text in `step.run`, and a substring test cannot tell it from a command. Those lines are
+  stripped now too, and a test proves the new half by commenting a real gate out and refusing the result (the
+  YAML half already had its own).
+  `.plan/evidence/reco-374v/dedupe_proofs.py` re-wires each deletion back into a scratch copy of the fleet and
+  shows `C01` refusing it — eight cases, the first the untouched fleet as a control, all as expected.
+* **A gate that fails because time passed is not a gate.** The beta contract asserted epic 11's beads were in
+  `[Unreleased]` — green today, red at the next `gen_changelog.py cut`, when that heading is renamed and
+  refilled. Same bug the suite had already been rewritten away from once (`e11.1` §2.2), arriving through a
+  different door: the beads are now asserted traceable over the whole file, and the per-commit claim stays
+  `C03`'s, which cannot rot because it is per commit.
+* **What it actually buys, measured rather than assumed.** Not minutes: the four removed commands re-timed here
+  cost 0.05–0.10 s each, and the census puts the two it priced at 0.00 and 0.04 minutes. The cost of a second
+  report was never seconds — it is the second ticket, which `e11.3` already counted in tickets for the
+  changelog half. Across the whole epic the per-pull-request path went 9 workflow files → 6, 28 jobs → 15, 222
+  steps → 134, while `ci_gate_map.py` finds **0 gate families gone** and the commands asked more than once down
+  42 → 39.
+* **Still owed, and now held by a bead rather than by prose.** CI still has not run on a branch the work
+  reaches — the Actions API still answers 172 runs, newest a scheduled `dogfood` on `master` from 2026-11-10,
+  and `master` is still `e194a63d9d` — so not one of this epic's changes has been exercised by a run, the daily
+  schedules all measure a frozen tree, and the census's "then re-measure" is blocked. **→ `reco-kwg6`**, which
+  carries both the branch decision and the re-measurement it unblocks.
+
 ### The changelog gate reported from two jobs; it reports from one, and `C01` is what keeps it there (`reco-374v.3`)
 
 The gate is good and the second copy was pure cost. `tools/gen_changelog.py audit` ran in `contracts.yml` *and*

@@ -681,6 +681,10 @@ are contracts, and an undocumented contract is a negotiation.
 | `headless-minimal-tests` | `cargo test -p fathom-cli --no-default-features --features minimal` | pull_request | `ci.yml` |
 | `changelog-audit` | `tools/gen_changelog.py audit` | pull_request | `contracts.yml` |
 | `cli-reference-page` | `gen_docs.py check --page cli` | pull_request | `ci.yml` |
+| `egress-closure-query` | `cargo tree -p fathom-cli` | pull_request | `privacy.yml` |
+| `demo-repo-assembly` | `tools/publish_demo_repo.py check` | pull_request | `contracts.yml` |
+| `generated-docs-pages` | `gen_docs.py check --page cheatsheet` | pull_request | `docs.yml` |
+| `packager-negative-controls` | `tools/package_release.py --self-test` | pull_request | `ci.yml` |
 | `spike-s1-report` | `--example s1_spike` | scheduled | `nightly.yml` |
 | `spike-s2-report` | `--example s2_spike` | scheduled | `nightly.yml` |
 | `spike-s6-report` | `--example s6_spike` | scheduled | `nightly.yml` |
@@ -699,15 +703,18 @@ criterion is *"cargo-deny + module-boundary lint in CI"*, and a lint that exists
 the most common way such a criterion is quietly missed. So the presence of the invocation is itself a
 test.
 
-Three sharpnesses the rule has acquired, each one added after a measurement (`e11.1` §3, then `e11.2`,
-then `e11.3`):
+Four sharpnesses the rule has acquired, each one added after a measurement (`e11.1` §3, then `e11.2`,
+then `e11.3`, then the epic's own close):
 
 * **the match is against the steps that execute** — a step's `run:`, `uses:` or `with:` value — and never
   against prose. A substring test over the concatenated YAML was satisfied by the words `cargo deny check`
   in a file's header comment while the real licence and advisory gate was
   `EmbarkStudios/cargo-deny-action` in another file: the rule that exists to refuse a vanished gate could
   be fed a sentence. Comments now satisfy nothing, which is also why the cargo-deny needle above names the
-  action.
+  action. The same stripping reaches one level down: the `#` lines inside a `run:` block are removed before
+  the needle is looked for, because a shell comment is prose wearing a command's clothes, and that shape was
+  found by `e11`'s close while it was proving its own deletions stay deleted
+  (`.plan/evidence/reco-374v/dedupe_proofs.py` runs the case).
 * **every step carries a cadence.** `pull_request` means the needle must live in a workflow with a
   `pull_request` trigger; `scheduled` means it must live in one with a `schedule:` trigger. When `e11.2`
   moved the long tail — the spike-report reproductions, the Guardrail 3 calibration `--check`, the
@@ -728,6 +735,21 @@ then `e11.3`):
   two jobs ask; the release matrix is dispatched from two files), and the model comments each one so the
   duplication is written down rather than inferred. The column also answers the question a red actually asks,
   *where do I look* — which is the same reason §8.1 prints the list at all.
+* **the homes are how the duplicate table gets emptied instead of re-litigated.** Four rows joined the list
+  when `e11` closed, one per duplicated gate its close deleted: the egress-closure `cargo tree` query (ran in
+  `ci.yml` *and* `privacy.yml`, byte for byte — `privacy.yml` keeps it, because it is the workflow whose name
+  says what it protects and it asks on a runner with no network); the demo repository's assembly (ran in
+  `ci.yml` and `contracts.yml`; it needs `git` and the committed pack rather than a build, so `contracts.yml`
+  keeps it); the generated-page check (ran in `contracts.yml` *above* the `check_docs_site.py` that calls the
+  same check internally, and again in `docs.yml`, which keeps the named step); and the packager's negative
+  controls (ran twice inside `ci.yml` — in `release-skeleton`, which needs no toolchain, and again in
+  `packaging`, four minutes of archive build later). A home names a workflow, not a job, so that last one is
+  pinned to the file here and refused at job level by `tests/test_workspace_contract.py`. Working the table
+  the other way round was the finding: two rows `e11.1` §3 proposed as duplicates turned out to be *halves*
+  rather than copies — `check_ci_gate.py`'s verb-and-flag rules, and the documented-command check inside
+  `check_docs_site.py`, need a compiled binary and print that they skipped when there is none, so they run in
+  `ci.yml`'s built leg precisely because `contracts.yml` cannot answer them. A duplicate is one question asked
+  twice; a repeated file name is not.
 
 The prose list of what a pull request actually pays for is the header of `.github/workflows/ci.yml`; the
 scheduled half explains itself in `.github/workflows/nightly.yml`, `perf.yml` and `fuzz.yml`, and

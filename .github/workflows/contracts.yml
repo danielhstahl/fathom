@@ -21,7 +21,11 @@
 # audit`, `lint` and the draft smoke, moved out of `ci.yml`'s `e7.7` beta-loop step, which had been running
 # them a second time behind a workspace build. `AGENTS.md`'s rule is that every commit carries its
 # `[Unreleased]` entry; a rule is worth one red check per mistake, and `C01` now pins this gate's needle to
-# this file so a second copy is a rule violation rather than a reasonable-looking addition.
+# this file so a second copy is a rule violation rather than a reasonable-looking addition. The epic close
+# moved one more gate's home here for the same reason — `publish_demo_repo.py check` is `git` over the
+# committed demo pack, so the copy `ci.yml` ran beside a binary it never consulted was cost without a
+# verdict — and took this file's own duplicated generator line out (`check_docs_site.py` asks the generator
+# the same question inside the same step, and `docs.yml` asks it as a named step).
 
 name: contracts
 
@@ -97,9 +101,16 @@ jobs:
         # have a program as their source: the `cli` page is clap's `--help`, and every command a page tells
         # the reader to type is parsed by clap itself (`tools/check_docs_commands.py`, reached through
         # `check_docs_site.py`). Here they skip themselves with a printed note rather than passing silently.
-        run: |
-          python3 tools/gen_docs.py check --page cheatsheet --page detectors --page features
-          python3 tools/check_docs_site.py
+        #
+        # One line used to sit above this one — `gen_docs.py check --page cheatsheet --page detectors
+        # --page features` — and it asked a question the line below asks again inside the same step:
+        # `check_docs_site.py` imports the generator and calls exactly that check as its "generated pages
+        # are fresh" rule (`check_generated_fresh`), so the step ran the same diff twice per push, and
+        # `docs.yml` runs the identical command a third time as its own named step. `e11.1` §3 counted
+        # that row; the epic close deleted the copy, and the model pins the needle to `docs.yml` now, so
+        # the surviving pair is one named step in the workflow whose subject is the docs site and one
+        # rule inside the gate that cannot be deleted without deleting the gate.
+        run: python3 tools/check_docs_site.py
       - name: "reco-j1o no shipped sentence claims a closed ticket is unbuilt"
         # `fathom why` used to print, as its own scope statement, that the module graph was `e3.1`'s and
         # the graph delta was `e3.2`'s — both beads closed, both features in the index the reader was
@@ -117,13 +128,14 @@ jobs:
         # the miniature and not noise from a different machine.
         run: python3 tools/gen_demo_repo.py check
       - name: "m2 CI gate: the installer, the workflows and the documented paths are one story"
-        # The same step `ci.yml` runs, run here too on purpose: the half of it that reads documents needs
-        # no binary, and a documentation change that deletes a script it names should be caught by the
-        # job that is already running on documentation alone. The two rules whose source is a compiled
-        # program say they skipped instead of raising (`reco-p40`: on this runner there is no
-        # `target/debug/fathom`, and a `FileNotFoundError` traceback was a bug report about the checker
-        # rather than about the CI story). The self-test comes first for the reason `docs.yml` gives:
-        # it needs nothing, and it proves the gate below can fail.
+        # The half of `m2` that reads documents, run beside the half `ci.yml` runs on the leg that builds a
+        # binary: the two are not the same question — `check_ci_gate.py`'s verb and flag rules need a
+        # compiled `fathom` and print that they skipped when there is none (`reco-p40`), so a docs-only
+        # change is caught here and a flag that stopped existing is caught there. The self-test comes first
+        # for the reason `docs.yml` gives: it needs nothing, and it proves the gate below can fail. The
+        # demo-repository half below is this job's alone since the epic close: it needs `git` and the
+        # committed pack, not a build, so the copy `ci.yml` ran beside a binary it did not consult went
+        # away and `tools/workspace_model.py` pinned the needle to this file.
         run: |
           python3 tools/check_ci_gate.py self-test
           python3 tools/check_ci_gate.py

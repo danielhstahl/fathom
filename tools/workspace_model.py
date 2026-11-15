@@ -727,6 +727,28 @@ CI_REQUIRED_STEPS: tuple[tuple[str, str, str, str], ...] = (
     # in the paragraph above: one missing `[Unreleased]` entry is one red, in one place.
     ("changelog-audit", "tools/gen_changelog.py audit", "pull_request", "contracts.yml"),
     ("cli-reference-page", "gen_docs.py check --page cli", "pull_request", "ci.yml"),
+    # The four rows the epic close added after `e11.1` §3's duplicate table had been worked through one
+    # command at a time. Each is a gate that ran in two places, where the surviving place is the one that
+    # can actually answer — and pinning the survivor is what stops the second copy growing back, which is
+    # the half of `C01` that `e11.3` built for the changelog gate and that these rows reuse:
+    #
+    #   * `cargo tree -p fathom-cli --no-default-features --features minimal` ran in `ci.yml`'s build and in
+    #     `privacy.yml`'s offline job, byte for byte; the privacy job is the workflow whose name says what it
+    #     protects, and it proves the closure on a runner with no network.
+    #   * `publish_demo_repo.py check` is `git` over the committed demo pack and needs no build, so the
+    #     `ci.yml` copy was answered three times per push (here, and twice inside `contracts.yml`'s mirror).
+    #   * `gen_docs.py check --page cheatsheet …` ran in `contracts.yml` *above* the `check_docs_site.py`
+    #     that calls the same check internally, and again in `docs.yml` — the docs workflow keeps the named
+    #     step because the site is its subject.
+    #   * `package_release.py --self-test` ran twice inside `ci.yml` — in `release-skeleton`, which needs no
+    #     toolchain, and again in `packaging`, four minutes of archive build later. `C01`'s home is a
+    #     workflow, not a job, so this row is the cadence-and-file half of the rule; the *job* the claim
+    #     belongs to is `release-skeleton`, and `tests/test_workspace_contract.py` is what refuses a second
+    #     copy of it in the same file.
+    ("egress-closure-query", "cargo tree -p fathom-cli", "pull_request", "privacy.yml"),
+    ("demo-repo-assembly", "tools/publish_demo_repo.py check", "pull_request", "contracts.yml"),
+    ("generated-docs-pages", "gen_docs.py check --page cheatsheet", "pull_request", "docs.yml"),
+    ("packager-negative-controls", "tools/package_release.py --self-test", "pull_request", "ci.yml"),
     # The scheduled set: the checks that reproduce a committed measurement, re-measure a calibration, build
     # a second workspace, fuzz, measure, or build the whole package matrix. Daily, on the default branch,
     # plus `workflow_dispatch` — see the header of `.github/workflows/nightly.yml` for the measurement

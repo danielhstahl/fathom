@@ -203,7 +203,7 @@ branch, and it runs daily.
 | Workflow | When it runs | What it is the gate for |
 |---|---|---|
 | `.github/workflows/ci.yml` | every pull request, and every push to the default branch | `fmt`, `clippy`, `cargo-deny`, the workspace build and tests on `stable` and on the MSRV, the headless `minimal` binary, `fathom check` over this repository, the `.deb`/`.rpm`/installer rehearsal, and the release skeleton. The list is written out in the file's header and enforced by rule `C01`. |
-| `.github/workflows/contracts.yml` | every pull request | the documents and the ADRs as executable checks, the boundary lint, the 2 226-test contract suite, the **changelog gate** — `gen_changelog.py audit`, `lint` and the draft smoke, and the only place a missing `[Unreleased]` entry is reported since `e11.3` — and, since `e11.2`, the **cheap proofs about the expensive gates**: `perf_gate.py --self-test`, `gen_budgets.py check`, `gen_adr_tables.py check`, `gen_fuzz_corpus.py check`, none of which needs a build. |
+| `.github/workflows/contracts.yml` | every pull request | the documents and the ADRs as executable checks, the boundary lint, the 2 339-test contract suite, the **changelog gate** — `gen_changelog.py audit`, `lint` and the draft smoke, and the only place a missing `[Unreleased]` entry is reported since `e11.3` — the demo repository's assembly, and, since `e11.2`, the **cheap proofs about the expensive gates**: `perf_gate.py --self-test`, `gen_budgets.py check`, `gen_adr_tables.py check`, `gen_fuzz_corpus.py check`, none of which needs a build. |
 | `.github/workflows/complexity.yml`, `docs.yml`, `privacy.yml`, `sbom.yml` | every pull request (the first also daily) | the complexity corpus, the generated docs pages and the Pages build, the no-egress claim, the SBOM. Zero reds in 56 measured runs and 0.3–1.3 minutes each: these are not the cost and cutting them would be theatre. |
 | `.github/workflows/fathom-check.yml` | called with `workflow_call` by a repository that installs the gate | the reusable gate itself — the recipe on [this page](../recipes/gate-a-pipeline.md). |
 | `.github/workflows/nightly.yml` | daily at 02:37 UTC, and on `workflow_dispatch` | **the long tail.** Spike `s1`, `s2` and `s6` report reproductions, the `e3.1` structure core/tail legs, the Guardrail 3 calibration `--check`, the out-of-tree plugin build, the `beta` toolchain lane, and the daily `workflow_dispatch` of the six-target release matrix in cargo-dist's dry-run mode. |
@@ -237,6 +237,22 @@ extra safety. The gate is not the problem; the second copy is. It lives in `cont
 compiles nothing and already fetches the history the audit reads, and a duplicate is a `C01` failure rather
 than a plausible-looking addition. A gate nobody can locate is a gate that gets deleted twice; a gate that
 reports from two jobs is a mistake that gets filed twice.
+
+The same clause then emptied the rest of the census's duplicate table, four gates at a time, each survivor
+named in `tools/workspace_model.py` so the deleted copy cannot grow back: the default build's egress closure
+(`cargo tree -p fathom-cli … --features minimal`) was byte-identical in `ci.yml` and `privacy.yml` and now
+runs only in the workflow whose name says what it protects; the demo repository's assembly needs `git` and the
+committed pack rather than a build, so `contracts.yml` answers it and `ci.yml` no longer does; the
+generated-page check ran in `contracts.yml` *above* the `check_docs_site.py` that calls the same generator
+check internally, with `docs.yml` asking it again as a named step, and the named step is the one kept; and the
+packager's negative controls ran in `ci.yml`'s `release-skeleton` and again four minutes of archive build
+later in `packaging`, so the cheap job keeps it — a home names a workflow, not a job, so that last pair is
+refused at job level by `tests/test_workspace_contract.py`. Two rows of that table were re-read and left
+alone, which is the part of the exercise worth writing down: `check_ci_gate.py` and `check_docs_site.py` each
+run in `ci.yml` *and* `contracts.yml` because half of each needs a compiled binary — the verb-and-flag rules,
+and the documented-command check — and print that they skipped when there is none. A duplicate is one question
+asked twice; a repeated file name is not, and `e11.1` §3's table could not tell them apart because it was
+built from workflow text rather than from what a step can prove with no compiler in front of it.
 
 ## What a job owes the runner
 

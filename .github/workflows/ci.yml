@@ -51,6 +51,15 @@
 # triage threads for one missing paragraph (`e11.1` §4, `reco-s6ge`). The copy that stays answers in seconds on
 # a checkout that compiles nothing, and rule `C01` now pins the gate to that file so it cannot creep back here.
 #
+# Three more gates left this file the same way when the epic closed, each one an exact duplicate of a question
+# another `pull_request` job already answers — the census's §3 table worked through row by row, and the model
+# pins every survivor: the default build's egress closure (`cargo tree -p fathom-cli …`, byte-identical in
+# `privacy.yml`, which keeps it), the demo repository's assembly (`contracts.yml`, which needs no build for
+# it) and the packager's negative controls (this file's own `release-skeleton` job, four minutes of archive
+# build before `packaging` rather than after it). Two rows on that table were left alone after being read
+# again: `check_ci_gate.py` and `check_docs_site.py` run here *and* in `contracts.yml` because half of each
+# needs a compiled binary and says so when it has none — see ADR-002 §8.1's last bullet.
+#
 # # The rules this file enforces
 #
 #   * §8.1's required-step list is a *checked* list: `tools/check_workspace.py check` (rule `C01`) fails
@@ -334,8 +343,12 @@ jobs:
         run: |
           python3 tools/rehearse_installer.py --no-extra-artifacts
           python3 tools/rehearse_installer.py --skip-build --self-test
-      - name: the packager's own rules (its negative controls)
-        run: python3 tools/package_release.py --self-test
+      # The packager's negative controls are `release-skeleton`'s, once per push, and no longer here: the
+      # same `--self-test` ran two jobs down the same file, in a job that spends four minutes building an
+      # archive first, and `e11.1` §3 named this copy as the one to delete. Nothing is lost by the move —
+      # `--self-test` writes a throwaway tree in a temp directory and needs no toolchain — and
+      # `tools/workspace_model.py` pins the needle to this workflow so it cannot quietly come back to the
+      # expensive copy.
       # The archive dist just made, repacked — and read back in the same step: `--verify` runs `dpkg-deb
       # --info/--contents` and `rpm -qp`/`rpm -qlp` over what was just written, so a package that builds
       # but installs its files in the wrong place (or, as in **reco-ndf**, does not build at all) fails
@@ -601,7 +614,8 @@ jobs:
       # program behind it. It checks the installer (including that the installer *refuses* a store-less
       # binary, verified against a fabricated one), that the reusable workflow's inputs and verbs all
       # exist, that the dogfood job runs the gate over the corpus, and that every `ci/…sh` a page names is
-      # a file.
+      # a file. The third question this trio used to ask in this job — the demo repository's assembly — runs
+      # in `contracts.yml` alone now; the note under the five-minute tour says why.
       - name: "m2 CI gate: the installer, the reusable workflow and the documented paths are one story"
         if: matrix.channel == 'stable' && matrix.os == 'ubuntu-latest'
         run: python3 tools/check_ci_gate.py
@@ -626,9 +640,12 @@ jobs:
         run: |
           python3 tools/five_minute_demo.py self-test
           python3 tools/five_minute_demo.py check
-      - name: "m2 the demo repository assembles from the pack the binary ships"
-        if: matrix.channel == 'stable' && matrix.os == 'ubuntu-latest'
-        run: python3 tools/publish_demo_repo.py check
+
+      # (The demo repository's own assembly — `publish_demo_repo.py check`, the third question in the `m2`
+      # trio — is asked in `contracts.yml` alone now, and this step used to run it a second time on the leg
+      # that had just built a binary it does not need: the check is `git` over a temp directory, unpacking
+      # the pack the binary *ships*. `e11.1` §3 counted three evaluations of it per push; the epic close left one,
+      # and `tools/workspace_model.py` pins the needle to that file so it cannot creep back here.)
 
       # `e7.6` (reco-3qr): the clone half of the five-minute criterion. The tour above runs on the miniature
       # the binary unpacks; this runs on a `git clone` of the repository that gets published, indexes it,
@@ -669,15 +686,10 @@ jobs:
           ./target/debug/fathom --help
           ./target/debug/fathom doctor --privacy
 
-      # §6: the default build links no network-capable crate. A list, not a shrug — if one appears the job
-      # says which, and `tools/check_workspace.py shipped` prints the same closure from the model.
-      - name: default binary links zero network-capable crates
-        if: matrix.channel == 'stable'
-        run: |
-          cargo tree -p fathom-cli --no-default-features --features minimal -e normal --prefix none \
-            | awk '{print $1}' | sort -u > /tmp/deps.txt
-          for banned in reqwest ureq hyper rustls native-tls openssl-sys git2 libgit2-sys axum; do
-            if grep -qx "$banned" /tmp/deps.txt; then
-              echo "::error::default build links $banned — ADR-002 R6"; exit 1
-            fi
-          done
+      # The default build's egress closure is `privacy.yml`'s, on every pull request, and no longer here:
+      # the two copies were byte-identical (`cargo tree -p fathom-cli --no-default-features --features
+      # minimal`, against the same banned list) and `e11.1` §3 named `privacy.yml` as the one to keep,
+      # because it is the workflow whose name says what it protects and it proves the closure against a
+      # runner with no network rather than beside a build that has one. Rule `C01` pins the needle there.
+      # `tools/check_workspace.py shipped` prints the same closure from the model without asking cargo, and
+      # `fathom doctor --privacy` prints it for whoever is standing in a checkout.

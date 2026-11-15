@@ -14,9 +14,11 @@ first:
   measured rather than the numbers someone remembered;
 * the demo repository assembles from the same pack the binary ships, with its sign-off ledger committable.
 
-The same rules run in CI as `python3 tools/check_ci_gate.py`, `tools/five_minute_demo.py check` and
-`tools/publish_demo_repo.py check` (`.github/workflows/ci.yml`, `contracts.yml`); this file is their
-pytest mirror, with the failure messages a contributor sees.
+The same rules run in CI as `python3 tools/check_ci_gate.py` and `tools/five_minute_demo.py check`
+(`.github/workflows/ci.yml`, `contracts.yml`) and `tools/publish_demo_repo.py check` (`contracts.yml` alone
+since `e11` closed — the demo check is `git` over the committed pack, so the second copy `ci.yml` ran beside a
+binary it never consulted was cost without a verdict); this file is their pytest mirror, with the failure
+messages a contributor sees.
 
 The gate is also run on `contracts.yml`'s docs-only job, which has no toolchain at all. On that runner
 the two binary-sourced rules say they skipped and the rest still runs; on a machine that has built the

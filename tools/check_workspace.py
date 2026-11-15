@@ -426,13 +426,19 @@ def workflow_executables(workflow) -> str:
     rule whose entire purpose is refusing a missing gate while the real check was an action in a different
     file — measured in `e11.1` §3, and the kind of lie a comment can tell forever. Job-level `uses:` is
     included because a reusable-workflow call (`fathom-check.yml`) is an execution too.
+
+    A step's *shell* comments are stripped with the YAML's, for the same reason: a `run:` block that names a
+    gate behind a `#` is the same sentence in a different file, and the rule was rewritten precisely so that
+    prose cannot discharge a gate. `e11`'s close found the shape while proving its own deletions stay
+    deleted (`.plan/evidence/reco-374v/dedupe_proofs.py`).
     """
     parts: list[str] = []
     for job in workflow.jobs.values():
         if job.uses:
             parts.append(job.uses)
         for step in job.steps:
-            parts.extend([step.uses, step.run])
+            parts.append(step.uses)
+            parts.extend(line for line in step.run.splitlines() if not line.lstrip().startswith("#"))
             parts.extend(str(value) for value in step.with_.values())
     return "\n".join(parts)
 

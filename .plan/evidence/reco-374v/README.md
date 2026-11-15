@@ -40,3 +40,31 @@ window has its full job and step payload.
 
 The window is two pull requests and 19 commits, all of it from the week the loop spent repairing the actions.
 Any rate in the recommendation is a rate over that, and the recommendation says so where each percentage is used.
+
+## Added at the epic's close (`reco-374v`)
+
+* **`ci_gate_map.py`** — the other half of the census: not runs and reds, but the commands every workflow
+  *executes*, at any revision. `summary` sizes the fleet and the pull-request path; `map` prints each command
+  with the steps that run it; `dupes` prints the commands run in more than one step; `diff --from REF` reports
+  which gate families (tool + verb, so a gate that survived with one more flag is the same gate) were dropped,
+  moved or added. It reads the workflows with `tools/check_workflows.py`'s own parser, so "executed" means
+  `run:` / `uses:` / `with:` and never a comment — the same definition rule `C01` uses.
+  ```console
+  $ python3 .plan/evidence/reco-374v/ci_gate_map.py summary --ref 6c6a838
+    files      13
+    pr_files   9
+    jobs       32
+    pr_jobs    28
+    steps      255
+    pr_steps   222
+    gates      157
+    pr_gates   142
+  ```
+* **`dedupe_proofs.py`** — the epic's deletions, re-wired back into a scratch copy of the fleet one at a time,
+  with `C01` asked what it thinks. Eight cases, each asserting its own verdict: the untouched fleet as a control, three of
+  the deleted duplicates wired back into `ci.yml`, the two survivors (`docs.yml`'s generator step,
+  `privacy.yml`'s egress step) removed, a required gate existing only as a YAML comment above a step (clean),
+  and a required gate existing only as a `#` line inside a `run:` block (red) — the last one the hole this
+  close found and closed.
+* **`epic11-exit-criteria.md`** — the epic's four constraints, each with the command that ran and what it
+  printed, the duplicate table worked row by row, and what the close left owed (`reco-kwg6`).

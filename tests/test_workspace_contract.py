@@ -318,6 +318,75 @@ def test_the_changelog_gate_reports_from_one_job_of_one_workflow():
     assert "gen_changelog.py lint" in step_run and "gen_changelog.py draft" in step_run, step_run
 
 
+def test_the_gates_the_epic_close_deduplicated_each_report_from_one_workflow():
+    """`e11` closed `e11.1` §3's duplicate table: four questions, one reporter each, and a lint for that.
+
+    The census listed nine places where CI asked one question twice. Four were real duplicates and were
+    deleted; two (`check_ci_gate.py`, `check_docs_site.py`) turned out to be halves — their other half needs
+    a compiled binary, prints that it skipped without one, and so belongs in `ci.yml`'s built leg; the rest
+    are one workflow's own two jobs or one cadence's two homes, written down in
+    `tools/workspace_model.py`. What this test refuses is the regression: a deleted copy growing back in a
+    second workflow (which `C01`'s home column already refuses, asserted from the model rather than from a
+    hard-coded pair) and — the half `C01` cannot see, because a home names a workflow and not a job — the
+    packager's negative controls running in two jobs of the one file that already runs them.
+    """
+    expect = {"egress-closure-query": "privacy.yml", "demo-repo-assembly": "contracts.yml",
+              "generated-docs-pages": "docs.yml", "packager-negative-controls": "ci.yml"}
+    rows = {name: (needle, home) for name, needle, _cadence, home in M.CI_REQUIRED_STEPS}
+    assert set(expect) <= set(rows), "the deduplicated gates must each be a required step with a home"
+    for name, workflow in expect.items():
+        assert rows[name][1] == workflow, "%s: model says %r, this test says %r" % (name, rows[name][1], workflow)
+
+    hits: dict[str, list] = {name: [] for name in expect}
+    for path in sorted((ROOT / ".github" / "workflows").glob("*.yml")):
+        for job in WF.Workflow(path).jobs.values():
+            for step in job.steps:
+                executed = "\n".join([step.uses, step.run, *[str(v) for v in step.with_.values()]])
+                for name, (needle, _home) in rows.items():
+                    if name in hits and needle in executed:
+                        hits[name].append((path.name, job.id, step.name))
+    for name, places in hits.items():
+        assert [p[0] for p in places] == [expect[name]], (
+            "%s runs in %s; it must run in %s alone" % (name, places, expect[name]))
+        assert places[0][2], "%s: the surviving step must be named, so a red says where to look" % name
+
+    ci = WF.Workflow(ROOT / ".github" / "workflows" / "ci.yml")
+    jobs = sorted({job.id for job in ci.jobs.values()
+                   for step in job.steps if "package_release.py --self-test" in step.run})
+    assert jobs == ["release-skeleton"], (
+        "the packager's controls belong to the job that needs no toolchain, not to both of them: %s" % jobs)
+
+
+def test_a_shell_comment_inside_a_run_block_is_no_gate(tmp_path, monkeypatch):
+    """`C01` reads what a runner executes, and a `#` line inside a `run:` block is not that either.
+
+    `test_a_comment_cannot_satisfy_a_required_step` already refuses the YAML half — the lie `e11.1` §3 found,
+    `cargo deny check` discharging a rule from a header comment while no step ran it. The same lie is
+    available one level down: a `#` line inside a step's shell script is text in `step.run`, and a substring
+    test cannot tell it from a command. `e11`'s close hit it while proving its own deletions stay deleted, and
+    `workflow_executables` strips those lines for the same reason it ignores the YAML's.
+    """
+    real = ROOT / ".github" / "workflows"
+    fake = tmp_path / "workflows"
+    fake.mkdir()
+    for path in real.glob("*.yml"):
+        shutil.copy(path, fake / path.name)
+    monkeypatch.setattr(CW, "WORKFLOWS", fake)
+    assert not any(p.rule == "C01" for p in CW.check_ci_wiring()), "the copied fleet must start clean"
+
+    needle = {name: n for name, n, _c, _h in M.CI_REQUIRED_STEPS}["egress-closure-query"]
+    path = fake / "privacy.yml"
+    lines = path.read_text().splitlines(keepends=True)
+    first = next(i for i, line in enumerate(lines) if needle in line)
+    lines[first] = "          # " + lines[first].strip() + "\n"
+    lines[first + 1] = "          # " + lines[first + 1].strip() + "\n"
+    path.write_text("".join(lines))
+
+    problems = [p for p in CW.check_ci_wiring() if p.rule == "C01" and p.where == "egress-closure-query"]
+    assert len(problems) == 1, problems
+    assert "appears in no workflow's steps" in problems[0].message, problems[0].message
+
+
 def test_a_pinned_step_that_turns_up_in_a_second_workflow_is_red(tmp_path, monkeypatch):
     """`C01`'s home half: a second copy of a pinned gate is a failure, not a free addition.
 
