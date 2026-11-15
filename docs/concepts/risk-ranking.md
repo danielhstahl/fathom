@@ -368,18 +368,21 @@ Nothing in that list changes what the panes print: a number, its vector, its rea
   row nothing scored prints `?` rather than a `0` that would read as "safe" — the empty case is built in
   `crates/fathom-tui/tests/risk_rank.rs`.
 * The acceptance harness measures the pane now that the pane answers. `tools/mvp_acceptance.py`
-  records `cold.queue_visible.ms.small` (`q` until the screen printed `order: ` and a `risk` number),
-  `query.queue.ms.small` and `query.card.ms.small` as measured numbers; all three were blocked on
+  records `cold.rail_visible.ms.small` (`t` until the screen printed `order: ` and a `risk` number),
+  `query.rail_keystroke.ms.small` and `query.card.ms.small` as measured numbers; all three were blocked on
   exactly this empty worklist, and the blocked reason said so.
 
 **Which of these `e10.3` retires rather than updates, said out loud because a retired measurement is a
-hole in a contract.** `cold.queue_visible.ms` and `query.queue.ms` are named for the pane, and their
-probe keystrokes — `q` to a screen printing `order: ` — went with it; `e10.3` retargeted the probes onto
+hole in a contract.** `cold.rail_visible.ms` and `query.rail_keystroke.ms` carried the dead pane's name
+until this ticket, and their probe keystrokes — `q` to a screen printing `order: ` — went with it;
+`e10.3` retargeted the probes onto
 the rail (first paint of the home view, and `t` repainting it with its `order: ` strip) and left the
-**budget keys where they are**, because what each one measures did not change: first paint and one
+**budget keys where they were**, because what each one measures did not change: first paint and one
 keystroke on the list that is still the shell's home. A baseline whose subject changed is the hole this
-page keeps pointing at, and these two did not change subject — only the letter that reached them. Renaming
-a published budget key is a perf ticket's, with the re-bless in the same commit. `tests/test_risk_ranking_contract.py` asked "is the queue ranked and not
+page keeps pointing at, and these two did not change subject — only the letter that reached them.
+`reco-15wk` closed that debt: it renamed the two published keys to what their probes press and re-blessed
+every number on the baseline in the same commit, which is the only way a published key moves.
+`tests/test_risk_ranking_contract.py` asked "is the queue ranked and not
 chronological" of a pty; the surviving question is "does every row print its score, print `?` when nothing
 scored it, and get a strip that names the model the number came from", asked of the rail in the same pty
 style rather than dropped. `crates/fathom-tui/tests/risk_rank.rs` keeps its obligations (order the rows the

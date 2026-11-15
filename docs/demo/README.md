@@ -210,8 +210,8 @@ Corpus: 500 commits, size class **small**. Binary profile `release`, `git versio
 | commit made elsewhere, noticed by `fathom watch` | `watch.detect.ms.small` | 1,000 ms | 161.7 | met |
 | TUI: keystroke to a changed screen (p95, excluding the `g` chord) | `query.frame_store_budget.ms.small` | 8 ms | 9.8 | **over budget** |
 | TUI: peak RSS | `rss.tui.mib.small` | 120 MiB | 26.68 | met |
-| TUI: the queue answers with a ranked worklist | `cold.queue_visible.ms.small` | 3,000 ms | 3.4 | met |
-| TUI: `j` walks the ranked queue | `query.queue.ms.small` | 8 ms | 3.0 | met |
+| TUI: the queue answers with a ranked worklist | `cold.rail_visible.ms.small` | 3,000 ms | 3.4 | met |
+| TUI: `j` walks the ranked queue | `query.rail_keystroke.ms.small` | 8 ms | 3.0 | met |
 | TUI: `w` explains why the selected episode ranks where it does | `query.card.ms.small` | 50 ms | 3.4 | met |
 | TUI: timeline rail query | `query.timeline.ms.small` | 8 ms | — | blocked — the rail has no query of its own beyond the frame budget (query.frame_store_budget.ms.small): it lists the index in the index's order |
 | TUI: search query | `query.search.ms.small` | 30 ms | — | blocked — search has no scorer yet — `/` says so, and the matcher is `e5.2` |
@@ -224,17 +224,22 @@ Declared but not measurable at all from this build: cold.graph.ms / warm.graph.m
 <!-- END GENERATED: budgets -->
 
 The blocked rows are the finding, not the gap — but read them as of this run, not as of the run that
-first wrote them. `cold.queue_visible.ms.small` is the budget `e1.12` actually depends on — its own
+first wrote them. `cold.rail_visible.ms.small` is the budget `e1.12` actually depends on — its own
 rationale says it is "the first *useful* answer" — and it now answers: 3.4 ms against a 3,000 ms
-budget, which is what the queue's first frame costs once it is handed episodes. Two of the four
-`query.*` families that missing seam blocked measure with it (`j` walking the ranked queue, `w`
+budget, which is what the home view's first frame costs once it is handed episodes. Two of the four
+`query.*` families that missing seam blocked measure with it (`j` walking the list, `w`
 explaining a rank); the two still blocked are the two the table names in its own words — the rail, which
 has no query of its own beyond the frame budget, and search, which has no scorer until `e5.2`. The diff
 pane got its path in `reco-0kw`, and its two numbers were the first measured `query.*` budgets here.
 
+Two of the ids in that table are the names `reco-15wk` gave them, and the row labels are the run's own
+words from before `e10.3` deleted the pane they described: the keys moved to match the rail the probe
+presses, the numbers are the ones that run measured, and the re-bless that moves a blessed number is the
+perf gate's, not this page's.
+
 A row that goes from blocked to measured is a document rewrite, not a re-render, and
 `tests/test_mvp_acceptance_contract.py::test_the_perf_report_quotes_real_budgets_and_explains_every_gap`
-is what makes it one: it fails if that queue-visibility row ever goes back to unmeasured, which is the
+is what makes it one: it fails if that first-paint row ever goes back to unmeasured, which is the
 same finding arriving from the other direction.
 
 Full machine-readable version:

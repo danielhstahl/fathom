@@ -118,7 +118,7 @@ STORE_CLOCK_FLOOR_MS = 3.0
 #: so anything smaller than this is the harness's clock, not the product's. Floor for the gate.
 PTY_NOISE_MS = 10.0
 
-#: The floor of a *spawn*-dominated measurement, in ms. `cold.queue_visible.ms.small` is not a
+#: The floor of a *spawn*-dominated measurement, in ms. `cold.rail_visible.ms.small` is not a
 #: keystroke seen through the pty; it is fork, dyld, `Store::open` and the first frame, and what varies
 #: with it is the box, not the code. Nine probes of one tree on one box spread 152-171 ms (19 ms, 12 %
 #: of the value) and the same tree measured 109-150 ms across the blessed runs (`benchmarks/trend/
@@ -147,7 +147,8 @@ PROMISED_SECONDS = 300
 COVERAGE: dict[str, tuple[str, str]] = {
     # --- cold index -------------------------------------------------------------------
     "cold.index.ms": ("this harness", "`fathom index` into a deleted store, 3 samples, p95"),
-    "cold.queue_visible.ms": ("this harness", "TUI first paint through the pty, from spawn to first frame"),
+    "cold.rail_visible.ms": ("this harness", "TUI first paint through the pty, from spawn to first "
+                                               "frame of the home rail"),
     "cold.graph.ms": ("not measured yet", "the graph lane is `e3.2`'s and is not built; `s3` measured its write half"),
     # --- warm re-index ----------------------------------------------------------------
     "warm.reindex.ms": ("this harness", "one new commit, then `fathom index`, 3 samples, p95"),
@@ -166,7 +167,7 @@ COVERAGE: dict[str, tuple[str, str]] = {
                                       "owns the lane that has to clear it"),
     # --- queries ----------------------------------------------------------------------
     "query.timeline.ms": ("both", "criterion `query.timeline.ms/rail_page`, and `t` through the pty"),
-    "query.queue.ms": ("this harness", "`j` walking the rail: keystroke written to frame drawn"),
+    "query.rail_keystroke.ms": ("this harness", "`j` walking the rail: keystroke written to frame drawn"),
     "query.card.ms": ("both", "criterion `query.card.ms/episode_and_files`, and `fathom show --json`"),
     "query.findings.ms": ("not measured yet", "findings are `e2.4`'s; the store has no findings read to time"),
     "query.diff_open.ms": ("this harness", "`d` through the pty, written to grid changed"),
@@ -283,13 +284,13 @@ def measurement_plan() -> list[dict]:
          "how": "`fathom stats --json`, p95 of 5 — the verb the budget names"},
         {"id": "query.card.ms.cli.small", "budget": "query.card.ms.small",
          "how": "`fathom show --json HEAD~7`: the card's read end to end, p95 of 5"},
-        {"id": "cold.queue_visible.ms.small", "budget": "cold.queue_visible.ms.small",
-         "how": "TUI spawn to first frame through the pty, median of 3 probes"},
+        {"id": "cold.rail_visible.ms.small", "budget": "cold.rail_visible.ms.small",
+         "how": "TUI spawn to the home rail's first frame through the pty, median of 3 probes"},
         {"id": "query.timeline.ms.small", "budget": "query.timeline.ms.small",
          "how": "`t` written to the grid changed, through the pty"},
-        {"id": "query.queue.ms.small", "budget": "query.queue.ms.small",
+        {"id": "query.rail_keystroke.ms.small", "budget": "query.rail_keystroke.ms.small",
          "how": "`j` written to the grid changed, through the pty"},
-        {"id": "query.queue.ms.visible.small", "budget": None,
+        {"id": "query.rail_keystroke.ms.visible.small", "budget": None,
          "how": "`t` to the rail repainting with its `order: ` strip (trend only; the letter was `q` "
                 "and the worklist until `e10.3` deleted them, ADR-006 §5.1.2)"},
         {"id": "query.diff_open.ms.small", "budget": "query.diff_open.ms.small",
@@ -771,9 +772,9 @@ TUI_PROBE = {
         "of the shipped binary, because the budgets are about what a reviewer waits for.",
         "`q` left this list with the Queue view (`e10.3`, ADR-006 §5.1.2 §1): the rail is the home list",
         "now, so the probe that used to wait for a pane to open now waits for the home list to repaint",
-        "with its `order: ` strip on it. That is a *narrower* question than the one the budget key was",
-        "named for, and it is written down here rather than smoothed over — renaming the key to match the",
-        "claim is a perf ticket's job, with the re-bless and the trend discontinuity in the same commit.",
+        "with its `order: ` strip on it. The keys those two numbers were published under kept the dead",
+        "pane's name until `reco-15wk` renamed them — `cold.rail_visible.ms` and `query.rail_keystroke.ms`",
+        "— with the re-bless of every number on this baseline in the same commit.",
     ],
     "steps": [
         {"keys": "", "note": "open the TUI: time to the first frame", "hold": 0.8},
@@ -1001,25 +1002,25 @@ def measure_end_to_end(harness: Harness) -> list[Measurement]:
 
     if probes:
         if first_paints:
-            record(Measurement("cold.queue_visible.ms.small", "ms",
+            record(Measurement("cold.rail_visible.ms.small", "ms",
                                round(statistics.median(first_paints), 2),
-                               "cold.queue_visible.ms.small", first_paints,
-                               how="spawn to first frame on a warm store: the queue is the first pane "
-                                   f"(median of {len(first_paints)} probe(s))",
+                               "cold.rail_visible.ms.small", first_paints,
+                               how="spawn to first frame on a warm store: the home rail is the first "
+                                   f"pane (median of {len(first_paints)} probe(s))",
                                # Not `PTY_NOISE_MS`: this number is dominated by process start, not by
                                # the reader's poll loop, and a first frame that lands later than the
                                # reader's settle window used to come back `blocked` instead of late
                                # (`reco-cwx`, `tools/tui_session.py`'s `drain`).
                                noise=SPAWN_NOISE_MS))
         else:
-            record(Measurement("cold.queue_visible.ms.small", "ms", None,
-                               "cold.queue_visible.ms.small",
+            record(Measurement("cold.rail_visible.ms.small", "ms", None,
+                               "cold.rail_visible.ms.small",
                                blocked_by="the probe never saw a first frame", how="spawn to first frame"))
         keystroke("query.timeline.ms.small", "t", "query.timeline.ms.small", "visible_ms",
                   "`t` written to the grid changed: one page of the rail")
-        keystroke("query.queue.ms.small", "j", "query.queue.ms.small", "visible_ms",
+        keystroke("query.rail_keystroke.ms.small", "j", "query.rail_keystroke.ms.small", "visible_ms",
                   "`j` written to the grid changed: the rail's ordering read")
-        keystroke("query.queue.ms.visible.small", "t", None, "until_ms",
+        keystroke("query.rail_keystroke.ms.visible.small", "t", None, "until_ms",
                   "`t` to the rail repainting with its `order: ` strip (trend only; the letter was "
                   "`q` and the worklist until `e10.3` deleted them, ADR-006 §5.1.2)")
         keystroke("query.diff_open.ms.small", "d", "query.diff_open.ms.small", "visible_ms",
@@ -1039,8 +1040,9 @@ def measure_end_to_end(harness: Harness) -> list[Measurement]:
                                blocked_by="the probe saw no resident set for the TUI child",
                                how="VmHWM of the TUI child"))
     else:
-        for ident, unit in (("cold.queue_visible.ms.small", "ms"), ("query.timeline.ms.small", "ms"),
-                            ("query.queue.ms.small", "ms"), ("query.queue.ms.visible.small", "ms"),
+        for ident, unit in (("cold.rail_visible.ms.small", "ms"), ("query.timeline.ms.small", "ms"),
+                            ("query.rail_keystroke.ms.small", "ms"),
+                            ("query.rail_keystroke.ms.visible.small", "ms"),
                             ("query.diff_open.ms.small", "ms"),
                             ("query.diff_first_hunk.ms.small", "ms"), ("rss.tui.mib.small", "MiB")):
             record(Measurement(ident, unit, None, ident if ident.endswith(".small") else None,

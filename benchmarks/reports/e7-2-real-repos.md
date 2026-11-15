@@ -6,6 +6,11 @@ machine-readable payload of this report is `e7-2-real-repos.json` beside it; the
 `benchmarks/budgets.json`, the generated copy of ADR-004 §11, and what this ticket *did* to those
 budgets is ADR-004 §11.9.
 
+Budget ids in this report are the names `reco-15wk` gave them: `query.rail_keystroke.ms` is what this
+run published as the queue's ordering read, and `cold.rail_visible.ms` is what it published as the
+queue's visibility. Same probes, same rows, same numbers — only the keys moved, and they moved to match
+the pane the probes press. The payload beside this file, `e7-2-real-repos.json`, carries the same names.
+
 Reproduce with:
 
 ```sh
@@ -58,7 +63,7 @@ noise floor. *Before* is the tree as `reco-66q` found it; *after* is this ticket
 | `query.metrics.ms` | 400 | 593 | 176 | **pass (was a fail)** |
 | `query.card.ms` | 50 | 613 | 179 | fail (was 12×, now 3.6×) |
 | `query.timeline.ms` | 12 | 0.1 | 0.15 | pass |
-| `query.queue.ms` | 12 | 0.1 | 0.1 | pass |
+| `query.rail_keystroke.ms` | 12 | 0.1 | 0.1 | pass |
 | `query.diff_open.ms` | 150 | 101 | 112 | pass |
 | `query.diff_first_hunk.ms` | 40 | 202 | 223 | fail |
 | `rss.tui.mib` | 180 | 194 | 197 | fail (9 % over) |
@@ -220,7 +225,7 @@ this ticket's first commit**: the same six measurements fail with the binary bui
 (`reco-8s4`) as with this ticket's tree — `rss.cold_index.peak_mib.small` (+27 %),
 `warm.reindex.ms.small` (+28 %), `rss.warm_reindex.peak_mib.small` (+45 %),
 `store.bytes_per_commit_spine.small` (+32 %, and 4 413 B over its 4 096 B budget),
-`cold.queue_visible.ms.small` (+325 %) and `rss.tui.mib.small` (+154 %). The baseline was last
+`cold.rail_visible.ms.small` (+325 %) and `rss.tui.mib.small` (+154 %). The baseline was last
 blessed at `53ac9f2` (`reco-7tc`); `reco-8s4` moved the graph representation and never re-blessed.
 
 What this ticket did to the fixture, both binaries, same box, two `--quick` runs each:
@@ -231,14 +236,14 @@ What this ticket did to the fixture, both binaries, same box, two `--quick` runs
 | `query.diff_open.ms.small` / `query.diff_first_hunk.ms.small` | — | −31 %, −29 % vs baseline | faster |
 | `warm.reindex.ms.small` | 72.4, 65.4 | 74.0, 75.9 | flat, inside spread |
 | `rss.cold_index.peak_mib.small` | 25.9, 25.9 | 25.6, 25.6 | flat |
-| `cold.queue_visible.ms.small` | 108.9, 109.1 | 124.7, 128.8 | **+16 %, a real small regression** |
+| `cold.rail_visible.ms.small` | 108.9, 109.1 | 124.7, 128.8 | **+16 %, a real small regression** |
 
 **It was not re-blessed, on purpose.** `--bless` is the ratchet and §11.8 wants it done as a
 deliberate commit — but blessing from this tree would also absorb `reco-8s4`'s unexamined +325 % on
-`cold.queue_visible.ms` and +154 % on `rss.tui.mib` into a perf ticket that never measured either
+`cold.rail_visible.ms` and +154 % on `rss.tui.mib` into a perf ticket that never measured either
 one and cannot say whether they are correct. The numbers are in this section so whoever owns that
-re-bless can argue with them. `cold.queue_visible.ms.small` is +16 % *from this ticket* and is
-listed with them for the same reason: the time from process start to a visible queue got a little
+re-bless can argue with them. `cold.rail_visible.ms.small` is +16 % *from this ticket* and is
+listed with them for the same reason: the time from process start to the first paint got a little
 worse when `structure.delta` stopped enumerating whole trees, the fixture is small enough that the
 spread is bigger than the effect, and it is red either way.
 

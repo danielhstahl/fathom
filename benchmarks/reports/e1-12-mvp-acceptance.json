@@ -167,7 +167,7 @@
   },
   {
    "measurement": "TUI: the queue answers with a ranked worklist",
-   "budget_id": "cold.queue_visible.ms.small",
+   "budget_id": "cold.rail_visible.ms.small",
    "budget": 3000,
    "statistic": "p95",
    "unit": "ms",
@@ -183,7 +183,7 @@
   },
   {
    "measurement": "TUI: `j` walks the ranked queue",
-   "budget_id": "query.queue.ms.small",
+   "budget_id": "query.rail_keystroke.ms.small",
    "budget": 8,
    "statistic": "p95",
    "unit": "ms",

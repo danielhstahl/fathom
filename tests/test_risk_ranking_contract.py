@@ -69,7 +69,7 @@ ROW = re.compile(
 # Two different waits, because there are two different things to wait for.
 #
 # `FIRST_FRAME_S` bounds the wait for the *first* frame. Time to first paint is a budgeted quantity —
-# `cold.queue_visible.ms.small` pays 3,000 ms for spawn-to-first-frame at this size class — and this
+# `cold.rail_visible.ms.small` pays 3,000 ms for spawn-to-first-frame at this size class — and this
 # file drives whatever binary exists, where a debug build on a loaded machine is the slowest thing in
 # the house. Latency is `tools/perf_gate.py`'s contract; this file's is what the pane says once it has
 # been drawn, so the bound here is generous (20 s) and its only job is to turn "never drew" into a

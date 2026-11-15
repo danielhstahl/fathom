@@ -152,12 +152,12 @@ def test_the_harness_reports_a_failed_clause_as_a_failure(tmp_path: pathlib.Path
 def _honest_trio() -> tuple[dict[str, dict[str, Any]], dict[str, dict[str, str]], dict[str, float]]:
     """A register, a ledger and a biting set that agree, with exactly one breach on them.
 
-    The committed register is empty as of `reco-7yq` — its last row said *delete this row when the
-    three denominators land*, and it landed — so this trio is built rather than read. It is built out of
-    the committed baseline: a measurement the tree really holds, charged at twice its own budget and
-    bounded just above itself. The discipline the tests below probe (an owner, an expiry, a ceiling, a
-    breach that bites) has to hold for a register the tree does not currently have, because that is the
-    register the next breach will be written into.
+    The committed register is not empty any more — `reco-7yq` took its last row off at epic 7's close and
+    `reco-15wk`'s re-bless put one back (`cold.index.ms.small`, owned by `reco-xsog`) — so this trio is
+    still built rather than read, and it is built out of the committed baseline: a measurement the tree
+    really holds, charged at twice its own budget and bounded just above itself. The discipline the tests
+    below probe (an owner, an expiry, a ceiling, a breach that bites) is probed against a synthetic row on
+    purpose, so that a green here never depends on what the real register happens to hold today.
     """
     baseline = json.loads(BASELINE.read_text(encoding="utf-8"))
     bid = "store.bytes_per_commit_graph.small"
@@ -181,18 +181,38 @@ def test_the_real_ledger_agrees_with_itself() -> None:
     assert epic7_acceptance.ledger_problems(register, ledger, biting, TODAY) == []
 
 
-def test_the_committed_register_is_empty_and_agrees_with_the_adr() -> None:
-    """An empty register is a claim, and it has to be true in both documents at once.
+def test_the_committed_register_agrees_with_the_adr_and_every_row_is_alive() -> None:
+    """The register and the ledger are one claim written twice, and any row on either must be alive.
 
-    `reco-7yq` took the last row off. That is only a good outcome if the ADR deleted its written
-    relaxation in the same change — a row in one document and not the other is the disagreement this
-    gate exists to fail a build on, and it is a disagreement about a row that no longer exists.
+    Epic 7 closed with an empty register, and that was the finding worth stating: three written
+    relaxations, all three paid for (`reco-r3x` took two, `reco-7yq` the last). Emptiness was the state of
+    the tree at a close though, not a rule for every tree after it, and a re-bless that measures a real
+    regression has exactly two honest outcomes: a bounded row in both documents, or a red build. So
+    `reco-15wk`, which re-blessed the whole baseline, added the first row since — `cold.index.ms.small`,
+    over its 1 500 ms p95 by work the analyzer lane gained after the previous bless, owned by
+    `reco-xsog`, bounded at the number that measured, dated, and written up in ADR-004 §11.10.
+
+    What `reco-7yq` actually needed guarding is kept in full, and is what fails a build here: a row in one
+    document and not the other is a disagreement about a relaxation, and a row whose defect is closed or
+    whose clock has run out is a lie about one.
     """
-    register = json.loads(BASELINE.read_text(encoding="utf-8"))["known_breaches"]
+    baseline = json.loads(BASELINE.read_text(encoding="utf-8"))
+    register = baseline["known_breaches"]
     ledger = epic7_acceptance.relax_ledger()
-    assert register == {}, f"a consciously-relaxed budget is back on the register: {register}"
-    assert ledger == {}, f"ADR-004 §11.10 still writes a relaxation for a closed defect: {ledger}"
-    assert epic7_acceptance.ledger_problems(register, ledger, {}, TODAY) == []
+    # Every committed row is treated as biting, at its own ceiling — the claim the row makes about the
+    # tree, and the mildest one it could make. The perf clause re-checks that against a live gate run;
+    # what is checked here is that the two documents and that claim are consistent and alive.
+    biting = {bid: float(entry["ceiling"]) for bid, entry in register.items()}
+    assert epic7_acceptance.ledger_problems(register, ledger, biting, TODAY) == []
+    for bid, entry in sorted(register.items()):
+        owner = str(entry.get("owner", ""))
+        assert epic7_acceptance.bead_issue(owner), \
+            f"{bid}: registered breach names {owner!r} as its owner and beads has no such issue"
+        assert bid in baseline["measurements"], f"{bid}: a breach of a measurement the tree does not make"
+        published = {b["id"]: b["budget"] for b in
+                     json.loads((ROOT / "benchmarks" / "budgets.json").read_text(encoding="utf-8"))["budgets"]}
+        assert float(published[bid]) == float(entry["budget"]), \
+            f"{bid}: the register and the published budget disagree about the bound"
 
 
 def test_a_budget_over_its_ceiling_with_no_writing_is_a_problem() -> None:

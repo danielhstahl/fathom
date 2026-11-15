@@ -37,12 +37,14 @@ BUDGETS: list[tuple[str, dict, str, str, str]] = [
      "~3.3k commits/s from `medium` up. Reference point: the Python contract fixture "
      "manages 235 commits/s (ADR-004 §13.2); this is a budget for `fathom-store`, not a "
      "claim about the prototype."),
-    ("cold.queue_visible.ms", {"small": 3_000, "medium": 8_000, "large": 20_000, "xlarge": 45_000},
+    ("cold.rail_visible.ms", {"small": 3_000, "medium": 8_000, "large": 20_000, "xlarge": 45_000},
      "ms", "p95",
-     "Time to the first *useful* answer: queue populated, timeline browsable, graph lane "
-     "still pending and labelled. This is the number `e1.12` (time-to-first-orientation "
-     "< 60 s) actually depends on, which is why it is a separate budget and not a fraction "
-     "of `cold.index.ms`."),
+     "Time to the first *useful* answer: the home rail drawn with its rows, the chronology "
+     "browsable, graph lane still pending and labelled. This is the number `e1.12` "
+     "(time-to-first-orientation < 60 s) actually depends on, which is why it is a separate "
+     "budget and not a fraction of `cold.index.ms`. Named `cold.queue_visible.ms` until "
+     "`reco-15wk`: the same probe, the same threshold and the same first pane — `e10.3` "
+     "deleted the pane's name, and the key followed the pane it was never measuring."),
     ("cold.graph.ms", {"small": 60_000, "medium": 480_000, "large": 1_800_000, "xlarge": 6_000_000},
      "ms", "p95",
      "Graph lane, lazy and interruptible (§8.5). The small-class value is `e3.2`'s own 60 s/1 000 "
@@ -99,9 +101,14 @@ BUDGETS: list[tuple[str, dict, str, str, str]] = [
     ("query.timeline.ms", {"small": 8, "medium": 12, "large": 20, "xlarge": 30}, "ms", "p95",
      "One page (100 episodes) of the episode rail with review state joined in. Inside the "
      "8 ms frame budget at 60 fps for `small`/`medium`."),
-    ("query.queue.ms", {"small": 8, "medium": 12, "large": 20, "xlarge": 30}, "ms", "p95",
-     "The attention queue's ordering query (`v_queue`), 100 rows. Prototype: 0.574 ms at "
-     "800 commits."),
+    ("query.rail_keystroke.ms", {"small": 8, "medium": 12, "large": 20, "xlarge": 30}, "ms", "p95",
+     "One keystroke on the home rail — `j`, one row down — from the key written to the frame "
+     "drawn: the rows redraw from the chronology the composition root handed it. Named "
+     "`query.queue.ms` until `reco-15wk`, and the thing it named is gone twice over: the "
+     "ordering query it was written for (`v_queue`, 100 rows, prototype 0.574 ms at 800 "
+     "commits) went out with the Queue view in `e10.3`, and what the probe has pressed since "
+     "is `j` on the rail. The prototype figure is kept as the anchor it still is — one "
+     "ordered read of a 100-row page — with the query that produced it named as history."),
     ("query.card.ms", {"small": 50, "medium": 50, "large": 60, "xlarge": 80}, "ms", "p95",
      "Episode summary card render from stored delta + findings + risk: `e2.10`'s own 50 ms "
      "warm budget, carried unchanged. Prototype: 0.277 ms."),

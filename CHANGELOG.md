@@ -16,6 +16,68 @@ fails CI if the version in `Cargo.toml` has no dated section here, because the s
 body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
+### Two perf budget keys still spelled the queue; they now name what their probes press, and the whole baseline was re-measured (`reco-15wk`)
+
+Epic 10 deleted the Queue pane (`reco-ydek.3`, `22148e6`) and renamed `fathom_analyze::queue` to
+`::review`, but the two budgets that pane was named for stayed: `cold.queue_visible.ms` ("queue
+populated, timeline browsable") and `query.queue.ms` ("the attention queue's ordering query
+(`v_queue`), 100 rows"). `v_queue` exists nowhere in `crates/` any more, and the probes that fill those
+ids press `t` and `j` — a budget for a query that no longer runs, described by a view that no longer
+exists, sitting beside a probe measuring the rail. Epic 10 named this as owed and did not do it, because
+renaming a published key is a re-bless of every number on the baseline and a re-bless needs a release
+build on a representative runner (`reco-3h82` and `reco-0zot` both watched a blessed number stop being
+transferable between machines).
+
+* **The names.** `cold.queue_visible.ms` → **`cold.rail_visible.ms`** (time to the home rail's first
+  paint: spawn to first frame, through the pty) and `query.queue.ms` → **`query.rail_keystroke.ms`**
+  (one keystroke on that rail: `j` written to the frame drawn, plus the trend-only `.visible` row the
+  probe drives with `t`). They moved in one commit through `tools/gen_budgets.py`, so
+  `benchmarks/budgets.json`, `benchmarks/BUDGETS.md` and ADR-004 §11's generated table cannot disagree
+  about a name, and with them every consumer: `tools/perf_gate.py`'s coverage and `how=` strings,
+  `tools/mvp_acceptance.py`, `tools/perf_realrepo.py`, `tools/tui_session.py`, the perf, `e1.12` and
+  risk-ranking contract suites, ADR-004 §11.9/§11.10's prose, [docs/concepts/risk-ranking.md](docs/concepts/risk-ranking.md)
+  and [docs/demo/README.md](docs/demo/README.md). The committed reports carry the new ids too, with a
+  line saying which name the run that produced them published under. **No budget id spells `queue`
+  anywhere in the tree now.**
+* **The re-bless.** `make bench-bless`, on the container class the baseline's own `blessed_environment`
+  describes (8 cpus, 7 934 MiB, release build, python 3.14.5, git 2.47.3): all 23 measurements
+  re-measured, nothing hand-copied, floors carried forward and never narrowed. The renamed rows moved
+  because they were measured again, not because they were renamed — 154.87 → **134.4 ms** for the first
+  frame and 1.8 → **2.7 ms** for the rail keystroke — and `reco-dkr`'s floors say which of them the
+  ±15 % ratchet can actually resolve (neither: a 25 ms spawn floor and a 10 ms pty one, so their
+  budgets guard them). The criterion rows are blessed with their own floors for the first time, which
+  takes four of them off the "cannot resolve" list.
+* **What the re-bless found, said out loud instead of absorbed.** `cold.index.ms.small` measures
+  **1 563 ms against its published 1 500 ms budget** — 1 512-1 563 across the runs — and it is not this
+  ticket and not the box: the binary built at `36b011f`, the commit the baseline was blessed at, indexes
+  the same fixture at 846-890 ms *on this same box*, and the store's own `phases_ms` puts the entire
+  move in `analyses` (209 ms → 828 ms) with `graph`, `spine` and `episodes` flat. Work landed since the
+  bless — the per-file complexity count of `reco-l9bz.4`, the risk vector of `reco-ydek.5` — is the
+  candidate and nobody has measured it. The budget is not raised, because §11.9 already refused to make
+  that cost invisible on real repositories; the breach goes on the register of consciously-relaxed
+  budgets (`perf-gate.json`'s `known_breaches` and ADR-004 §11.10's ledger, same row, same bound) with
+  **`reco-xsog`** as its owner, this bless's own number as the ceiling it may not grow past, and
+  2026-12-20 as the date the grace runs out. `python3 tools/perf_gate.py --check` is green on that
+  runner with the breach named in its output rather than hidden by it.
+* **What that did to the epic-7 gate, which was red before this change and is green after.**
+  `tools/epic7_acceptance.py` at `ab0762b` scored **3/4 clauses**, and the failing one was the perf clause:
+  the committed baseline still expected 1 122.5 ms where the tree measures 1 507, so `+34.3 % vs baseline`
+  was red on every run of it in this container. With the re-bless and the register it prints **4/4**.
+  That needed one contract test moved, said here rather than slipped: `test_the_committed_register_is_empty_
+  and_agrees_with_the_adr` asserted `known_breaches == {}`, which was epic 7's close state and not a rule
+  for every tree after it — a re-bless that measures a real regression has exactly two honest outcomes: a
+  bounded row in both documents, or a red build. It is now `test_the_committed_register_agrees_with_the_adr_and_
+  every_row_is_alive`: register and ADR row-for-row, nothing expired, every owner a bead that exists, every
+  row a measurement the tree makes. The ledger discipline tests are untouched and still probe a *synthetic*
+  row, so a green there never depends on what the real register holds today.
+* **What stopped being assertable, and why.** `tests/test_perf_budget_contract.py`'s FLEET table — every
+  reading both boxes are known to produce, fed to `evaluate` so a bless cannot end one argument by
+  starting another — was recorded on 2026-11-07/08 trees, and a tree that no longer exists cannot be a
+  control for a bless made at this one. The container legs are re-measured here; the `ubuntu-latest` legs
+  that the analyzer move invalidated are now `None` with their numbers kept in the comment, and they go
+  back in when the daily `perf` job reports a number for this tree. The two diff-pane legs survived
+  because the diff pane did not move, and they still clear.
+
 ### A store written by the build that had the queue is now a committed file, so a queue-era read cannot be broken silently (`reco-o884`)
 
 Epic 10 retired the attention queue and shipped every check that could be shipped without one file: a store

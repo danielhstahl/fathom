@@ -991,7 +991,7 @@ is a budget row lookup, never an `if` in product code.
 
 | Budget id | Unit | Statistic | large | medium | small | xlarge | Rationale |
 |---|---|---|---|---|---|---|---|
-| `cold.queue_visible.ms` | ms | p95 | 20,000 | 8,000 | 3,000 | 45,000 | Time to the first *useful* answer: queue populated, timeline browsable, graph lane still pending and labelled. This is the number `e1.12` (time-to-first-orientation < 60 s) actually depends on, which is why it is a separate budget and not a fraction of `cold.index.ms`. |
+| `cold.rail_visible.ms` | ms | p95 | 20,000 | 8,000 | 3,000 | 45,000 | Time to the first *useful* answer: the home rail drawn with its rows, the chronology browsable, graph lane still pending and labelled. This is the number `e1.12` (time-to-first-orientation < 60 s) actually depends on, which is why it is a separate budget and not a fraction of `cold.index.ms`. Named `cold.queue_visible.ms` until `reco-15wk`: the same probe, the same threshold and the same first pane — `e10.3` deleted the pane's name, and the key followed the pane it was never measuring. |
 
 | Budget id | Unit | Statistic | large | medium | small | xlarge | Rationale |
 |---|---|---|---|---|---|---|---|
@@ -1043,7 +1043,7 @@ is a budget row lookup, never an `if` in product code.
 
 | Budget id | Unit | Statistic | large | medium | small | xlarge | Rationale |
 |---|---|---|---|---|---|---|---|
-| `query.queue.ms` | ms | p95 | 20 | 12 | 8 | 30 | The attention queue's ordering query (`v_queue`), 100 rows. Prototype: 0.574 ms at 800 commits. |
+| `query.rail_keystroke.ms` | ms | p95 | 20 | 12 | 8 | 30 | One keystroke on the home rail — `j`, one row down — from the key written to the frame drawn: the rows redraw from the chronology the composition root handed it. Named `query.queue.ms` until `reco-15wk`, and the thing it named is gone twice over: the ordering query it was written for (`v_queue`, 100 rows, prototype 0.574 ms at 800 commits) went out with the Queue view in `e10.3`, and what the probe has pressed since is `j` on the rail. The prototype figure is kept as the anchor it still is — one ordered read of a 100-row page — with the query that produced it named as history. |
 
 | Budget id | Unit | Statistic | large | medium | small | xlarge | Rationale |
 |---|---|---|---|---|---|---|---|
@@ -1312,7 +1312,7 @@ The dispositions, stated rather than implied:
 | `store.bytes_per_commit_spine` | 27,264 B | 4,096 B | **explained and re-based**, not relaxed: it is 2,242 B/row × 12.1 rows/commit, and `store.bytes_per_file_row_spine` (3 KiB) is the budget that says something true about it. §11.6 has to be read with the row in it. (`reco-7yq` has since narrowed what the harness charges to this budget to the commit tables, so 27,264 B is the lane-inclusive measurement this disposition was written against.) |
 | `cache.budget.mib` | 104.8 MiB | 512 MiB | **passes** as of this ticket, having been a 1.5× miss before it; `cache.bytes_per_cached_row` is what keeps it passing. |
 | `store.size.mib` | 291 MiB | 2,048 MiB | passes. |
-| `query.timeline.ms`, `query.queue.ms`, `query.diff_open.ms` | 0.15, 0.1, 112 ms | 12, 12, 150 ms | pass, through the same pty probe the gate uses. |
+| `query.timeline.ms`, `query.rail_keystroke.ms`, `query.diff_open.ms` | 0.15, 0.1, 112 ms | 12, 12, 150 ms | pass, through the same pty probe the gate uses. (The middle one was published as the queue's ordering read when this run was made; `reco-15wk` renamed it, not the number.) |
 | `query.diff_first_hunk.ms` | 223 ms | 40 ms | **held, failing**: the first `@@` of a 100 000-line generated file is a different problem from the first `@@` of a source file, and the pty probe does not distinguish them. |
 | `rss.tui.mib` | 197 MiB | 180 MiB | **held, failing** by 9 %, on a store whose episodes are the aws release commits; not chased further here. |
 
@@ -1340,14 +1340,15 @@ wish, and §11.7 has already told us what a budget nobody fails on is worth.
 **What it found: the fixture gate had been red for a week and no word had been written about it.** The
 baseline was last blessed at `89f7198` (2026-10-17); ninety-three commits later, at `36b011f`, eight ids
 were red. Three are over their published budget and went on the register at the end of this section — which
-`reco-7yq` has since emptied — and the rest were red *against
+`reco-7yq` has since emptied, and which `reco-15wk`'s re-bless refilled with one row about a different
+defect — and the rest were red *against
 the blessed baseline* while sitting inside their budget, so they were **re-blessed** at `36b011f` — the
 ratchet act of §11.2–11.5, not a waiver:
 
 | measurement | blessed at `89f7198` | at `36b011f` | budget | note |
 | --- | ---: | ---: | ---: | --- |
 | `cold.index.ms.small` | 411.3 ms | 1,340.8 ms | 1,500 ms | inside; the graph lane arrived after the bless |
-| `cold.queue_visible.ms.small` | 26.6 ms | 138.3 ms | 3,000 ms | inside, by 21× |
+| `cold.rail_visible.ms.small` | 26.6 ms | 138.3 ms | 3,000 ms | inside, by 21× — the key spelled the pane `e10.3` deleted until `reco-15wk` renamed it |
 | `rss.cold_index.peak_mib.small` | 20.4 MiB | 32.2 MiB | 300 MiB | inside |
 | `rss.warm_reindex.peak_mib.small` | 12.1 MiB | 24.2 MiB | — (trend) | no budget of its own, §11.7's standing complaint |
 | `rss.tui.mib.small` | 10.9 MiB | 30.8 MiB | 120 MiB | inside |
@@ -1473,7 +1474,8 @@ silent pass. The run lists those ids under **cannot classify**, in the table, in
 the sentence — because a gate that cannot resolve a metric should name the metric, and epic 7's exit clause
 is "met, or consciously relaxed with a written rationale", not "unresolvable, and green". Which ids those
 are is now written down rather than discovered per run: every measurement taken through the pty —
-`cold.queue_visible.ms.small` and the keystroke probes behind `query.timeline.ms`, `query.queue.ms` and
+`cold.rail_visible.ms.small` and the keystroke probes behind `query.timeline.ms`, `query.rail_keystroke.ms`
+and
 `query.diff_*` — whose instrument resolves 10 ms (`PTY_NOISE_MS`, the poll granularity of the pty reader,
 not a choice about tolerance) while the numbers it reports are 1–5 ms; and `warm.reindex.noop.ms.small`,
 whose `elapsed_ms` the store prints as whole milliseconds — three ticks of that clock is its floor
@@ -1514,9 +1516,9 @@ failing measurement is now a `::error::` annotation as well as a line in the log
 named was two defects, and neither one was the "slower runner on GitHub" the ticket suspected.
 
 **One: five blessed rows sat at the fast tail of their own distributions.**
-`warm.reindex.ms.small` (120.1 ms, blessed by `reco-r3x`), `cold.queue_visible.ms.small` (138.3),
+`warm.reindex.ms.small` (120.1 ms, blessed by `reco-r3x`), `cold.rail_visible.ms.small` (138.3),
 `query.diff_open.ms.small` (2.9), `query.diff_first_hunk.ms.small` (4.3) and
-`query.queue.ms.visible.small` (2.8) had not moved since `36b011f`, and every gate run since has read
+`query.rail_keystroke.ms.visible.small` (2.8) had not moved since `36b011f`, and every gate run since has read
 past them — in the improvement direction for the warm row (101.5-107.0 ms, 11-15 % *under* its bless,
 which trips `stale_baseline`: the row was blessed before `reco-dkr` took the harness's own 2 ms poll —
 and its tail — out of every timed process, so part of that gap is the bless carrying a toll the
@@ -1528,8 +1530,9 @@ whole complaint in six runs. The five rows are re-blessed at the median of ten p
 the median of its own gate run), divided by that runner's calibration factor of ×0.988 so they stay in
 reference-machine units, and each carries a centre, a scale, a spread and a floor as `reco-dkr`
 requires; the rest of the file is untouched, because a ticket is not licence to move a number nothing
-touched. Two rows were looked at and left alone: `query.timeline.ms.small` and `query.queue.ms.small`
-read 11-25 % under their blesses too, but a 10 ms floor on a 1.8 ms row makes anything they do
+touched. Two rows were looked at and left alone: `query.timeline.ms.small` and
+`query.rail_keystroke.ms.small` read 11-25 % under their blesses too, but a 10 ms floor on a 1.8 ms row
+makes anything they do
 unclassifiable, so moving them would change no verdict — their 8 ms budgets guard them and the run says
 so. The same is true after the bless for the three rows moved here: their floors (10 ms, and 25 ms for
 the first frame) stay wider than what the ±15 % ratchet asks for, which is the honest statement, and
@@ -1623,7 +1626,7 @@ from the narrowest: ~22 % on the cold index, ~25 % and ~29 % on the two verbs, ~
 re-index, and anything bigger than its own 10 ms resolution on the two pty rows. That is what a
 shared fleet can resolve, and the alternative is a gate that is red on whichever runner it drew.
 Four of the six now stand on the list of ids the ±15 % cannot resolve, beside
-`cold.queue_visible.ms.small` and the pty rows `reco-dkr` and `reco-axp` already put there: **the
+`cold.rail_visible.ms.small` and the pty rows `reco-dkr` and `reco-axp` already put there: **the
 budget is the guard and the ratchet is the early warning**, and a ratchet narrower than the fleet is
 the coin toss `reco-dkr` was filed about — arriving a second time from the machines instead of from
 the harness.
@@ -1654,19 +1657,36 @@ worse.
 
 | budget id | measured at the close | budget | ceiling | owner | expires |
 | --- | ---: | ---: | ---: | --- | --- |
-| — | — | — | — | — | — |
+| `cold.index.ms.small` | 1,563.4 ms | 1,500 ms | 1,563.4 ms | `reco-xsog` | 2026-12-20 |
 
-**The register is empty**, which is the state this ledger exists to reach rather than a relaxation of it: it
-started as three rows, `reco-r3x` took two off and `reco-7yq` took the last — the denominator defect above,
-whose row said *delete this row when `reco-7yq` gives `store_split` the ADR's three denominators*, and that
-is what happened. The ticket that closes a defect deletes its row and re-blesses; an expired row is a red
-build, because a grace period nobody extended is not a decision; a row whose breach has stopped biting is as
-much a lie as a breach with no row. Three rows have come off this table that way, which is the ledger doing
-its job rather than being renegotiated. This is `e6.6`'s ratchet ledger applied to budgets: named owner, a
-bound, a clock, and no quiet way to widen the exception. An empty register is checked as hard as a full one:
-`tools/epic7_acceptance.py` still refuses the epic if anything measured is over its budget with nothing
-written about it, and it says out loud that the register is empty so that a reader can tell "nothing is
-relaxed" from "the ledger was not read".
+**The register today: one row, and it is not a waiver of the budget.** The fixture cold index measures 1 491-1 563 ms — a
+p95 of three samples reading 1 507 to 1 563 ms across three gate runs — against a published p95 of
+1 500 ms, so `tools/perf_gate.py --check` fails on it on most runs that measure the box honestly and
+straddles the line on the rest. The row was written when `reco-15wk` re-blessed the baseline on
+2026-11-15, and it says what that re-bless had to look at: the binary built at `36b011f` — the commit the
+previous bless was taken at — indexes the same
+fixture at 846-890 ms on this same box, and the store's own `phases_ms` puts the entire move in
+`analyses` (209 ms then, 828 ms now) while `graph` (599 → 584), `spine` (37 → 23) and `episodes`
+(42 → 38) did not move. So this is work added to the analyzer lane between the two blesses — the
+per-file complexity count of `reco-l9bz.4` and the risk-vector change of `reco-ydek.5` are the
+candidates — and not a slower machine wearing a regression's clothes. The ceiling is the measuring
+run's own number, which is what makes the row a bound rather than an opening: a breach that grows is
+red. `cold.index.ms` on real repositories is already held and failing in §11.9 for the same lane, and
+the disposition there is unchanged — raising the fixture's 1 500 ms would only make the same cost
+invisible in one more place. Because the box straddles the line rather than clearing it, a gate run that
+comes back *inside* the budget is the straddle talking and not the defect closing: read the number again
+on a re-bless before deleting the row, which is the one way this table can lie by omission.
+
+The register started as three rows at epic 7's close, `reco-r3x` took two off and `reco-7yq` took the
+last — the denominator defect above, whose row said *delete this row when `reco-7yq` gives
+`store_split` the ADR's three denominators*, and that is what happened. The ticket that closes a defect
+deletes its row and re-blesses; an expired row is a red build, because a grace period nobody extended is
+not a decision; a row whose breach has stopped biting is as much a lie as a breach with no row. This row
+carries the same clause: `reco-xsog` deletes it, in the commit that closes, and re-blesses. This is
+`e6.6`'s ratchet ledger applied to budgets: named owner, a bound, a clock, and no quiet way to widen the
+exception. The register is checked as hard as a full one: `tools/epic7_acceptance.py` refuses the epic if
+anything measured is over its budget with nothing written about it, if a row has stopped biting, or if an
+expiry has gone by — and it prints which ids are breaches rather than passes.
 
 **The real repositories.** §11.9's dispositions are unchanged and are now *checked* rather than reread:
 the epic gate parses `benchmarks/reports/e7-2-real-repos.json`'s per-budget verdicts and fails if any

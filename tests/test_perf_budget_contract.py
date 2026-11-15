@@ -659,22 +659,33 @@ def test_a_re_bless_widens_a_floor_and_never_narrows_it(tmp_path):
 # number the ratchet judges: the container's own measurement divided by its calibration factor (a fast
 # box is put back into reference-machine units, `reco-axp`'s rule), and the runner's raw number, which
 # is what a slow box is judged on because a slow runner is never credited a speed-up it did not earn.
-# Sources, all of them 2026-11-07/08, all of them the same tree per box:
 #
-#   container — five `make bench-check` runs here, whose calibration factor measured ×0.85–×0.95;
-#   runner    — the perf job's own annotations: check-runs 128726035173 (`d6a9aa5`, --check and the
-#               --quick run the contract suite drives) and 128525911209 (`fa2e99f5`), and the `perf`
-#               workflow runs 42375794647, 42377454175, 42382956006, 42395823245, which drew a mix of
-#               runner generations (6.6 ms on a fast one, 10.80 on a slow one, for one verb).
-# Where a runner reading was never reported it is because it sat inside ±15 % of the bless then; the
-# end of the range is that ceiling, and it is marked as such.
+# **A reading is only worth the tree it was taken at.** The old set of ranges here was all 2026-11-07/08,
+# and between then and the `reco-15wk` re-bless the analyzer lane moved: the same fixture indexes at
+# 846-890 ms built at `36b011f` and at 1 491-1 563 ms built at `ab0762b`, with the store's own
+# `phases_ms` putting the whole move in `analyses` (209 ms to 828 ms). A bless that records the new tree
+# therefore *must* break readings taken at the old one, and pretending otherwise would make this test
+# guard a number that no box produces any more. So:
+#
+#   container — every range below is measured at `ab0762b` on the container class `blessed_environment`
+#               describes, from the runs that produced the bless (the pty rows are that probe's own
+#               samples, the verbs are their five samples, the indexes their three);
+#   runner    — `None` where the only GitHub readings on file were taken at a tree this bless no longer
+#               describes. They are kept here as history, in the blessed rows' own `how`, and the leg goes
+#               back in when the daily `perf` job reports a number for this tree: reco-3h82's legs were
+#               `query.metrics.ms.small` 6.6-10.80, `query.card.ms.cli.small` 7.78-12.11,
+#               `cold.index.ms.small` 952-1 341 and `warm.reindex.ms.small` 62.9-118.6 (check-runs
+#               128726035173, 128525911209; `perf` runs 42375794647, 42377454175, 42382956006,
+#               42395823245). The two diff-pane legs survived because the diff pane did not move, and
+#               they still clear.
+# Until a leg returns, the blessed floor on the row is what stands between a machine swap and a verdict.
 FLEET = [
-    ("query.metrics.ms.small", (6.24, 7.07), (6.6, 10.80), "`fathom stats --json`"),
-    ("query.card.ms.cli.small", (7.52, 8.49), (7.78, 12.11), "`fathom show --json …`"),
-    ("cold.index.ms.small", (904.0, 1034.0), (952.0, 1341.0), "cold index (1 341 = the ±15 % ceiling)"),
-    ("warm.reindex.ms.small", (80.9, 93.1), (62.9, 118.6), "warm re-index (118.6 = the ±15 % ceiling)"),
-    ("query.diff_first_hunk.ms.small", (9.37, 14.47), (4.89, 5.10), "diff pane, first `@@`"),
-    ("query.diff_open.ms.small", (6.74, 9.18), (2.24, 3.35), "diff pane, tree painted"),
+    ("query.metrics.ms.small", (6.267, 6.504), None, "`fathom stats --json`"),
+    ("query.card.ms.cli.small", (7.724, 7.986), None, "`fathom show --json …`"),
+    ("cold.index.ms.small", (1491.2, 1563.4), None, "cold index (over its budget; see `known_breaches`)"),
+    ("warm.reindex.ms.small", (77.4, 80.6), None, "warm re-index"),
+    ("query.diff_first_hunk.ms.small", (2.0, 10.9), (4.89, 5.10), "diff pane, first `@@` (two clumps)"),
+    ("query.diff_open.ms.small", (2.0, 9.0), (2.24, 3.35), "diff pane, tree painted"),
 ]
 
 
@@ -686,18 +697,24 @@ def test_the_recorded_fleet_readings_clear_the_ratchet():
     ratchet, so re-bless it" — is only worth doing if the bless ends the argument instead of moving it
     to the other machine. So the recorded readings of both machines are fed to `evaluate` exactly as
     the gate would feed them, and none of them may fail. The floor is allowed to swallow a reading —
-    "cannot classify" is a verdict, a red is not.
+    "cannot classify" is a verdict, a red is not. A leg may be `None`, which means that box has no
+    reading at this tree and says so above rather than being asserted from a stale one. The whole
+    baseline document goes to `evaluate`, register included: a reading that lands on a bounded,
+    written-up breach is green with a reason, and a reading past that ceiling is not.
     """
     budgets, gates = _budgets()
-    blessed = json.loads(BASELINE.read_text())["measurements"]
+    baseline = json.loads(BASELINE.read_text())
+    blessed = baseline["measurements"]
     for ident, container, runner, what in FLEET:
         entry = blessed[ident]
         assert entry.get("noise") is not None, f"{ident}: blessed with no floor to cover the fleet"
-        for box, (low, high) in (("container", container), ("runner", runner)):
-            for reading in (low, high):
+        for box, readings in (("container", container), ("runner", runner)):
+            if readings is None:
+                continue
+            for reading in readings:
                 row = G.Measurement(ident, entry["unit"], reading, entry.get("budget"),
                                     [reading] * 5, scaled=entry["scaled"])
-                verdict = G.evaluate([row], {"measurements": blessed}, budgets, gates,
+                verdict = G.evaluate([row], baseline, budgets, gates,
                                      1.0, strict=True, machine_factor=1.0)[0]
                 assert not verdict.failed, (
                     f"{ident} ({what}): the {box} is recorded reading {reading} {entry['unit']} and "
@@ -712,7 +729,8 @@ def test_the_re_blessed_rows_still_see_a_real_move():
     can only report a slow-down, and says so). Anything that stops reding here has stopped gating.
     """
     budgets, gates = _budgets()
-    blessed = json.loads(BASELINE.read_text())["measurements"]
+    baseline = json.loads(BASELINE.read_text())
+    blessed = baseline["measurements"]
     for ident, _container, _runner, _what in FLEET:
         entry = blessed[ident]
         base = float(entry.get("center") or entry["value"])
@@ -723,7 +741,7 @@ def test_the_re_blessed_rows_still_see_a_real_move():
         for direction, value in moves:
             row = G.Measurement(ident, entry["unit"], round(value, 4), entry.get("budget"),
                                 [round(value, 4)] * 5, scaled=entry["scaled"])
-            verdict = G.evaluate([row], {"measurements": blessed}, budgets, gates,
+            verdict = G.evaluate([row], baseline, budgets, gates,
                                  1.0, strict=True, machine_factor=1.0)[0]
             assert verdict.failed, (
                 f"{ident}: {direction} to {value:,.3f} {entry['unit']} (bless {base:,.3f}, floor "
@@ -855,7 +873,7 @@ def test_the_gate_reports_the_changes_it_could_not_classify(tmp_path):
     blind = {item["id"]: item for item in written["resolution"]["ids_the_ratchet_cannot_resolve"]}
     assert blind, "the run found no blind spot at all: the pty probes measure 1-5 ms through a "\
         "10 ms instrument and that is a blind spot"
-    for ident in ("query.timeline.ms.small", "query.queue.ms.small"):
+    for ident in ("query.timeline.ms.small", "query.rail_keystroke.ms.small"):
         assert ident in blind, f"{ident} is measured through the pty and is not listed as unresolvable"
         assert blind[ident]["floor_as_pct_of_baseline"] > 100.0
         assert "resolution" in blind[ident]["noise_basis"].lower()
@@ -1048,7 +1066,7 @@ def test_a_first_frame_later_than_the_settle_window_is_measured_not_missed(tmp_p
     """The bug: two quiet ticks before anything arrived was read as "there is no frame".
 
     `drain` settled on ~100 ms of silence, so a first paint at 300 ms came back `None` and the gate
-    reported `cold.queue_visible.ms.small` as *blocked* — a published 3 000 ms budget, unmeasured, on
+    reported `cold.rail_visible.ms.small` as *blocked* — a published 3 000 ms budget, unmeasured, on
     every box slower than the one it was blessed on. Quiet must mean "the answer has stopped", never
     "nothing has arrived yet".
     """
@@ -1097,14 +1115,14 @@ def test_a_relative_binary_is_resolved_before_the_pty_child_leaves_the_directory
 
 
 def test_the_first_frame_budget_is_measured_rather_than_blocked(tmp_path):
-    """The gate, end to end: `cold.queue_visible.ms.small` gets a number, not a shrug."""
+    """The gate, end to end: `cold.rail_visible.ms.small` gets a number, not a shrug."""
     result = subprocess.run(
         [sys.executable, "tools/perf_gate.py", "--check", "--quick", "--binary", str(_binary()),
          "--trend-dir", str(tmp_path)],
         cwd=ROOT, capture_output=True, text=True, timeout=600)
     report = json.loads((tmp_path / "latest.json").read_text())
     rows = {verdict["id"]: verdict for verdict in report.get("verdicts", [])}
-    first = rows.get("cold.queue_visible.ms.small")
+    first = rows.get("cold.rail_visible.ms.small")
     assert first is not None, "the gate did not report the first-frame budget at all"
     assert first["status"] != "blocked" and first["measured"] is not None, (
         "the first paint came back blocked, so the 3 000 ms budget guarded nothing this run: "

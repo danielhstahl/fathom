@@ -25,9 +25,9 @@ What it measures, and the budget each number answers (`benchmarks/budgets.json`,
 
 Numbers that **cannot** be measured from the shipped binary are reported as blocked with the reason,
 rather than left out. The rail has no query of its own beyond the frame budget, and the search scorer
-is `e5.2`, so those two families stay blocked. `cold.queue_visible.ms.small` — the budget `e1.12`
+is `e5.2`, so those two families stay blocked. `cold.rail_visible.ms.small` — the budget `e1.12`
 actually depends on — was blocked that way until `reco-c05` gave the worklist rows to rank; it, and
-the queue and card query families, are measured from the product now. A blocked number is a finding,
+the rail and card query families, are measured from the product now. A blocked number is a finding,
 not a gap in the report. The two diff numbers were blocked this way until `reco-0kw` wired the store
 as the diff pane's byte source; they are measured from the product now. The frame p99 was blocked the
 same way until `reco-08r` made the shell say its own numbers: it is quoted in `shell_frame_report`
@@ -61,8 +61,8 @@ BUDGETS = {
     "watch.detect.ms": ("small", "p95", "ms"),
     "store.size.mib": ("small", "ceiling", "MiB"),
     "query.frame_store_budget.ms": ("small", "hard limit", "ms"),
-    "cold.queue_visible.ms": ("small", "p95", "ms"),
-    "query.queue.ms": ("small", "p95", "ms"),
+    "cold.rail_visible.ms": ("small", "p95", "ms"),
+    "query.rail_keystroke.ms": ("small", "p95", "ms"),
     "query.timeline.ms": ("small", "p95", "ms"),
     "query.card.ms": ("small", "p95", "ms"),
     "query.diff_open.ms": ("small", "p95", "ms"),
@@ -491,21 +491,20 @@ def measure(binary: Path, fixture: Path, budgets_path: Path, tui_script: Path) -
     # window — where every number above is a harness measuring the process from outside a pty. Read
     # after the session, before any other TUI run can overwrite it.
     shell_report = read_shell_frame_report(fixture)
-    # The queue's own numbers. `cold.queue_visible.ms.small` was blocked on the pane painting an
+    # The rail's own numbers. `cold.rail_visible.ms.small` was blocked on the pane painting an
     # empty list, and the note said so; since the worklist ranked the episodes the shell was given
     # (`reco-c05`) an asking keystroke was enough to get an answer. `e10.3` deleted that pane, and the
     # asking keystroke is `t` now: the rail is the home view, and the strip that arrives with it names
-    # its order and the model each row's figure came from (ADR-006 §5.1.2 §3). The **budget keys keep
-    # their names** — what they measure is first paint of the home list and one keystroke on it, which
-    # did not change, only the letter that reached them; renaming a published key is a perf ticket's job
-    # with the re-bless in the same commit. The probe asks rather than trusting the view the session left
-    # pinned — three probe runs share one store, and a probe that measured whichever pane happened to be
-    # up would measure nothing.
+    # its order and the model each row's figure came from (ADR-006 §5.1.2 §3). `reco-15wk` renamed the
+    # two published keys to what they measure — first paint of the home list, and one keystroke on it —
+    # in the same commit as the re-bless of every number on the baseline. The probe asks rather than
+    # trusting the view the session left pinned — three probe runs share one store, and a probe that
+    # measured whichever pane happened to be up would measure nothing.
     paint, walk, explains = [], [], []
-    queue_script = Path("/tmp") / f"e1-12-queue-{os.getpid()}.json"
-    queue_steps_file = Path("/tmp") / f"e1-12-queue-steps-{os.getpid()}.json"
-    queue_script.write_text(json.dumps({
-        "title": "e1.12 — the home-list probe (reco-c05, retargeted by reco-ydek.3)",
+    rail_script = Path("/tmp") / f"e1-12-rail-{os.getpid()}.json"
+    rail_steps_file = Path("/tmp") / f"e1-12-rail-steps-{os.getpid()}.json"
+    rail_script.write_text(json.dumps({
+        "title": "e1.12 — the home-list probe (reco-c05, retargeted by reco-ydek.3, renamed by reco-15wk)",
         "steps": [
             {"keys": "t", "note": "ask for the rail: until it prints its order", "until": "order: ",
              "hold": 3.0},
@@ -517,10 +516,10 @@ def measure(binary: Path, fixture: Path, budgets_path: Path, tui_script: Path) -
     }), encoding="utf-8")
     for _ in range(3):
         subprocess.run([sys.executable, str(ROOT / "tools" / "tui_session.py"), "--root",
-                        str(fixture), "--binary", str(binary), "--script", str(queue_script),
-                        "--steps", str(queue_steps_file)],
+                        str(fixture), "--binary", str(binary), "--script", str(rail_script),
+                        "--steps", str(rail_steps_file)],
                        check=True, stdout=subprocess.DEVNULL)
-        probe = json.loads(queue_steps_file.read_text())
+        probe = json.loads(rail_steps_file.read_text())
         first = next((step for step in probe["steps"] if step.get("keys") == "t"), None)
         # The strip's own line, not a paint: a frame that drew an empty pane is not an answer, and the
         # budget is the time to the answer. The strip is what proves the list answered — it names the
@@ -532,30 +531,31 @@ def measure(binary: Path, fixture: Path, budgets_path: Path, tui_script: Path) -
                 walk.append(step["visible_ms"])
             if step.get("keys") == "w" and step.get("until_ms") is not None:
                 explains.append(step["until_ms"])
-    queue_steps_file.unlink(missing_ok=True)
-    queue_script.unlink(missing_ok=True)
+    rail_steps_file.unlink(missing_ok=True)
+    rail_script.unlink(missing_ok=True)
     if paint:
         record("TUI: the rail answers with a chronology that scores its rows",
-               "cold.queue_visible.ms.small", round(p95(paint), 1), unit="ms", samples=paint,
+               "cold.rail_visible.ms.small", round(p95(paint), 1), unit="ms", samples=paint,
                note="`t` until the screen printed `order: …` — the home view's first frame is the "
                     "answer, so this is the time to the first useful answer and not to a paint "
-                    "(`reco-c05` wired the queue, `reco-ydek.3` moved the keystroke onto the rail). On "
+                    "(`reco-c05` wired the list, `reco-ydek.3` moved the keystroke onto the rail, "
+                    "`reco-15wk` renamed the key to match it). On "
                     "a cold store the rail is the default view, where the same instant is the first "
                     f"paint at {tui.get('first_paint_ms')} ms")
     else:
-        record("TUI: the rail answers with episodes", "cold.queue_visible.ms.small", None,
+        record("TUI: the rail answers with episodes", "cold.rail_visible.ms.small", None,
                unit="ms",
                blocked_by="the rail printed no order on the probe fixture: no `order: ` strip arrived "
                           "after `t`",
                note=f"time to first frame was {tui.get('first_paint_ms')} ms, which is not the same "
                     "question: the budget is time to the first useful answer")
     if walk:
-        record("TUI: `j` walks the rail", "query.queue.ms.small",
+        record("TUI: `j` walks the rail", "query.rail_keystroke.ms.small",
                round(p95(walk), 1), unit="ms", samples=walk,
                note="keystroke written until the grid changed: the rail redraws its rows from the "
                     "chronology the composition root handed it, newest first")
     else:
-        record("TUI: rail query", "query.queue.ms.small", None, unit="ms",
+        record("TUI: rail query", "query.rail_keystroke.ms.small", None, unit="ms",
                blocked_by="`j` on the rail drew no visible change on the probe fixture")
     if explains:
         record("TUI: `w` explains where the selected row's figure came from",

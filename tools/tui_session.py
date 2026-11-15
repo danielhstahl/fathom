@@ -295,7 +295,8 @@ def drain(master: int, deadline: float, recorder: Recorder, raw, screen: Screen,
     settle test is two quiet ticks, which is ~100 ms; applied before the first byte of the answer it
     is a 100 ms ceiling on what this probe can see at all, and a frame that lands at 150 ms is then
     reported as *no frame* — `None`, not late. That censoring is what made
-    `cold.queue_visible.ms.small` unreadable off the machine it was blessed on (reco-cwx): the TUI's
+    `cold.rail_visible.ms.small` — under the name it held until `reco-15wk` — unreadable off the machine
+    it was blessed on (reco-cwx): the TUI's
     first paint was measured at 138 ms on the blessed box, 150-170 ms one box over, and everything
     past the window came back `blocked`, against a 3 000 ms budget the probe could not have breached
     however slow the product got. So: with `quiet`, wait for the first byte for the whole deadline,
