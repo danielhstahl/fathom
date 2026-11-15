@@ -368,6 +368,10 @@
           "type": "integer",
           "description": "Base-side figures taken from the first parent's stored row instead of from a read, which is what makes ADR-007 \u00a79.2's telescoping identity a property of the code."
         },
+        "run_reused": {
+          "type": "integer",
+          "description": "Sides answered from a figure this same run already counted for the path, instead of inflating the blob and parsing it again. The blob id has to equal the one the figure was counted from, so a miss costs a read and nothing else; on a cold index this is the only memo there is, because nothing is stored to borrow yet."
+        },
         "ms": {
           "type": "integer",
           "description": "Milliseconds this pass's own work took, summed over the commits it filled. The same accumulated quantity `extract.complexity.max_run_ms` bounded, so the reported number is the bounded number."
@@ -418,6 +422,7 @@
         "refused",
         "bytes_read",
         "base_reused",
+        "run_reused",
         "ms",
         "written",
         "missing",

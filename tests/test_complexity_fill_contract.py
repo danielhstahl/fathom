@@ -377,6 +377,7 @@ def test_the_index_json_schema_carries_the_ceilings_and_the_spend() -> None:
         "refused",
         "bytes_read",
         "base_reused",
+        "run_reused",
         "ms",
         "written",
         "missing",

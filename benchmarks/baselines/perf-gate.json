@@ -25,16 +25,7 @@
   "shape": "the `e0.10`/`e1.12` deterministic 500-commit agent fixture",
   "size_class": "small"
  },
- "known_breaches": {
-  "cold.index.ms.small": {
-   "budget": 1500.0,
-   "ceiling": 1563.4,
-   "expires": "2026-12-20",
-   "owner": "reco-xsog",
-   "tolerance": 1.1,
-   "why": "the fixture cold index is over its 1 500 ms p95 budget on the reference container class and straddles it: 1 491-1 563 ms of individual samples, gate runs reading 1 507-1 563 ms as the p95 of three. It is not the box and not `reco-15wk`'s rename \u2014 the binary built at `36b011f`, the commit this baseline was blessed at, indexes the same fixture at 846-890 ms on this same box, and the store's own `phases_ms` puts the whole move in `analyses` (209 ms at `36b011f`, 828 ms here) with `graph`, `spine` and `episodes` flat. Work landed since the bless \u2014 the complexity counted per file (`reco-l9bz.4`), the risk vector (`reco-ydek.5`) \u2014 is the candidate and nobody has measured it. The ceiling is this bless's own measurement, so the row may not grow: a breach that grows is red. ADR-004 \u00a711.10; delete this row when `reco-xsog` closes and re-bless. Because the box straddles the line, a gate run that comes back inside is this straddle talking, not the defect closing: re-bless and read the number again before deleting the row."
-  }
- },
+ "known_breaches": {},
  "measurements": {
   "calibrate: 100k-row batched insert + 10k FTS queries": {
    "budget": null,
@@ -50,15 +41,15 @@
   },
   "cold.index.ms.small": {
    "budget": "cold.index.ms.small",
-   "center": 1517.2837,
+   "center": 1341.7285,
    "higher_is_better": false,
-   "how": "`fathom index` into a deleted store; p95 of the samples. Re-blessed by `reco-15wk` (2026-11-15) from one tree on the reference container class (`fathom index` into a deleted store; 1 491-1 563 ms across the runs). The move since `reco-3h82`'s 1 122.5 is the analyzer lane, not the box: the binary built at `36b011f` \u2014 the commit this baseline was blessed at \u2014 indexes the same fixture at 846-890 ms here, and the store's own `phases_ms` puts the whole move in `analyses` (209 ms at `36b011f`, 828 ms now) with `graph` (599 to 584), `spine` (37 to 23) and `episodes` (42 to 38) flat. The measurement is over the published 1 500 ms budget, so it sits on the register of consciously-relaxed budgets (`known_breaches`, owned by `reco-xsog`, bounded at this bless's own number) and the budget itself stays published: the register is what makes a failing budget visible, not what makes it legal. The floor is the 250 ms `reco-3h82` blessed against the fleet and is not re-argued here; it is wider than the +/-15 % this row is meant to resolve, so the row stays on the list of ids the ratchet cannot resolve and the 1 500 ms budget is its guard. This box's readings at this tree are in `tests/test_perf_budget_contract.py`'s FLEET table; the `ubuntu-latest` leg was never measured at a tree that carries the analyzer-lane move and says so there.",
+   "how": "`fathom index` into a deleted store; p95 of the samples. Re-blessed by `reco-xsog` (2026-11-15) at the quietest of three bless runs on the container class this file's `blessed_environment` describes \u2014 the same 8 cpus, the same 7 934 MiB \u2014 whose calibration bench reads \u00d70.939 of this file's reference, so every time in this row is that run's own number divided by 0.939 to keep it in reference-machine units (\u00a711.8); the other two runs normalise to 1 325.8 and 1 383.7 ms, and the quietest of the three is also their median. The move since `reco-15wk`'s bless is one defect, measured rather than assumed. The register row named the analyzer lane (`analyses` 828 ms) and two candidate beads and admitted nobody had measured either: declining the complexity pass outright (`extract.complexity.max_run_ms = 0`, the shipped spelling of \u201cdecline everything\u201d) takes the phase to 212 ms \u2014 `reco-3h82`'s 209 ms \u2014 so the fill of `reco-l9bz.4` is the whole of the move and the risk vector of `reco-ydek.5` is none of it. Inside that pass, 313 of the 699 file sides it counted (45 %) were a content version the same run had already counted for the same path, so the run now remembers what it counted, per path, keyed by the blob each figure was counted from (`run_reused`, in `fathom index --json`): 619 \u2192 372 ms for the pass, 826 \u2192 567 ms for the phase. The counting itself is untouched \u2014 a repository whose files are each edited once pays every parse it always paid \u2014 and the budget is untouched too: **the 1 500 ms was never raised**, the row came off because the measurement came inside it, which is the only way a row on that register may come off. This box now reads the cold index at 1 253.8\u20131 376.8 ms p95 across the bless and gate runs taken at this tree (FLEET, `tests/test_perf_budget_contract.py`), about 10 % under the budget, and `phases_ms` says where the rest of the run is: `graph` ~590 ms, `analyses` ~567 ms, `episodes` ~39 ms, `spine` ~33 ms. The floor stays the 250 ms `reco-3h82` blessed against the fleet and is not re-argued here; it is wider than the \u00b115 % this row is meant to resolve, so the row stays on the list of ids the ratchet cannot resolve and the 1 500 ms budget is its guard. The `ubuntu-latest` leg is still not asserted against this bless: it was never measured at a tree that carries the analyzer-lane move, and FLEET says so.",
    "noise": 250.0,
-   "scale": 7.2547,
+   "scale": 0.9345,
    "scaled": true,
-   "spread": 50.972,
+   "spread": 3.3365,
    "unit": "ms",
-   "value": 1563.4
+   "value": 1342.4
   },
   "cold.rail_visible.ms.small": {
    "budget": "cold.rail_visible.ms.small",

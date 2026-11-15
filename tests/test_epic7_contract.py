@@ -152,12 +152,12 @@ def test_the_harness_reports_a_failed_clause_as_a_failure(tmp_path: pathlib.Path
 def _honest_trio() -> tuple[dict[str, dict[str, Any]], dict[str, dict[str, str]], dict[str, float]]:
     """A register, a ledger and a biting set that agree, with exactly one breach on them.
 
-    The committed register is not empty any more — `reco-7yq` took its last row off at epic 7's close and
-    `reco-15wk`'s re-bless put one back (`cold.index.ms.small`, owned by `reco-xsog`) — so this trio is
-    still built rather than read, and it is built out of the committed baseline: a measurement the tree
-    really holds, charged at twice its own budget and bounded just above itself. The discipline the tests
-    below probe (an owner, an expiry, a ceiling, a breach that bites) is probed against a synthetic row on
-    purpose, so that a green here never depends on what the real register happens to hold today.
+    The committed register is empty — `reco-7yq` took epic 7's last row off, `reco-15wk`'s re-bless put one
+    back, and `reco-xsog` measured that one and took it off again — so this trio is still built rather than
+    read, and it is built out of the committed baseline: a measurement the tree really holds, charged at
+    twice its own budget and bounded just above itself. The discipline the tests below probe (an owner, an
+    expiry, a ceiling, a breach that bites) is probed against a synthetic row on purpose, so that a green
+    here never depends on what the real register happens to hold today.
     """
     baseline = json.loads(BASELINE.read_text(encoding="utf-8"))
     bid = "store.bytes_per_commit_graph.small"
@@ -190,7 +190,10 @@ def test_the_committed_register_agrees_with_the_adr_and_every_row_is_alive() -> 
     regression has exactly two honest outcomes: a bounded row in both documents, or a red build. So
     `reco-15wk`, which re-blessed the whole baseline, added the first row since — `cold.index.ms.small`,
     over its 1 500 ms p95 by work the analyzer lane gained after the previous bless, owned by
-    `reco-xsog`, bounded at the number that measured, dated, and written up in ADR-004 §11.10.
+    `reco-xsog`, bounded at the number that measured, dated, and written up in ADR-004 §11.10. And
+    `reco-xsog` is the second half of the story: it measured the work (the complexity fill's second parse of
+    a blob it had already counted, not the risk vector), brought the fixture back inside 1 500 ms, and
+    deleted its own row in the commit that closed — which is what this table being empty now means.
 
     What `reco-7yq` actually needed guarding is kept in full, and is what fails a build here: a row in one
     document and not the other is a disagreement about a relaxation, and a row whose defect is closed or

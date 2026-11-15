@@ -663,13 +663,18 @@ def test_a_re_bless_widens_a_floor_and_never_narrows_it(tmp_path):
 # **A reading is only worth the tree it was taken at.** The old set of ranges here was all 2026-11-07/08,
 # and between then and the `reco-15wk` re-bless the analyzer lane moved: the same fixture indexes at
 # 846-890 ms built at `36b011f` and at 1 491-1 563 ms built at `ab0762b`, with the store's own
-# `phases_ms` putting the whole move in `analyses` (209 ms to 828 ms). A bless that records the new tree
-# therefore *must* break readings taken at the old one, and pretending otherwise would make this test
+# `phases_ms` putting the whole move in `analyses` (209 ms to 828 ms) — and at 1 254-1 377 ms built at
+# `reco-xsog`, where the complexity pass stopped counting one blob twice and the register row came off.
+# A bless that records the new tree therefore *must* break readings taken at the old one, and pretending otherwise would make this test
 # guard a number that no box produces any more. So:
 #
 #   container — every range below is measured at `ab0762b` on the container class `blessed_environment`
 #               describes, from the runs that produced the bless (the pty rows are that probe's own
-#               samples, the verbs are their five samples, the indexes their three);
+#               samples, the verbs are their five samples, the indexes their three), except
+#               `cold.index.ms.small`, which `reco-xsog` re-blessed at its own tree: the same fixture
+#               indexes at 1 254-1 377 ms p95 there and 1 325-1 384 credited, and the `ab0762b` range it
+#               replaced is the history of the breach the register row bounded, not a reading this tree
+#               is expected to produce;
 #   runner    — `None` where the only GitHub readings on file were taken at a tree this bless no longer
 #               describes. They are kept here as history, in the blessed rows' own `how`, and the leg goes
 #               back in when the daily `perf` job reports a number for this tree: reco-3h82's legs were
@@ -682,7 +687,8 @@ def test_a_re_bless_widens_a_floor_and_never_narrows_it(tmp_path):
 FLEET = [
     ("query.metrics.ms.small", (6.267, 6.504), None, "`fathom stats --json`"),
     ("query.card.ms.cli.small", (7.724, 7.986), None, "`fathom show --json …`"),
-    ("cold.index.ms.small", (1491.2, 1563.4), None, "cold index (over its budget; see `known_breaches`)"),
+    ("cold.index.ms.small", (1325.3, 1384.2), None,
+     "cold index (`reco-xsog`'s memo; the register row came off here)"),
     ("warm.reindex.ms.small", (77.4, 80.6), None, "warm re-index"),
     ("query.diff_first_hunk.ms.small", (2.0, 10.9), (4.89, 5.10), "diff pane, first `@@` (two clumps)"),
     ("query.diff_open.ms.small", (2.0, 9.0), (2.24, 3.35), "diff pane, tree painted"),

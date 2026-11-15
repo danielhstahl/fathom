@@ -148,7 +148,7 @@ closes — which is when the budget starts gating again.
 
 | measurement | budget | ceiling | owner | expires | why |
 |---|---|---|---|---|---|
-| `cold.index.ms.small` | 1,500 | 1,563.4 (1.1 × tolerance) | `reco-xsog` | 2026-12-20 | the fixture cold index is over its 1 500 ms p95 budget on the reference container class and straddles it: 1 491-1 563 ms of individual samples, gate runs reading 1 507-1 563 ms as the p95 of three. It is not the box and not `reco-15wk`'s rename — the binary built at `36b011f`, the commit this baseline was blessed at, indexes the same fixture at 846-890 ms on this same box, and the store's own `phases_ms` puts the whole move in `analyses` (209 ms at `36b011f`, 828 ms here) with `graph`, `spine` and `episodes` flat. Work landed since the bless — the complexity counted per file (`reco-l9bz.4`), the risk vector (`reco-ydek.5`) — is the candidate and nobody has measured it. The ceiling is this bless's own measurement, so the row may not grow: a breach that grows is red. ADR-004 §11.10; delete this row when `reco-xsog` closes and re-bless. Because the box straddles the line, a gate run that comes back inside is this straddle talking, not the defect closing: re-bless and read the number again before deleting the row. |
+| (none) | — | — | — | — | nothing is on the register; `make bench-check` is the word on what is inside its budget |
 
 ## Proving the gate can fail
 

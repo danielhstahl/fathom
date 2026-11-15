@@ -18,6 +18,8 @@
 //!   re-indexing fills it;
 //! * the base side is read back from the parent's row, which is what makes §9.2's telescoping identity a
 //!   property of the code instead of a reconciliation step;
+//! * a content version the run already counted is counted once, with the same figure a second parse would
+//!   have produced (`reco-xsog`'s in-run memo); and
 //! * a warm run reads nothing it has already read, because the filled column *is* the memo; and
 //! * the progress row is told when a ceiling stopped the pass, instead of printing `100 % · done` over a
 //!   column of `?`s.
@@ -419,6 +421,119 @@ fn the_base_side_is_borrowed_from_the_parent_row() {
         "absent_revision",
         "the first commit's base side has no parent to borrow from: {}",
         first.before.printed()
+    );
+}
+
+/// A content version the run has already counted is counted once.
+///
+/// This is the second memo, and the one a cold index depends on: the store has no figures to lend on a
+/// first index, and a history is mostly old content versions coming back. The shape here is the one the
+/// store's own borrow cannot serve — the parent did not touch the path — so each reused side has to come
+/// from the run: two content versions shared between three rows of one path, where only two parses can be
+/// right. What is asserted is not the saving but what the saving may not cost: every stored figure equals
+/// counting those bytes again, which is the difference between a memo and a rounding error (`reco-xsog`,
+/// which found the cold index paying 45 % of this pass for repeats).
+#[test]
+fn a_content_version_is_counted_once_per_run() {
+    let run = run("fill-run-memo");
+    let second = "pub fn area(w: u32, h: u32) -> u32 {\n    if w == 0 || h == 0 { 0 } else if w == h { w * w } else { w * h }\n}\n";
+    let first =
+        "pub fn area(w: u32, h: u32) -> u32 {\n    if w == 0 || h == 0 { 0 } else { w * h }\n}\n";
+    // Each commit that changes the file is separated from the next by a commit that does not, so no parent
+    // row is ever there to borrow from and every reuse below is the run's own.
+    run.fixture
+        .commit(1, "add a note", &[("notes/other.md", "# other\n")]);
+    run.fixture.edit("src/shapes.rs", second);
+    run.fixture
+        .commit(2, "add another note", &[("notes/third.md", "# third\n")]);
+    run.fixture.edit("src/shapes.rs", first);
+    let report = run.index();
+
+    // The loop walks the owed commits in ancestry order, so the head side of one row is the base side of a
+    // later one: the middle change borrows v1 from the first commit's head, and the revert borrows v2 from
+    // the middle one's head and v1 from the first one's.
+    assert_eq!(
+        report.complexity.base_reused, 0,
+        "no parent touched the path, so the store had nothing to lend: {:?}",
+        report.complexity
+    );
+    assert_eq!(
+        report.complexity.run_reused, 3,
+        "three sides were answered from a figure this run already counted: {:?}",
+        report.complexity
+    );
+
+    let policy = ExtractPolicy::default();
+    let expected = |text: &str| {
+        i64::try_from(
+            fathom_analyze::structure::complexity::measure(
+                "src/shapes.rs",
+                text.as_bytes(),
+                &policy,
+            )
+            .sum
+            .unwrap_or(0),
+        )
+        .unwrap_or(i64::MAX)
+    };
+    let commits: Vec<String> = git(run.fixture.path(), &["rev-list", "HEAD"])
+        .lines()
+        .map(str::to_owned)
+        .collect();
+    let (tip, middle, root) = (&commits[0], &commits[2], &commits[4]);
+
+    let stored = |commit: &str| run.row(commit, "src/shapes.rs");
+    for (commit, side, text, what) in [
+        (
+            tip.as_str(),
+            "after",
+            first,
+            "the tip's head side is the reverted content",
+        ),
+        (
+            tip.as_str(),
+            "before",
+            second,
+            "the tip's base side is what the middle commit wrote",
+        ),
+        (
+            middle.as_str(),
+            "after",
+            second,
+            "the middle commit's head side is that version for the first time",
+        ),
+        (
+            middle.as_str(),
+            "before",
+            first,
+            "the middle commit's base side is the first version again",
+        ),
+        (
+            root.as_str(),
+            "after",
+            first,
+            "the first commit's head side is the first version",
+        ),
+    ] {
+        let row = stored(commit);
+        let figure = match side {
+            "after" => row.after.figure(),
+            _ => row.before.figure(),
+        };
+        assert_eq!(
+            figure,
+            Some(expected(text)),
+            "{what}: {}",
+            match side {
+                "after" => row.after.printed(),
+                _ => row.before.printed(),
+            }
+        );
+    }
+    assert_eq!(
+        stored(root).before.reason(),
+        "absent_revision",
+        "and the side that never existed still says so"
     );
 }
 

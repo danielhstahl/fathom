@@ -59,13 +59,26 @@
 //! and [`Ledger`] carries the run's own numbers so `fathom index` can say what *this* run declined, in the
 //! same breath as the progress row that reached 100 %.
 //!
-//! # The two things that make it cheap enough to run at all
+//! # The three things that make it cheap enough to run at all
 //!
 //! * **The base side is read from the store when the store already has it.** `complexity_before` *is* the
 //!   figure at the first parent's tree (ADR-007 §5.2), and a parent that touched this path stored exactly
 //!   that number under exactly this basis token. Reading it back is one index probe instead of an inflate
 //!   and a parse, and it makes §9.2's telescoping identity true by construction rather than by two parses
 //!   happening to agree.
+//! * **A path's content version is counted once per run.** A figure is a property of the bytes under a
+//!   path — not of the commit that quoted them — so the run remembers the last few figures it counted per
+//!   path, keyed by the blob each was counted from, and a side whose blob equals one of those takes the
+//!   figure instead of a second inflate and parse. The analyses loop walks the owed commits in ancestry
+//!   order, which makes the pair this catches the common one: a row's base side is the content version an
+//!   earlier row for that path already counted as its head, and where the parent did not touch the path
+//!   there is nothing in the store to borrow. On the 500-commit fixture that is **313 of the 699 sides the
+//!   pass could otherwise have counted (45 %)**, measured by `reco-xsog` while chasing `cold.index.ms.small`
+//!   over its budget — the whole over-run was this pass, and nearly half of its counting was a repeat. The
+//!   equality is with the *blob id* the figure was counted from, which is what makes it a memo and not a
+//!   guess about a rename, a revert, or a merge that landed two versions of one path; a miss costs a read,
+//!   which is all this pass used to do. The window is per path and small ([`MEMO_PER_PATH`]), so it is a
+//!   bound and not a cache that grows with the history.
 //! * **Nothing is read for a file the pass was never going to count.** A binary row, a path whose extension
 //!   names none of the six grammars, and a file over the per-file cap are all refused *before* the object
 //!   database is asked — the same header-first read `reco-93w`'s decode cap depends on.
@@ -77,7 +90,7 @@
 //! counts, and lint `M02` keeps it there. The one piece of arithmetic here is which §7.1 code a file with no
 //! file-level reason gets, and [`dominant_reason`] explains why that is a tie-break rather than a new code.
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::time::{Duration, Instant};
 
 use fathom_ingest::record::sha256_hex;
@@ -201,6 +214,30 @@ fn human_bytes(n: u64) -> String {
     }
 }
 
+/// How many content versions of one path the run keeps a figure for (`reco-xsog`).
+///
+/// Four, and the number follows the shape of the reuse rather than a memory budget. The analyses loop walks
+/// the owed commits in ancestry order — parent before child, which is `structure.delta`'s reason for the
+/// order too — so the version a row's base side needs is the version the previous row for that path counted
+/// as its head: one slot back covers a straight line. The spare three are for a merge that lands two
+/// versions of one path between the rows that reference them, and for a path the owed set reaches twice with
+/// an unrelated commit in between. Past the window the pass reads again, which is
+/// what it did before this existed.
+const MEMO_PER_PATH: usize = 4;
+
+/// What the run already counted for one path, and the blob the figure was counted from.
+#[derive(Debug, Clone)]
+struct Counted {
+    /// The blob the figure came from. A reuse has to *prove* this equals the blob being asked about, which
+    /// is the difference between a memo and a guess about a rename, a revert or a parallel branch.
+    blob: String,
+    /// The stored side: a figure with its reason, or no figure and the reason that says why.
+    side: SideWrite<'static>,
+    /// ADR-007 §5.1's largest single unit — a property of the same bytes under the same path, so it
+    /// travels with the figure instead of needing a second parse.
+    max: Option<i64>,
+}
+
 /// What one run's fill did: the numbers behind `fathom index`'s complexity line.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Ledger {
@@ -215,6 +252,9 @@ pub struct Ledger {
     pub bytes_read: u64,
     /// Base-side figures taken from the parent's stored row instead of from a blob read.
     pub base_reused: usize,
+    /// Sides answered from a figure this same run already counted for the path (`MEMO_PER_PATH`),
+    /// instead of inflating the blob and parsing it a second time.
+    pub run_reused: usize,
     /// Milliseconds this pass's own work took — summed over the commits it filled, and charging nothing it
     /// did not do. `max_run_ms` bounds the same quantity, so the number reported is the number bounded.
     pub ms: u128,
@@ -253,6 +293,13 @@ impl Ledger {
                 self.base_reused
             );
         }
+        if self.run_reused > 0 {
+            let _ = write!(
+                line,
+                ", {} side(s) already counted for this path in this run",
+                self.run_reused
+            );
+        }
         if let Some(declined) = self.declined {
             let _ = write!(
                 line,
@@ -276,6 +323,7 @@ impl Ledger {
                 .collect::<Vec<_>>(),
             "bytes_read": self.bytes_read,
             "base_reused": self.base_reused,
+            "run_reused": self.run_reused,
             "ms": self.ms,
             "written": self.written,
             "missing": self.missing,
@@ -354,6 +402,9 @@ pub struct Fill {
     spent: Duration,
     /// Set the first time a ceiling refuses work; every row after it is answered with no read at all.
     declined: Option<Declined>,
+    /// What this run has already counted, per path: the second of the two reads this pass avoids, and the
+    /// one a cold index depends on, because a cold index has no stored figures to borrow.
+    counted: BTreeMap<String, VecDeque<Counted>>,
     ledger: Ledger,
 }
 
@@ -367,6 +418,7 @@ impl Fill {
             spent_bytes: 0,
             spent: Duration::ZERO,
             declined: None,
+            counted: BTreeMap::new(),
             ledger: Ledger {
                 ceilings,
                 ..Default::default()
@@ -500,7 +552,9 @@ impl Fill {
     /// 3. the extension names none of the six grammars — `language_unknown`, still no object read;
     /// 4. the store already holds this side's figure — one index probe, no inflate;
     /// 5. a per-run ceiling is spent — `scan_budget`, no read, and the row stays owed;
-    /// 6. the blob is over `extract.complexity.max_file_bytes`, missing, or not a blob — `too_large` /
+    /// 6. this run already counted this very blob for this path — the run's own memo, no inflate and no
+    ///    parse, and nothing spent against `max_run_bytes`, which bounds content read;
+    /// 7. the blob is over `extract.complexity.max_file_bytes`, missing, or not a blob — `too_large` /
     ///    `contents_not_kept`, all three decided *without* inflating anything.
     fn side(
         &mut self,
@@ -545,7 +599,7 @@ impl Fill {
                 None,
             ));
         }
-        let Some(oid) = blob else {
+        let Some(hex) = blob else {
             // A side that should have a blob and names none: nothing was kept to read. This is `e8.4`'s own
             // code — the one whose remedy is a re-index rather than a repair — and it is reached by an
             // `unexamined` spine row, not by an add or a delete, which were answered above.
@@ -556,7 +610,21 @@ impl Fill {
                 None,
             ));
         };
-        let Ok(oid) = oid.parse() else {
+        // The run's own memo, and the second of the two figures this pass does not compute twice.
+        // A figure is a property of these bytes under this path, so a blob already counted for this path
+        // this run has the answer already. The blob id has to *equal* the one the figure was counted from:
+        // that equality is what makes this a memo rather than a guess about a rename, a revert, or a merge
+        // that landed two versions of one path, and a miss costs a read and nothing else.
+        if let Some((side, max)) = self
+            .counted
+            .get(row.path_hash)
+            .and_then(|seen| seen.iter().find(|counted| counted.blob == hex))
+            .map(|counted| (counted.side, counted.max))
+        {
+            self.ledger.run_reused += 1;
+            return Ok((side, max));
+        }
+        let Ok(oid) = hex.parse() else {
             return Ok((
                 SideWrite::Unmeasurable {
                     reason: "contents_not_kept",
@@ -620,7 +688,31 @@ impl Fill {
             SideWrite::Measured { .. } => counted.max.and_then(|max| i64::try_from(max).ok()),
             SideWrite::Unmeasurable { .. } => None,
         };
+        // Keep it for the rest of the run: whichever row asks about this blob next, from either side, gets
+        // this figure instead of a second parse. Only a figure counted from content is recorded — every
+        // refusal above is answered without a read and is cheap on its own, and a `scan_budget` refusal is
+        // a fact about the run rather than about the bytes, so it must not be memoized.
+        self.remember(row.path_hash, hex, figure, max);
         Ok((figure, max))
+    }
+
+    /// Record one counted side on the run's memo, on a per-path window of [`MEMO_PER_PATH`].
+    fn remember(
+        &mut self,
+        path_hash: &str,
+        blob: &str,
+        side: SideWrite<'static>,
+        max: Option<i64>,
+    ) {
+        let seen = self.counted.entry(path_hash.to_owned()).or_default();
+        seen.push_back(Counted {
+            blob: blob.to_owned(),
+            side,
+            max,
+        });
+        while seen.len() > MEMO_PER_PATH {
+            seen.pop_front();
+        }
     }
 
     /// The base-side figure the store already holds, when the first parent measured this very path.

@@ -16,6 +16,47 @@ fails CI if the version in `Cargo.toml` has no dated section here, because the s
 body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
+### The fixture cold index was over its budget because the complexity pass parsed one blob twice; it parses it once (`reco-xsog`)
+
+`reco-15wk` put `cold.index.ms.small` on the register of consciously-relaxed budgets when it re-blessed the
+baseline: **1 491-1 563 ms p95 against a published 1 500 ms**, the analyzer lane named as the cause
+(`phases_ms`: `analyses` 209 ms at `36b011f`, 828 ms at the bless), with two candidate beads and the honest
+note that nobody had measured either. This is the measurement, and it closes the row.
+
+* **Which lane, decided rather than assumed.** `extract.complexity.max_run_ms = 0` is the shipped spelling
+  of "decline the complexity pass outright", and with it the phase measures **212 ms** at this tree —
+  `reco-3h82`'s 209 ms, almost to the millisecond. The whole move is `reco-l9bz.4`'s fill and none of
+  `reco-ydek.5`'s risk vector, which is the sentence the register row was missing.
+* **What inside the pass was costing.** Of the 699 file sides it counted on the perf fixture, **313 (45 %)
+  were a content version the same run had already counted for the same path.** A figure is a property of
+  those bytes under that path, not of the commit that quoted them, and a history is mostly old versions
+  coming back: a row's base side is what an earlier row for that path counted as its head. Inflating the
+  blob is 4 ms of the whole pass; parsing it and counting the branches inside is the other 600, so a repeat
+  costs the expensive half.
+* **The fix is a memo, not a cheaper count.** `fathom_analyze::fill` keeps what it counted per path, on a
+  window of four keyed by the blob each figure was counted from, and a side whose blob equals one of those
+  takes the figure with its `complexity_max` beside it. The equality is with a blob id, so a rename, a
+  revert and a merge that landed two versions of one path all fall back to a read: a miss costs what this
+  pass always cost. Only a figure counted from content is remembered, so a `scan_budget` refusal — a fact
+  about the run, not about the bytes — can never be memoised into a row the next run owed; the window is per
+  path and four wide, so it is a bound and not a cache that grows with the history. The ledger says
+  `run_reused`, in `fathom index --json` and in `schemas/index.schema.json`, and a test feeds the pass a
+  revert and asserts every stored figure equals counting those bytes again.
+* **The number, argued and not absorbed.** The pass went **619 → 372 ms**, `analyses` **826 → 567 ms**, and
+  the cold index **1 490 → 1 254-1 377 ms p95** on the container class `blessed_environment` describes —
+  about 10 % inside the published budget. `cold.index.ms.small` is re-blessed at **1 342.4 ms** (the
+  quietest of three bless runs, divided by that box's ×0.939 calibration factor, §11.8) and **the
+  1 500 ms budget was never touched**: the row came off because the measurement came inside it, which is the
+  only way a row on that register may come off. `benchmarks/baselines/perf-gate.json`'s `known_breaches` and
+  ADR-004 §11.10's ledger are both empty again, and `tools/epic7_acceptance.py`'s ledger gate — red on a row
+  that has stopped biting — is what makes leaving one behind a red build rather than a rumour.
+* **What did not move.** The counting rules, the `mccabe-1` basis token and every stored figure; a
+  repository whose files are each edited once pays every parse it always paid. `e8.4`'s committed overhead
+  report (`+18.0 %` of a cold index on that corpus) predates the memo and is quoted from the report rather
+  than re-measured here, and `cold.index.ms` on real repositories stays held and failing in §11.9. FLEET's
+  cold-index leg moved to this tree's readings; the `ubuntu-latest` leg stays `None`, because it was never
+  measured at a tree carrying the analyzer lane.
+
 ### Two perf budget keys still spelled the queue; they now name what their probes press, and the whole baseline was re-measured (`reco-15wk`)
 
 Epic 10 deleted the Queue pane (`reco-ydek.3`, `22148e6`) and renamed `fathom_analyze::queue` to

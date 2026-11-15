@@ -98,12 +98,14 @@ nothing. So `Fill::side` asks its questions in cost order and stops at the first
 | 3 | Does the extension name none of the six grammars? | a path string | `language_unknown` |
 | 4 | Does the store already hold this side's figure? | one index probe | the stored figure |
 | 5 | Is a per-run ceiling already spent? | nothing | `scan_budget` |
-| 6 | Is the blob over the per-file cap, missing, or not a blob? | an object header | `too_large`, `contents_not_kept` |
-| 7 | — parse it, count the branches | the read, and the parse | a figure, or `parse_failed` |
+| 6 | Has this run already counted this very blob for this path? | a window lookup, no read | the figure it counted |
+| 7 | Is the blob over the per-file cap, missing, or not a blob? | an object header | `too_large`, `contents_not_kept` |
+| 8 | — parse it, count the branches | the read, and the parse | a figure, or `parse_failed` |
 
 Rows 1–3 are why a real repository's first index is cheap: a monorepo's file rows are mostly not source. Row
-4 is the memo, and the reason a warm run reads only what is new. Row 6 is why a 400 MB vendored file costs
-this pass a header read instead of a 400 MB inflate.
+4 is the store's memo, and the reason a warm run reads only what is new. Row 6 is the same argument one scale
+down, inside a single run — the next section is about it. Row 7 is why a 400 MB vendored file costs this pass
+a header read instead of a 400 MB inflate.
 
 Row 4 has one rule attached to it, and it is the rule that makes ADR-007 §9.2's telescoping identity
 (`Σ before − Σ after = V(G₀) − V(Gₙ)`) a property of the code rather than a reconciliation step: **a base-side
@@ -111,6 +113,35 @@ figure is taken from the first parent's stored head figure whenever that parent 
 is excluded — the parent's figure for a renamed path lives under the *old* path hash, which the head row does
 not carry, so borrowing there would put one path's complexity on another path's row. A rename measures its
 base side from the pre-rename blob instead, which is the same number arrived at honestly.
+
+### The run's own memo (`reco-xsog`)
+
+Row 4 has a hole a cold index falls straight into: on a first index there is nothing in the store to borrow,
+and the parent almost never touched this path — on the 500-commit perf fixture it had something to lend for
+24 sides out of 630. But a figure is a property of **these bytes under this path**, not of the commit that
+quoted them, and a history is mostly old content versions coming back. So the run keeps the last few figures
+it counted per path, keyed by the blob each was counted from, and a side whose blob equals one of those takes
+the figure instead of a second inflate and a second parse.
+
+The analyses loop walks the owed commits in ancestry order — parent before child, which is what
+`structure.delta` needs for the same reason — so the pairing is the ordinary one: a row's base side is the
+content version an earlier row for that path counted as its head. Measured on the perf fixture, **313 of the
+699 sides the pass could have counted were ones it had already counted (45 %)**, and the pass went from
+619 ms to 372 ms of a 1 490 ms cold index — which is the whole reason `cold.index.ms.small` is back inside
+1 500 ms (ADR-004 §11.10).
+
+Three properties keep it a memo rather than a guess:
+
+* **The blob id has to equal the one the figure was counted from.** Not the path, not the file name, not the
+  commit: a rename, a revert and a merge that landed two versions of one path all fall back to a read, which
+  is everything this pass used to do. A miss costs a read and nothing else.
+* **Only a figure counted from content is remembered.** A `scan_budget` refusal is a fact about the run and
+  not about the bytes, and remembering it would let a spent ceiling leak into a row the next run should
+  have filled.
+* **The window is per path and four wide.** Two slots cover a straight line — the version a row's base side
+  needs is the one the previous row for that path counted — and the spare two are for a merge that lands two
+  versions between the rows that reference them. Past the window the pass reads again. A bound, not a cache
+  that grows with the history: this is the pass whose cost a monorepo already complains about.
 
 ## 4. Why a ceiling is not a hole in the index
 

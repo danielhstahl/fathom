@@ -1341,7 +1341,7 @@ wish, and §11.7 has already told us what a budget nobody fails on is worth.
 baseline was last blessed at `89f7198` (2026-10-17); ninety-three commits later, at `36b011f`, eight ids
 were red. Three are over their published budget and went on the register at the end of this section — which
 `reco-7yq` has since emptied, and which `reco-15wk`'s re-bless refilled with one row about a different
-defect — and the rest were red *against
+defect, which `reco-xsog` has since taken back off — and the rest were red *against
 the blessed baseline* while sitting inside their budget, so they were **re-blessed** at `36b011f` — the
 ratchet act of §11.2–11.5, not a waiver:
 
@@ -1657,34 +1657,48 @@ worse.
 
 | budget id | measured at the close | budget | ceiling | owner | expires |
 | --- | ---: | ---: | ---: | --- | --- |
-| `cold.index.ms.small` | 1,563.4 ms | 1,500 ms | 1,563.4 ms | `reco-xsog` | 2026-12-20 |
+| (none) | — | — | — | — | nothing is on the register; `make bench-check` is the word on what is inside its budget |
 
-**The register today: one row, and it is not a waiver of the budget.** The fixture cold index measures 1 491-1 563 ms — a
-p95 of three samples reading 1 507 to 1 563 ms across three gate runs — against a published p95 of
-1 500 ms, so `tools/perf_gate.py --check` fails on it on most runs that measure the box honestly and
-straddles the line on the rest. The row was written when `reco-15wk` re-blessed the baseline on
-2026-11-15, and it says what that re-bless had to look at: the binary built at `36b011f` — the commit the
-previous bless was taken at — indexes the same
-fixture at 846-890 ms on this same box, and the store's own `phases_ms` puts the entire move in
-`analyses` (209 ms then, 828 ms now) while `graph` (599 → 584), `spine` (37 → 23) and `episodes`
-(42 → 38) did not move. So this is work added to the analyzer lane between the two blesses — the
-per-file complexity count of `reco-l9bz.4` and the risk-vector change of `reco-ydek.5` are the
-candidates — and not a slower machine wearing a regression's clothes. The ceiling is the measuring
-run's own number, which is what makes the row a bound rather than an opening: a breach that grows is
-red. `cold.index.ms` on real repositories is already held and failing in §11.9 for the same lane, and
-the disposition there is unchanged — raising the fixture's 1 500 ms would only make the same cost
-invisible in one more place. Because the box straddles the line rather than clearing it, a gate run that
-comes back *inside* the budget is the straddle talking and not the defect closing: read the number again
-on a re-bless before deleting the row, which is the one way this table can lie by omission.
+**The register today: empty, and the last row came off by measurement.** `reco-xsog` took it on
+2026-11-15, the day `reco-15wk` wrote it. The row had said the fixture cold index measures 1 491–1 563 ms —
+a p95 of three samples, against a published p95 of 1 500 ms — and it had named the analyzer lane
+(`phases_ms`: `analyses` 209 ms at `36b011f`, 828 ms at the bless) with two candidate beads and the honest
+admission that *nobody had measured either*: the per-file complexity count of `reco-l9bz.4` and the
+risk-vector change of `reco-ydek.5`. Measured, it is `reco-l9bz.4` alone, and the cost is not a pass that
+grew so much as a pass that did the same work twice. Setting `extract.complexity.max_run_ms = 0` — the
+shipped spelling of "decline everything", not a new switch — takes the whole `analyses` phase from 826 ms
+to 212 ms on this fixture at this tree, which is `reco-3h82`'s 209 ms almost to the millisecond, so the risk
+vector is not in this number at all and the fill is all of it.
+
+Inside the fill, of the 699 file sides the pass counted, **313 were a content version it had already counted
+for that same path (45 %)**. A figure is a property of those bytes under that path, not of the commit that
+quoted them, and a history is mostly old content versions coming back: so the run remembers what it counted,
+on a per-path window keyed by the blob each figure was counted from, and a side whose blob equals one of
+those takes the figure instead of a second inflate and parse (`fill.rs`; `run_reused` in
+`fathom index --json`). The pass went **619 → 372 ms**, the phase **826 → 567 ms**, and the fixture cold
+index **1 490 → 1 254–1 377 ms p95** on the container class `blessed_environment` describes — inside the
+published 1 500 ms by about 10 %, which is what the row is re-blessed at and what emptied the register.
+
+Three things this is not. It is not a cheaper complexity count: the counting is untouched, and a repository
+whose files are each edited once pays every parse it always paid; only a blob already counted *for that path
+in this run* is taken from the memo, and a miss costs a read. It is not a raised ceiling: **the 1 500 ms
+budget was never touched**, and a row on this register comes off one way only — the measurement comes inside
+it. And it is not the straddle the row warned about. That warning was right, and it is why the row is gone
+rather than renewed: a gate run reading 1 495 ms would have been the box, but a phase that moved 259 ms with
+a named mechanism, and readings 10 % clear of the line instead of 1 % under it, is the defect closing.
+`cold.index.ms` on real repositories is still held and failing in §11.9 for the same lane, and
+`e8.4`'s committed overhead measurement (`benchmarks/reports/e8-4-index-time-complexity.json`, +18.0 % of a
+cold index on that corpus) predates the memo and is quoted from the report rather than re-measured here.
 
 The register started as three rows at epic 7's close, `reco-r3x` took two off and `reco-7yq` took the
 last — the denominator defect above, whose row said *delete this row when `reco-7yq` gives
-`store_split` the ADR's three denominators*, and that is what happened. The ticket that closes a defect
-deletes its row and re-blesses; an expired row is a red build, because a grace period nobody extended is
-not a decision; a row whose breach has stopped biting is as much a lie as a breach with no row. This row
-carries the same clause: `reco-xsog` deletes it, in the commit that closes, and re-blesses. This is
-`e6.6`'s ratchet ledger applied to budgets: named owner, a bound, a clock, and no quiet way to widen the
-exception. The register is checked as hard as a full one: `tools/epic7_acceptance.py` refuses the epic if
+`store_split` the ADR's three denominators*, and that is what happened. `reco-15wk`'s re-bless put one back
+for a defect that was real at the tree it measured, and `reco-xsog` closed it the way it was written: by
+measuring it, naming what the new work costs, and deleting the row in the commit that closes. The ticket that
+closes a defect deletes its row and re-blesses; an expired row is a red build, because a grace period
+nobody extended is not a decision; a row whose breach has stopped biting is as much a lie as a breach with
+no row. This is `e6.6`'s ratchet ledger applied to budgets: named owner, a bound, a clock, and no quiet way
+to widen the exception. The register is checked as hard as a full one: `tools/epic7_acceptance.py` refuses the epic if
 anything measured is over its budget with nothing written about it, if a row has stopped biting, or if an
 expiry has gone by — and it prints which ids are breaches rather than passes.
 
