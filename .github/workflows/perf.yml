@@ -55,6 +55,20 @@ permissions:
 env:
   CARGO_TERM_COLOR: always
   CARGO_INCREMENTAL: "0"
+  # The one hand-written cache lever in this file, and the only one `R04` lets anyone pull. It is the
+  # *prefix* of `Swatinem/rust-cache`'s derived key — the action derives the rest from the lock files, the
+  # toolchain in `rustc -Vv`, the cargo env, the workflow and the job, which together are every input a
+  # cargo build reads — so moving it starts a fresh cache family rather than shuffling one job's objects
+  # into a drawer that does not describe them.
+  #
+  # The rule, in one sentence: **bust the prefix when the bytes already in the cache would be wrong, not
+  # merely stale.** Stale is cargo's own job — a source change re-checks its fingerprints and rebuilds what
+  # moved. Wrong is a registry that no longer holds what the lock file names, a cache written under a
+  # toolchain the key does not name, or an upgrade of the action that changes what it stores. And a bump
+  # only stops new runs *writing* the old family: evicting the old bytes is the second half, and the only
+  # eviction that does not wait out the retention period. Date it and name the bead that moved it;
+  # *Cache discipline* in docs/concepts/ci-gate.md is the prose and `R04` is the gate.
+  CACHE_BUST: "2026-11"
 
 jobs:
   budgets:
@@ -71,6 +85,13 @@ jobs:
           python-version: "3.12"
 
       - uses: Swatinem/rust-cache@v2
+        with:
+          # The lever and the save. `prefix-key` is the one hand-written half of the derived key and it comes
+          # from `env.CACHE_BUST` below, not from a string written here; `cache-on-failure` is the census:
+          # 102 of `ci.yml`'s 233 cargo-cache saves never happened because the job was red when the cache
+          # would have been written, and a red job's compiled objects are still correct objects. `R04`.
+          prefix-key: ${{ env.CACHE_BUST }}
+          cache-on-failure: "true"
 
       - name: "the gate can fail: self-test (no build, no fixture)"
         # Synthetic numbers, every rule: budget breach, regression, improvement-past-the-baseline, RSS
@@ -120,6 +141,28 @@ jobs:
             } >> "$GITHUB_STEP_SUMMARY"
           fi
 
+      - name: the artefact budget (fathom-perf-trend)
+        if: always()
+        # An artefact that grows past its budget fails the run here, instead of quietly costing the fleet its
+        # storage. The limit, the retention and the paths are this artefact's row in `ARTEFACT_BUDGET` in
+        # `tools/check_workflows.py`; rule `R05` refuses this step and that row to disagree, and refuses an
+        # upload that no row describes. The bytes are printed to the job summary whether the guard passes or
+        # not, because a budget nobody sees being spent is a rumour.
+        env:
+          ARTEFACT_NAME: fathom-perf-trend
+          ARTEFACT_PATH: benchmarks/trend/latest.json benchmarks/trend/trend.jsonl benchmarks/trend/trend.md benchmarks/trend/latest-summary.txt
+          ARTEFACT_MAX_KB: "20480"
+          ARTEFACT_PRODUCER: "the perf gate step above, which writes the trend it then uploads"
+        run: |
+          set -eu
+          kb=$(du -cks $ARTEFACT_PATH 2>/dev/null | awk '$1 == "total" {print $1}' || true)
+          kb=${kb:-0}
+          printf 'artefact budget · %s: %s KB of %s KB — %s\n' \
+            "$ARTEFACT_NAME" "$kb" "$ARTEFACT_MAX_KB" "$ARTEFACT_PRODUCER" | tee -a "$GITHUB_STEP_SUMMARY"
+          if [ "$kb" -gt "$ARTEFACT_MAX_KB" ]; then
+            echo "::error::$ARTEFACT_NAME is $((kb / 1024)) MB, over its $((ARTEFACT_MAX_KB / 1024)) MB budget. Either it has grown past what it is, or the budget moved: change `ARTEFACT_BUDGET` in `tools/check_workflows.py`, this step and the budget table in docs/concepts/ci-gate.md in one commit."
+            exit 1
+          fi
       - name: publish the trend as a job artefact
         if: always()
         uses: actions/upload-artifact@v4
@@ -131,4 +174,5 @@ jobs:
             benchmarks/trend/trend.md
             benchmarks/trend/latest-summary.txt
           if-no-files-found: warn
+          retention-days: 30
           retention-days: 30

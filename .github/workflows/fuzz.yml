@@ -68,6 +68,21 @@ permissions:
 env:
   RUST_BACKTRACE: 1
 
+  # The one hand-written cache lever in this file, and the only one `R04` lets anyone pull. It is the
+  # *prefix* of `Swatinem/rust-cache`'s derived key — the action derives the rest from the lock files, the
+  # toolchain in `rustc -Vv`, the cargo env, the workflow and the job, which together are every input a
+  # cargo build reads — so moving it starts a fresh cache family rather than shuffling one job's objects
+  # into a drawer that does not describe them.
+  #
+  # The rule, in one sentence: **bust the prefix when the bytes already in the cache would be wrong, not
+  # merely stale.** Stale is cargo's own job — a source change re-checks its fingerprints and rebuilds what
+  # moved. Wrong is a registry that no longer holds what the lock file names, a cache written under a
+  # toolchain the key does not name, or an upgrade of the action that changes what it stores. And a bump
+  # only stops new runs *writing* the old family: evicting the old bytes is the second half, and the only
+  # eviction that does not wait out the retention period. Date it and name the bead that moved it;
+  # *Cache discipline* in docs/concepts/ci-gate.md is the prose and `R04` is the gate.
+  CACHE_BUST: "2026-11"
+
 jobs:
   nightly:
     name: 30 minutes (${{ matrix.target }})
@@ -84,6 +99,22 @@ jobs:
         run: rustup toolchain install nightly --profile minimal --component llvm-tools
       - name: Install cargo-fuzz
         run: cargo +nightly install cargo-fuzz --locked
+      - uses: Swatinem/rust-cache@v2
+        with:
+          # The fuzz workspace is its own — its own lock file, its own `fuzz/target`, its own cache — and
+          # until `e11.4` it had no cache step at all: three targets and a nightly toolchain, rebuilt from
+          # scratch every night, which is 403 of the month's runner-minutes (`e11.1` §1). `workspaces:` is
+          # how the action is told which workspace this is, and `R04` refuses a job that builds one it has
+          # not been told about.
+          #
+          # `cache-targets` is off on purpose. The build is `cargo +nightly fuzz`, the nightly moves daily,
+          # and yesterday's objects are not merely useless but rustc-version-mismatched dead weight in the
+          # cache — the registry is the only half worth carrying. The action also hashes `rustc -Vv` as it
+          # finds it, which is why this sits after the toolchain install rather than at the top of the job.
+          workspaces: fuzz
+          cache-targets: "false"
+          prefix-key: ${{ env.CACHE_BUST }}
+          cache-on-failure: "true"
       - name: Minutes per target
         id: minutes
         run: echo "value=${{ inputs.minutes || '30' }}" >> "$GITHUB_OUTPUT"
@@ -109,6 +140,28 @@ jobs:
           echo "fuzzing ${{ matrix.target }} for ${total_time}s"
           cargo +nightly fuzz run ${{ matrix.target }} "$RUNNER_TEMP/seeds/${{ matrix.target }}" -- \
             "-max_total_time=$total_time" -rss_limit_mb=4096 -timeout=25 -error_exitcode=86
+      - name: the artefact budget (fuzz-nightly-crash-${{ matrix.target }})
+        # An artefact that grows past its budget fails the run here, instead of quietly costing the fleet its
+        # storage. The limit, the retention and the paths are this artefact's row in `ARTEFACT_BUDGET` in
+        # `tools/check_workflows.py`; rule `R05` refuses this step and that row to disagree, and refuses an
+        # upload that no row describes. The bytes are printed to the job summary whether the guard passes or
+        # not, because a budget nobody sees being spent is a rumour.
+        if: failure()
+        env:
+          ARTEFACT_NAME: fuzz-nightly-crash-${{ matrix.target }}
+          ARTEFACT_PATH: fuzz/artifacts/${{ matrix.target }}
+          ARTEFACT_MAX_KB: "204800"
+          ARTEFACT_PRODUCER: "the `cargo +nightly fuzz run` step above, only when a target found a crash"
+        run: |
+          set -eu
+          kb=$(du -cks $ARTEFACT_PATH 2>/dev/null | awk '$1 == "total" {print $1}' || true)
+          kb=${kb:-0}
+          printf 'artefact budget · %s: %s KB of %s KB — %s\n' \
+            "$ARTEFACT_NAME" "$kb" "$ARTEFACT_MAX_KB" "$ARTEFACT_PRODUCER" | tee -a "$GITHUB_STEP_SUMMARY"
+          if [ "$kb" -gt "$ARTEFACT_MAX_KB" ]; then
+            echo "::error::$ARTEFACT_NAME is $((kb / 1024)) MB, over its $((ARTEFACT_MAX_KB / 1024)) MB budget. Either it has grown past what it is, or the budget moved: change `ARTEFACT_BUDGET` in `tools/check_workflows.py`, this step and the budget table in docs/concepts/ci-gate.md in one commit."
+            exit 1
+          fi
       - name: Keep the artefacts if it crashed
         if: failure()
         uses: actions/upload-artifact@v4
@@ -116,3 +169,4 @@ jobs:
           name: fuzz-nightly-crash-${{ matrix.target }}
           path: fuzz/artifacts/${{ matrix.target }}
           if-no-files-found: ignore
+          retention-days: 30

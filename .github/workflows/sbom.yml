@@ -22,9 +22,19 @@ on:
   release:
     types: [published]
 
+# A push to a branch that already has a run in flight must not pay for it again: `e11.1` §2.4 counted 7
+# red runs in thirty days whose only fault was being superseded, and every one of them ran to the end
+# anyway. Per workflow, so two workflows never share a queue; per ref, so two pull requests never cancel
+# each other. Rule `R02` of `tools/check_workflows.py` asks every `pull_request` workflow for this block.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   check:
     name: the committed artefacts match the lockfile
+    # regenerate both CycloneDX documents and diff them against the committed bytes; nothing is compiled and the dependency resolve is the slow part
+    timeout-minutes: 20
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -39,6 +49,8 @@ jobs:
     name: attach them to the release
     if: github.event_name == 'release'
     needs: [check]
+    # download what the release already published, two `gh api` calls and an upload; nothing is built here either
+    timeout-minutes: 15
     runs-on: ubuntu-latest
     permissions:
       contents: write

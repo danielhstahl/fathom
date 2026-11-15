@@ -53,6 +53,22 @@ on:
 permissions:
   contents: write   # `gh release upload`, and nothing else
 
+env:
+  # The one hand-written cache lever in this file, and the only one `R04` lets anyone pull. It is the
+  # *prefix* of `Swatinem/rust-cache`'s derived key — the action derives the rest from the lock files, the
+  # toolchain in `rustc -Vv`, the cargo env, the workflow and the job, which together are every input a
+  # cargo build reads — so moving it starts a fresh cache family rather than shuffling one job's objects
+  # into a drawer that does not describe them.
+  #
+  # The rule, in one sentence: **bust the prefix when the bytes already in the cache would be wrong, not
+  # merely stale.** Stale is cargo's own job — a source change re-checks its fingerprints and rebuilds what
+  # moved. Wrong is a registry that no longer holds what the lock file names, a cache written under a
+  # toolchain the key does not name, or an upgrade of the action that changes what it stores. And a bump
+  # only stops new runs *writing* the old family: evicting the old bytes is the second half, and the only
+  # eviction that does not wait out the retention period. Date it and name the bead that moved it;
+  # *Cache discipline* in docs/concepts/ci-gate.md is the prose and `R04` is the gate.
+  CACHE_BUST: "2026-11"
+
 jobs:
   self-review:
     name: index, review, and attach the artefact
@@ -81,6 +97,14 @@ jobs:
           if [ -z "${base}" ]; then base="$(git rev-parse HEAD~5 2>/dev/null || git rev-list --max-parents=0 HEAD | tail -1)"; fi
           echo "base=${base}" >> "$GITHUB_OUTPUT"
           echo "reviewing ${base} .. ${tag}"
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          # The release's own binary is built from source here, and until `e11.4` nothing about that build
+          # was cached, on a job that runs once per release and has no reason to rebuild four hundred crates
+          # for the fun of it. `R04`: a job that compiles restores the cache before its first compiling step.
+          prefix-key: ${{ env.CACHE_BUST }}
+          cache-on-failure: "true"
 
       - name: build the binary the release shipped as
         # The same feature set the release artefacts carry minus `tui`-only extras the headless verbs do not
@@ -200,6 +224,28 @@ jobs:
                 "| ratchet uncovered", summary["ratchet_uncovered"])
           PY
 
+      - name: the artefact budget (fathom-self-review-${{ steps.ref.outputs.version }})
+        if: always()
+        # An artefact that grows past its budget fails the run here, instead of quietly costing the fleet its
+        # storage. The limit, the retention and the paths are this artefact's row in `ARTEFACT_BUDGET` in
+        # `tools/check_workflows.py`; rule `R05` refuses this step and that row to disagree, and refuses an
+        # upload that no row describes. The bytes are printed to the job summary whether the guard passes or
+        # not, because a budget nobody sees being spent is a rumour.
+        env:
+          ARTEFACT_NAME: fathom-self-review-${{ steps.ref.outputs.version }}
+          ARTEFACT_PATH: fathom-self-review-*.md fathom-doctor-*.json self-review.json self-check.json self-check.sarif self-architecture.txt self-ratchet.txt self-review-status.txt
+          ARTEFACT_MAX_KB: "30720"
+          ARTEFACT_PRODUCER: "the review, doctor, architecture and ratchet steps above"
+        run: |
+          set -eu
+          kb=$(du -cks $ARTEFACT_PATH 2>/dev/null | awk '$1 == "total" {print $1}' || true)
+          kb=${kb:-0}
+          printf 'artefact budget · %s: %s KB of %s KB — %s\n' \
+            "$ARTEFACT_NAME" "$kb" "$ARTEFACT_MAX_KB" "$ARTEFACT_PRODUCER" | tee -a "$GITHUB_STEP_SUMMARY"
+          if [ "$kb" -gt "$ARTEFACT_MAX_KB" ]; then
+            echo "::error::$ARTEFACT_NAME is $((kb / 1024)) MB, over its $((ARTEFACT_MAX_KB / 1024)) MB budget. Either it has grown past what it is, or the budget moved: change `ARTEFACT_BUDGET` in `tools/check_workflows.py`, this step and the budget table in docs/concepts/ci-gate.md in one commit."
+            exit 1
+          fi
       - name: the artefacts are always kept, even when a verdict is uncomfortable
         if: always()
         uses: actions/upload-artifact@v4
@@ -214,6 +260,7 @@ jobs:
             self-architecture.txt
             self-ratchet.txt
             self-review-status.txt
+          retention-days: 90
 
       - name: and attached to the release
         # The criterion's second half, and the only step that needs a secret (`GITHUB_TOKEN`, which a fork has

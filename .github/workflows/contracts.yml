@@ -26,9 +26,19 @@ on:
 permissions:
   contents: read
 
+# A push to a branch that already has a run in flight must not pay for it again: `e11.1` §2.4 counted 7
+# red runs in thirty days whose only fault was being superseded, and every one of them ran to the end
+# anyway. Per workflow, so two workflows never share a queue; per ref, so two pull requests never cancel
+# each other. Rule `R02` of `tools/check_workflows.py` asks every `pull_request` workflow for this block.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   contracts:
     name: docs + workspace contracts
+    # the document gates and the whole contract suite, with the python install in front of them; measured 5.9 minutes, and it compiles no Rust at all
+    timeout-minutes: 30
     runs-on: ubuntu-latest
     steps:
       # Full history, not a depth-1 clone. This job ends in `python3 -m pytest -q`, and the suite contains
@@ -469,7 +479,12 @@ jobs:
         # `steps.minutes.outputs.value`, and a `--all-targets` build of a crate whose tests need a store
         # backend. Every one of those is a claim about *this repository* — a path, a package, a feature,
         # a step id — so the gate reads the workflows against the tree, offline, and refuses the whole
-        # class. `self-test` writes nine workflows designed to break it and requires every rule to fire.
+        # class. Since `e11.4` (`reco-374v.4`) it is also where the runner hygiene is enforced — a timeout on
+        # every job, a per-ref queue on every `pull_request` workflow, no `continue-on-error` without a written
+        # reason, one cargo cache with one dated lever, an artefact budget with a size guard in front of every
+        # upload, and scheduled work kept off the merge path — because a lint that runs in one file's job is a
+        # lint that file's edits cannot silently skip. `self-test` writes twenty-one workflows designed to break
+        # one rule each and requires every rule to fire.
         run: |
           python3 tools/check_workflows.py --verbose
           python3 tools/check_workflows.py self-test

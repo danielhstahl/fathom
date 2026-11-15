@@ -297,8 +297,224 @@ def test_the_self_tests_exempted_paths_are_really_absent():
         assert not (ROOT / token).exists(), f"{token} exists; the self-test's `P01` exemption proves nothing"
 
 
+def test_no_failure_is_tolerated_without_a_reason():
+    """`R03`, asserted directly: there is no `continue-on-error` left anywhere in the directory.
+
+    The census found two, and they are why the rule is a prohibition rather than a paperwork requirement.
+    `nightly.yml`'s beta job carried the flag for the laudable reason — a toolchain outside ADR-002 §2's
+    window cannot block a merge — and in the thirty-day window it spent 778 runner-minutes (720.5 of them
+    two hangs) in that state, which means every one of those minutes was spent on a job whose red could not
+    matter to anyone, because nothing read it. `fathom-check.yml`'s gate step had the flag *and* swallowed
+    the exit code into an output two lines later, so the flag was not even the mechanism — it was a rumour
+    about one.
+
+    What replaces them is stated where it is taken, and written to `$GITHUB_STEP_SUMMARY`: a beta break is
+    published as a verdict a human can read, and `fathom check`'s exit code is published for the verdict
+    step at the end of that job to turn back into a red with three sentences about which of the three
+    answers happened. Asserting "no `continue-on-error` in the tree" is the cheap half of the rule; the
+    half `R03` actually enforces is that any tolerance a future run *does* take comes with a note naming the
+    failure and the reason, because the comment has to have a shape a checker can look for.
+    """
+    workflows = [check_workflows.Workflow(path) for path in sorted(WORKFLOWS.glob("*.yml"))]
+    silent = [
+        f"{workflow.filename}: job `{job.id}` step {step.index + 1} ({step.label()})"
+        for workflow in workflows
+        for job in workflow.jobs.values()
+        for step in job.steps
+        if step.continue_on_error.strip().lower() == "true"
+    ]
+    assert not silent, (
+        "\nthese steps allow a failure and nobody has to say which one or why:\n  " + "\n  ".join(silent)
+        + "\nfail the step, or write the tolerance in prose and publish it to $GITHUB_STEP_SUMMARY the way "
+        "`nightly.yml`'s beta lane and `fathom-check.yml`'s gate do"
+    )
+    # And a note that is read has to have something to tolerate: an explanation of a tolerance nobody still
+    # has is the same lie pointing the other way. Two files carry one — `docs.yml` and `publish.yml`, each
+    # excusing a `cancel-in-progress` that is not `true` — and both are in the merge path or at a tag, which
+    # is where a tolerance is worth the prose it costs.
+    noted = [(wf.filename, note) for wf in workflows for _, note in check_workflows.tolerance_notes(wf)]
+    assert len(noted) >= 2, f"the `tolerates:` convention has stopped being used: {noted}"
+    for workflow in workflows:
+        problems: list[str] = []
+        check_workflows.rule_tolerated_failures(workflow, problems)
+        assert not problems, "\n".join(problems)
+
+
+def test_the_census_is_why_every_job_has_a_number_on_it():
+    """`R01`, asserted directly: every job declares a finite timeout, and none of them declares six hours.
+
+    GitHub's default is 360 minutes, and four hung jobs were 43 % of a month's runner-minutes on the
+    strength of that default: the beta job two 12-hour hangs (`e11.1` §2.3), the beta job again at 4h 18m,
+    `beta→install (ubuntu)` at 3h 06m, and `package (macos-latest)` at 1h 30m — five jobs in the census that
+    ran past two hours, and the slowest job that ever *finished* took 17.7 minutes (`check-gate`). The
+    ceiling this test asserts is seven times that, and the reason it exists at all is that a timeout written
+    as `600` is the same hole with a paper label on it.
+    """
+    ceiling = check_workflows.TIMEOUT_CEILING_MINUTES
+    assert ceiling == 120, "the ceiling is a claim about the census; if it moved, the census moved"
+    timed = 0
+    for path in sorted(WORKFLOWS.glob("*.yml")):
+        workflow = check_workflows.Workflow(path)
+        for job in workflow.jobs.values():
+            if workflow.generated or "uses" in job.data:
+                continue  # `R01` exempts generated files (cargo-dist owns those lines) and reusable callers
+            raw = job.data.get("timeout-minutes")
+            assert raw is not None, (
+                f"{path.name}: job `{job.id}` has no `timeout-minutes`; a hung cargo or a hung git holds "
+                "that runner for GitHub's six-hour default and looks like a flake"
+            )
+            assert 0 < int(raw) <= ceiling, (
+                f"{path.name}: job `{job.id}` declares {raw} minutes; the ceiling is {ceiling}, and the "
+                "slowest job that ever finished took 17.7"
+            )
+            timed += 1
+    assert timed >= 25, f"only {timed} jobs were read — the assertion is not covering the directory"
+
+
+def test_a_superseded_pull_request_run_is_cancelled_not_finished():
+    """`R02`, asserted directly: per-workflow, per-ref, and `cancel-in-progress` — or a written reason.
+
+    Six of the fourteen files are in the merge path, and until this rule existed, four of them had no
+    concurrency group at all and one of the two that did shared a single queue across every workflow. A
+    branch pushed five times in a week paid for all five runs (`e11.1` §2.4 counted 7 red runs whose only
+    crime was being superseded, 110 minutes of them), and the shared group was worse than none: a `docs`
+    run could cancel a `build+test` run, which is a queue that eats the thing it is supposed to protect.
+
+    `docs.yml` and `publish.yml` keep a tolerance and pay for it in prose, because a Pages deploy or a
+    release cut torn down midway is worse than one that finishes late. The rule accepts that — it just
+    refuses to let it be silent.
+    """
+    shape_ok = 0
+    for path in sorted(WORKFLOWS.glob("*.yml")):
+        workflow = check_workflows.Workflow(path)
+        if "pull_request" not in workflow.triggers:
+            continue
+        con = workflow.concurrency
+        assert con.get("group"), (
+            f"{path.name}: triggers on `pull_request` with no `concurrency:` group, so every superseded push "
+            "to the branch runs to completion and pays for it in full"
+        )
+        group = str(con["group"])
+        assert "github.workflow" in group, f"{path.name}: `{group}` shares a queue with other workflows"
+        assert any(token in group for token in ("github.ref", "github.head_ref",
+                                               "github.event.pull_request.number")), (
+            f"{path.name}: `{group}` is not per-ref, so two pull requests share one queue and the second "
+            "cancels the first's run"
+        )
+        shape_ok += 1
+        problems: list[str] = []
+        check_workflows.rule_concurrency(workflow, problems)
+        assert not problems, "\n".join(problems)
+    assert shape_ok >= 6, f"only {shape_ok} pull-request workflows were read"
+
+
+def test_the_cache_is_one_action_with_one_lever_that_saves_when_red():
+    """`R04`, asserted directly: the derived key is the rule, the bust lever is the exception, and it is dated.
+
+    `e11.1` §3 counted 400 cargo saves and 113 misses across a month, and the misses were not mysterious:
+    two jobs built with no cache at all (`self-review`, `fuzz-nightly`), the fuzz workspace had no cache step
+    in its life, and 102 saves never happened because the job was red and the action does not save by
+    default. So: one caching action, keys derived and never hand-written, one dated `CACHE_BUST` per file
+    that caches, `cache-on-failure: "true"`, and a job that compiles a workspace the cache step has not been
+    told about is a job rebuilding it every run.
+    """
+    caching = 0
+    for path in sorted(WORKFLOWS.glob("*.yml")):
+        workflow = check_workflows.Workflow(path)
+        if workflow.generated:
+            continue
+        steps = [s for j in workflow.jobs.values() for s in j.steps if s.uses]
+        cache_steps = [s for s in steps if check_workflows.CACHE_ACTION in s.uses]
+        for step in cache_steps:
+            caching += 1
+            assert step.with_.get("prefix-key", "").strip() == "${{ env.CACHE_BUST }}", (
+                f"{path.name}: the cache step writes `{step.with_.get('prefix-key')}`; the bust lever is "
+                "`prefix-key: ${{ env.CACHE_BUST }}` so that busting a cache is one edit in one place"
+            )
+            assert step.with_.get("cache-on-failure", "").strip().lower() == "true", (
+                f"{path.name}: a red run keeps its objects to itself; the census counted 102 saves that "
+                "never happened for exactly this reason"
+            )
+        if cache_steps:
+            bust = workflow.env.get(check_workflows.CACHE_BUST_ENV, "")
+            assert re.fullmatch(r"\d{4}-\d{2}(\.\d+)?", bust), (
+                f"{path.name}: caches with `{check_workflows.CACHE_BUST_ENV}: {bust!r}`; the lever is a date, "
+                "because the honest question when one is raised is *when, and what moved it*"
+            )
+    assert caching >= 15, f"only {caching} cache steps were read — the assertion has stopped covering ci.yml"
+
+
+def test_every_artefact_is_budgeted_measured_and_kept_for_a_stated_time():
+    """`R05`, asserted directly: seven artefacts, each with a size, a retention, a description and paths.
+
+    `e11.1` §4 put a number on what an unbudgeted artefact costs — 658 MB a month, and `ci.yml`'s beta
+    instal alone was 44 MB a pop, on whatever retention the repository defaulted to on the day the upload
+    was written. The budget in `tools/check_workflows.py` is the table that answers "what is uploaded, how
+    large, and for how long", and the three things a reader can check without believing anyone — a stated
+    retention that is not the repository default, a size guard that names which step produced the bytes, and
+    paths the row actually describes — are the three this test asserts.
+    """
+    rows = check_workflows.ARTEFACT_BUDGET
+    assert len(rows) >= 7, "the artefact budget is the deliverable; it has shrunk"
+    uploads = 0
+    for name, row in rows.items():
+        assert row["max_mb"] >= 1 and row["retention_days"] >= 1, f"{name}: a budget row of zeroes budgets nothing"
+        assert len(row["what"]) > 40, f"{name}: a budget with no description is a number, not a budget"
+        assert row["paths"], f"{name}: no paths — an artefact can grow a second file nobody approved"
+    for path in sorted(WORKFLOWS.glob("*.yml")):
+        workflow = check_workflows.Workflow(path)
+        if workflow.generated:
+            continue
+        for job in workflow.jobs.values():
+            guards, uploaded = check_workflows.artefact_guards(job)
+            for step in uploaded:
+                uploads += 1
+                name = step.with_.get("name", "")
+                matched = check_workflows.budget_for(name)
+                assert matched is not None, f"{path.name}: `{name}` is uploaded and budgeted by nothing"
+                _, row = matched
+                retention = step.with_.get("retention-days")
+                assert retention is not None, (
+                    f"{path.name}: `{name}` names no `retention-days`, so it is kept for whatever the "
+                    f"repository defaults to today; its budget says {row['retention_days']} days"
+                )
+                assert int(retention) <= row["retention_days"], (
+                    f"{path.name}: `{name}` is kept {retention} days, past the {row['retention_days']} "
+                    "its budget allows"
+                )
+                prior = [i for i in guards if i < step.index]
+                assert prior, f"{path.name}: `{name}` is uploaded with nothing measuring it"
+                guard = guards[prior[-1]]
+                assert guard.env.get("ARTEFACT_PRODUCER"), (
+                    f"{path.name}: the guard before `{name}` does not say which step produced it, which is "
+                    "how a guard starts measuring a file the producer no longer writes"
+                )
+    assert uploads >= 8, f"only {uploads} uploads were read — the assertion has stopped covering the tree"
+
+
+def test_scheduled_work_stays_off_the_pull_request_path():
+    """`R06`, asserted directly: the long tail may not walk back onto the path a merge waits on.
+
+    `e11.2` is the removal of `contracts.yml`'s three `continue-on-error:` lines, and its precondition is
+    that they can be removed only once the jobs behind them are green for the right reason. Two of the
+    three guard jobs whose red could not matter are *scheduled* work by design — the spike report and the
+    corpus builder — and the cheap way to make them green is to move them onto `pull_request`, where they
+    would be read, at the price of putting the tail back on the path. `C01` would not see it: the rule asks
+    whether a required step is reachable, not what it costs. This test asks what it costs.
+    """
+    problems: list[str] = []
+    for path in sorted(WORKFLOWS.glob("*.yml")):
+        check_workflows.rule_step_cadence(check_workflows.Workflow(path), problems)
+    assert not problems, "\n".join(problems)
+    cadences = check_workflows.required_step_cadences()
+    assert cadences, "the required-step model gave no cadences; `R06` is checking nothing"
+    assert any(cadence == "scheduled" for _name, _needle, cadence in cadences), (
+        "no required step is `scheduled`, which is the claim `R06` and `e11.2` both rest on"
+    )
+
+
 def test_the_checker_can_fail():
-    """`self-test` proves the gate has a mouth: eleven workflows written to break one rule each.
+    """`self-test` proves the gate has a mouth: twenty-one workflows written to break one rule each.
 
     A gate that has never said no is a gate that cannot say yes, which is the sentence that belongs on the
     box of every "lint the config" tool ever written.

@@ -20,10 +20,12 @@
 #     that only changes when `fathom-analyze`'s structure code changes (2.1 and 4.3 mean minutes, and
 #     four `cargo build --features langs-all` legs that were red for a fortnight while the workspace
 #     wiring itself was being rebuilt and had nothing to do with the diffs under them).
-#   * **`beta` cannot say no.** 778.0 observed minutes, of which 720.5 is two hangs, and
-#     `continue-on-error: true` means it has never reddened a run and never will. A lane that cannot fail a
-#     build cannot gate a merge, so buying it on every push was pure cost; it is a weekly signal now, and
-#     it still gets a run before a release goes out.
+#   * **`beta` could not say no, and had nothing to say instead.** 778.0 observed minutes, of which 720.5 is
+#     two hangs, under `continue-on-error: true` — a lane that cannot fail a build cannot gate a merge, so
+#     buying it on every push was pure cost, and a failure it allowed was never read by anyone. `e11.4`
+#     removed the flag: the lane still cannot fail a merge (ADR-002 §2 does not ship on beta), but a break is
+#     now written into the nightly's job summary, and the timeout that stops a 12-hour hang is the other half
+#     of why those 720 minutes happened at all.
 #
 # What stays on the pull request is the short list in `.github/workflows/ci.yml`'s header: `fmt`, `clippy`,
 # `build+test` on stable and on the MSRV, the headless `minimal` configuration, the changelog gate, the
@@ -67,6 +69,20 @@ env:
   # Shared between the vendored C builds (bundled SQLite, six tree-sitter grammars) and the cache;
   # incremental state is not worth its disk cost on a runner that builds once.
   CARGO_INCREMENTAL: "0"
+  # The one hand-written cache lever in this file, and the only one `R04` lets anyone pull. It is the
+  # *prefix* of `Swatinem/rust-cache`'s derived key — the action derives the rest from the lock files, the
+  # toolchain in `rustc -Vv`, the cargo env, the workflow and the job, which together are every input a
+  # cargo build reads — so moving it starts a fresh cache family rather than shuffling one job's objects
+  # into a drawer that does not describe them.
+  #
+  # The rule, in one sentence: **bust the prefix when the bytes already in the cache would be wrong, not
+  # merely stale.** Stale is cargo's own job — a source change re-checks its fingerprints and rebuilds what
+  # moved. Wrong is a registry that no longer holds what the lock file names, a cache written under a
+  # toolchain the key does not name, or an upgrade of the action that changes what it stores. And a bump
+  # only stops new runs *writing* the old family: evicting the old bytes is the second half, and the only
+  # eviction that does not wait out the retention period. Date it and name the bead that moved it;
+  # *Cache discipline* in docs/concepts/ci-gate.md is the prose and `R04` is the gate.
+  CACHE_BUST: "2026-11"
 
 jobs:
   # ---------------------------------------------------------------------------
@@ -84,6 +100,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: Swatinem/rust-cache@v2
+        with:
+          # The lever and the save. `prefix-key` is the one hand-written half of the derived key and it comes
+          # from `env.CACHE_BUST` below, not from a string written here; `cache-on-failure` is the census:
+          # 102 of `ci.yml`'s 233 cargo-cache saves never happened because the job was red when the cache
+          # would have been written, and a red job's compiled objects are still correct objects. `R04`.
+          prefix-key: ${{ env.CACHE_BUST }}
+          cache-on-failure: "true"
       - name: "spike s1: the committed accuracy report reproduces"
         # Spike `s1` (`reco-alj`) decided which tree-sitter grammars ship (ADR-002 §6.5) and what
         # each language's fallback is (docs/concepts/structure-extraction.md). The report is a
@@ -110,6 +133,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: Swatinem/rust-cache@v2
+        with:
+          # The lever and the save. `prefix-key` is the one hand-written half of the derived key and it comes
+          # from `env.CACHE_BUST` below, not from a string written here; `cache-on-failure` is the census:
+          # 102 of `ci.yml`'s 233 cargo-cache saves never happened because the job was red when the cache
+          # would have been written, and a red job's compiled objects are still correct objects. `R04`.
+          prefix-key: ${{ env.CACHE_BUST }}
+          cache-on-failure: "true"
       - name: "e3.1: the committed accuracy-and-mechanism report reproduces"
         # `e3.1` (`reco-zoz`) is the extractor spike `s1` decided the shape of. `--check` compares
         # every relation count, the four mechanism checks (synthetic scopes, wildcard edges, the
@@ -151,6 +181,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: Swatinem/rust-cache@v2
+        with:
+          # The lever and the save. `prefix-key` is the one hand-written half of the derived key and it comes
+          # from `env.CACHE_BUST` below, not from a string written here; `cache-on-failure` is the census:
+          # 102 of `ci.yml`'s 233 cargo-cache saves never happened because the job was red when the cache
+          # would have been written, and a red job's compiled objects are still correct objects. `R04`.
+          prefix-key: ${{ env.CACHE_BUST }}
+          cache-on-failure: "true"
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -182,6 +219,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: Swatinem/rust-cache@v2
+        with:
+          # The lever and the save. `prefix-key` is the one hand-written half of the derived key and it comes
+          # from `env.CACHE_BUST` below, not from a string written here; `cache-on-failure` is the census:
+          # 102 of `ci.yml`'s 233 cargo-cache saves never happened because the job was red when the cache
+          # would have been written, and a red job's compiled objects are still correct objects. `R04`.
+          prefix-key: ${{ env.CACHE_BUST }}
+          cache-on-failure: "true"
       # Spike `s2`'s report is the artifact ADR-003 §18 quotes and `tests/test_segmentation_spike_contract.py`
       # asserts against; the harness scores its `shipped` strategy with `fathom_ingest::segment` itself and
       # then refuses to write a report that differs from the corpus byte-for-byte. It ran as a step of
@@ -220,11 +264,15 @@ jobs:
         with:
           # The root workspace, for the `fathom-cli` build at the end of the job.
           workspaces: .
+          prefix-key: ${{ env.CACHE_BUST }}
+          cache-on-failure: "true"
       - uses: Swatinem/rust-cache@v2
         with:
           # And its own: its own lock file, its own target directory, its own cache. The point of the job is
           # that this is not the root workspace.
           workspaces: plugins/acme-detectors
+          prefix-key: ${{ env.CACHE_BUST }}
+          cache-on-failure: "true"
       - name: and lint it under its own lint set
         # Its own `#![warn]` list, not the workspace's — see `plugins/acme-detectors/Cargo.toml`. A third
         # party's code style is its own business; what the job checks is that it is not silently broken.
@@ -255,14 +303,22 @@ jobs:
                 --check plugins/acme-detectors/fixtures/miniature.expected.jsonl
 
   # ---------------------------------------------------------------------------
-  # §2's third channel: known before it ships, rather than in the week after. `continue-on-error` is the
-  # point — a toolchain this repository does not ship on cannot block a merge — and it is also the reason
-  # the job does not belong on a pull request: it has never once been the reason a run was red, and it
-  # costs a full `cargo build` + `cargo test --workspace --all-features` on a fourth toolchain to say so.
+  # §2's third channel: known before it ships, rather than in the week after.
+  #
+  # This job used to be `continue-on-error: true`, which is how it spent 778 minutes of the census window
+  # (720.5 of them two hangs) without ever being the reason a run was red, and without anyone ever reading a
+  # failure it allowed: an allowed failure that is not written down somewhere a human looks is not an
+  # advisory signal, it is a dark room (`e11.1` §2.7). The flag is gone. What replaces it is two steps that
+  # each name the one thing they let pass — a build or a test break on a toolchain ADR-002 §2 does not ship
+  # on — and write it, with the log lines that say why, into the nightly's job summary. A red beta is still
+  # not a red build, because a channel outside the supported window is not a defect anyone owes a fix for; it
+  # is now also a red that is *published*, which is the difference between an early warning and a rumour.
+  #
+  # It is not on a pull request either, for the reason `e11.2` gave: a fourth toolchain that cannot fail a
+  # merge is cost without a verdict, paid on every push.
   # ---------------------------------------------------------------------------
   beta:
-    name: beta (allowed to fail)
-    continue-on-error: true
+    name: beta (advisory — a break is published, not gated)
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
@@ -270,12 +326,70 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: Swatinem/rust-cache@v2
+        with:
+          # The lever and the save. `prefix-key` is the one hand-written half of the derived key and it comes
+          # from `env.CACHE_BUST` below, not from a string written here; `cache-on-failure` is the census:
+          # 102 of `ci.yml`'s 233 cargo-cache saves never happened because the job was red when the cache
+          # would have been written, and a red job's compiled objects are still correct objects. `R04`.
+          prefix-key: ${{ env.CACHE_BUST }}
+          cache-on-failure: "true"
       - name: install beta
         run: rustup toolchain install beta --profile minimal
-      - name: build (everything, on beta)
-        run: cargo build --workspace --all-features
-      - name: test (everything, on beta)
-        run: cargo test --workspace --all-features
+      - name: build (everything, on beta); a break here is a report, not a gate
+        # What this step tolerates, in its own words: `cargo build --workspace --all-features` failing on the
+        # beta toolchain. Nothing else. The exit code and the tail of the log go to the job summary, and the
+        # step ends green because beta is not a channel this repository ships on (ADR-002 §2's window is
+        # `stable` and the MSRV), and because a nightly that is red over a beta regression is a nightly nobody
+        # can merge their way out of.
+        run: |
+          set -uo pipefail
+          if cargo build --workspace --all-features 2>&1 | tee /tmp/beta-build.log; then
+            echo "BETA_VERDICT_BUILD=green" >> "$GITHUB_ENV"
+            echo "beta build: green" | tee -a "$GITHUB_STEP_SUMMARY"
+          else
+            echo "BETA_VERDICT_BUILD=red" >> "$GITHUB_ENV"
+            {
+              echo "### beta build: **red**"
+              echo "beta is outside the supported window (ADR-002 §2), so this is published rather than gated."
+              echo "The last lines of the build:"
+              echo '```text'
+              tail -n 30 /tmp/beta-build.log
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: test (everything, on beta); same tolerance, same treatment
+        run: |
+          set -uo pipefail
+          if cargo test --workspace --all-features 2>&1 | tee /tmp/beta-test.log; then
+            echo "BETA_VERDICT_TEST=green" >> "$GITHUB_ENV"
+            echo "beta test: green" | tee -a "$GITHUB_STEP_SUMMARY"
+          else
+            echo "BETA_VERDICT_TEST=red" >> "$GITHUB_ENV"
+            {
+              echo "### beta test: **red**"
+              echo "beta is outside the supported window (ADR-002 §2), so this is published rather than gated."
+              echo "The failing figures, and the tail:"
+              grep -E '^(test .* FAILED|failures:|error\[|error:)' /tmp/beta-test.log | head -30 || true
+              echo '```text'
+              tail -n 30 /tmp/beta-test.log
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: what beta said about this commit
+        # One step whose only job is to put the two verdicts where the run page shows them, so the answer to
+        # "did beta break?" is a line at the top of the summary rather than a search through two logs.
+        env:
+          BUILD_VERDICT: ${{ env.BETA_VERDICT_BUILD }}
+          TEST_VERDICT: ${{ env.BETA_VERDICT_TEST }}
+        run: |
+          {
+            echo "## beta lane: build ${BUILD_VERDICT:-?}, test ${TEST_VERDICT:-?}"
+            echo
+            echo "Advisory. ADR-002 §2 supports \`stable\` and the MSRV; this lane exists to see a beta"
+            echo "regression a week before it ships, not to block a merge for one — which is why the two steps"
+            echo "above publish their verdict instead of failing the job, and why the failure is written down"
+            echo "rather than allowed."
+          } >> "$GITHUB_STEP_SUMMARY"
 
   # ---------------------------------------------------------------------------
   # The packaging matrix, once a day, without duplicating it.

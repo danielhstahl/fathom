@@ -16,6 +16,54 @@ fails CI if the version in `Cargo.toml` has no dated section here, because the s
 body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
+### Every job now says how long it may take, cancels the run it made obsolete, and pays for its own cache and artefacts (`reco-374v.4`)
+
+`e11.1` measured what the fleet spends; this is the budget that measurement made possible, and the lint that
+keeps it a budget rather than a set of intentions. Six new rules in `tools/check_workflows.py` — the same
+workspace-contract lint that already reads the workflows against the tree, so a workflow change is checked by
+the job that checks a `Cargo.toml` change — and `self-test` still proves each of them can say no.
+
+* **Timeouts (`R01`).** Every job declares `timeout-minutes`, and none declares six hours: the ceiling is 120
+  minutes against a slowest job that ever *finished* of 17.7, because a hung cargo or a hung git used to hold a
+  runner for GitHub's default and look exactly like a flake — four such jobs were 43 % of a month's
+  runner-minutes, two of them the beta lane hanging for twelve hours. The numbers came from the census's per-job
+  p95 at about five times the measurement, not from a guess: a timeout tighter than the work is a new class of
+  red.
+* **Queues (`R02`).** The `pull_request` workflows with no concurrency group got the per-workflow, per-ref group
+  with `cancel-in-progress: true`, and `docs.yml`'s `group: pages-deploy` — one queue shared by every workflow
+  that touches the site, which is a queue that cancels a build with a docs run — became the same shape. A
+  `cancel-in-progress` that is not `true` now has to come with the reason written next to it.
+* **Tolerated failures (`R03`).** `continue-on-error` is gone from the fleet. `nightly.yml`'s beta lane and
+  `fathom-check.yml`'s gate step now *name* what they let pass and publish it: beta writes its build and test
+  verdicts, with the log lines that say why, into the nightly's job summary — 778 minutes had been spent on a
+  red nobody could read — and the reusable gate publishes its exit code as an output so the verdict step at the
+  end of the job can say which of its three answers happened, instead of raising before the SARIF and the
+  summary existed. The shape a checker can read is `# tolerates: <what>, because <why>`, and a note whose
+  tolerance has since been deleted is a failure too.
+* **Cache discipline (`R04`).** One caching action; keys derived by it and written by nobody; one dated
+  `CACHE_BUST` per file, commented with when to pull it; `cache-on-failure: "true"`, which is 102 of `ci.yml`'s
+  233 saves back; every job that compiles restoring the cache before its first compiling step, which is two that
+  did not (`self-review`, `fuzz`); and a second workspace named under `workspaces:` or it is rebuilt every run
+  under a key that does not describe it. Where *not* caching the build products is the honest setting — the
+  nightly fuzz toolchain, whose objects are dead weight by morning — it is written down instead of looking like
+  an oversight.
+* **The artefact budget (`R05`).** Seven rows in `ARTEFACT_BUDGET`: what each artefact is, its size, its
+  retention, and the paths it is made of — printed by `python3 tools/check_workflows.py budgets` and quoted in
+  [docs/concepts/ci-gate.md](docs/concepts/ci-gate.md). Every upload declares a `retention-days` inside its row,
+  ships only the paths its row describes, and has a step in front of it that measures the bytes, prints the spend
+  to the job summary whether it passes or not, and fails past the limit. A budget that prints a number in green
+  is a report, not a budget.
+* **Cadence (`R06`).** The one rule that comes from the next ticket rather than from the census: a step the
+  required-step model calls `scheduled` may not walk back onto the `pull_request` path, where `e11.2`'s removal
+  of three `continue-on-error:` lines would otherwise be free to undo itself quietly. It is `C01`'s mirror, not a
+  copy — `C01` asks whether a required step is reachable, this one asks what it costs.
+
+What it deliberately does not do: `release.yml` is exempt from the three line-shape rules (`R01`, `R04`, `R05`)
+and only those three, because cargo-dist owns that file and `dist generate --check` refuses a hand edit; the
+release matrix's own artefacts stay out of the budget for the same reason, being the shipped product rather than
+a report about it, with the release they are attached to as their retention. The exemption is keyed to the
+generator's own banner, so a hand-written workflow cannot claim it.
+
 ### The long tail is off every pull request: the reproductions, the package matrix, fuzz and perf are a daily schedule now (`reco-374v.2`)
 
 `e11.1` measured the fleet; this is the cut it authorised, executed against its own cut list. The rule that

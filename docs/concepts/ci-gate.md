@@ -228,6 +228,182 @@ invocation with the cadence it owes, and rule `C01` fails a required step that d
 only at the cadence it does not belong to — so a per-PR gate cannot drift onto the nightly, and a nightly
 reproduction cannot be deleted, without a red build saying which one. ADR-002 §8.1 prints the same list.
 
+## What a job owes the runner
+
+Fourteen files in `.github/workflows/`, and eleven of them are about this repository rather than about
+`fathom`. The thirty-day census behind `e11.1` measured what they cost when nothing budgeted it: 3 367
+runner-minutes, of which **43 % went to four jobs that had run to GitHub's six-hour default** because no job
+in the fleet declared a timeout; 110 minutes spent finishing runs whose only fault was being superseded by a
+push nobody had cancelled; 102 cargo-cache saves that never happened because the job was red when the cache
+would have been written; 658 MB of artefacts kept for a retention nobody chose; and 778 minutes in a job
+whose red could not matter to anyone, because it had been `continue-on-error` for as long as anyone could
+remember and nobody had read it. `e11.4` (`reco-374v.4`) put a number beside each of those, and a rule. All
+six rules live in `tools/check_workflows.py` — the same lint that already reads the workflows against the
+tree, so a workflow change is checked by the same job that checks a `Cargo.toml` change — and `self-test`
+makes each of them fire on a workflow written to break it.
+
+### Timeouts
+
+Every job declares `timeout-minutes`, and none of them declares six hours: the ceiling the lint refuses above
+is **120 minutes**, and the floor is the point. The number to write is not a guess — the census left a
+per-job `dur_min_p95` in `.plan/ci-triage-reco-374v.md`, and the rule of thumb in the rule's own message is
+**five times the p95**, because a timeout tighter than the work is a new class of red and a job that flakes
+on its own deadline teaches people to re-run the pipeline. So `check-gate`, which re-indexes this
+repository's history and measured 17.7 minutes, gets 45; the packaging job at 10.6 gets 45; the two-minute
+style gates get 15 each; the beta lane, which hung for 12 hours twice, gets 60.
+
+The ceiling matters as much as the floor. A job that legitimately wants hours is a job whose *shape* is the
+news, and that sentence belongs in a document rather than in a YAML key — the census found `timeout-minutes:
+600` would have been a perfectly legal answer to a hang and would have changed nothing except the number in
+the log. The one exemption is `.github/workflows/release.yml`: it is cargo-dist's own output, `dist generate
+--check` refuses a hand edit (`check_release.py`'s `R07` requires that gate precisely so the file cannot
+quietly become hand-maintained), so a timeout added there is a red build on the next `dist` bump rather than
+a fix.
+
+### Queues
+
+Six of the fourteen files trigger on `pull_request`. Each one now declares the same three lines:
+
+```yaml
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+```
+
+`github.workflow` keeps two workflows out of one queue — a `docs` run must not be able to cancel a
+`build+test` run, which is the shape `docs.yml`'s old shared `pages-deploy` group had — and the second
+keeps two pull requests, or two branches, out of cancelling each other. `R02` requires that shape from
+every `pull_request` workflow, and refuses a `cancel-in-progress` that is neither `true` nor excused below.
+
+Two files keep a tolerance and pay for it in prose. `docs.yml` cancels on a pull request and not on a push,
+because two Pages deploys of the same site in flight can publish half of each build; `publish.yml` never
+cancels, because a release cut torn down between the tag and the dispatch leaves a version tagged with no
+release and no run to resume from. Both state that in the comment shape below, which is what makes the
+exception checkable rather than a line a reviewer skims.
+
+### Tolerated failures
+
+The convention, and the only shape `R02` and `R03` will read:
+
+```yaml
+# tolerates: a Pages deploy that is midway, because tearing one down under the runner can leave
+# half a merge published on the site
+cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+```
+
+A note has to name a *why* — the line has to reach `because`, `since` or `so that` and carry more than a
+shrug — and a note whose tolerance has since been deleted is itself a failure, which is the same lie pointing
+the other way. The rule reads the file's own text, so a commented-out tolerance no longer counts: that is
+how a deleted exception leaves an explanation behind, looking like the thing it explains.
+
+`continue-on-error` is gone from the fleet. The two that were there are the argument for the rule:
+`nightly.yml`'s beta job spent 778 minutes under the flag with its failures written nowhere a human looks,
+and `fathom-check.yml`'s gate step carried the flag *and* swallowed the exit code into a step output two
+lines later, so the flag was not even the mechanism that was letting the failure through — it was a rumour
+about one. What replaced them is stated where it is taken. The beta lane's two steps each name the one thing
+they let pass (a build or a test break on a toolchain ADR-002 §2 does not ship on), write the verdict and the
+log tail to `$GITHUB_STEP_SUMMARY`, and end with a step that prints the two verdicts as a sentence. The
+reusable gate publishes its exit code as an output and lets `the verdict` step at the end of the job turn it
+back into a red with one of three sentences about which answer happened — because the reporters run under
+`if: always()` and a step that raises before they run deletes the only evidence anyone wanted.
+
+### Cache discipline
+
+Seven files, seventeen cache restores, one caching action. `e11.1` §3 counted 400 cargo saves against 113
+misses, and the misses had three boring causes, each of which is now a clause of `R04`:
+
+* **every job that compiles restores the cache before its first compiling step.** `self-review` built the
+  release's own binary from source with no cache at all, and `fuzz` rebuilt three targets and a nightly
+  toolchain every night for the same reason: a cache restored late, or not at all, saves nothing;
+* **nobody writes a cache key.** `Swatinem/rust-cache` derives one from the lock files, the toolchain in
+  `rustc -Vv`, the cargo env, the workflow and the job, which covers every input a cargo build reads. A
+  hand-written key is a key that will not be updated the semester the derivation grows an input, and a second
+  `actions/cache` over `~/.cargo` or `target/` is two keys over the same bytes, which is how a warm cache
+  starts lying about what it holds;
+* **`cache-on-failure: "true"`**, because a red job's compiled objects are still correct objects: 102 of
+  `ci.yml`'s 233 saves never happened for no other reason than that the job was red.
+
+The one hand-written lever is the *prefix*, taken from a dated `CACHE_BUST` in the file's `env:` block, and it
+carries a comment because a lever nobody can explain gets pulled at random:
+
+```yaml
+env:
+  # Bust this when the bytes already in the cache would be *wrong*, not merely stale — the registry, or the
+  # action's own layout. Stale is cargo's job: a source change re-checks its fingerprints and rebuilds what
+  # moved. Date it and name the bead that moved it. `gh cache list` before, `gh cache delete --all` after.
+  CACHE_BUST: "2026-11"
+```
+
+Two places where the honest setting is *not* to cache the build products, written down because they look like
+oversights otherwise: the fuzz workspace passes `cache-targets: "false"`, because the nightly moves daily and
+yesterday's objects are rustc-version-mismatched dead weight — the registry is the only half worth carrying;
+and a job that builds a second workspace (`fuzz`, the out-of-tree plugin example) has to name it under
+`workspaces:`, or that workspace's `target/` is rebuilt every run and cached under a key that does not
+describe it.
+
+### The artefact budget
+
+Seven artefacts, one row each, and the row is the budget: what the artefact *is*, how large it may get, how
+long it is kept, and which paths it is made of. `python3 tools/check_workflows.py budgets` prints this table
+out of the same dictionary `R05` reads, so an artefact and its row cannot disagree without a red build; the
+table below is that output, and a budget that moves moves in `tools/check_workflows.py` and here in one
+commit:
+
+| Artefact | What it is | Limit | Kept | Where it is uploaded |
+|---|---|---|---|---|
+| `fathom-check-sarif` | `fathom check` over one range, as SARIF; read once, by whoever the gate objected to | 10 MB | 14 days | `ci.yml`, `fathom-check.yml` |
+| `docs-site-preview` | the rendered docs site, kept as a pull-request preview | 50 MB | 7 days | `docs.yml` |
+| `privacy-offline` | one JSON document: the egress probe's verdict on the default binary | 2 MB | 14 days | `privacy.yml` |
+| `fathom-dogfood-corpus` | the weekly gate's reports and SARIF, one pair per repository in the pinned corpus | 60 MB | 30 days | `dogfood.yml` |
+| `fathom-perf-trend` | the perf trend files; `trend.jsonl` grows one row a day, which is what the 30 days pays for | 20 MB | 30 days | `perf.yml` |
+| `fuzz-nightly-crash-*` | a crash input and its reproducer, uploaded only when a target found one | 200 MB | 30 days | `fuzz.yml` |
+| `fathom-self-review-*` | what a release published about itself; kept as long as the release it is attached to | 30 MB | 90 days | `self-review.yml` |
+
+Nine uploads, and every one of them has a step in front of it that measures it. That step is five lines, it
+declares its numbers through `env:` so the lint can read them without parsing shell, it prints the spend to
+the job summary whether it passes or not, and it fails past the limit:
+
+```yaml
+      - name: the artefact budget (fathom-perf-trend)
+        if: always()
+        env:
+          ARTEFACT_NAME: fathom-perf-trend
+          ARTEFACT_PATH: benchmarks/trend/latest.json benchmarks/trend/trend.jsonl benchmarks/trend/trend.md benchmarks/trend/latest-summary.txt
+          ARTEFACT_MAX_KB: "20480"
+          ARTEFACT_PRODUCER: "the perf gate step above, which writes the trend it then uploads"
+        run: |
+          set -eu
+          kb=$(du -cks $ARTEFACT_PATH 2>/dev/null | awk '$1 == "total" {print $1}' || true)
+          kb=${kb:-0}
+          printf 'artefact budget · %s: %s KB of %s KB — %s\n' \
+            "$ARTEFACT_NAME" "$kb" "$ARTEFACT_MAX_KB" "$ARTEFACT_PRODUCER" | tee -a "$GITHUB_STEP_SUMMARY"
+          if [ "$kb" -gt "$ARTEFACT_MAX_KB" ]; then
+            echo "::error::$ARTEFACT_NAME is $((kb / 1024)) MB, over its $((ARTEFACT_MAX_KB / 1024)) MB budget."
+            exit 1
+          fi
+```
+
+Four things `R05` refuses, all of them the way a budget quietly stops being one: an artefact no row budgets;
+a row that budgets an artefact nothing uploads (a table allowed to accrete ghosts is a table nobody believes);
+upload paths the row does not describe, which is how an artefact grows a second artefact under one name; and a
+guard whose `if:` is not the upload's, whose limit is above the row's, that cannot fail, or that does not name
+which step produced the bytes — because "the artefact is empty" and "the producer stopped producing" are
+different work, and a reader has to be able to tell them apart from the log.
+
+The release matrix's artefacts (`artifacts-*`, `cargo-dist-cache`) are deliberately not in the table: they
+live in the generated file, they are the shipped product rather than a report about it, and their retention is
+the GitHub release they are attached to ([release.md](release.md) §1.2 covers what a release publishes).
+
+### Cadence
+
+One rule here is not `e11.4`'s measurement but `e11.2`'s precondition: `R06` refuses a step the required-step
+model calls `scheduled` inside a workflow that triggers on `pull_request`. `C01` already refuses a required
+step that disappears, or that survives only at the cadence it does not belong to; it cannot see the opposite
+accident, which is a spike reproduction added back onto the pull-request path, where it is read, and where it
+costs every push. That addition keeps `C01` green, because the needle still appears in a scheduled file too.
+This is the rule that keeps the long tail off the queue `e11.2` cut it off, and it is `C01`'s mirror rather
+than a copy of it.
+
 ## No silent passes
 
 Four invariants, each one tested, because "it did not fail" and "it did not look" look identical from the

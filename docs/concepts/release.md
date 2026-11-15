@@ -112,6 +112,13 @@ matrix runs on `workflow_dispatch`, on a tag, and once a day against `master` �
 `release.yml` with `tag=dry-run` (§3.1); what a PR still proves about packaging is the `.deb`, the `.rpm`
 and the installer, which is `ci.yml`'s `packaging` job.
 
+The two kinds are budgeted differently, and only one of them is this document's. What a **release** may
+publish is the table above. What a **workflow artefact** may be — how large it is allowed to get, how long it
+is kept, which paths it is made of, and which step is held to those three — is the artefact budget in
+[ci-gate.md](ci-gate.md) (*The artefact budget*), which `e11.4` (`reco-374v.4`) made a rule rather than a
+habit. The release matrix's own artefacts are deliberately outside that table: they are the shipped product,
+and their retention is the release they are attached to.
+
 The four `.deb` and `.rpm` rows are `[[dist.extra-artifacts]]`: `cargo-dist` has no deb or rpm target, so
 `packaging/linux-packages.sh` builds them (§1.3). They carry their own `.sha256` beside them, in the same
 `<digest>  <name>` form `dist` uses, because `dist` checksums the artefacts it knows about and these are

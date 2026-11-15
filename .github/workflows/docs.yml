@@ -33,8 +33,12 @@ on:
 # Two pushes in a row must not race to publish: the second waits rather than cancelling, so Pages never
 # serves half a merge and a deploy that is midway is never torn down under the runner.
 concurrency:
-  group: pages-deploy
-  cancel-in-progress: false
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  # tolerates: a push to the default branch keeping its runner until the Pages deploy finishes, because two
+  # deploys of the same site in flight at once can publish half of each build, and a deploy torn down under
+  # the runner can leave the site mid-page — hence the expression rather than a bare `false`, so that a pull
+  # request still cancels its own superseded preview
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 # `contents: read` for the build; the deploy job asks for `pages: write` on its own, which is the
 # narrowest thing that can publish, and `id-token: write` for the OIDC token the deployment needs.
@@ -44,6 +48,8 @@ permissions:
 jobs:
   build:
     name: build the html site
+    # mkdocs builds the whole site from the generated pages in well under a minute; the theme install is the only network call in it
+    timeout-minutes: 15
     runs-on: ubuntu-latest
     # A Pages artifact is per-branch, so only `master`'s build is publishable; a PR still builds, so a
     # broken page is a red check on the pull request that broke it.
@@ -88,6 +94,28 @@ jobs:
         with:
           path: ${{ runner.temp }}/docs-site
 
+      - name: the artefact budget (docs-site-preview)
+        if: github.event_name == 'pull_request'
+        # An artefact that grows past its budget fails the run here, instead of quietly costing the fleet its
+        # storage. The limit, the retention and the paths are this artefact's row in `ARTEFACT_BUDGET` in
+        # `tools/check_workflows.py`; rule `R05` refuses this step and that row to disagree, and refuses an
+        # upload that no row describes. The bytes are printed to the job summary whether the guard passes or
+        # not, because a budget nobody sees being spent is a rumour.
+        env:
+          ARTEFACT_NAME: docs-site-preview
+          ARTEFACT_PATH: ${{ runner.temp }}/docs-site
+          ARTEFACT_MAX_KB: "51200"
+          ARTEFACT_PRODUCER: "the mkdocs build above, published as a pull-request preview"
+        run: |
+          set -eu
+          kb=$(du -cks $ARTEFACT_PATH 2>/dev/null | awk '$1 == "total" {print $1}' || true)
+          kb=${kb:-0}
+          printf 'artefact budget · %s: %s KB of %s KB — %s\n' \
+            "$ARTEFACT_NAME" "$kb" "$ARTEFACT_MAX_KB" "$ARTEFACT_PRODUCER" | tee -a "$GITHUB_STEP_SUMMARY"
+          if [ "$kb" -gt "$ARTEFACT_MAX_KB" ]; then
+            echo "::error::$ARTEFACT_NAME is $((kb / 1024)) MB, over its $((ARTEFACT_MAX_KB / 1024)) MB budget. Either it has grown past what it is, or the budget moved: change `ARTEFACT_BUDGET` in `tools/check_workflows.py`, this step and the budget table in docs/concepts/ci-gate.md in one commit."
+            exit 1
+          fi
       - name: keep a preview for the pull request
         if: github.event_name == 'pull_request'
         uses: actions/upload-artifact@v4
@@ -100,6 +128,8 @@ jobs:
     name: publish to github pages
     needs: build
     if: github.event_name == 'push'
+    # one download, one upload, one Pages deploy; there is no build in this job at all
+    timeout-minutes: 15
     runs-on: ubuntu-latest
     permissions:
       contents: read

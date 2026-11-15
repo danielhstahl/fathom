@@ -49,8 +49,16 @@
 #   * §8.1's required-step list is a *checked* list: `tools/check_workspace.py check` (rule `C01`) fails
 #     if any of these invocations disappears from `.github/workflows/*.yml`, and rule `T07` fails if the
 #     `MSRV` pin below disagrees with the number in `tools/workspace_model.py`. One number, in the model.
-#   * §2's supported window: `stable` and the MSRV both build here; `beta` builds on the schedule and is
-#     allowed to fail, so a regression is known before it ships rather than in the week after.
+#   * §2's supported window: `stable` and the MSRV both build here; `beta` builds on the schedule, where a
+#     break is written into that run's job summary rather than gated, so a regression is known before it
+#     ships rather than in the week after — and so the nightly that finds one is a report rather than a
+#     merge nobody can explain. `e11.1` §2.7 is what that reordering cost before it was written down.
+#   * the budget every job owes the runner (`e11.4`, `reco-374v.4`): a `timeout-minutes` on every job, a
+#     per-ref concurrency queue, one cargo cache with one dated lever (`CACHE_BUST` below), and the one
+#     artefact this file uploads measured against its row in `ARTEFACT_BUDGET` before it is uploaded. Those
+#     four are rules `R01`–`R05` of `tools/check_workflows.py`, run by `contracts.yml` on every pull request
+#     that touches any workflow in this directory; *What a job owes the runner* in
+#   docs/concepts/ci-gate.md is the prose.
 #   * §6.1: a feature-less library build and the headless `minimal` binary are valid configurations, so
 #     they are built and tested rather than assumed.
 #
@@ -72,6 +80,14 @@ on:
   push:
     branches: [master]
 
+# A push to a branch that already has a run in flight must not pay for it again: `e11.1` §2.4 counted 7
+# red runs in thirty days whose only fault was being superseded, and every one of them ran to the end
+# anyway. Per workflow, so two workflows never share a queue; per ref, so two pull requests never cancel
+# each other. Rule `R02` of `tools/check_workflows.py` asks every `pull_request` workflow for this block.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 # ADR-002 §8: everything here is a gate, so nothing here needs write access. `cargo-dist` asks for its
 # own, narrower permissions in `release.yml`.
 permissions:
@@ -84,6 +100,20 @@ env:
   # Shared between the vendored C builds (bundled SQLite, six tree-sitter grammars) and the cache;
   # incremental state is not worth its disk cost on a runner that builds once.
   CARGO_INCREMENTAL: "0"
+  # The one hand-written cache lever in this file, and the only one `R04` lets anyone pull. It is the
+  # *prefix* of `Swatinem/rust-cache`'s derived key — the action derives the rest from the lock files, the
+  # toolchain in `rustc -Vv`, the cargo env, the workflow and the job, which together are every input a
+  # cargo build reads — so moving it starts a fresh cache family rather than shuffling one job's objects
+  # into a drawer that does not describe them.
+  #
+  # The rule, in one sentence: **bust the prefix when the bytes already in the cache would be wrong, not
+  # merely stale.** Stale is cargo's own job — a source change re-checks its fingerprints and rebuilds what
+  # moved. Wrong is a registry that no longer holds what the lock file names, a cache written under a
+  # toolchain the key does not name, or an upgrade of the action that changes what it stores. And a bump
+  # only stops new runs *writing* the old family: evicting the old bytes is the second half, and the only
+  # eviction that does not wait out the retention period. Date it and name the bead that moved it;
+  # *Cache discipline* in docs/concepts/ci-gate.md is the prose and `R04` is the gate.
+  CACHE_BUST: "2026-11"
 
 jobs:
   # ---------------------------------------------------------------------------
@@ -91,12 +121,21 @@ jobs:
   # ---------------------------------------------------------------------------
   fmt:
     name: fmt (rustfmt)
+    # rustfmt compiles nothing; the job measured 1.9 minutes at worst and the cache restore is the long pole in it
+    timeout-minutes: 15
     runs-on: ubuntu-latest
     env:
       RUSTUP_TOOLCHAIN: stable
     steps:
       - uses: actions/checkout@v4
       - uses: Swatinem/rust-cache@v2
+        with:
+          # The lever and the save. `prefix-key` is the one hand-written half of the derived key and it comes
+          # from `env.CACHE_BUST` below, not from a string written here; `cache-on-failure` is the census:
+          # 102 of `ci.yml`'s 233 cargo-cache saves never happened because the job was red when the cache
+          # would have been written, and a red job's compiled objects are still correct objects. `R04`.
+          prefix-key: ${{ env.CACHE_BUST }}
+          cache-on-failure: "true"
       - name: cargo fmt --all --check
         # A hard failure, per §8.3 and the §2 table. Formatting stops being a matter of opinion the day
         # it is not a matter of conversation.
@@ -104,12 +143,21 @@ jobs:
 
   clippy:
     name: clippy (strict)
+    # two clippy passes over the workspace with every feature; 1.8 minutes warm, and this is the leg that pays for a cold cache
+    timeout-minutes: 25
     runs-on: ubuntu-latest
     env:
       RUSTUP_TOOLCHAIN: stable
     steps:
       - uses: actions/checkout@v4
       - uses: Swatinem/rust-cache@v2
+        with:
+          # The lever and the save. `prefix-key` is the one hand-written half of the derived key and it comes
+          # from `env.CACHE_BUST` below, not from a string written here; `cache-on-failure` is the census:
+          # 102 of `ci.yml`'s 233 cargo-cache saves never happened because the job was red when the cache
+          # would have been written, and a red job's compiled objects are still correct objects. `R04`.
+          prefix-key: ${{ env.CACHE_BUST }}
+          cache-on-failure: "true"
       # Two invocations, in this order, because the strict one is what would otherwise get lost under
       # `--all-targets` (§8.3). The first compiles only the shipped code and denies `unwrap_used` and
       # `expect_used` there. The second adds tests, benches and examples — and it does **not** re-deny
@@ -134,6 +182,8 @@ jobs:
 
   deny:
     name: cargo-deny (licences, advisories, bans, sources)
+    # cargo-deny and the `deny.toml` lint; measured 1.0 minute, and the advisory fetch is its only network call
+    timeout-minutes: 20
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -175,6 +225,8 @@ jobs:
   # that only half-moved never reaches a tag.
   release-skeleton:
     name: release skeleton matches dist-workspace.toml
+    # no toolchain build at all: `dist generate --check` and four python gates; measured 0.4 minutes
+    timeout-minutes: 15
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -224,11 +276,20 @@ jobs:
   packaging:
     name: packaging (deb, rpm, and the installer that fetches them)
     needs: [fmt, clippy]
+    # a release build, `dist build` for this runner's triple, rpmbuild and dpkg; measured 10.6 minutes warm, and the cold cache is the rest of the budget
+    timeout-minutes: 45
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
+        with:
+          # The lever and the save. `prefix-key` is the one hand-written half of the derived key and it comes
+          # from `env.CACHE_BUST` below, not from a string written here; `cache-on-failure` is the census:
+          # 102 of `ci.yml`'s 233 cargo-cache saves never happened because the job was red when the cache
+          # would have been written, and a red job's compiled objects are still correct objects. `R04`.
+          prefix-key: ${{ env.CACHE_BUST }}
+          cache-on-failure: "true"
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -307,6 +368,8 @@ jobs:
   check-gate:
     name: check-gate (the CI gate, on its own repository)
     needs: [fmt, clippy]
+    # `fathom check` over this repository's own history, which re-indexes it; measured 17.7 minutes, the slowest job that ever finished in the census
+    timeout-minutes: 45
     runs-on: ubuntu-latest
     env:
       RUSTUP_TOOLCHAIN: stable
@@ -318,6 +381,13 @@ jobs:
         with:
           fetch-depth: 50
       - uses: Swatinem/rust-cache@v2
+        with:
+          # The lever and the save. `prefix-key` is the one hand-written half of the derived key and it comes
+          # from `env.CACHE_BUST` below, not from a string written here; `cache-on-failure` is the census:
+          # 102 of `ci.yml`'s 233 cargo-cache saves never happened because the job was red when the cache
+          # would have been written, and a red job's compiled objects are still correct objects. `R04`.
+          prefix-key: ${{ env.CACHE_BUST }}
+          cache-on-failure: "true"
       - name: build the headless binary the gate ships as
         # `minimal` would silently block four of the six checks for a missing store; the headless CI build
         # is the one with every check wired. No `net-*` feature, so the "runs without network" clause is
@@ -365,11 +435,34 @@ jobs:
           done
       - name: the SARIF is a SARIF an uploader will take
         run: python3 tools/check_sarif.py fathom.sarif
+      - name: the artefact budget (fathom-check-sarif)
+        if: always()
+        # An artefact that grows past its budget fails the run here, instead of quietly costing the fleet its
+        # storage. The limit, the retention and the paths are this artefact's row in `ARTEFACT_BUDGET` in
+        # `tools/check_workflows.py`; rule `R05` refuses this step and that row to disagree, and refuses an
+        # upload that no row describes. The bytes are printed to the job summary whether the guard passes or
+        # not, because a budget nobody sees being spent is a rumour.
+        env:
+          ARTEFACT_NAME: fathom-check-sarif
+          ARTEFACT_PATH: fathom.sarif
+          ARTEFACT_MAX_KB: "10240"
+          ARTEFACT_PRODUCER: "the gate step above, run a second time for the report"
+        run: |
+          set -eu
+          kb=$(du -cks $ARTEFACT_PATH 2>/dev/null | awk '$1 == "total" {print $1}' || true)
+          kb=${kb:-0}
+          printf 'artefact budget · %s: %s KB of %s KB — %s\n' \
+            "$ARTEFACT_NAME" "$kb" "$ARTEFACT_MAX_KB" "$ARTEFACT_PRODUCER" | tee -a "$GITHUB_STEP_SUMMARY"
+          if [ "$kb" -gt "$ARTEFACT_MAX_KB" ]; then
+            echo "::error::$ARTEFACT_NAME is $((kb / 1024)) MB, over its $((ARTEFACT_MAX_KB / 1024)) MB budget. Either it has grown past what it is, or the budget moved: change `ARTEFACT_BUDGET` in `tools/check_workflows.py`, this step and the budget table in docs/concepts/ci-gate.md in one commit."
+            exit 1
+          fi
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: fathom-check-sarif
           path: fathom.sarif
+          retention-days: 14
       - name: the JSON document is the contract it claims to be
         run: |
           ./target/debug/fathom check --base HEAD~5 --format json > /tmp/check.json
@@ -421,6 +514,8 @@ jobs:
             toolchain: stable
           - channel: msrv
             toolchain: "1.97.0"
+    # the whole workspace, all features, built and tested on both channels; 8.2 minutes at worst, and the one leg of this file that ever ran 360 minutes to hang (`e11.1` §2.3)
+    timeout-minutes: 60
     runs-on: ${{ matrix.os }}
     env:
       RUSTUP_TOOLCHAIN: ${{ matrix.toolchain }}
@@ -436,6 +531,13 @@ jobs:
         with:
           fetch-depth: 0
       - uses: Swatinem/rust-cache@v2
+        with:
+          # The lever and the save. `prefix-key` is the one hand-written half of the derived key and it comes
+          # from `env.CACHE_BUST` below, not from a string written here; `cache-on-failure` is the census:
+          # 102 of `ci.yml`'s 233 cargo-cache saves never happened because the job was red when the cache
+          # would have been written, and a red job's compiled objects are still correct objects. `R04`.
+          prefix-key: ${{ env.CACHE_BUST }}
+          cache-on-failure: "true"
       - name: install the pinned toolchain
         run: rustup toolchain install "${{ matrix.toolchain }}" --profile minimal --component clippy,rustfmt
       - name: toolchain
