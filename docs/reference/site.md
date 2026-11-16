@@ -80,6 +80,10 @@ an unclosed fence, a construct outside the subset, a link to a page or a fragmen
 markup left unescaped, an unbalanced tag, and — the one that catches everything else — a page whose
 rendered characters are not the characters its markdown contained.
 
+One shape is invisible to that list, because a fence renders exactly what it is told: a markdown table pasted
+*inside* a fenced block. `check_docs_site.py` reads the markdown for it too, as
+[`check_fenced_tables`](#no-table-inside-a-fence).
+
 That last rule is what found the defects this build had to fix, all of which rendered wrong on GitHub too:
 
 * the `non_code.env.secret_name_pattern` row in [config.md](../concepts/config.md) and in
@@ -92,9 +96,10 @@ That last rule is what found the defects this build had to fix, all of which ren
   were pasted *inside* the fenced card sample, cutting a line of the card in half at "a guess is a claim
   we are not mak" and leaving the tail "to be silent about being a guess" to resume three tables later.
   Nothing rendered wrong, so nothing failed. Both were repaired by `reco-msv1.3` when the page merged into
-  [rename.md](../concepts/rename.md), which is where the card sample now reads end to end. The *class* is
-  still ungated — no rule above can see inside a fence, and epic 12's close measured zero fenced blocks
-  containing table rows left in the tree, today — so refusing the next one is `reco-u962`'s;
+  [rename.md](../concepts/rename.md), which is where the card sample now reads end to end. The *class* was
+  still ungated — no rule above could see inside a fence — and epic 12's close measured zero fenced blocks
+  containing table rows left anywhere in `*.md`, so nothing was broken and nothing refused the next copy.
+  That measurement is a rule now: see [No table inside a fence](#no-table-inside-a-fence);
 * two stray fence lines in [cli.md](cli.md) closed on the generated block's own fence, which dropped
   `## The verbs` and `## Global flags` out of the page;
 * five pages ([ADR-006](../adr/0006-tui.md), [timeline](../concepts/timeline.md),
@@ -115,6 +120,64 @@ The same rules run in five places, so a docs page cannot be broken in one and fi
 | `tests/test_docs_site_contract.py` | the documentation gate as a pytest assertion |
 | `tests/test_docs_html_contract.py` | the built site: completeness, links, escaping, determinism |
 | `.github/workflows/docs.yml` | the build, the preview artefact on a PR, and the publish on `master` |
+
+## No table inside a fence
+
+`check_fenced_tables` closes the one hole the render rule cannot see, and this page is where the hole was
+recorded. A markdown table pasted inside a fenced block sits there and stays legal: inside the fence the pipes
+are literal text, so the render has nothing to complain about — the page renders precisely what it says — and
+the generated-freshness gate compares a generated table with the report it came from only where the generated
+block lives, never inside somebody's sample. A hand copy of a generated table is a claim with an expiry date,
+and a fence is where it expires unseen: the two copies `reco-msv1.3` found in the retired
+[rename-pairing.md](../concepts/rename.md)'s card sample had already drifted to 361.71 ms and "2.69× shipped,
+15.56× widened" while `benchmarks/reports/e2-4-rename-pairing.json` — what gates `A4a`, `A4b` and `A4c` read
+— said 416.14 ms and "2.3× shipped, 18.73× widened".
+
+So `tools/check_docs_site.py` refuses the shape:
+
+> **a fenced block whose language tag is absent, `text`/`txt` or `markdown`/`md`, and which holds two or more
+> lines whose first non-space character is `|`** — scanned over `docs/**.md` and `README.md`.
+
+Two lines, because one line of pipes is a shell transcript and two are a table; the ASCII pipe, because a
+box-drawing layout (`│`, `┌`) is a drawing and not a paste. The failure message says *why* rather than only
+*what*, because the tempting repair is to keep the copy and quiet the gate: a table inside a fence renders as
+pipes, so neither the render gate nor the freshness gate can see it, so it goes stale in silence. Move the
+rows out of the fence, generate them from the report they belong to, or delete the copy.
+
+**The false-positive class, and why the tag decides it.** A fence can legitimately *print* a table:
+[ci-gate.md](../concepts/ci-gate.md) shows the `check_workflows.py triggers` transcript, and that transcript
+prints a table because the tool renders one. It is the only one: `python3 tools/check_docs_site.py --verbose`
+prints the census (`fences: 433 blocks on 95 pages` as this was written) and exactly one of those blocks holds
+a table's worth of pipe-leading lines — the `console` transcript above. The choice was between excusing it by
+path and narrowing the predicate to the tags a paste can arrive in. **The tag won:**
+
+* a markdown table paste is markdown that has lost its way. It lands where the author meant "literal text":
+  no tag, or `text`, or `markdown`. A block tagged `json`, `rust`, `toml`, `bash` or `console` claims to be
+  something else, and a paste cannot make that claim without lying about what it is — which is the whole
+  difference between the transcript above and the card sample;
+* an allowlist by path — the shape [`check_docs.py`](../../tools/check_docs.py) uses for retired queue tokens
+  — licenses a *page*, and this defect hides inside a block. Excusing `ci-gate.md` would have made every
+  fence on it, including every untagged one, invisible to the only rule that looks inside them. A per-block
+  predicate grants the transcript exactly the exemption it needs and no more;
+* a path list is a list somebody carries. `RETIRED_TOKENS` already pays for both directions of that debt — an
+  exemption moves when a merge retires its page, and goes stale when the record it guards is rewritten — and
+  `reco-msv1.2` moved seven of those rows in one commit to prove it. The fence rule moves nothing, and refuses
+  nothing that is not the shape.
+
+What the choice does not cover, plainly: **the tag is the author's claim about the block**, so a paste dropped
+into a fence tagged `bash` is not caught. That is the price of any tag-based rule —
+[`check_docs_commands.py`](../../tools/check_docs_commands.py) trusts the same tag to know which fences are
+commands — and it is a narrower hole than the one being closed, because it needs a mislabelled fence rather
+than a careless paste. The one class this rule refuses that someone might have wanted is a page *documenting*
+markdown table markup, which has to show a separator row somewhere; no page here does, and the honest answer
+for the day one does is a block-level marker in that fence's own info string — written in the same commit as
+the page that needs it, not a page allowlist paid in advance for a defect nobody has.
+
+`python3 tools/check_docs_site.py --self-test` proves it can fail, on scratch copies of the real tree: the
+historical defect replayed (the generated table pasted into the untagged fence of `rename.md`'s card sample)
+and the same paste in a `text` fence are both named, while two controls must stay quiet — that table inside a
+`bash` fence, and a single pipe-leading line. `tests/test_docs_site_contract.py` asserts the clean tree, and
+that the parser read enough blocks to have had something to say about.
 
 ## Turning Pages on
 

@@ -933,8 +933,9 @@ title matching the old page's, one sentence saying where the prose went and nami
 mapping each old section to its new home. Nothing else. `docs/index.md` gains a `Retired page names`
 section that links them (which is what keeps `check_docs_site.py`'s reachability rule off their backs), and
 `tools/check_docs_site.py` gained the `RELOCATIONS` table, the `check_relocations` rule and the
-`--self-test` that breaks a copy of the documentation four ways to prove the rule can fail. The threshold
-came out at 24 non-empty lines rather than fifteen, because `risk-ranking.md` had fourteen sections to
+`--self-test` that breaks a copy of the documentation four ways to prove that rule can fail (it carries a
+second rule's cases now too — §7's `check_fenced_tables` row). The threshold came out at 24 non-empty lines
+rather than fifteen, because `risk-ranking.md` had fourteen sections to
 map and a section map with a dropped row is the lie a section map exists to prevent.
 
 A pointer page is not allowed to restate a claim. It is a signpost with a section map, and its whole value is
@@ -999,7 +1000,7 @@ from.
 
 | Checker | What it refuses | Guards | Run |
 |---|---|---|---|
-| `tools/check_docs_site.py` | orphan pages (reachability from `docs/index.md`/`README.md`), a page without exactly one `# ` title, `TODO`/`TBD` in prose, dangling fragment links, stale or incomplete generated pages, a shipped verb/view/detector/build-feature with no doc entry, a front door that does not link the pages it must, and a Pages render that drops words or emits raw HTML. **Runs `check_relocations`** (`e12.2`); `--self-test` proves it can fail | **every merge**: pointer pages, rewritten links, anchors, `docs/index.md` | `python3 tools/check_docs_site.py` (`--no-html` to skip the render) |
+| `tools/check_docs_site.py` | orphan pages (reachability from `docs/index.md`/`README.md`), a page without exactly one `# ` title, `TODO`/`TBD` in prose, dangling fragment links, stale or incomplete generated pages, a shipped verb/view/detector/build-feature with no doc entry, a front door that does not link the pages it must, a Pages render that drops words or emits raw HTML, and — `check_fenced_tables`, `reco-u962` — a markdown table pasted inside a fenced block, which neither the render gate nor the generated-freshness gate can see, so it goes stale in silence. **Runs `check_relocations`** (`e12.2`); `--self-test` proves both rules can fail | **every merge**: pointer pages, rewritten links, anchors, `docs/index.md`; **and the class `reco-msv1.3` found** inside `rename-pairing.md`'s card sample, tree-wide re-measured at the close | `python3 tools/check_docs_site.py` (`--no-html` to skip the render; the fence rule runs with it) |
 | `tools/gen_docs.py check` | a generated page that disagrees with its source; a shipped verb with no page entry | M1 (`VERB_DOCS["why"]`), M2 (`analyze`, `cmp`), M3 (`narrative`, `show`, `attribution`), M6, M7 | `python3 tools/gen_docs.py check` (add `--page cli` with a built binary) |
 | `tools/check_ticket_claims.py` | a sentence naming a plan key and claiming the thing is missing or still to come, in `docs/concepts/`, `docs/recipes/`, `README.md` or `crates/*/src` | M1 (`risk-ranking.md` §10's replaced-by table, the `blast`/"will fill" sentences), M2 (`Supplied`'s "arrive when X lands" phrasings), M3 (spike pages' deferral language) | `python3 tools/check_ticket_claims.py` |
 | `tools/check_docs_commands.py` | a `fathom …` command in a `bash`/`sh`/`console` fence that clap will not parse — a invented subverb or a invented flag | every merged page's "read it this way" command blocks | `python3 tools/check_docs_commands.py` |
@@ -1161,18 +1162,21 @@ fact per class, or it has proved nothing.
   not smaller, it is *one page per noun*, which is what the epic's target said and §9's first bullet refuses
   to turn into a word count. `.plan/evidence/reco-msv1/census.py` prints both counting methods for both trees,
   because they differ by one line per file and the map's first census did not say which it had used.
-* **One hole re-measured and still open.** `e12.3` found two stale copies of `rename-pairing.md`'s own
-  generated tables pasted inside a code fence, where the render rule cannot see them
+* **One hole re-measured, open at the close, now closed.** `e12.3` found two stale copies of
+  `rename-pairing.md`'s own generated tables pasted inside a code fence, where the render rule cannot see them
   ([site.md](site.md) records it). Tree-wide re-measure at the close: **0** fenced blocks containing markdown
-  table rows remain anywhere in `*.md`, so nothing is broken today and no rule refuses tomorrow's copy —
-  closing it is `reco-u962`'s.
+  table rows remained anywhere in `*.md`, so nothing was broken and no rule refused tomorrow's copy.
+  `reco-u962` closed it: `check_docs_site.py` now refuses a fenced block tagged as literal text that holds two
+  or more pipe-leading lines, the false-positive class (a transcript that really does print a table) is
+  exempt by its language tag rather than by a page allowlist, and `--self-test` replays the original paste.
+  [site.md](site.md#no-table-inside-a-fence) keeps the decision and its residual hole.
 
 ### What this map hands on
 
 The merge protocol is this page: §1's ten rules, §4's family sections as the worked precedents (including
 §10's lesson about proof at the wrong grain), §6's redirect mechanism as built, §7's checker list, and now
 §10's proof instrument. M6 and M7 are open as `reco-48qd` and `reco-lpuj`, each citing its row rather than
-re-deriving it, and `reco-u962` holds the one gate hole the close found still open.
+re-deriving it; the one gate hole the close found is `reco-u962`, closed, and §7 lists the rule that replaced it.
 
 ---
 

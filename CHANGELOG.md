@@ -17,6 +17,53 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
+### The fence hole the render gate could not see is closed: no pasted markdown table inside a code fence (`reco-u962`)
+
+`reco-msv1.3` found two stale copies of the retired `rename-pairing.md`'s own generated tables pasted *inside*
+its fenced card sample, and epic 12's close re-measured the class tree-wide: **0** fenced blocks containing
+markdown table rows anywhere in `*.md` — nothing broken, and no rule refusing tomorrow's copy.
+`tools/check_docs_site.py` now refuses the shape, as `check_fenced_tables`: a fenced block tagged as literal
+text — no language, `text`/`txt`, `markdown`/`md` — holding two or more lines whose first non-space character
+is `|`, scanned over `docs/**.md` and `README.md`. The failure names the reason, because the tempting repair is
+to keep the copy and quiet the gate: inside a fence a table renders as pipes, so the render gate sees text and
+the generated-freshness gate never reads inside a fence, and the copy goes stale in silence. The paste `e12.3`
+found had already drifted to 361.71 ms and "2.69× shipped, 15.56× widened" while
+`benchmarks/reports/e2-4-rename-pairing.json` — what `A4a`, `A4b` and `A4c` read — said 416.14 ms and
+"2.3× shipped, 18.73× widened".
+
+* **The false-positive class is exempt by the fence's tag, not by a page allowlist** — the decision the bead
+  asked for, and [docs/reference/site.md](docs/reference/site.md#no-table-inside-a-fence) keeps it with its
+  residual hole. Exactly one block in the tree has pipe-leading rows: the `check_workflows.py triggers`
+  transcript in `docs/concepts/ci-gate.md`, a table the tool itself printed, in a fence tagged `console`.
+  Excusing that page by path — the shape `check_docs.py` uses for retired queue tokens — would have hidden
+  every fence on it, including every untagged one, from the only rule that looks inside a fence; the tag
+  exempts the block that needs exempting and nothing else, moves with no merge, and goes stale in no list.
+  What it cannot cover is written down rather than glossed: the tag is the author's claim about the block, so a
+  paste dropped into a fence tagged `bash` is not caught, and a page that ever needs to *document* markdown
+  table markup gets a block-level marker in its own fence, argued in the same commit that needs it.
+* **It can fail, and it can hold its peace.** `--self-test` went from one rule's five cases to two rules' ten,
+  each on its own scratch copy of the real tree: the historical paste replayed inside `rename.md`'s untagged
+  card-sample fence, the same paste in a `text` fence, and the controls that must stay silent — that table
+  inside a `bash` fence, one pipe-leading line alone, and the clean tree between them. A case expecting
+  silence now fails as loudly as one expecting a name, and a probe fence that has quietly moved out of its
+  page is reported as a broken probe instead of passing. `tests/test_docs_site_contract.py` asserts the clean
+  tree *and* that the parser read ≥ 300 fenced blocks on ≥ 50 pages, because a census of zero satisfies a
+  content rule exactly as loudly as a clean manual does.
+* **The fence parser is the builder's, not a second one.** A fence closes on a bare run of the *same*
+  character, at least as long as the opener: that is CommonMark, and it is
+  [`tools/build_docs_site.py`](tools/build_docs_site.py)'s existing rule. Toggle-pairing — what `prose_lines`
+  does for links and headings — would have pasted the test tables under closing fences and read any page that
+  quotes a fence wrong, so the new rule borrows the builder's regex and closer rather than re-deriving a
+  parser free to disagree with the render it claims to guard.
+* **The three pages that told the story say it is closed**: [site.md](docs/reference/site.md) gains the rule,
+  the verdict and the residue; [the merge map](docs/reference/doc-map.md) §7 puts the rule on the
+  `check_docs_site.py` row and §10's "one hole re-measured and still open" is shut; and the self-test step in
+  `.github/workflows/contracts.yml` names both rules it now runs.
+* **Gates, all green in the branch:** `check_docs.py` (99 glossary terms, 95 documents),
+  `check_docs_site.py` (+ `--self-test`, + the Pages render), `check_workspace.py check`, `check_workflows.py`
+  and `gen_changelog.py audit`, plus `python3 -m pytest tests/test_docs_site_contract.py
+  tests/test_docs_html_contract.py`.
+
 ### The committed review record is one page: `review-memory.md` moved into `review-ledger.md`, and the merge map's M7 closes (`reco-lpuj`)
 
 `review-ledger.md` (338 lines) and `review-memory.md` (166) were one noun told twice: class **M** markdown

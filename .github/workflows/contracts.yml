@@ -115,13 +115,16 @@ jobs:
         # the surviving pair is one named step in the workflow whose subject is the docs site and one
         # rule inside the gate that cannot be deleted without deleting the gate.
         run: python3 tools/check_docs_site.py
-      - name: "e12.2 retired paths stay pointers: break a copy of the docs four ways and require each break to be named"
+      - name: "e12.2 and reco-u962 gate self-test: break copies of the docs and require each rule to name its own break"
         # `docs/reference/doc-map.md` §4.0 asked for this in the same commit as the rule it tests: a gate
         # nobody has seen fail is a gate nobody can trust, and `check_docs_site.py` had no self-test until
-        # the relocation rule needed one. Four scratch copies of `docs/`, four deliberate breaks — a
-        # retired path deleted, a pointer that has grown into a second copy, a pointer the front door
-        # stopped linking, and a real page leaning on the redirect instead of the new page — with the
-        # clean copy required to pass between them.
+        # the relocation rule needed one. It now runs two rules against scratch copies of the real tree.
+        # `check_relocations`: four deliberate breaks — a retired path deleted, a pointer that has grown into
+        # a second copy, a pointer the front door stopped linking, and a real page leaning on the redirect
+        # instead of the new page. `check_fenced_tables` (`reco-u962`): a generated table pasted into an
+        # untagged fence and into a `text` fence, with two controls that must stay quiet — the same table
+        # inside a `bash` fence, and a single pipe-leading line. The clean copy is required to pass between
+        # them, and a case that expects silence fails as loudly as one that expects a name.
         run: python3 tools/check_docs_site.py --self-test
       - name: "e12.2 the risk page's twelve-axis table is `risk::feature::SPECS`, generated"
         # The page used to *say* its axis table was generated while carrying no generated block, which is
