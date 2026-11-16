@@ -25,52 +25,53 @@
   number on this page is `spine-3`'s, and every gate that quotes the arithmetic was re-measured in the same
   commit rather than restated.
 
-- **Status, the spine half**: Accepted, and implemented — the spine-only half.
-  *inputs* with a documented feature vector and a calibration set, in this page's
-  second half (`features-3`), and `reco-wsj` (`e4.5`) has replaced its *ordering
+- **Status, the spine half**: Accepted, and implemented — the spine-only half, and the older of the two:
+  the score in this page's second half was built on top of this ranking (`e1.x`) and kept its shape.
+  `reco-884` (`e4.4`) has now replaced its *inputs* with a documented feature vector and a calibration set,
+  in this page's second half (`features-3`), and `reco-wsj` (`e4.5`) has replaced its *ordering
   function* with risk × staleness × blast radius; neither changes the shape described here, which is the
   shape the queue, the rail and `w` print. This document stays the contract for **that** ranking —
   `spine-3`, which is what the score, the rail's risk column and `fathom why` still compute. The queue
   ordered itself by `queue-1` (`e4.5`): the score was its first factor and this document's order was not
   its order. See *`queue-1`*, below — which since `e10.1` is the record of a **retired** ordering: there is no queue left to
   order itself, and the score is the rail's per-row figure.
-- **Ticket / plan key, the spine half**: `reco-wsj`
-  ranking was pulled forward out of
+- **Ticket / plan key, the spine half**: `reco-wsj` (`e4.5`) owned the queue, and `reco-ydek.3` (`e10.3`)
+  deleted it. This ranking was pulled forward out of
   `e4.5` because `reco-glv`'s (`e1.12`) walkthrough could not be completed at all without some
   defensible answer to "which three episodes are the riskiest" — see
   [demo/README.md](../demo/README.md).
-- **Implements, the spine half**: ADR-006 §5.1's binding note
-  must print the same feature vector `fathom why` prints"* — and ADR-001 §7.9's rule that a number a
+- **Implements, the spine half**: ADR-006 §5.1's binding note — *"the strip must name the ranking
+  function, and `w` must print the same feature vector `fathom why` prints"* — and ADR-001 §7.9's rule that a
   reviewer cannot check is a recommendation rather than a fact. Its inputs are the spine's:
   [paths](paths.md) (`e0.9`), [noise](noise-suppression.md) (`e2.2`),
   [episodes](episode-derivation.md) (`e1.3`) and
   [the test surface](test-surface.md) (`e2.9`). It is *not* `e4.4`'s feature vector and does not
   claim to be.
-- **Executes as, the spine half**: `fathom-analyze::risk` (
-  `BLIND_SPOTS`), read through `fathom-store::episode::Store::episode_files`, composed in
+- **Executes as, the spine half**: `fathom-analyze::risk` (`Surface`, `classify`, `Signals`, `rank`,
+  `COMPONENTS`, `BLIND_SPOTS`), read through `fathom-store::episode::Store::episode_files`, composed in
   `fathom-cli::episodes`, and drawn by the rail's risk cell plus the episode card's ranking band,
   which `w` expands in place (see *One surface, two depths*, and [ADR-006](../adr/0006-tui.md) §5.1.1). `fathom-tui::worklist` draws
   it too until `e10.3` deleted that pane. Measured by
   `crates/fathom-analyze/tests/risk_spine.rs`, `crates/fathom-tui/tests/risk_rank.rs` and
   `crates/fathom-cli/tests/risk_rank.rs`.
 
-- **Status, the score half**: Accepted, and implemented (`e4.4`, `reco-884`;
-  renamed the model; `reco-ydek.5` took the `authorship` axis out and renamed it again). One model,
+- **Status, the score half**: Accepted, and implemented (`e4.4`, `reco-884`; `e8.7` added the `complexity`
+  axis and renamed the model; `reco-ydek.5` took the `authorship` axis out and renamed it again). One model,
   `features-3`; one command,
   `fathom why`; one calibration set, checked in; and no opaque model anywhere in the path.
-- **Ticket / plan key, the score half**: `reco-884` (`e4.4`).
+- **Ticket / plan key, the score half**: `reco-884` (`e4.4`). It replaces the *inputs* of
   `spine-3` — this page's first half — and leaves that ranking's shape — rank, reason,
   ceiling — standing, because `e4.5` (`reco-wsj`) is the ticket that replaced the ordering function: the
   score computed here is `queue-1`'s first factor, printed the same way in both.
-- **Implements, the score half**: ADR-001 §7.10
-  each made, printed on request"*), ADR-001 §7.9 (a number a reviewer cannot check is a recommendation),
-  and ADR-002 §4.5 (config is read in the CLI and handed down as values). The features are the ones
-  `thesis.md` §3 names: findings and severities, change size and blast radius, dependency and migration
-  exposure, test ratio, attribution confidence, noise share.
-- **Executes as, the score half**: `fathom-analyze::risk::feature`
-  (`[risk.weights]`, `risk.tau`, clamping, provenance, refusals), `risk::score` (the arithmetic and the
-  rendering), `risk::collect` (the store read that fills the vector), `risk::calibrate` (the corpus, the
-  metric, the retune), and `fathom-cli::why` (`fathom why`). Measured by
+- **Implements, the score half**: ADR-001 §7.10 (*"every score is explainable: features, weights, and the
+  contribution each made, printed on request"*), ADR-001 §7.9 (a number a reviewer cannot check is a
+  recommendation), and ADR-002 §4.5 (config is read in the CLI and handed down as values). The features are
+  the ones `thesis.md` §3 names: findings and severities, change size and blast radius, dependency and
+  migration exposure, test ratio, attribution confidence, noise share.
+- **Executes as, the score half**: `fathom-analyze::risk::feature` (the axes and their rulers),
+  `risk::weights` (`[risk.weights]`, `risk.tau`, clamping, provenance, refusals), `risk::score` (the
+  arithmetic and the rendering), `risk::collect` (the store read that fills the vector), `risk::calibrate`
+  (the corpus, the metric, the retune), and `fathom-cli::why` (`fathom why`). Measured by
   `crates/fathom-analyze/tests/risk_score.rs` and `crates/fathom-cli/tests/cli_why.rs`.
 
 - **Model strings**: `spine-3` (`fathom-analyze::risk::MODEL`) and `features-3`

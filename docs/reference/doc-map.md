@@ -1,23 +1,33 @@
 # The documentation merge map: one page per noun, and what each merge must keep
 
-- **Status**: **accepted, and executed** — [e12.2](#41-m1--risk-three-pages-into-one-e122--done),
+- **Status**: **accepted, executed, and closed** with `reco-msv1` (`e12`) on 2026-11-16 —
+  [e12.2](#41-m1--risk-three-pages-into-one-e122--done),
   [e12.3](#42-m2--the-delta-the-noun-and-the-artefact-become-one-page-e123--done) and
   [e12.4](#45-m5--slim-the-adrs-to-decisions-in-place-e124) are done: **M1 through M5** have landed, their
   pointer pages are in the tree, their links are rewritten, and the three fat ADRs are slimmer where they
   stand. A merge that contradicts this page is a change to this page, made first and in
   the same commit, and every contradiction this one met is recorded in the merge's own section.
+  [§10](#10-how-epic-12-closed) is the close record: what was re-measured, the one repair the re-measurement
+  found in M1, and what the map hands to whom.
 - **Ticket / plan key**: `reco-msv1.1` (`e12.1`), under `reco-msv1` (`e12`) — *half the documentation,
   none of the truth lost*.
 - **Census taken at**: `master` @ `064856d`. **57** pages under `docs/concepts/` (18 352 lines, 1.34 MB),
   **7** ADRs plus their README under `docs/adr/` (9 760 lines, 0.78 MB), **89** `.md` files under `docs/`
   altogether, and **183 generated blocks in 19 of them** — every one of which is merged by editing its
-  generator, never its output ([§5](#5-who-generates-what)).
+  generator, never its output ([§5](#5-who-generates-what)). *Method, because the census re-takes itself:*
+  those two line counts came from `text.split("\n")`, which charges every file one line more than `wc -l`
+  does, so the same trees measure **18 295** and **9 752** with `wc -l` (each figure is the other plus one
+  line per file). Every number below names its method when the two differ.
 - **Census re-taken after M1–M4**: **52** pages with claims under `docs/concepts/` (was 57; 8 retired, 3
   written), plus **8 pointer pages** — 60 files in the directory, and a pointer is a page a reader may still
   arrive at, not a page with claims in it. `docs/concepts/episode-derivation.md` (843 lines, 13 generated
   blocks) and `docs/concepts/rename.md` (777 lines, 16 blocks) are the two new ones.
-- **Census re-taken after M5**: `docs/adr/` is **9 373 lines** across its seven ADRs and its index (was 9 750), because 002, 004 and 006 gave up **408** lines between them — 6 520 → 6 112 — while their 40
-  generated blocks (2 226 lines) did not move and no path or section number changed.
+- **Census re-taken after M5**: `docs/adr/` is **9 373 lines** across its seven ADRs and its index (was 9 750),
+  because 002, 004 and 006 gave up **408** lines between them — 6 520 → 6 112 — while their generated blocks
+  did not move and no path or section number changed. The blocks are **39**, not the 40 this line first said
+  (`e12.4`'s bead and commit repeat the 40): 0002 nine, 0004 seven, 0006 twenty-three. Their body is
+  **2 147 lines**; the 2 226 in §2.2 and §4.5 is that body plus the two marker lines of every block, and
+  2 226 / 6 112 is the 36 % quoted there either way.
 - **Read this if**: you are about to merge, rename, split or delete a documentation page. Read §1 before
   you touch a file, §4 for the family you are in, §6 for what has to keep resolving.
 
@@ -188,15 +198,15 @@ Scheduled by epic 12 — these five merges are the deliverable:
 | **M4** renames | `rename-detection.md`, `rename-pairing.md` | **`concepts/rename.md`** (new) | 2 → 1 — **done** (`e12.3`) |
 | **M5** ADR slimming | none — paths are fixed | `adr/0002`, `adr/0004`, `adr/0006` slimmed in place | 0 — **done** (`e12.4`) |
 
-Recorded here and **not scheduled** — no bead owns them, and that is the point: they are decided so that
-nobody rediscovers them independently and merges the same family a second time. Open a bead citing this
-page before starting any of them.
+Recorded here, and **not part of epic 12** — they were decided so that nobody rediscovers them independently
+and merges the same family a second time. At the epic's close M6 and M7 became beads (`reco-48qd`,
+`reco-lpuj`); M8 was refused. Each of them cites this page instead of re-deriving it.
 
 | Merge | Retires | Target | Why it waits |
 |---|---|---|---|
-| **M6** dependencies | `dependency-surface.md`, `dependency-delta.md`, `dependency-risk.md` | **`concepts/dependencies.md`** | one crate (`fathom-analyze/src/deps/`), three pages split by question rather than by noun; largest of the unscheduled set (685 lines), and `test_deprisk_contract.py` is needle-tested |
-| **M7** the committed review record | `review-memory.md` | `concepts/review-ledger.md` | the two pages restate the same durability-class, digest, append-only and `verify` claims; the glossary keeps both nouns in `thesis.md` either way |
-| **M8** the declared architecture | `cycle-detection.md`, `layering.md` | **`concepts/architecture-rules.md`** — *proposed, not accepted* | they share the ratchet plug and the news-versus-debt line, but they are two engines with two grammars; merging them is worth less than M6 and drags `architecture-graph.md` into scope |
+| **M6** dependencies — **bead `reco-48qd`** | `dependency-surface.md`, `dependency-delta.md`, `dependency-risk.md` | **`concepts/dependencies.md`** | one crate (`fathom-analyze/src/deps/`), three pages split by question rather than by noun; largest of the unscheduled set (685 lines), and `test_deprisk_contract.py` is needle-tested |
+| **M7** the committed review record — **bead `reco-lpuj`** | `review-memory.md` | `concepts/review-ledger.md` | the two pages restate the same durability-class, digest, append-only and `verify` claims; the glossary keeps both nouns in `thesis.md` either way |
+| **M8** the declared architecture — **refused at the close** | `cycle-detection.md`, `layering.md` | **`concepts/architecture-rules.md`** — *proposed, never accepted* | they share the ratchet plug and the news-versus-debt line, but they are two engines with two grammars; merging them is worth less than M6 and drags `architecture-graph.md` into scope, and no bead was ever asking |
 
 Pages that must **not** be merged, with the reason recorded so the question is not re-litigated (§4.9).
 
@@ -663,8 +673,10 @@ to every ticket that cited it); `check_docs.py`'s `ADR-00N` reference rule again
 its acceptance criteria ask; the before numbers are in §2.2 above.
 
 **What `e12.4` (`reco-msv1.4`) actually did, and where the map was wrong.** Measured after: **6 520 → 6 112
-lines** across the three ADRs (0002 1 119 → 1 081, 004 2 637 → 2 318, 006 2 764 → 2 712), and every one of the
-40 generated blocks — 2 226 lines, 36 % of what is left — is where it was.
+lines** across the three ADRs (0002 1 119 → 1 081, 004 2 637 → 2 318, 006 2 764 → 2 713), and every one of the
+39 generated blocks — 2 147 body lines, 2 226 counting the markers, 36 % of what is left — is where it was,
+verified byte for byte against the merge's parent (`e12.4`'s bead and this page's first census line both
+said 40 blocks; `gen_docs.MARK` finds nine, seven and twenty-three).
 
 * **Two of 0002's three pointer candidates were generator output.** §6.2 *is* the `features` block, and rule
   `R11` ("the feature list in this ADR is the published list") plus `test_every_crate_and_feature_is_published_in_the_adr`
@@ -697,7 +709,7 @@ lines** across the three ADRs (0002 1 119 → 1 081, 004 2 637 → 2 318, 006 2 
   same way `e12.3` proved its merges.
 
 
-### 4.6 M6 — the dependency family (recorded, not scheduled)
+### 4.6 M6 — the dependency family (**bead `reco-48qd`**)
 
 `dependency-surface.md` (249), `dependency-delta.md` (155) and `dependency-risk.md` (284) are one crate
 (`fathom-analyze/src/deps/` — or `src/recommender/deps/` for the reference implementation) split by
@@ -714,7 +726,7 @@ that a cloned repository cannot grant network permission (ADR-001 §7.5), and th
 must move in the same commit. Guarded by `check_docs_site.py`, `check_docs.py`, `check_ticket_claims.py`,
 and the deps test suite (`deps_golden.rs`, `deps_tolerance.rs`, `deps_monorepo.rs`, `deps_repository.rs`).
 
-### 4.7 M7 — the committed review record (recorded, not scheduled)
+### 4.7 M7 — the committed review record (**bead `reco-lpuj`**)
 
 `review-ledger.md` (339) keeps its path and absorbs `review-memory.md` (167). Both are class-M committed
 markdown, both keyed to episode identity, both carry digests, both are mirrored into the store, both are
@@ -729,7 +741,7 @@ Path pins to move: `VERB_DOCS["note"]`, `VERB_DOCS["context"]`, `tests/test_queu
 Nothing generated. Do not merge `summary-card.md` or `plan-drift.md` into this: a card is a rendering and a
 drift finding is a finding, neither of which is a committed record.
 
-### 4.8 M8 — the declared architecture (proposed, not accepted)
+### 4.8 M8 — the declared architecture (**refused at the epic's close**)
 
 `cycle-detection.md` (185) and `layering.md` (210) share the ratchet plug, the news-versus-debt line, and the
 same refusal sentence ("nothing here writes `.fathom/ratchet.toml`; a row is added by
@@ -911,10 +923,12 @@ more people attempt it.
 5. **M4 — renames** (`e12.3`) — **done**: `rename.md`, two generators edited and their ownership check scoped,
    the four rename steps in `contracts.yml` re-pointed, 14 links (4 + 10) rewritten, two pointer pages, and
    18 lines of stale table copies deleted out of a code fence.
-6. **M5 — ADR slimming** (`e12.4`): one ADR per commit, generated blocks untouched, pointers written only
-   after the target page verifiably carries the claim, line counts recorded, `adr/README.md` updated.
-7. Then close epic 12 against its acceptance criteria, and open separate beads for M6/M7 if anyone wants
-   them — citing this page, not re-deriving it.
+6. **M5 — ADR slimming** (`e12.4`) — **done**: three ADRs slimmed in one commit, all 39 generated blocks
+   byte-identical to their state at the merge's parent, pointers written only after the target page verifiably
+   carried the claim, line counts recorded, `adr/README.md` updated.
+7. **Close epic 12** — **done**: measured against its acceptance criteria in [§10](#10-how-epic-12-closed),
+   which found and repaired one loss M1 had left in `risk.md`, and opened `reco-48qd` (M6) and `reco-lpuj`
+   (M7) — citing this page, not re-deriving it.
 
 Two things every step does, because they are what makes a merge reviewable rather than a wall of diff:
 **move, don't retype** (a reviewer should be able to see a paragraph travel, not a paragraph rewritten), and
@@ -929,19 +943,128 @@ criterion, and the reason a merged page cannot average two conflicting claims in
   budget. Deleting a page is a failure mode, not a deliverable: the merges retire 8 pages and preserve
   roughly 2 000 lines of claims, and M5's saving is prose that duplicated a concept page.
 * **It refuses to let the map drift silently.** Any merge that contradicts a row here changes this page in the
-  same commit. A map with no owner is a snapshot; `reco-msv1` owns it until epic 12 closes.
-* **Four things are left open, deliberately, each with the bead that has to answer it:**
+  same commit. A map with no owner is a snapshot; `reco-msv1` owned it until epic 12 closed, and since the
+  close it belongs to whoever is merging — which is why the two follow-up merges arrived as beads naming this
+  page rather than as a section nobody reads.
+* **Four questions were left open across the epic, and all four have an answer — [§10](#10-how-epic-12-closed)
+  is where each was given:**
   1. ~~whether the twelve-axis table becomes a real generated block or keeps a prose claim with a test
      behind it~~ — answered by `e12.2`, which wrote `tools/gen_risk_tables.py`;
-  2. whether a concept page may draw a frame layout at all, or must link ADR-006's generated one (§4.5's
-     normativity decision — `e12.4` picks);
-  3. the exact `check_relocations` failure message and its threshold ("≤ 15 lines" is a starting number, not
-     a contract) — M0 writes it, so M0 decides it;
-  4. whether M6/M7/M8 are ever worth a bead. M8's own entry says why it might not be.
+  2. ~~whether a concept page may draw a frame layout at all, or must link ADR-006's generated one~~ —
+     answered by `e12.4`, which took option (a) of §4.5: the ADR's generated blocks are the only normative
+     drawing of a shipped frame, and the re-sweep found no concept page drawing a competing one;
+  3. ~~the exact `check_relocations` failure message and its threshold~~ — answered by M0: the cap is
+     **24** non-empty lines (`POINTER_MAX_LINES`), because `risk-ranking.md`'s fourteen-row section map does
+     not fit in fifteen, and `check_docs_site.py --self-test` proves the rule fails four ways;
+  4. whether M6/M7/M8 are ever worth a bead — answered at the close: M6 and M7 are (`reco-48qd`, `reco-lpuj`),
+     M8 is not, for the reason §4.8 already gave and is now refused rather than left pending.
 * **It refuses the tempting third move**: rewriting a merged page's voice. These pages are written as claims
   with their evidence beside them, and the merges move them. A paragraph that loses its number, its table,
   its refusal or its "what this cannot see" list on the way into a merged page has been destroyed even though
   its words survived — which is the only kind of loss this epic is defined by.
+
+---
+
+## 10. How epic 12 closed
+
+- **Closed by**: `reco-msv1` (`e12`), 2026-11-16, with all four children closed (`e12.1`–`e12.4`) and **M1–M5**
+  landed. This section is the epic's own measurement, not a summary of the children's.
+
+The children each proved their own merge and stopped, and an epic whose whole subject is "none of the truth
+lost" cannot close on four separate proofs that nobody has re-run. So the close re-measured all five merges in
+one place: **`.plan/evidence/reco-msv1/no_loss.py`** reads every retired or slimmed page out of its own
+merge's parent commit and looks for every content line in the destination, at three grains — verbatim,
+normalised (link targets, `§`, heading hashes, emphasis, table pipes), and **names**: every identifier-shaped
+name a retired page backticks must be used by the page that took its claims. The numbers, with the
+`no_loss.py` method (fences excluded):
+
+| merge | source lines | content lines | verbatim | normalised | residue | names left behind |
+|---|---|---|---|---|---|---|
+| M1 risk (3 pages) | 1 085 | 792 | 693 | 10 | 89 | **4 → 0** |
+| M2 delta | 142 | 109 | 71 | 1 | 37 | 0 |
+| M3 episode (2) | 798 | 648 | 646 | 0 | 2 | 0 |
+| M4 renames (2) | 768 | 549 | 541 | 0 | 8 | 0 |
+| M5 ADRs (3, whole-corpus destination) | 6 520 | 4 494 | 4 159 | 4 | 331 | 0 |
+| **total** | **9 313** | **6 592** | **6 110** | **15** | **467** | **4 → 0** |
+
+`e12.3`'s 1 306 / 1 258 / 47 and `e12.4`'s 4 494 / 4 159 / 331 re-run exactly. `e12.2`'s 870 / 779 does not,
+and both numbers are right: that evidence counted lines inside code fences — the `fathom why` transcript and
+the card samples are 78 lines of a page that is one claim each — and every merge after it excludes fences.
+
+### What the re-measurement found, and repaired: M1's front matter
+
+Eight of `risk.md`'s front-matter bullets had had **clauses cut out of their middle** by the merge, and the
+page opened with sentences that no longer parse:
+
+```
+- **Ticket / plan key, the spine half**: `reco-wsj`
+  ranking was pulled forward out of
+```
+
+Four names had left the repository's concept pages entirely — `e1.x` (which ticket the spine ranking came
+from), `e8.7` (which added the `complexity` axis and renamed the model), `reco-ydek.3` (which deleted the
+queue) and `risk::weights` (the module that owns `[risk.weights]`, `risk.tau`, clamping, provenance and the
+refusals, now misattributed to `risk::feature`) — and a bullet had dropped `Surface`, `classify`, `Signals`,
+`rank` and `COMPONENTS` from the list of what `fathom-analyze::risk` executes as. Two quoted ADR clauses were
+cut mid-sentence: ADR-001 §7.10's *"every score is explainable: features, weights, and the contribution each
+made, printed on request"* and ADR-006 §5.1's *"the strip must name the ranking function, and `w` must print
+the same feature vector `fathom why` prints"*. All of it is restored from `5be8ac3^` in the close commit.
+
+**Why the merge's own proof missed it, which is the finding worth keeping.** `e12.2`'s evidence classified its
+91 non-verbatim lines *by kind* — "26 heading lines, 11 front-matter bullets, 37 lines of link and `§`
+scaffolding, 17 lines carrying 6 deliberate rewrites" — and asserted of the front-matter class that "every
+code path named there is still named". A line with its middle deleted is still a line, and a classification by
+kind is not an accounting: it says what the residue looks like, not what it lost. The **names** grain is the
+accounting — a claim's identity is the identifiers it uses — and it is now part of the proof for exactly this
+reason. Two corollaries for the next merge: a bullet that begins with a lowercase fragment is a bug in the
+merge, not in the prose, and a surviving-claim record that groups residue into classes must name at least one
+fact per class, or it has proved nothing.
+
+### What the close checked, and what it measured
+
+* **One page per noun.** 52 pages with claims under `docs/concepts/`, 8 pointer pages, 60 files. Scheduled
+  M1–M5 are done; M6 and M7 wait as beads; M8 is refused (§4.8).
+* **No claim survives in two places** (§1 rule 1). Audit — `.plan/evidence/reco-msv1/duplicate_claims.py`,
+  every content line of every page under `docs/concepts/`, outside fences and generated blocks, appearing
+  verbatim in more than one content page: **0 claim lines** at the close, and **0** at `064856d`, the commit
+  the census was taken at. The only lines any page shares with another are two front-matter conventions
+  (`- **Status**: Accepted, and implemented (executable half below)` in eleven pages, a `**Implements**`
+  glossary line in two) — 11 extra copies before the epic and 11 after, unchanged. That is the honest reading
+  of this audit: the disease was never copy-paste — verbatim duplication was already zero — it was two pages
+  owning one noun in different words, and what this audit guards is the merge *introducing* a second home.
+  Zero did.
+* **Retired paths resolve.** Eight pointer pages, each one `# ` title, one sentence, a section map and no
+  table; `check_relocations` proves existence, shape, the front-door link, and that nothing but
+  `docs/index.md` links them — and `check_docs_site.py --self-test` proves all four of those can fail.
+* **Generated blocks were not touched by the merges.** M3's and M4's blocks moved by editing their
+  generators (29 in, 29 out); M5 left all **39** of the slimmed ADRs' blocks **byte-identical** to their
+  state at the merge's parent; `gen_docs.MARK` finds **182 blocks in 18 pages** at the census tree and **183
+  in 17** now (M1's `features_axes` is the extra block, and two pages that carried blocks became pointers).
+  The census's "183 in 19" counted the marker *text*, which also counts the markers quoted in prose in
+  `site.md` and in this page — another number whose method is now written down.
+* **The gates.** `check_docs.py`, `check_docs_site.py` (+ `--self-test`, + the Pages render),
+  `check_ticket_claims.py`, `check_docs_commands.py`, `gen_docs.py check`, `gen_risk_tables.py check`,
+  `gen_adr_tables.py check`, `check_workspace.py check`, `check_ci_gate.py`, `check_workflows.py`,
+  `check_delta_compat.py check` and `gen_changelog.py audit`: all green at the close commit, with the same
+  note the children recorded — the verb-and-command halves skip without a built binary, and `ci.yml` runs
+  them on the leg that builds one.
+* **What the epic did to the size of the manual, honestly.** `docs/concepts/` went from 57 pages / 18 295
+  lines (`wc -l`) to 60 files / 18 597 lines while `docs/adr/` went from 9 752 lines to 9 373: the tree is
+  not smaller, it is *one page per noun*, which is what the epic's target said and §9's first bullet refuses
+  to turn into a word count. `.plan/evidence/reco-msv1/census.py` prints both counting methods for both trees,
+  because they differ by one line per file and the map's first census did not say which it had used.
+* **One hole re-measured and still open.** `e12.3` found two stale copies of `rename-pairing.md`'s own
+  generated tables pasted inside a code fence, where the render rule cannot see them
+  ([site.md](site.md) records it). Tree-wide re-measure at the close: **0** fenced blocks containing markdown
+  table rows remain anywhere in `*.md`, so nothing is broken today and no rule refuses tomorrow's copy —
+  closing it is `reco-u962`'s.
+
+### What this map hands on
+
+The merge protocol is this page: §1's ten rules, §4's family sections as the worked precedents (including
+§10's lesson about proof at the wrong grain), §6's redirect mechanism as built, §7's checker list, and now
+§10's proof instrument. M6 and M7 are open as `reco-48qd` and `reco-lpuj`, each citing its row rather than
+re-deriving it, and `reco-u962` holds the one gate hole the close found still open.
 
 ---
 

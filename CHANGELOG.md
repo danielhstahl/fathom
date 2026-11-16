@@ -17,6 +17,71 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
+### Epic 12 closes: the five merges re-measured in one run, and the re-measurement found a loss M1 had left in `risk.md` (`reco-msv1`, `e12`)
+
+Each child proved its own merge and stopped, and nobody re-ran the set after the
+last one landed — so an epic whose entire subject is *none of the truth lost*
+closed by measuring all five merges again, from each merge's own parent commit,
+with one script: **`.plan/evidence/reco-msv1/no_loss.py`**. Across **9 313** source
+lines and **6 592** content lines it finds **6 110** verbatim in the page that took
+them, **15** more after stripping the scaffolding a merge necessarily changes, and
+**467** residue lines, every one of them classified by what it is. `e12.3`'s
+1 306 / 1 258 / 47 and `e12.4`'s 4 494 / 4 159 / 331 re-run exactly.
+
+* **M1 left a hole in its own front matter, and the close repaired it.** Eight of
+  `docs/concepts/risk.md`'s opening bullets had clauses cut out of their middle —
+  `- **Ticket / plan key, the spine half**: `reco-wsj`` followed by `ranking was
+  pulled forward out of` — and four names had left the concept pages altogether:
+  `e1.x` (which ticket the spine ranking came from), `e8.7` (which added the
+  `complexity` axis and renamed the model), `reco-ydek.3` (which deleted the queue)
+  and `risk::weights` (the module owning `[risk.weights]`, `risk.tau`, clamping,
+  provenance and the refusals, now misattributed to `risk::feature`). One bullet had
+  dropped `Surface`, `classify`, `Signals`, `rank` and `COMPONENTS`; two quoted ADR
+  clauses — ADR-001 §7.10's *"every score is explainable…"* and ADR-006 §5.1's *"the
+  strip must name the ranking function, and `w`…"* — were truncated mid-sentence. All
+  restored from `5be8ac3^`. **Why the merge's own proof missed it is the finding:**
+  `e12.2` classified its 91 non-verbatim lines by *kind* — "11 front-matter bullets",
+  "every code path named there is still named" — and a line with its middle deleted is
+  still a line. Classification by kind is not an accounting. The script's third grain
+  is the accounting: every identifier-shaped name a retired page backticks must be used
+  by the page that took its claims. Four were not, before this commit; zero are now.
+* **The other four merges hold up, at both grains.** M2–M4 retire five pages into two
+  and move 29 generated blocks by editing their generators: **0** names left behind.
+  M5's three slimmed ADRs keep every fact they gave up somewhere in `docs/`, `README.md`,
+  `CHANGELOG.md` or `benchmarks/`: **0** lost, and all **39** generated blocks are
+  **byte-identical** to their state at the merge's parent. Pointer pages, the front-door
+  link, the rewrite-every-real-link rule and the section maps are proven to be able to
+  fail by `check_docs_site.py --self-test`'s four cases.
+* **The map corrected against its own rule** (*a measurement that disagrees with the map
+  changes the map*). The three slimmed ADRs carry **39** generated blocks, not the 40
+  §2 and §4.5 said, and their body is 2 147 lines where §2.2's 2 226 counts each block's
+  two marker lines; ADR-006's close-out figure was **2 713**, not 2 712, which the
+  paragraph carrying it contradicted with its own total; the census's line counts came
+  from `text.split("\n")`, which charges every file one line more than `wc -l` does, so
+  `docs/concepts/` was 18 295 lines and `docs/adr/` 9 752 by `wc -l` — the method is
+  written where the numbers are, and `.plan/evidence/reco-msv1/census.py` prints both.
+  §9's three genuinely-open questions are struck with the bead that answered each: the
+  axis table (`e12.2`), ADR-006's normativity, option (a) (`e12.4`), the pointer cap,
+  24 non-empty lines (M0).
+* **What the epic bought, measured.** 60 files under `docs/concepts/` where there were
+  57: 52 with claims and 8 pointers, so **one page per noun** for every noun epic 12
+  scheduled, and the manual is 379 lines smaller in `docs/adr/` and slightly larger
+  overall — which is the point, since §9 refuses a word-count target. Cross-page audit
+  (`.plan/evidence/reco-msv1/duplicate_claims.py`): **0** claims shared by two content
+  pages before the merges and **0** after, so no merge handed a claim a second home.
+* **Handed on, as beads, citing the map instead of re-deriving it.** M6, the dependency
+  family, is **`reco-48qd`**; M7, the committed review record, is **`reco-lpuj`**; M8 is
+  **refused** for the reason §4.8 already gave. And the class `e12.3` found by hand — a
+  hand-pasted copy of a generated table inside a code fence, invisible to the render rule
+  that otherwise catches every dropped word — is clean tree-wide (**0** fenced blocks with
+  table rows in any `*.md`) and still ungated: that rule is **`reco-u962`**'s.
+
+Gates green at this commit: `check_docs.py`, `check_docs_site.py` (+ `--self-test`, + the
+Pages render), `check_ticket_claims.py`, `check_docs_commands.py`, `gen_docs.py check`,
+`gen_risk_tables.py check`, `gen_adr_tables.py check`, `check_workspace.py check`,
+`check_ci_gate.py`, `check_workflows.py`, `check_delta_compat.py check` and
+`gen_changelog.py audit`. No `.rs` file is touched, so no workspace build ran here.
+
 ### Three fat ADRs gave up 408 lines, and no path, section number or generated block moved (`reco-msv1.4`, `e12.4`)
 
 `docs/adr/0002-workspace.md`, `docs/adr/0004-storage.md` and `docs/adr/0006-tui.md` were 1 119,

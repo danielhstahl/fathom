@@ -92,7 +92,9 @@ That last rule is what found the defects this build had to fix, all of which ren
   were pasted *inside* the fenced card sample, cutting a line of the card in half at "a guess is a claim
   we are not mak" and leaving the tail "to be silent about being a guess" to resume three tables later.
   Nothing rendered wrong, so nothing failed. Both were repaired by `reco-msv1.3` when the page merged into
-  [rename.md](../concepts/rename.md), which is where the card sample now reads end to end;
+  [rename.md](../concepts/rename.md), which is where the card sample now reads end to end. The *class* is
+  still ungated — no rule above can see inside a fence, and epic 12's close measured zero fenced blocks
+  containing table rows left in the tree, today — so refusing the next one is `reco-u962`'s;
 * two stray fence lines in [cli.md](cli.md) closed on the generated block's own fence, which dropped
   `## The verbs` and `## Global flags` out of the page;
 * five pages ([ADR-006](../adr/0006-tui.md), [timeline](../concepts/timeline.md),
