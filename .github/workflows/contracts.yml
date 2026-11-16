@@ -476,8 +476,9 @@ jobs:
         # report/gate invariants.
         run: python3 tools/author_turn_corpus.py --validate-only
       - name: "spike s2: the segmentation tables in ADR-003 §18 and the concept document are generated"
-        # Every number in `docs/concepts/episode-segmentation.md` and ADR-003 §18 comes out of
-        # `benchmarks/reports/s2-segmentation-accuracy.json`, which is what closed ADR-003 §4.4 and §13.7.
+        # Every number in `docs/concepts/episode-derivation.md`'s *How a boundary is found* and in ADR-003 §18
+        # comes out of `benchmarks/reports/s2-segmentation-accuracy.json`, which is what closed ADR-003 §4.4
+        # and §13.7.
         # A hand-copied table there is a table that keeps its old numbers the day the corpus changes.
         run: python3 tools/gen_segment_tables.py check
       - name: "spike s4: rename and copy detection re-measures to the committed report"
@@ -487,9 +488,9 @@ jobs:
         # and config input, so this re-runs the whole measurement (~40 s) and fails if any count, gate,
         # threshold or chosen fact bar moved. A spike that cannot be re-measured is an anecdote.
         run: PYTHONPATH=src python3 -m recommender.rename.spike --report benchmarks/reports/s4-rename-detection.json --check
-      - name: "spike s4: the rename-detection document's numbers are the report's, generated"
-        # Every number in `docs/concepts/rename-detection.md` — the fact/guess recommendation `e2.4` will
-        # be written from — is rendered from the report by the same generator the doc cites.
+      - name: "spike s4: the rename document's measurement half is the report's, generated"
+        # Every number in `docs/concepts/rename.md`'s *The measurement* — the fact/guess recommendation
+        # `e2.4` was written from — is rendered from the report by the same generator the doc cites.
         run: python3 tools/gen_rename_tables.py check
       - name: "e2.4 rename pairing: the shipped detector re-measures to the committed report"
         # `benchmarks/reports/e2-4-rename-pairing.json` is the acceptance criteria of `reco-a0v` turned
@@ -498,7 +499,9 @@ jobs:
         # the cost curve flat against repository size while the refused O(repo) mode is not. Built from
         # real `git` histories on the runner (~10 min), and a gate that drifted is a claim that changed.
         run: PYTHONPATH=src python3 -m recommender.rename score --check
-      - name: "e2.4 rename pairing: the concept document's numbers are the report's, generated"
+      - name: "e2.4 rename pairing: the rename document's shipped half is the report's, generated"
+        # The other half of `docs/concepts/rename.md`: same rule, different report — nothing in either
+        # page is typed by hand.
         run: python3 tools/gen_rename_pairing_tables.py check
       - name: "e2.4 rename pairing: the card audits itself, and the verbs work on a real repository"
         # The auditor is only worth having if something runs it: this renders a real card from a real

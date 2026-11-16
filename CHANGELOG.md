@@ -16,6 +16,59 @@ fails CI if the version in `Cargo.toml` has no dated section here, because the s
 body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
+### Five concept pages became three, and a line-by-line check says what crossed (`reco-msv1.3`, `e12.3`)
+
+A reviewer asking "what is the delta" was sent to two pages, one explaining the noun and one the contract, and
+a reviewer asking "how are episodes made" or "how are renames handled" was sent to two pages apiece. M2, M3
+and M4 from the merge map are done: [docs/concepts/delta.md](docs/concepts/delta.md) is now the noun and the
+`EpisodeDelta` document in one order of reading; the two episode spikes live together in
+[docs/concepts/episode-derivation.md](docs/concepts/episode-derivation.md); and
+[docs/concepts/rename.md](docs/concepts/rename.md) argues the thing the epic said was one problem — what the
+measurement proved, and what the shipped detector therefore refuses to claim. `delta-model.md`,
+`episode-segmentation.md`, `episode-relink.md`, `rename-detection.md` and `rename-pairing.md` are pointer
+pages now, and 42 inbound links were rewritten rather than redirected.
+
+* **"Nothing was dropped" is a measurement, not a claim.**
+  `.plan/evidence/reco-msv1.3/surviving_claims.py` reads each retired page out of the merge's parent, takes
+  every non-empty line outside a code fence that is not front matter, heading or block marker, and looks for it
+  in the merged page — verbatim first, then after normalising the scaffolding a merge necessarily changes. Of
+  **1 306** content lines, **1 258** crossed verbatim; the **47**-line residue is printed as a list and is
+  five page titles, eight renamed headings, seven lines of merged front matter, twenty lines of duplicated
+  delta prose collapsed to one copy, and seven hand-off sentences re-pointed from a neighbouring file to a
+  section of one page. Every gate, refusal, corpus description and measured cell from `s2`, `s4` and `s6`
+  crossed verbatim; 29 generated blocks went in and 29 came out.
+* **Four disagreements, each resolved against the code and named.** `delta.md` said a gap names the plan key
+  that owns the answer while `delta-model.md` said the complexity gap's `gap.section` stays `what` —
+  `insight/delta.rs`'s two checks are both of those, and the merged page says the general rule then the figure
+  case. `episode.md` quoted the shipped cascade at precision 0.938 / recall 0.747, which are `s2`'s numbers
+  from before `e1.13` and `e1.14`; the blessed report's `D-shipped` row is 0.976 / 0.907 / F1 0.940 / pair
+  0.733, so the live page quotes the report and names the older pair as the spike's first measurement. Where
+  the `s2` page's prose (0.935 pooled) disagrees with its own generated table (0.940), the table is the
+  measurement and the page says so and names the gate — a spike's published prose is not retyped to match a
+  later re-bless.
+* **Two stale table copies deleted out of a code fence.** `rename-pairing.md` carried 18 lines of
+  `rename_pairing_display_budget` and `rename_pairing_cost` pasted *inside* its fenced card sample, with
+  numbers the report no longer prints (361.71 ms, "2.69× shipped, 15.56× widened" against the generated
+  416.14 ms and "2.3× shipped, 18.73× widened"), and the paste had cut the card's own GUESSES line in half
+  mid-word. The copies are gone; the card line is restored from `rename/render.py`, which is also what
+  `test_rename_pairing_contract.py` blesses. `docs/reference/site.md` had recorded this page's pasted-table
+  defect as long fixed — it had been, in prose, where the "the render dropped words" rule can see it; inside a
+  fence a duplicated table is invisible to the only gate that ever caught the class, and that is now written
+  down too.
+* **One generator per document turned out to be an assumption.** Two generators now write `rename.md`, and
+  each refused the other's blocks as "unknown generated block" — so that check is scoped to a generator's
+  block-name family (`rename_spike_`, `rename_pairing_`) instead of switched off: a mistyped name inside the
+  family is still an error, and a block whose owner renders it in no document is still an error.
+  `gen_segment_tables.py` and `gen_relink_tables.py` never noticed sharing ADR-003, which is what told us the
+  rename pair was the odd ones.
+
+`check_docs.py`, `check_docs_site.py` (+ its self-test), `check_ticket_claims.py`, `check_docs_commands.py`,
+both rename generators' `check`, the segment/relink generators' `check`, `gen_docs.py check` (which
+regenerated `cli.md` and `features.md` after `VERB_DOCS["analyze"]` and `FEATURE_DOCS["schema-gen"]` came off
+retired paths) and the `s2`/`s4`/`s6` contract tests (78 + 46) are green. The merge map records the merges as
+done, its counts as re-taken (52 content pages, not the 51 its arithmetic predicted), and what `e12.3` had to
+change about the map.
+
 ### Three risk pages became one, the pointers that replaced them are gated, and the axis table is generated for real (`reco-msv1.2`, `e12.2`)
 
 A reviewer asking "how does risk work" was sent to `risk-score.md`, `risk-scoring.md` and `risk-ranking.md`,

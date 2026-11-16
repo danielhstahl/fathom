@@ -1,14 +1,20 @@
 # The documentation merge map: one page per noun, and what each merge must keep
 
-- **Status**: **accepted** — this is the map [e12.2](#4-the-merges), [e12.3](#4-the-merges) and
-  [e12.4](#4-the-merges) execute rather than re-derive. A merge that contradicts this page is a change to
-  this page, made first and in the same commit.
+- **Status**: **accepted, and four-fifths executed** — [e12.2](#41-m1--risk-three-pages-into-one-e122--done)
+  and [e12.3](#42-m2--the-delta-the-noun-and-the-artefact-become-one-page-e123--done) are done: **M1, M2, M3
+  and M4** have landed, their pointer pages are in the tree and their links are rewritten. M5 (the ADR
+  slimming) is the merge left. A merge that contradicts this page is a change to this page, made first and in
+  the same commit, and every contradiction this one met is recorded in the merge's own section.
 - **Ticket / plan key**: `reco-msv1.1` (`e12.1`), under `reco-msv1` (`e12`) — *half the documentation,
   none of the truth lost*.
 - **Census taken at**: `master` @ `064856d`. **57** pages under `docs/concepts/` (18 352 lines, 1.34 MB),
   **7** ADRs plus their README under `docs/adr/` (9 760 lines, 0.78 MB), **89** `.md` files under `docs/`
   altogether, and **183 generated blocks in 19 of them** — every one of which is merged by editing its
   generator, never its output ([§5](#5-who-generates-what)).
+- **Census re-taken after M1–M4**: **52** pages with claims under `docs/concepts/` (was 57; 8 retired, 3
+  written), plus **8 pointer pages** — 60 files in the directory, and a pointer is a page a reader may still
+  arrive at, not a page with claims in it. `docs/concepts/episode-derivation.md` (843 lines, 13 generated
+  blocks) and `docs/concepts/rename.md` (777 lines, 16 blocks) are the two new ones.
 - **Read this if**: you are about to merge, rename, split or delete a documentation page. Read §1 before
   you touch a file, §4 for the family you are in, §6 for what has to keep resolving.
 
@@ -99,16 +105,16 @@ link/plan-key rules, which is not repeated per row.
 | complexity-ceilings.md | the three index-time ceilings | itself | test `test_complexity_fill_contract.py`; pin `complexity.yml` |
 | config.md | `fathom.toml`, its five layers, the key reference | itself | gen `recommender.config doc`; test `test_config_contract.py` + four more |
 | cycle-detection.md | cycles, cycle debt, the allowance | itself (M8, proposed) | pin `VERB_DOCS["ratchet"]`, `cycles/debt.rs`, `tests/layers.rs` |
-| delta-model.md | the versioned `EpisodeDelta` document | **delta.md** (M2) | pin `VERB_DOCS["analyze"]` |
-| delta.md | the delta: a claim with citations | itself, absorbs delta-model.md | test `test_docs_html_contract.py`; pin `VERB_DOCS["analyze"]`, `VERB_DOCS["cmp"]` |
+| delta-model.md | the versioned `EpisodeDelta` document | **delta.md** — done (`e12.3`) | was: pin `VERB_DOCS["analyze"]` and `FEATURE_DOCS["schema-gen"]`, both moved, and `gen_docs.py check` regenerated `cli.md` and `features.md` |
+| delta.md | the delta: a claim with citations | itself, absorbs delta-model.md — done (`e12.3`) | test `test_docs_html_contract.py`; pin `VERB_DOCS["analyze"]` (now one page, not two), `VERB_DOCS["cmp"]` |
 | dependency-delta.md | what an episode did to the resolved graph | **dependencies.md** (M6, unscheduled) | — |
 | dependency-risk.md | who asked for a dependency, and whether to worry | **dependencies.md** (M6, unscheduled) | test `test_deprisk_contract.py` |
 | dependency-surface.md | what a revision declares and resolved | **dependencies.md** (M6, unscheduled) | pin `VERB_DOCS["stats"]` neighbour set |
 | diff-viewer.md | the diff viewer | itself | pin `VERB_DOCS["open"]`, `VERB_DOCS["difftool"]`, five `fathom-tui/src/diff/*` files |
 | episode-narrative.md | the episode narrative (template, audited) | itself | pin `VERB_DOCS["narrative"]`, `workspace_model.py` |
-| episode-relink.md | does a decision survive a rewrite (spike `s6`) | **episode-derivation.md** (M3) | gen `gen_relink_tables`; test `test_relink_spike_contract.py`; pin `s6_spike.rs` |
-| episode-segmentation.md | how boundaries are found (spike `s2`) | **episode-derivation.md** (M3) | gen `gen_segment_tables`; test `test_segmentation_spike_contract.py`; pin `contracts.yml`, `s2_spike.rs` |
-| episode.md | the episode | itself | pin `VERB_DOCS["show"]`, `VERB_DOCS["attribution"]`, `ambient.rs` ×2 |
+| episode-relink.md | does a decision survive a rewrite (spike `s6`) | **episode-derivation.md** — done (`e12.3`) | was: gen `gen_relink_tables`; test `test_relink_spike_contract.py`; pin `s6_spike.rs` — all three moved in the merge |
+| episode-segmentation.md | how boundaries are found (spike `s2`) | **episode-derivation.md** — done (`e12.3`) | was: gen `gen_segment_tables`; test `test_segmentation_spike_contract.py`; pin `contracts.yml`, `s2_spike.rs`, `spike/s2/thresholds.json` and both corpus READMEs — all moved in the merge |
+| episode.md | the episode | itself — and it quoted a superseded cascade measurement, corrected against the report (`e12.3`, §4.3) | pin `VERB_DOCS["show"]`, `VERB_DOCS["attribution"]`, `ambient.rs` ×2 |
 | export-artefact.md | the review artefact | itself | pin `VERB_DOCS["export"]` |
 | extensibility.md | third-party detectors, disabling, the event bus | itself | test `test_extensibility_contract.py`; pin `VERB_DOCS["events"]` |
 | false-positive-calibration.md | Guardrail 3, the miss rate, the three-repository corpus | itself | test `test_g3_calibration_contract.py` (**needle** assertions, §4 M1); pin `nightly.yml`, `risk/weights.rs`, `config/schema.py` |
@@ -131,8 +137,8 @@ link/plan-key rules, which is not repeated per row.
 | privacy.md | the two gates: compile-time absence, then consent | itself | test `test_privacy_contract.py`; pin `check_privacy.py`, `gen_sbom.py` |
 | ratchet.md | the ratchet and its committed baseline | itself | pin `fathom-check.yml`, `VERB_DOCS["ratchet"]`, `cycles/debt.rs` |
 | release.md | release and distribution | itself | gen `check_release.py write`; test `test_release_contract.py` + three more; pin nine tools, five workflows |
-| rename-detection.md | which pairing method is a fact (spike `s4`) | **rename.md** (M4) | gen `gen_rename_tables`; test `test_rename_spike_contract.py`; pin `contracts.yml` |
-| rename-pairing.md | what the shipped card asserts about a pairing | **rename.md** (M4) | gen `gen_rename_pairing_tables`; test `test_rename_pairing_contract.py`; pin `rename/eval.py` |
+| rename-detection.md | which pairing method is a fact (spike `s4`) | **rename.md** — done (`e12.3`) | was: gen `gen_rename_tables`; test `test_rename_spike_contract.py`; pin `contracts.yml` |
+| rename-pairing.md | what the shipped card asserts about a pairing | **rename.md** — done (`e12.3`) | was: gen `gen_rename_pairing_tables`; test `test_rename_pairing_contract.py`; pin `rename/eval.py`. It also carried two stale copies of its own generated tables inside a code fence; the merge deleted them (§4.4) |
 | review-ledger.md | the review ledger: sign-offs | itself, absorbs review-memory.md (M7, unscheduled) | test `test_queue_era_fixture_contract.py`, `test_release_contract.py`; pin `VERB_DOCS["review"]`, `store/ledger.rs` |
 | review-memory.md | the review memory: notes, questions | **review-ledger.md** (M7, unscheduled) | pin `VERB_DOCS["note"]`, `VERB_DOCS["context"]` |
 | risk-ranking.md | the `spine-3` ranking, and the retired `queue-1` record | **risk.md** — done (`e12.2`) | was: `check_docs.py` `RETIRED_TOKENS` (seven tokens, now held by `risk.md`), `risk.rs`, `risk_score.rs` |
@@ -174,9 +180,9 @@ Scheduled by epic 12 — these five merges are the deliverable:
 | Merge | Retires | Target | Net pages |
 |---|---|---|---|
 | **M1** risk | `risk-score.md`, `risk-scoring.md`, `risk-ranking.md` | **`concepts/risk.md`** (new) | 3 → 1 — **done** (`e12.2`) |
-| **M2** delta | `delta-model.md` | `concepts/delta.md` | 2 → 1 |
-| **M3** episode | `episode-segmentation.md`, `episode-relink.md` | `concepts/episode.md` + **`concepts/episode-derivation.md`** (new) | 3 → 2 |
-| **M4** renames | `rename-detection.md`, `rename-pairing.md` | **`concepts/rename.md`** (new) | 2 → 1 |
+| **M2** delta | `delta-model.md` | `concepts/delta.md` | 2 → 1 — **done** (`e12.3`) |
+| **M3** episode | `episode-segmentation.md`, `episode-relink.md` | `concepts/episode.md` + **`concepts/episode-derivation.md`** (new) | 3 → 2 — **done** (`e12.3`) |
+| **M4** renames | `rename-detection.md`, `rename-pairing.md` | **`concepts/rename.md`** (new) | 2 → 1 — **done** (`e12.3`) |
 | **M5** ADR slimming | none — paths are fixed | `adr/0002`, `adr/0004`, `adr/0006` slimmed in place | 0 |
 
 Recorded here and **not scheduled** — no bead owns them, and that is the point: they are decided so that
@@ -191,8 +197,11 @@ page before starting any of them.
 
 Pages that must **not** be merged, with the reason recorded so the question is not re-litigated (§4.9).
 
-After epic 12's five scheduled merges: **51** pages under `docs/concepts/` (57 − 8 retired + 2 new);
-with M6 and M7 taken, **48**. The ADR count does not move.
+After M1–M4, as measured: **52** content pages under `docs/concepts/` (57 − 8 retired + 3 new — the map's
+first arithmetic said 51 and counted two new pages where three landed, because `risk.md`,
+`episode-derivation.md` and `rename.md` are all new paths). With M6 and M7 taken: **49**. After M5 the count
+does not move, because an ADR is slimmed where it stands. The census and this line are re-taken
+measurements, and the map's own rule is that a measurement which disagrees with the map changes the map.
 
 ---
 
@@ -386,7 +395,7 @@ links (`#2-the-twelve-features`, and `#who-wrote-it-the-axis-that-used-to-be-cal
 entries in `docs/index.md`; add the `[Unreleased]` entry; run §7's commands.
 
 ---
-### 4.2 M2 — the delta: the noun and the artefact become one page (`e12.3`)
+### 4.2 M2 — the delta: the noun and the artefact become one page (`e12.3`) — **done**
 
 | | |
 |---|---|
@@ -436,7 +445,18 @@ not averaging: `delta.md` says the gap's owner is "the plan key that owns the an
 pairing. Take the precise one, and name the resolution in the commit message as e12.3's own acceptance
 criterion demands.
 
-### 4.3 M3 — the episode: the noun, and how it is derived (`e12.3`)
+**How `e12.3` did it.** The precise form won, and the code is what made it unambiguous:
+`insight/delta.rs:2940` refuses any section gap whose `gap.section != section.id`, `delta.rs:3103` refuses a
+complexity gap filed anywhere but `SectionId::What`, and `looks_like_plan_key(gap.owner)` is the machine
+meaning of "name the plan key that owns the answer". So the merged page states the general rule, then the
+figure case as the same rule seen from the section that carries it. The seven-sections-and-gap-rules text and
+`EpisodeDelta::verify` exist once. 109 of `delta-model.md`'s content lines went in, 71 verbatim; the residue
+is its front matter, its six heading lines and the two paragraphs that duplicated `delta.md`'s fuller copies —
+all of it in `.plan/evidence/reco-msv1.3/surviving-claims.md`. `VERB_DOCS["analyze"]` now names one page, and
+`FEATURE_DOCS["schema-gen"]` moved too, which is why `reference/cli.md` and `reference/features.md` were
+regenerated rather than hand-patched.
+
+### 4.3 M3 — the episode: the noun, and how it is derived (`e12.3`) — **done**
 
 | | |
 |---|---|
@@ -491,7 +511,30 @@ hallucinations/coverage/volume, the blind panel's 3 rubric passes × 20 episodes
 determinism per episode, the threats-to-validity section stated before they were discovered) are the receipts
 §6 points at. Fold a pointer, never a summary.
 
-### 4.4 M4 — renames: one problem, one page (`e12.3`)
+**How `e12.3` did it.** `episode-derivation.md` is the two spikes under two `##` part headings — *How a
+boundary is found* and *How a rewrite re-attaches a decision* — with each spike's sections demoted one level
+and their **numbering kept**, because ADR-003 §18/§19 and the spikes' own prose cite `§5`, `§6.3` and `§13.1`
+by number and renumbering would have broken a citation in three documents to tidy one. The page says that
+out loud in its front matter rather than leaving a reader to guess which `§7` is meant. 310 + 338 content
+lines went in, 309 + 337 of them verbatim: the entire residue is the two page titles. Every generated block
+moved by editing the generator's `CONCEPT` and its docstring, and both `check`s are green; ADR-003 §18/§19
+were not touched, as required.
+
+Two things the merge surfaced and resolved rather than averaged. `episode.md` quoted the shipped cascade at
+precision 0.938 and recall 0.747 — the numbers `s2` published *before* `e1.13`/`e1.14` landed the subject-claim
+rung and the session-qualified turn id — while the blessed report's `D-shipped` row is 0.976 / 0.907 / F1
+0.940 / pair 0.733. The live page now quotes the report and names the older figures as the spike's first
+measurement. And inside the `s2` half, prose says the recommendation scores 0.935 pooled where the generated
+table says 0.940: the report was re-blessed after the sentence was written (`reco-dot`), the generated blocks
+moved with it and the prose is a dated record, so the page names the gate that owns the figure
+(`shipped-pooled-boundary-f1`) and leaves the sentence alone. Correcting a spike's published prose to match a
+later re-bless is the one edit this family must not make.
+
+The map's redirect row for `episode.md`'s two fragment links held: `#provisional-episodes-…` and
+`#author-kind-is-a-label-you-can-overrule` cross verbatim, so `ambient-mode.md` and `reference/cli.md` needed
+no anchor work at all.
+
+### 4.4 M4 — renames: one problem, one page (`e12.3`) — **done**
 
 | | |
 |---|---|
@@ -537,6 +580,38 @@ until the report is re-run.
 became what" by delegating to `rename-pairing.md`. After the merge it delegates to `rename.md`, and the
 division of labour — **the rename page owns which file became which; `folder-structure.md` owns the shape the
 move made to the tree** — is stated once, in `folder-structure.md`, where the delegation already lives.
+
+**How `e12.3` did it.** The hand-off became the page's spine: the measurement comes first, and the two
+sentences that used to link across a directory now link from one section to the other
+(`the-shipped-detector-…` and `the-measurement-…`), which is the merge's whole argument made structural.
+313 + 236 content lines went in, 308 + 233 verbatim; the residue is the two page titles, two renamed
+*Reproducing it* headings (one page cannot carry the same anchor twice — they are *Reproducing the
+measurement* and *Reproducing the shipped detector* now) and the four hand-off lines themselves.
+
+Two repairs the merge had to make on the way in, both resolved against the code and named in the commit:
+
+* **`rename-pairing.md` was carrying two stale copies of its own generated tables — inside a code fence.**
+  18 lines of `rename_pairing_display_budget` and `rename_pairing_cost` had been pasted into the middle of
+  the fenced card sample, complete with numbers the report no longer prints: 361.71 ms and "2.69× shipped,
+  15.56× widened" against the generated block's 416.14 ms and "2.3× shipped, 18.73× widened", which are
+  what `benchmarks/reports/e2-4-rename-pairing.json` holds and what gates `A4a`/`A4b`/`A4c` observe. The
+  generated copies stayed; the fence copies went. `docs/reference/site.md` had recorded this page's
+  pasted-table defect as fixed years ago — and it had been, for the copies that sat in prose, where the
+  "the render dropped words" rule can see them. Inside a fence the renderer copies text verbatim, so a
+  duplicated table is invisible to the only gate that ever caught this class. The site page now says both
+  halves.
+* **the card sample was cut in half by those copies** — `a guess is a claim we are not mak`, three tables,
+  then the orphan `to be silent about being a guess.` Restored from what prints it,
+  `src/recommender/rename/render.py`'s GUESSES header, which is also the text
+  `tests/test_rename_pairing_contract.py`'s `GOLDEN_DEMO` blesses.
+
+And the merge changed a generator contract, which is §5's business: `gen_rename_tables.py` and
+`gen_rename_pairing_tables.py` each refused *any* generated block in their document that they did not own.
+That was right while one generator owned one page and is fatal when they share one, so each check is now
+scoped to the generator's block-name family (`rename_spike_`, `rename_pairing_`) — a mistyped name inside
+the family is still an error, and a block a generator owns that no document renders is still an error.
+`gen_segment_tables.py` and `gen_relink_tables.py` already tolerated foreign markers, which is unsurprising:
+the two spike generators have shared ADR-003 as a document since `s6` landed.
 
 ---
 ### 4.5 M5 — slim the ADRs to decisions, in place (`e12.4`)
@@ -666,10 +741,10 @@ being asked.
 | `adr/0002-workspace.md` | `diagram toolchain crates rules features exit-codes ci teams tickets` | `tools/check_workspace.py` rendering `tools/workspace_model.py` | `python3 tools/check_workspace.py check` | `contracts.yml`, `ci.yml` |
 | `adr/0004-storage.md` | `layout matrix durability budgets ddl` | `tools/gen_adr_tables.py` from `src/recommender/store/` + `benchmarks/budgets.json` | `python3 tools/gen_adr_tables.py check` | `contracts.yml`, `perf.yml` |
 | `adr/0004-storage.md` + `concepts/graph-storage.md` | `graph_spike_*` | `tools/gen_graph_tables.py` from `benchmarks/reports/s3-graph-snapshots.json` | `python3 tools/gen_graph_tables.py check` | `tests/test_graph_spike_contract.py` |
-| `adr/0003-episodes.md` + `concepts/episode-segmentation.md` | `s2_*` | `tools/gen_segment_tables.py` from the `s2` report | `python3 tools/gen_segment_tables.py check` | `contracts.yml`, `test_segmentation_spike_contract.py` |
-| `adr/0003-episodes.md` + `concepts/episode-relink.md` | `s6_*` | `tools/gen_relink_tables.py` from the `s6` report | `python3 tools/gen_relink_tables.py check` | `test_relink_spike_contract.py`, `nightly.yml` (re-measures the spike) |
-| `concepts/rename-detection.md` | 11 `rename_spike_*` | `tools/gen_rename_tables.py` from `benchmarks/reports/s4-rename-detection.json` | `python3 tools/gen_rename_tables.py check` | `contracts.yml` |
-| `concepts/rename-pairing.md` | 5 `rename_pairing_*` | `tools/gen_rename_pairing_tables.py` from `benchmarks/reports/e2-4-rename-pairing.json` | `python3 tools/gen_rename_pairing_tables.py check` | `contracts.yml` |
+| `adr/0003-episodes.md` + `concepts/episode-derivation.md` | `s2_*` | `tools/gen_segment_tables.py` from the `s2` report | `python3 tools/gen_segment_tables.py check` | `contracts.yml`, `test_segmentation_spike_contract.py` |
+| `adr/0003-episodes.md` + `concepts/episode-derivation.md` | `s6_*` | `tools/gen_relink_tables.py` from the `s6` report | `python3 tools/gen_relink_tables.py check` | `test_relink_spike_contract.py`, `nightly.yml` (re-measures the spike) |
+| `concepts/rename.md` | 11 `rename_spike_*` | `tools/gen_rename_tables.py` from `benchmarks/reports/s4-rename-detection.json` | `python3 tools/gen_rename_tables.py check` | `contracts.yml` |
+| `concepts/rename.md` | 5 `rename_pairing_*` | `tools/gen_rename_pairing_tables.py` from `benchmarks/reports/e2-4-rename-pairing.json` | `python3 tools/gen_rename_pairing_tables.py check` | `contracts.yml` |
 | `concepts/risk.md` | `features_axes` | `tools/gen_risk_tables.py` from `risk::feature::SPECS` in `crates/fathom-analyze/src/risk/feature.rs` | `python3 tools/gen_risk_tables.py check` | `contracts.yml` |
 | `concepts/structure-extraction.md` | 7 `s1_*` | `tools/gen_structure_tables.py` from `benchmarks/reports/s1-tree-sitter-accuracy.json` | `python3 tools/gen_structure_tables.py check` | `contracts.yml`, three structure tests |
 | `concepts/config.md` | `precedence budgets sections keys aliases` | `src/recommender/config/explain.py` (the key spec) | `PYTHONPATH=src python3 -m recommender.config doc --check` | `contracts.yml` |
@@ -680,9 +755,13 @@ being asked.
 
 Three consequences for the merges:
 
-* **M3 and M4 move generated pages.** `gen_segment_tables.py`, `gen_relink_tables.py`, `gen_rename_tables.py`
-  and `gen_rename_pairing_tables.py` each name a document path in their own source, and each refuses a block
-  that no document renders. Editing them is the merge; running their `check` is the proof.
+* **M3 and M4 moved generated pages, and one of them learned something.** `gen_segment_tables.py`,
+  `gen_relink_tables.py`, `gen_rename_tables.py` and `gen_rename_pairing_tables.py` each name a document path
+  in their own source, and each refuses a block that no document renders. Editing them is the merge; running
+  their `check` is the proof. Two of them now share a document with another generator: the `s2`/`s6` pair
+  substitutes only its own markers and never noticed, while the rename pair each refused the other's blocks as
+  "unknown generated block" and had to be scoped to its block-name family (§4.4). One generator per document
+  was an assumption, not a rule; the drift rule itself is unchanged in both.
 * **M1 moved a `VERB_DOCS` entry *and* added a generated block.** `tools/gen_docs.py` maps every shipped verb to the
   pages that explain it, and a shipped verb whose page is gone is a documentation failure the generator
   reports. `why → risk.md`, `analyze → delta.md` (twice), and for M6 `stats`/`mcp` neighbours; the same table
@@ -721,12 +800,17 @@ must be rewritten to the target; the pointer page is linked only from `docs/inde
 | `docs/concepts/risk-score.md` | `concepts/risk.md` | 18 ✓ | — |
 | `docs/concepts/risk-scoring.md` | `concepts/risk.md` | 20 ✓ | ✓ — the `authorship` heading text crossed verbatim, so the four links citing `#who-wrote-it-the-axis-that-used-to-be-called-authorship` needed only their path rewritten; `#2-the-twelve-features` was internal to the merge |
 | `docs/concepts/risk-ranking.md` | `concepts/risk.md` | 20 ✓ | — |
-| `docs/concepts/delta-model.md` | `concepts/delta.md` | 16 | — |
-| `docs/concepts/episode-segmentation.md` | `concepts/episode-derivation.md` | 10 | — |
-| `docs/concepts/episode-relink.md` | `concepts/episode-derivation.md` | 2 | — |
-| `docs/concepts/rename-detection.md` | `concepts/rename.md` | 4 | — |
-| `docs/concepts/rename-pairing.md` | `concepts/rename.md` | 10 | — |
-| **total, scheduled** | | **100** | 5 |
+| `docs/concepts/delta-model.md` | `concepts/delta.md` | 16 ✓ | — |
+| `docs/concepts/episode-segmentation.md` | `concepts/episode-derivation.md` | 10 ✓ | — |
+| `docs/concepts/episode-relink.md` | `concepts/episode-derivation.md` | 2 ✓ | — |
+| `docs/concepts/rename-detection.md` | `concepts/rename.md` | 4 ✓ | — |
+| `docs/concepts/rename-pairing.md` | `concepts/rename.md` | 10 ✓ | — |
+| **total, scheduled** | | **100** ✓ | 5 |
+
+All eight rows are done as of `e12.3`: M1's 58 in `e12.2`, M2–M4's 42 in `e12.3`, counted the same way
+(markdown links whose target resolves to the retired path, inside `README.md` + `docs/**`, excluding the
+retired page's own links and this map's prose). The counts the map predicted are the counts the merge found —
+16, 10, 2, 4, 10 — which is the only sense in which a pre-merge census can be checked.
 
 **Recorded for M6/M7 (not scheduled):** `dependency-surface.md` (5), `dependency-delta.md` (7),
 `dependency-risk.md` (7) → `concepts/dependencies.md`; `review-memory.md` (5) → `concepts/review-ledger.md`.
@@ -781,12 +865,14 @@ more people attempt it.
 2. **M1 — risk** (`e12.2`) — **done**: `risk.md`, three pointer pages, 58 links rewritten, `VERB_DOCS` and
    `RETIRED_TOKENS` moved, three code comments repointed, the generated-vs-prose axis table resolved. One
    commit per merge, gates green, `[Unreleased]` entry naming the bead.
-3. **M2 — delta** (`e12.3`): `delta-model.md` into `delta.md`; 16 links.
-4. **M3 — episode** (`e12.3`): write `episode-derivation.md`, move the two spike families into it, edit the
-   two generators' document lists, rerun both `check`s and both spike `--check`s, 12 links rewritten, two
-   pointer pages. Do **not** touch ADR-003 §18/§19 — they render the same blocks and stay put.
-5. **M4 — renames** (`e12.3`): `rename.md`, two generators edited, four rename steps in `contracts.yml`
-   re-run, 14 links, two pointer pages.
+3. **M2 — delta** (`e12.3`) — **done**: `delta.md` holds the noun and the contract; 16 links rewritten,
+   `VERB_DOCS["analyze"]` and `FEATURE_DOCS["schema-gen"]` moved and their pages regenerated, one pointer page.
+4. **M3 — episode** (`e12.3`) — **done**: `episode-derivation.md` written, both spike families moved in whole,
+   both generators' document lists edited, both `check`s green, ADR-003 §18/§19 untouched as instructed, 12
+   links rewritten (10 + 2), two pointer pages.
+5. **M4 — renames** (`e12.3`) — **done**: `rename.md`, two generators edited and their ownership check scoped,
+   the four rename steps in `contracts.yml` re-pointed, 14 links (4 + 10) rewritten, two pointer pages, and
+   18 lines of stale table copies deleted out of a code fence.
 6. **M5 — ADR slimming** (`e12.4`): one ADR per commit, generated blocks untouched, pointers written only
    after the target page verifiably carries the claim, line counts recorded, `adr/README.md` updated.
 7. Then close epic 12 against its acceptance criteria, and open separate beads for M6/M7 if anyone wants

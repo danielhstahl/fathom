@@ -17,7 +17,7 @@
   aggregate it, or name it differently: this document is the only place any of those are decided.
 - **Evidence**: [what six tree-sitter grammars can actually tell `e3.1`](../concepts/structure-extraction.md)
   (spike `s1`'s verdict table, its recorded blind spots, and the normalisation rules `e3.1` shipped),
-  [rename and copy pairing](../concepts/rename-pairing.md) (`e2.4`'s fact/guess tiers, the measured
+  [rename and copy pairing](../concepts/rename.md#the-shipped-detector-what-the-card-asserts-and-what-it-only-guesses--e24) (`e2.4`'s fact/guess tiers, the measured
   0.75 bar, and the rule that a grouping is never a fact),
   [ADR-003](0003-episodes.md) **X3** (an episode's diff is `parent(first_oid) … last_oid` following the
   first parent), [ADR-004](0004-storage.md) §5.2–§5.5 (the cache key and what each field is allowed to
@@ -1242,7 +1242,7 @@ refuses a second parse of any file.
 
 ### 11.3 `e2.4`'s pairing tiers, quoted as the evidence for §6.3
 
-From [rename-pairing.md](../concepts/rename-pairing.md), measured over 37 review windows and 67
+From [rename.md](../concepts/rename.md#the-shipped-detector-what-the-card-asserts-and-what-it-only-guesses--e24), measured over 37 review windows and 67
 hand-authored pairings: the fact tier (git's own rewriter at ≥ **0.75**) emitted 40 pairings with
 **0 untrue** (precision 1.0000, recall 0.6452 of claimable); the guess tier emitted 21 with 1 untrue; no
 grouping — split, fold, copy — ever reaches the fact tier (gate `X1`), and path similarity is display-only

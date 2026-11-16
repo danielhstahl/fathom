@@ -43,7 +43,7 @@
   must print the same feature vector `fathom why` prints"* — and ADR-001 §7.9's rule that a number a
   reviewer cannot check is a recommendation rather than a fact. Its inputs are the spine's:
   [paths](paths.md) (`e0.9`), [noise](noise-suppression.md) (`e2.2`),
-  [episodes](episode-segmentation.md) (`e1.3`) and
+  [episodes](episode-derivation.md) (`e1.3`) and
   [the test surface](test-surface.md) (`e2.9`). It is *not* `e4.4`'s feature vector and does not
   claim to be.
 - **Executes as, the spine half**: `fathom-analyze::risk` (

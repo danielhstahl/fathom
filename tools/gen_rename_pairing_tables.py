@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Render `e2.4`'s measured pairing tables from the committed report, and fail on drift.
 
-`docs/concepts/rename-pairing.md` carries the numbers that answer `reco-a0v`'s four acceptance
+`docs/concepts/rename.md`'s shipped half carries the numbers that answer `reco-a0v`'s four acceptance
 criteria — how often a shipped pairing is untrue, whether splits and folds are represented, what a
 reviewer's accept or reject does, and what the cost bound actually costs. Every number in it comes
 from one run of the shipped engine, committed as
@@ -25,9 +25,18 @@ import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 REPORT = ROOT / "benchmarks" / "reports" / "e2-4-rename-pairing.json"
-CONCEPT = ROOT / "docs" / "concepts" / "rename-pairing.md"
+CONCEPT = ROOT / "docs" / "concepts" / "rename.md"
 
 MARK = re.compile(r"<!-- BEGIN GENERATED: (\w+) -->\n(.*?)<!-- END GENERATED: \1 -->", re.S)
+
+#: The block-name family this generator owns. `docs/concepts/rename.md` carries two families since
+#: `reco-msv1.3` (`e12.3`) merged the shipped detector's page and the spike's page into one document:
+#: this tool writes `rename_pairing_*`, and `tools/gen_rename_tables.py` writes `rename_spike_*`. A
+#: block outside this family is another generator's work, and refusing it would be two tools each going
+#: red on the other's half of the page. A name *inside* the family with no renderer is still an error, so
+#: a mistyped block name cannot hide in the skip, and a block this tool owns that no document renders is
+#: still an error too -- nothing about the drift rule is loosened, only the ownership check is scoped.
+FAMILY = "rename_pairing_"
 
 #: The four representation classes the ticket names, in the order the document discusses them.
 KINDS = ("rename", "split", "merge", "copy")
@@ -200,6 +209,8 @@ def render(document: pathlib.Path, report: dict, *, write: bool) -> list[str]:
             name = match.group(1)
             renderer = BLOCKS.get(name)
             if renderer is None:
+                if not name.startswith(FAMILY):
+                    continue  # another generator's block in the shared document
                 problems.append(f"{document.name}: unknown generated block {name!r}")
                 continue
             body = renderer(report).strip()

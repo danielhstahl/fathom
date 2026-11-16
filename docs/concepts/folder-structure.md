@@ -7,7 +7,8 @@
   pairing); ADR-002 §4.5 (the analysis half reads no filesystem, clock or environment);
   ADR-004 §5.5 (an answer is cached behind a digest over every key it read);
   [change-classification.md](change-classification.md), which owns the class of a path, and
-  [rename-pairing.md](rename-pairing.md), which owns the answer "this file became that file".
+  [rename.md](rename.md), which owns the answer "this file became that file": the rename page owns
+  which file became which, this page owns the shape the move made to the tree.
 - **Executes as**: `src/recommender/structure/` (`model.py`, `policy.py`, `tree.py`,
   `moves.py`, `churn.py`, `delta.py`, `render.py`, `explain.py`, `corpus.py`, `eval.py`,
   `cli.py`), `tests/test_structure_delta_contract.py`, and `python3 -m recommender.structure …`.

@@ -6,7 +6,7 @@
 //! decide, and §13.7 defers every constant in §4.4 to it. This is the measurement: a hand-annotated turn
 //! corpus (`crates/fathom-fixtures/corpus/turns/`), a strategy interpreter that runs subsets and
 //! reorderings of the cascade, and a report. The written answer is
-//! `docs/concepts/episode-segmentation.md`, and the decision lands in ADR-003.
+//! `docs/concepts/episode-derivation.md`, and the decision lands in ADR-003.
 //!
 //! ```text
 //! cargo run -p fathom-analyze --example s2_spike -- \

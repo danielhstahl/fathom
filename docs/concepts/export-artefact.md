@@ -2,7 +2,7 @@
 
 - **Status**: Accepted, and implemented
 - **Ticket / plan key**: `reco-1tn` (`e5.7`)
-- **Depends on**: [the delta model](delta-model.md) (`e2.11`) for every figure,
+- **Depends on**: [the delta](delta.md) (`e2.11`) for every figure,
   [the episode narrative](episode-narrative.md) (`e4.7`) for the prose,
   the review ledger of `e4.6` (crates/fathom-analyze/src/ledger/) for the sign-offs,
   [the dependency delta](dependency-delta.md) (`e2.6`) and

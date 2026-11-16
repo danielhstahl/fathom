@@ -349,7 +349,7 @@ FEATURE_DOCS = {
                 "an outbound model call. **Not shipped** — `e4.3a` measured it and it lost."),
     "net-http-transport": (["docs/adr/0005-harness-contract.md"],
                            "MCP over HTTP instead of stdio, gated the same way."),
-    "schema-gen": (["docs/concepts/delta-model.md", "docs/reference/cli.md"],
+    "schema-gen": (["docs/concepts/delta.md", "docs/reference/cli.md"],
                    "`--schema --write`, which is how the checked-in schemas are made."),
 }
 
@@ -445,7 +445,7 @@ VERB_DOCS = {
                     "who wrote it, and how to overrule that"),
     "review": (["docs/concepts/review-ledger.md", "docs/concepts/cli.md"],
                "the sign-offs, and whether they still match"),
-    "analyze": (["docs/concepts/delta.md", "docs/concepts/delta-model.md"],
+    "analyze": (["docs/concepts/delta.md"],
                 "the delta document, human or JSON"),
     "narrative": (["docs/concepts/episode-narrative.md", "docs/concepts/episode.md"],
                   "the prose, with a citation per claim"),

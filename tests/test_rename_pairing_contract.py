@@ -1,7 +1,7 @@
 """`reco-a0v`'s acceptance criteria, as tests (`e2.4`: rename and copy pairing with confidence).
 
 This file is the executable form of
-[docs/concepts/rename-pairing.md](../docs/concepts/rename-pairing.md). The ticket's four criteria map
+[docs/concepts/rename.md](../docs/concepts/rename.md)'s shipped half. The ticket's four criteria map
 to the sections below in order:
 
 1. **the accuracy bar** (AC 1, restated from spike `s4`, which measured that a pooled 90 % precision

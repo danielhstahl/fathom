@@ -85,9 +85,14 @@ That last rule is what found the defects this build had to fix, all of which ren
 * the `non_code.env.secret_name_pattern` row in [config.md](../concepts/config.md) and in
   [noncode-surfaces.md](../concepts/noncode-surfaces.md) held a regular expression with unescaped `|`
   inside a code span, which cut the row out of the table and, in `config.md`, cut the header row too;
-* [rename-pairing.md](../concepts/rename-pairing.md) had two tables pasted into the middle of other
+* [rename-pairing.md](../concepts/rename.md) had two tables pasted into the middle of other
   sentences — one of them a stale duplicate of a generated gate table — leaving a sentence that began
-  "three rows would | class | claimable pairs |" and a verb row that read "every recorded decis| gate |";
+  "three rows would | class | claimable pairs |" and a verb row that read "every recorded decis| gate |".
+  A second copy of the same injury hid where the render rule could not see it: two more generated tables
+  were pasted *inside* the fenced card sample, cutting a line of the card in half at "a guess is a claim
+  we are not mak" and leaving the tail "to be silent about being a guess" to resume three tables later.
+  Nothing rendered wrong, so nothing failed. Both were repaired by `reco-msv1.3` when the page merged into
+  [rename.md](../concepts/rename.md), which is where the card sample now reads end to end;
 * two stray fence lines in [cli.md](cli.md) closed on the generated block's own fence, which dropped
   `## The verbs` and `## Global flags` out of the page;
 * five pages ([ADR-006](../adr/0006-tui.md), [timeline](../concepts/timeline.md),

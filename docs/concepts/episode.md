@@ -4,7 +4,7 @@
   shipped in `e1.3` (**reco-982**).
 - **Decided by**: [ADR-003](../adr/0003-episodes.md) (identity, extent, the boundary cascade, re-link
   tiers), with the measured accuracy of the boundaries in
-  [episode segmentation](episode-segmentation.md).
+  [episode derivation](episode-derivation.md#how-a-boundary-is-found--spike-s2).
 - **In code**: `crates/fathom-ingest/src/segment.rs`, `crates/fathom-core` (identity), and the glossary
   entry in [the thesis](thesis.md) that every later ticket cites.
 - **Read this if**: you have just run the [quickstart](../quickstart.md) and want the noun the whole tool
@@ -61,9 +61,13 @@ claim, a trailer. `episode.time_gap_minutes` (default 30) is the clock rung, and
 first: the clock is the rung that gets it wrong most often.
 
 The measured result — and the reason the config is what it is — is in
-[episode segmentation](episode-segmentation.md): the shipped cascade is precise (0.938) and short of
-recall (0.747) on 204 hand-annotated turns, and splitting every commit into its own episode scores better
-on naive F1 while **hiding 23 of 74 pathologies**. A boundary that is too coarse merges two intentions; one
+[episode derivation](episode-derivation.md#how-a-boundary-is-found--spike-s2). Read it off the generated
+tables, which are re-measured against the nine-rung cascade: the shipped cascade is precise (**0.976**) and
+its boundary recall is **0.907** on 204 hand-annotated turns — the report printed those figures only after
+the subject-claim rung landed, where the spike as published had measured 0.938 and 0.747 — while the measure
+`e1.3` actually gates the corpus at, pair co-membership, is still short at **0.733** against a published
+≥ 0.90. And splitting every commit into its own episode scores better on naive boundary F1 while **hiding 23
+of 74 pathologies**. A boundary that is too coarse merges two intentions; one
 that is too fine dissolves the pattern a detector was going to notice. Both are wrong, and the tool prefers
 the first, because a merged episode is still reviewable and a dissolved one is not.
 
@@ -121,5 +125,6 @@ over join committed rows only, so a provisional episode cannot leak into a numbe
 ---
 
 **Next**: [delta](delta.md) for what Fathom claims about an episode ·
-[episode segmentation](episode-segmentation.md) for the boundary cascade in full ·
+[episode derivation](episode-derivation.md#how-a-boundary-is-found--spike-s2) for the boundary cascade in full, and
+[the same page's second half](episode-derivation.md#how-a-rewrite-re-attaches-a-decision--spike-s6) for what a rewrite re-attaches ·
 [ADR-003](../adr/0003-episodes.md) for the identity model it all comes from.

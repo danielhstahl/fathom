@@ -339,6 +339,11 @@ RELOCATIONS = {
     "docs/concepts/risk-score.md": "docs/concepts/risk.md",
     "docs/concepts/risk-scoring.md": "docs/concepts/risk.md",
     "docs/concepts/risk-ranking.md": "docs/concepts/risk.md",
+    "docs/concepts/delta-model.md": "docs/concepts/delta.md",
+    "docs/concepts/episode-segmentation.md": "docs/concepts/episode-derivation.md",
+    "docs/concepts/episode-relink.md": "docs/concepts/episode-derivation.md",
+    "docs/concepts/rename-detection.md": "docs/concepts/rename.md",
+    "docs/concepts/rename-pairing.md": "docs/concepts/rename.md",
 }
 
 #: How long a pointer page may be, counted in non-empty lines. `doc-map.md` §6.1 wrote "five to fifteen"

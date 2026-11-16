@@ -902,7 +902,7 @@ Amending one requires amending this section.
    path similarity all ranked the lie first — so any bar low enough to call a rewritten move a fact is high
    enough to call a scaffold twin one. `e2.4`'s shipped answer is a fact tier drawn where a reviewer can
    re-check the claim (`git log --follow`) rather than where a score happens to sit, and a labelled guess
-   below it ([rename detection](rename-detection.md), [rename pairing](rename-pairing.md)); a printed
+   below it ([rename detection and pairing](rename.md)); a printed
    number is evidence to weigh, not a probability to trust.
 8. **Stability across rewrites is a feature, not an implementation detail.** If a history rewrite orphans
    review state, that is a defect with a severity, not a limitation to document.

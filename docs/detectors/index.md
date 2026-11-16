@@ -595,7 +595,7 @@ different experts' judgement, and one reviewer's fifteen minutes is not that.
 
 **Tune or silence.** `detectors.shotgun.min_clusters`. Treat its findings as a question about episode size
 rather than a defect report — the usual remedy is a narrower episode boundary, which
-[the segmentation model](../concepts/episode-segmentation.md) is the place to argue about.
+[the segmentation model](../concepts/episode-derivation.md#how-a-boundary-is-found--spike-s2) is the place to argue about.
 
 <!-- BEGIN GENERATED: example.shotgun_edit -->
 *The input* (`fixtures/shotgun_edit.json`):
@@ -682,7 +682,7 @@ M src/billing/ledger.rs  +24 −0
 The same `Finding` value, four doors: the attention section of
 [the episode card](../concepts/summary-card.md); the rail's risk column, whose model consumes
 severities ([risk score](../concepts/risk.md)); the delta document's `findings` section, evidence pointers and
-all ([the delta model](../concepts/delta-model.md)); and the export, where a finding travels with its
+all ([the delta](../concepts/delta.md)); and the export, where a finding travels with its
 suppression key so the person reading a PR can act on it. A finding that arrives in a pane also carries a
 jump target, which is the mechanism behind "every figure is a button".
 

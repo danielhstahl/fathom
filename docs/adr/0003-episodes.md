@@ -908,7 +908,7 @@ turns over 264 commits, carrying 74 annotated pathologies**, in three strata lab
  `crates/fathom-analyze/examples/s2_spike.rs`; report:
  `benchmarks/reports/s2-segmentation-accuracy.json`; claims as data:
  `crates/fathom-analyze/spike/s2/thresholds.json`; prose and tables:
- [`docs/concepts/episode-segmentation.md`](../concepts/episode-segmentation.md). The harness asserts its
+ [`docs/concepts/episode-derivation.md`](../concepts/episode-derivation.md). The harness asserts its
  `shipped` strategy reproduces `segment::segment()` exactly on every history before it scores anything.
 
 ### 18.1 The measurements
@@ -952,7 +952,7 @@ Six readings of that table, in the order that surprised us:
    between closing a ticket and claiming the next is **0.9 minutes**, while one turn's own commits can be
    33.6 minutes apart. No value of the constant separates those two populations: the pooled optimum is 10
    minutes, and below it the two measures turn against each other (§18.1's table and
-   `docs/concepts/episode-segmentation.md` §5) — at 1 minute the cascade becomes the split-everything
+   `docs/concepts/episode-derivation.md` §*How a boundary is found* §5) — at 1 minute the cascade becomes the split-everything
    baseline, gaining real-stratum F1 and doubling hidden pathologies.
 4. **`author` is nearly inert on agent history**: 3 of 31 real boundaries. One agent, one author identity,
    all day. It is kept because it is cheap and because §8's interleaved-human case needs it, not because it
@@ -984,7 +984,7 @@ Six readings of that table, in the order that surprised us:
 | **D4** | **`turn_id` must be session-qualified where the transport carries it** (`<session_id>:<turn_index>`, exactly §9.1/ADR-005 §3.3). The shipped trailer transport builds the id without the session, so two turns in different sessions with the same index read as one turn and rung 2 declines to cut between them | +0.015 pooled F1 and +0.031 on the fixture stratum when qualified; the collision is a real pair in the corpus (`s1:3` beside `s2:3`) | **Landed** (`e1.14`, `reco-quk.3`; writer `e6.1`/`reco-afh`). The join is in `segment::qualify_turn`, not in `fathom-analyze/src/episodes.rs` as this row first guessed, because the trailer transport reaches `CommitFacts::turn_id` *through* that crate and a fix one level up would have left rung 3 reading the bare index. `D-shipped` in the harness moved with it, which is what §18.1's numbers now measure |
 | **D5** | **Rung 3 is either pointed at the trailer that exists or marked reserved.** A documented rule at confidence 0.9 with no writer, no fixture, and 8 of 182 boundaries is decoration, and §4.2 reading as eight live rules when two are inert is the kind of drift §14 exists to prevent | 0.092 → 0.510 pooled F1 between the `Fathom-Episode:` and `Agent-Turn:` spellings | **Decided by `e0.12`.** The `trailer` value in Appendix B stays: it names a *class of evidence* — a trailer that declares an episode start — not a trailer key, so minting a ninth value would have been the drift. What moves is the key it reads, and the writer is `e6.1` (`reco-afh`), which owns the transport and already emits `Agent-Turn:` (the spelling §9.1 calls a `hook` transport, and the one `src/recommender/store/git.py` writes today). Until that ingest ships, rung 3 is **reserved, not live**: a fourth trailer spelling (`Fathom-Episode:`) is reserved for the day Fathom itself declares a start, and adding any spelling is an amendment to this section, not a schema edit |
 | **D6** | **TB7 (`message-shape`'s split direction) is kept and its guard is now derived**: §5.2's own worked example — `feat:` then `fix: review feedback` three minutes later then `test:` four minutes after that — was **cut by the shipped cascade**, and `segment::tests::a_run_of_agent_commits_inside_the_gap_is_one_episode` failed on it. gap ÷ 9 (**3.33 min**) is a shorter interval than the "review came back" pattern TB7 exists to tolerate. §4.3's claim that a conventional-type change is the weakest splitting signal in the set is measured, not argued | message-shape finds 1 true boundary in 182 and false-fires 5 at gap ÷ 9 — the only rule in the cascade that false-fires; deleting its split direction is +0.010 pooled and −0.019 real, lifts precision to 0.994 and five of the recommendation's six split turns, and costs 0.105 of pair F1. Re-measured at the derived gap ÷ 5: 3 false fires instead of 5, 4 annotated turns split instead of 6, and the cost of deleting the split direction is now +0.005 pooled and −0.019 real for 0.123 of pair F1 | **Keep TB7, fix its guard** — **landed** (`reco-dot`). The guard is gap ÷ **5** (6 min at the published gap), derived from the corpus rather than chosen to make §5.2 pass: the corpus has five within-turn adjacencies where the conventional type changed, four of them 3 or 4 minutes apart and annotated as one turn, so the guard must clear 4 minutes; the pooled-F1 argmax is a 1-minute guard (+0.010) and is declined because it cuts all five of those adjacencies, which is the failure the guard is *for*. The §5.2 test was un-ignored in the same change that re-blessed this section's report, in that order, exactly as this row required |
-| **D7** | **Two failure modes have no segmentation fix and are carried as named costs** rather than as TODOs: the *homeless turn* (no bead, no trailer, no ticket token, small gap — 2 of the 5 pathologies the recommendation still hides on real history) and the §8 H2 interleave cut, which the corpus must record as two turns because E1 makes episodes contiguous | `docs/concepts/episode-segmentation.md` §4 lists them by commit | **Decided**: recorded in §8 H3/§16 with numbers attached |
+| **D7** | **Two failure modes have no segmentation fix and are carried as named costs** rather than as TODOs: the *homeless turn* (no bead, no trailer, no ticket token, small gap — 2 of the 5 pathologies the recommendation still hides on real history) and the §8 H2 interleave cut, which the corpus must record as two turns because E1 makes episodes contiguous | `docs/concepts/episode-derivation.md` §*How a boundary is found* §4 lists them by commit | **Decided**: recorded in §8 H3/§16 with numbers attached |
 
 **Nothing in this section changed shipped behaviour when it was written**, and that was deliberate: the
 report is a measurement of the cascade §4.2 documents, and a spike that also rewrote the cascade would be
@@ -1062,7 +1062,7 @@ each, and the episodes that must come back unread. Harness:
 `crates/fathom-analyze/examples/s6_spike.rs`; report
 `benchmarks/reports/s6-relink-accuracy.json`; gates
 `crates/fathom-analyze/spike/s6/thresholds.json`; prose
-[docs/concepts/episode-relink.md](../concepts/episode-relink.md). The spike's copy of §6.2's pass is
+[docs/concepts/episode-derivation.md](../concepts/episode-derivation.md). The spike's copy of §6.2's pass is
 checked, link for link, against `fathom_store::episode`'s real one on every event, because a relink
 measurement made with a pass that is not the shipped pass is a rumour.
 

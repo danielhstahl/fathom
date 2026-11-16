@@ -65,7 +65,7 @@ which is what makes it safe to put in a status line or a git hook of your own.
 With turn evidence present, four things change, and all four are claims you can check rather than vibes:
 
 * **episode boundaries** get a better rung. Harness evidence is the most precise candidate the
-  [segmentation spike](../concepts/episode-segmentation.md) measured (0.855 F1 with it, 0.338 with what ships
+  [segmentation spike](../concepts/episode-derivation.md#how-a-boundary-is-found--spike-s2) measured (0.855 F1 with it, 0.338 with what ships
   when no real commit carries turn evidence);
 * **`fathom narrative`** stops printing "no recorded intent" and starts quoting the asker's words, with the
   rung of the ladder that produced them ([intent](../concepts/episode-narrative.md));

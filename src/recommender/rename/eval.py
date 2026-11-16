@@ -20,7 +20,7 @@ in the shape it said to report it:
 
 `--check` re-measures and fails on drift in any gate, and
 `tests/test_rename_pairing_contract.py` re-runs the gates against the committed report, so the prose
-in `docs/concepts/rename-pairing.md` cannot keep a number the measurement stopped supporting.
+in `docs/concepts/rename.md` cannot keep a number the measurement stopped supporting.
 """
 
 from __future__ import annotations

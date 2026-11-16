@@ -25,7 +25,7 @@ One question, per episode:
 > **Can a reviewer read this episode in ninety seconds and know which sentences they could check?**
 
 The delta document already answers the seven questions
-([the delta model](delta-model.md), `e2.11`) in seven rows of figures. This module turns the same evidence
+([the delta](delta.md), `e2.11`) in seven rows of figures. This module turns the same evidence
 into prose. It adds no signal of its own.
 
 Four refusals, and each one is the reason the module is trustworthy:

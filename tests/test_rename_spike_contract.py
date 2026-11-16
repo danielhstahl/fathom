@@ -24,7 +24,7 @@ import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
 REPORT = ROOT / "benchmarks" / "reports" / "s4-rename-detection.json"
-CONCEPT = ROOT / "docs" / "concepts" / "rename-detection.md"
+CONCEPT = ROOT / "docs" / "concepts" / "rename.md"
 TRUTH = ROOT / "src" / "recommender" / "rename" / "truth"
 
 
@@ -225,7 +225,7 @@ def test_the_window_findings_are_all_present(report: dict) -> None:
 # ---------------------------------------------------------------------------
 
 def test_rename_spike_tables_are_in_sync_with_the_report() -> None:
-    """Every number in concepts/rename-detection.md is rendered from the report, so none of them can
+    """Every number in the measurement half of concepts/rename.md is rendered from the report, so none of them can
     drift from it."""
     proc = subprocess.run([sys.executable, "tools/gen_rename_tables.py", "check"], cwd=ROOT,
                           capture_output=True, text=True)
@@ -241,7 +241,7 @@ def test_concept_doc_keeps_the_claims_the_recommendation_rests_on(report: dict) 
         f"{fact['algorithm']}` at bar" in text, "the doc must name the chosen fact configuration"
     for phrase in ("named decoy", "0.75", "path similarity", "representation problem",
                    "not measured", "floor"):
-        assert phrase.lower() in text.lower(), f"rename-detection.md must keep saying: {phrase}"
+        assert phrase.lower() in text.lower(), f"rename.md must keep saying: {phrase}"
     assert "90%" in text, "the bar this spike exists to replace has to stay named in the doc"
 
 

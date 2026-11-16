@@ -45,7 +45,7 @@ shipped feature without a doc".
 | `net-advisories` | outbound advisory lookups, and only with `privacy.advisories`. | `privacy.advisories` | `e2.7` | [dependency-risk.md](../concepts/dependency-risk.md) |
 | `net-llm` | an outbound model call. **Not shipped** — `e4.3a` measured it and it lost. | `privacy.llm` | `e4.7` | [narrative-polish.md](../concepts/narrative-polish.md) |
 | `net-http-transport` | MCP over HTTP instead of stdio, gated the same way. | `privacy.mcp_http_transport` | `e6.4` | [0005-harness-contract.md](../adr/0005-harness-contract.md) |
-| `schema-gen` | `--schema --write`, which is how the checked-in schemas are made. | — | — | [delta-model.md](../concepts/delta-model.md) · [cli.md](cli.md) |
+| `schema-gen` | `--schema --write`, which is how the checked-in schemas are made. | — | — | [delta.md](../concepts/delta.md) · [cli.md](cli.md) |
 <!-- END GENERATED: features -->
 
 ## The `net-*` set, and what consent means
@@ -90,4 +90,4 @@ shipped" has exactly one answer.
 
 **Next**: [the CLI reference](cli.md) for the verbs those features gate ·
 [privacy](../concepts/privacy.md) for what the `net-*` promise is checked by ·
-[the delta model](../concepts/delta-model.md) for the schema `schema-gen` writes.
+[the delta](../concepts/delta.md) for the schema `schema-gen` writes.

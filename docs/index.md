@@ -26,8 +26,8 @@ first; each links down to the deeper reference page that owns the detail.
 
 | Concept | In one line | Deeper |
 |---|---|---|
-| [**Episode**](concepts/episode.md) | the change one agent turn produced — the unit everything is keyed to, and the reason a sign-off survives a rebase | [segmentation](concepts/episode-segmentation.md), [ADR-003](adr/0003-episodes.md) |
-| [**Delta**](concepts/delta.md) | a claim with citations: seven sections, evidence behind every figure, and a gap that names its owner instead of printing zero | [the delta model](concepts/delta-model.md) |
+| [**Episode**](concepts/episode.md) | the change one agent turn produced — the unit everything is keyed to, and the reason a sign-off survives a rebase | [episode derivation](concepts/episode-derivation.md), [ADR-003](adr/0003-episodes.md) |
+| [**Delta**](concepts/delta.md) | a claim with citations: seven sections, evidence behind every figure, and a gap that names its owner instead of printing zero | [the episode](concepts/episode.md), [the summary card](concepts/summary-card.md) |
 | [**Risk score**](concepts/risk.md) | `0..=100` as an auditable sum of twelve axes, with the axes it could not measure printed beside it — and the spine-only `spine-3` figure the rail prints, in the same page | [the scorecard](concepts/scorecard.md), [false-positive calibration](concepts/false-positive-calibration.md) |
 | [**Review ledger**](concepts/review-ledger.md) | sign-offs as committed markdown with four digests, so "a human reviewed this" outlives the history it was written about | [ADR-004](adr/0004-storage.md), [the recipe](recipes/gate-a-pipeline.md) |
 | [**Ratchet**](concepts/ratchet.md) | the committed baseline of what the codebase already owed, so only *new* violations alarm — and it only tightens | [config](concepts/config.md), [perf budgets](../benchmarks/BUDGETS.md) |
@@ -75,15 +75,16 @@ Everything under [docs/concepts/](concepts/), grouped by what you are trying to 
 [noise suppression](concepts/noise-suppression.md) · [folder structure](concepts/folder-structure.md) ·
 [dependency surface](concepts/dependency-surface.md) · [dependency delta](concepts/dependency-delta.md) ·
 [dependency risk](concepts/dependency-risk.md) · [non-code surfaces](concepts/noncode-surfaces.md) ·
-[test surface](concepts/test-surface.md) · [rename detection](concepts/rename-detection.md) ·
-[rename pairing](concepts/rename-pairing.md) · [structure extraction](concepts/structure-extraction.md) ·
+[test surface](concepts/test-surface.md) ·
+[rename: did this file become that file](concepts/rename.md) ·
+[structure extraction](concepts/structure-extraction.md) ·
 [the public API surface and its breaking changes](concepts/api-surface.md) ·
 [the architecture graph, per revision](concepts/architecture-graph.md) ·
 [graph storage](concepts/graph-storage.md) · [cycles and cycle debt](concepts/cycle-detection.md) ·
 [layering rules and the violation delta](concepts/layering.md)
 
-**Reviewing it** — [episode segmentation](concepts/episode-segmentation.md) ·
-[the delta model](concepts/delta-model.md) · [episode narrative](concepts/episode-narrative.md) ·
+**Reviewing it** — [episode derivation](concepts/episode-derivation.md) ·
+[episode narrative](concepts/episode-narrative.md) ·
 [why the LLM polish was refused](concepts/narrative-polish.md) · [plan versus execution](concepts/plan-drift.md) ·
 [session state](concepts/session-state.md) · [the summary card](concepts/summary-card.md) ·
 [the review artefact](concepts/export-artefact.md) · [risk: the two numbers](concepts/risk.md) ·
@@ -108,6 +109,13 @@ pointers, and every other link in this tree was rewritten to the page that owns 
 - [risk score](concepts/risk-score.md) · [risk scoring](concepts/risk-scoring.md) ·
   [risk ranking](concepts/risk-ranking.md) →
   [Risk: two numbers, and what each one is a claim about](concepts/risk.md) (`reco-msv1.2`)
+- [the delta model](concepts/delta-model.md) → [Delta: a claim with citations](concepts/delta.md)
+  (`reco-msv1.3`)
+- [episode segmentation](concepts/episode-segmentation.md) ·
+  [episode re-linking](concepts/episode-relink.md) →
+  [Episode derivation](concepts/episode-derivation.md) (`reco-msv1.3`)
+- [rename detection](concepts/rename-detection.md) · [rename pairing](concepts/rename-pairing.md) →
+  [Rename and copy: did this file become that file](concepts/rename.md) (`reco-msv1.3`)
 
 ## Decisions, and how it attaches to an agent
 

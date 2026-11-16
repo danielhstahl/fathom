@@ -36,7 +36,7 @@ not a wall, and the reason it appears here rather than being quietly hidden unti
 | **[`episodes`](#fathom-episodes)** | List the episodes — the rail's rows, headless (reco-11b) | shipped | [*cli*](../concepts/cli.md) · [*timeline*](../concepts/timeline.md) |
 | **[`attribution`](#fathom-attribution)** | Report or correct who Fathom thinks wrote a commit (e4.1) | shipped | [*episode*](../concepts/episode.md) · [*cli*](../concepts/cli.md) |
 | **[`review`](#fathom-review)** | The review ledger: sign-offs that outlive the history they were written about (e4.6) | shipped | [*review-ledger*](../concepts/review-ledger.md) · [*cli*](../concepts/cli.md) |
-| **[`analyze`](#fathom-analyze)** | Print one episode's delta document — the model the TUI, the export and an agent all read | shipped | [*delta*](../concepts/delta.md) · [*delta-model*](../concepts/delta-model.md) |
+| **[`analyze`](#fathom-analyze)** | Print one episode's delta document — the model the TUI, the export and an agent all read | shipped | [*delta*](../concepts/delta.md) |
 | **[`narrative`](#fathom-narrative)** | Read one episode: the narrative every claim in it cites its evidence from (e4.7) | shipped | [*episode-narrative*](../concepts/episode-narrative.md) · [*episode*](../concepts/episode.md) |
 | **[`drift`](#fathom-drift)** | What the plan said against what the session did — the contradictions, both sides linked (e4.8) | shipped | [*plan-drift*](../concepts/plan-drift.md) · [*session-state*](../concepts/session-state.md) |
 | **[`why`](#fathom-why)** | Print one episode's risk score with every feature, its weight and its contribution (e4.4) | shipped | [*risk*](../concepts/risk.md) · [*cli*](cli.md) |
@@ -187,7 +187,7 @@ Two rules hold across all of them, and both are ADR-001 §7's "no unknown printe
 * a figure that could not be computed is **absent or `null`, with a gap line naming who owns it** —
   never `0`, never empty-string;
 * a document that self-checks says so: `fathom analyze --json` resolves every evidence pointer in
-  itself and prints the verdict ([the delta model](../concepts/delta-model.md)).
+  itself and prints the verdict ([the delta](../concepts/delta.md)).
 
 ---
 
@@ -658,7 +658,7 @@ Options:
 One episode's [delta document](../concepts/delta.md) — the seven-section, evidence-carrying model the
 TUI card, the export and an agent all read, unchanged. `--schema` prints the contract itself, and
 `--schema --check` is how CI keeps the checked-in schema from drifting from the types
-([the version policy](../concepts/delta-model.md)).
+([the version policy](../concepts/delta.md)).
 
 <!-- BEGIN GENERATED: help.analyze -->
 ```text
