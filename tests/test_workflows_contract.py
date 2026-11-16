@@ -513,8 +513,93 @@ def test_scheduled_work_stays_off_the_pull_request_path():
     )
 
 
+def test_the_gates_run_on_a_branch_the_work_reaches():
+    """`R07`, asserted directly: a gate has to be reachable from the branch the work is on.
+
+    `e11.1`'s census could only read this off the Actions API, and what it read was 172 runs of which not
+    one had been started by the work: every file said `push: branches: [master]`, `master` had not moved
+    since 2026-10-26, and the branch the loop worked on was never on the remote at all (§5.2, closed by
+    `reco-kwg6`). So the assertion is not "`master` is in the list" — that is the sentence that went false.
+    It is that a push of *any* branch starts a run of every file that gates every pull request, including
+    one with a `/` in its name, which is the shape a work branch has and the one a bare `*` refuses.
+    """
+    branches = ["master", "main", "trunk", "feature/more_functionality", "release/2.0", "reco-kwg6"]
+    gates = [check_workflows.Workflow(p) for p in sorted(WORKFLOWS.glob("*.yml"))
+             if check_workflows.is_merge_gate(check_workflows.Workflow(p))]
+    assert len(gates) >= 5, f"only {len(gates)} merge-gate workflow(s) were read; the check has stopped " \
+        "covering the fleet"
+    for wf in gates:
+        for branch in branches:
+            assert check_workflows.push_reaches(wf, branch), (
+                f"`{wf.filename}` gates every pull request but a push of `{branch}` starts no run of it — "
+                "a branch with no pull request is then invisible to CI, which is the defect `e11.1` §5.2 "
+                "measured and `reco-kwg6` closes"
+            )
+    problems: list[str] = []
+    for path in sorted(WORKFLOWS.glob("*.yml")):
+        check_workflows.rule_branch_reach(check_workflows.Workflow(path), problems)
+    assert not problems, "\n".join(problems)
+
+
+def test_a_branch_glob_crosses_a_slash_only_for_double_star():
+    """The matcher has to mean what GitHub means, or the rule approves a filter that never fires.
+
+    `branches: [*]` reads like "everything" and is not: GitHub's branch globs stop at a `/`, so it matches
+    `master` and refuses `feature/more_functionality` — the exact pair that would have let the census's
+    defect through while the lint went green.
+    """
+    match = check_workflows.branch_pattern_matches
+    assert match("**", "feature/more_functionality") and match("**", "master")
+    assert not match("*", "feature/more_functionality") and match("*", "master")
+    assert match("feature/**", "feature/a/b") and not match("feature/*", "feature/a/b")
+    assert not match("release/**", "feature/a") and match("release/**", "release/2.0")
+    assert not match("!main", "main") and match("!main", "feature/a")
+    # A `!` entry vetoes the whole list, and a list of positives admits only what one of them matches.
+    assert check_workflows.branch_filter_matches(["**", "!dependabot/*"], "feature/a")
+    assert not check_workflows.branch_filter_matches(["**", "!dependabot/*"], "dependabot/npm_and_yarn")
+    assert check_workflows.branch_filter_matches([], "anything/at/all")
+    assert not check_workflows.filter_reaches_every_branch(["master"], [])
+    assert not check_workflows.filter_reaches_every_branch(["**"], ["old/**"])
+    assert check_workflows.filter_reaches_every_branch(["**"], [])
+
+
+def test_naming_branches_instead_of_reaching_them_is_refused(tmp_path):
+    """The old file shape, replayed: `R07` has to refuse it rather than merely disapprove of it."""
+    old = tmp_path / "frozen.yml"
+    old.write_text(
+        "name: frozen\non:\n  pull_request:\n  push:\n    branches: [master]\n"
+        "concurrency:\n  group: ${{ github.workflow }}-${{ github.ref }}\n  cancel-in-progress: true\n"
+        "permissions:\n  contents: read\njobs:\n  a:\n    runs-on: ubuntu-latest\n    timeout-minutes: 10\n"
+        "    steps:\n      - run: echo nobody could see this file for a month\n",
+        encoding="utf-8",
+    )
+    problems: list[str] = []
+    check_workflows.rule_branch_reach(check_workflows.Workflow(old), problems)
+    assert len(problems) == 1 and problems[0].startswith("R07"), problems
+    assert "branches: [`master`]" in problems[0], problems[0]
+
+
+def test_the_triggers_command_answers_for_one_branch():
+    """`check_workflows.py triggers` is the question `reco-kwg6` could not be answered without.
+
+    It answers offline, from the checkout: no token, no network, no `gh`. The branch asked for here is one
+    that cannot exist, so the answer is a refusal that names the fix — which is the half of the ticket no
+    workflow file could ever do on its own.
+    """
+    result = subprocess.run(
+        [sys.executable, str(CHECKER), "triggers", "--branch", "no-such-branch-reco-kwg6"],
+        capture_output=True, text=True, check=False,
+    )
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert "git push -u origin no-such-branch-reco-kwg6" in result.stdout + result.stderr, (
+        "the refusal has to carry the fix, or it is a shrug with an exit code"
+    )
+    for name in sorted(p.name for p in WORKFLOWS.glob("*.yml")):
+        assert f"`{name}`" in result.stdout, f"`{name}` is missing from the table the command prints"
+
+
 def test_the_checker_can_fail():
-    """`self-test` proves the gate has a mouth: twenty-one workflows written to break one rule each.
+    """`self-test` proves the gate has a mouth: twenty-three workflows written to break one rule each.
 
     A gate that has never said no is a gate that cannot say yes, which is the sentence that belongs on the
     box of every "lint the config" tool ever written.

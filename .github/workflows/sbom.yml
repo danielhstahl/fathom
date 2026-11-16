@@ -18,7 +18,11 @@ name: SBOM and licence report
 on:
   pull_request:
   push:
-    branches: [master]
+    # Every branch, not only the default one: `master` sat frozen for three weeks while the work was on a
+    # branch no trigger could reach, and nothing in CI could see it (`e11.1` §5.2, `reco-kwg6`). `R07` of
+    # `tools/check_workflows.py` refuses a list of names here, and *Which branch a gate runs on* in
+    # docs/concepts/ci-gate.md is the prose.
+    branches: ["**"]
   release:
     types: [published]
 

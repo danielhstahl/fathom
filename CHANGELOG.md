@@ -17,6 +17,60 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
+### Every gate now runs on a branch the work reaches: `push:` names no branches, and a new rule refuses a list of them (`reco-kwg6`)
+
+Epic 11's census (§5.2, the item none of its four children owned) measured a fleet that
+**never once ran on the work**: 172 runs in thirty days, newest one a scheduled `dogfood`,
+because `master` has been frozen at `e194a63d9d` since 2026-10-26, the branch the loop works
+on has never been on the remote, and every gate file said `push: branches: [master]`. That
+last clause is the one a workflow file can own, and it is the one that is gone.
+
+* **Five files now trigger on every branch: `ci.yml`, `contracts.yml`, `docs.yml`,
+  `privacy.yml`, `sbom.yml` take `branches: ["**"]`.** Chosen over the ticket's other two
+  options because they need something this repository's commits cannot carry: a pull request
+  needs a token on the runner (`gh` is not here, and `git push` asks for a username), and
+  moving the default branch is a settings change, not a file. A catch-all was chosen over a
+  longer list of names for the same reason the rule below exists: **a list of branch names is a
+  claim about where the work was**, and the claim went false for three weeks with nobody able
+  to see it. `complexity.yml` keeps its path-narrowed pull-request trigger and no `push:` — it
+  is a specialist with a corpus, not the merge gate, and duplicating its 24-entry `paths:`
+  filter under a second trigger is two lists that can disagree. `docs.yml` needed the second
+  half of the same edit: its `build` job was gated on `github.ref == 'refs/heads/master'`, so
+  the widened trigger produced a run where every job silently skipped; it builds on every
+  event now, and the two steps that genuinely cannot follow a branch — the Pages artefact
+  upload and the deploy — name `github.event.repository.default_branch` instead of a name,
+  so moving the default branch moves them too.
+* **`R07` is the rule that keeps this from being a fix with an expiry date.** Two clauses, one
+  failure behind them: a `push:` trigger may not narrow by branch name, and a workflow that
+  triggers on *every* pull request must also trigger on a push, because a branch with no open
+  pull request otherwise reaches nothing. It reads GitHub's glob semantics rather than a
+  guess, which is what makes `branches: [*]` a refusal and not a pass — a single `*` stops at
+  a `/`, so it matches `master`, refuses `feature/more_functionality`, and would have let the
+  whole defect back in while the lint went green. `self-test` now fires both clauses from two
+  planted files, and `tests/test_workflows_contract.py` replays the old shape and asserts the
+  message.
+* **`python3 tools/check_workflows.py triggers` answers "will CI run on this branch?" from
+  the checkout** — no token, no `gh`, no network: the branch, whether `origin` can see it, and
+  per workflow whether a push of it or a pull request reaches that file, with a non-zero exit
+  when a merge gate cannot see the branch. It is the half of the ticket no trigger could
+  provide, and the first honest answer to it is in the transcript in
+  [docs/concepts/ci-gate.md](docs/concepts/ci-gate.md): the triggers reach the branch now, and
+  the branch is still not pushed, because pushing needs a credential this checkout does not
+  have. `.plan/evidence/reco-kwg6/branch-reach.md` is the record, including what stays blocked
+  and why.
+* **What the widened trigger costs, said out loud:** a branch that does have an open pull
+  request now runs both a push run and a pull-request run, in two `concurrency` groups that
+  cannot cancel each other. Accepted against a month of unobserved work, with the per-ref queue
+  `R02` still cancelling a superseded push of the same branch and `e11.2`'s cut already off the
+  per-push path.
+* **Still open, and no file can close it:** `schedule:` fires on the default branch only, so
+  `nightly`, `perf`, `fuzz`, `complexity` and `dogfood` keep measuring the frozen commit, and
+  `publish.yml` keeps waiting for a green `ci` on it — so still no tags, and
+  `self-review`/SBOM-publish/dogfood's installer half still wait on a release that cannot be
+  cut. The re-measurement this bead also carries (the census against a fresh window) needs a
+  pushed branch or a moved default branch, and so does every rate in epic 11.
+
+
 ### Epic 12 closes: the five merges re-measured in one run, and the re-measurement found a loss M1 had left in `risk.md` (`reco-msv1`, `e12`)
 
 Each child proved its own merge and stopped, and nobody re-ran the set after the

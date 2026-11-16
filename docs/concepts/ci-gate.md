@@ -187,7 +187,7 @@ that tolerance are one edit, and `fathom.toml` says so where the mode is written
 
 ### The fleet: what runs on a pull request, and what runs nightly
 
-![ci](https://img.shields.io/github/actions/workflow/status/danielhstahl/fathom/ci.yml?branch=master&label=ci)
+![ci](https://img.shields.io/github/actions/workflow/status/danielhstahl/fathom/ci.yml?label=ci)
 ![nightly](https://img.shields.io/github/actions/workflow/status/danielhstahl/fathom/nightly.yml?label=nightly)
 ![perf](https://img.shields.io/github/actions/workflow/status/danielhstahl/fathom/perf.yml?label=perf)
 ![fuzz](https://img.shields.io/github/actions/workflow/status/danielhstahl/fathom/fuzz.yml?label=fuzz)
@@ -202,9 +202,9 @@ branch, and it runs daily.
 
 | Workflow | When it runs | What it is the gate for |
 |---|---|---|
-| `.github/workflows/ci.yml` | every pull request, and every push to the default branch | `fmt`, `clippy`, `cargo-deny`, the workspace build and tests on `stable` and on the MSRV, the headless `minimal` binary, `fathom check` over this repository, the `.deb`/`.rpm`/installer rehearsal, and the release skeleton. The list is written out in the file's header and enforced by rule `C01`. |
-| `.github/workflows/contracts.yml` | every pull request | the documents and the ADRs as executable checks, the boundary lint, the 2 339-test contract suite, the **changelog gate** — `gen_changelog.py audit`, `lint` and the draft smoke, and the only place a missing `[Unreleased]` entry is reported since `e11.3` — the demo repository's assembly, and, since `e11.2`, the **cheap proofs about the expensive gates**: `perf_gate.py --self-test`, `gen_budgets.py check`, `gen_adr_tables.py check`, `gen_fuzz_corpus.py check`, none of which needs a build. |
-| `.github/workflows/complexity.yml`, `docs.yml`, `privacy.yml`, `sbom.yml` | every pull request (the first also daily) | the complexity corpus, the generated docs pages and the Pages build, the no-egress claim, the SBOM. Zero reds in 56 measured runs and 0.3–1.3 minutes each: these are not the cost and cutting them would be theatre. |
+| `.github/workflows/ci.yml` | every pull request, and every push to any branch | `fmt`, `clippy`, `cargo-deny`, the workspace build and tests on `stable` and on the MSRV, the headless `minimal` binary, `fathom check` over this repository, the `.deb`/`.rpm`/installer rehearsal, and the release skeleton. The list is written out in the file's header and enforced by rule `C01`. |
+| `.github/workflows/contracts.yml` | every pull request, and every push to any branch | the documents and the ADRs as executable checks, the boundary lint, the 2 343-test contract suite, the **changelog gate** — `gen_changelog.py audit`, `lint` and the draft smoke, and the only place a missing `[Unreleased]` entry is reported since `e11.3` — the demo repository's assembly, and, since `e11.2`, the **cheap proofs about the expensive gates**: `perf_gate.py --self-test`, `gen_budgets.py check`, `gen_adr_tables.py check`, `gen_fuzz_corpus.py check`, none of which needs a build. |
+| `.github/workflows/complexity.yml`, `docs.yml`, `privacy.yml`, `sbom.yml` | every pull request, and every push to any branch — except `complexity.yml`, whose pull-request trigger is narrowed to the corpus it measures (the first also daily) | the complexity corpus, the generated docs pages and the Pages build, the no-egress claim, the SBOM. Zero reds in 56 measured runs and 0.3–1.3 minutes each: these are not the cost and cutting them would be theatre. |
 | `.github/workflows/fathom-check.yml` | called with `workflow_call` by a repository that installs the gate | the reusable gate itself — the recipe on [this page](../recipes/gate-a-pipeline.md). |
 | `.github/workflows/nightly.yml` | daily at 02:37 UTC, and on `workflow_dispatch` | **the long tail.** Spike `s1`, `s2` and `s6` report reproductions, the `e3.1` structure core/tail legs, the Guardrail 3 calibration `--check`, the out-of-tree plugin build, the `beta` toolchain lane, and the daily `workflow_dispatch` of the six-target release matrix in cargo-dist's dry-run mode. |
 | `.github/workflows/perf.yml` | daily at 04:11 UTC, and on `workflow_dispatch` | the ADR-004 §11 budgets measured against `benchmarks/baselines/perf-gate.json`, and the trend artefact. On a shared runner the gate was red on 17 of 19 pull requests and green twice, the second green two runs before going red again on a commit that only edited `ci.yml`; the measurement is a daily statement about the default branch now, and its no-build proofs stayed per-PR in `contracts.yml`. |
@@ -214,12 +214,17 @@ branch, and it runs daily.
 | `.github/workflows/publish.yml` | after a green `ci` on the default branch, and on `workflow_dispatch` | the version-bump-to-release cutter. It dispatches `release.yml`; it never publishes anything itself. |
 | `.github/workflows/self-review.yml` | on `release: published` | what a release publishes about itself. |
 
-Two things about the scheduled half are worth saying where a reader will meet them.
+Three things about the scheduled half are worth saying where a reader will meet them.
 
 **A schedule runs on the default branch, so the work has to reach it.** GitHub fires `schedule:` on the
 repository's default branch only, and the census found the default branch here had not moved in three weeks
-while the work was on a branch that is not on the remote at all. Until that is fixed, every daily job here —
-this page's, `fuzz`'s, `perf`'s, `complexity`'s and `dogfood`'s — is measuring a frozen commit.
+while the work was on a branch that is not on the remote at all. `reco-kwg6` fixed the half of that a
+workflow file can fix — every merge gate now runs on a push to *any* branch, see *Which branch a gate runs
+on* below — but no workflow file can move a default branch. Until somebody with repository settings moves
+it, every daily job here — this page's, `fuzz`'s, `perf`'s, `complexity`'s and `dogfood`'s — is measuring a
+frozen commit, and `publish.yml` is waiting for a green `ci` on a commit nobody is editing. The four badges
+at the top of this section are default-branch badges for the same reason, so they report that frozen commit
+too — none of them is pinned to a branch name, so they follow the branch whenever it moves.
 `workflow_dispatch` is the way to run them against the tree you are actually standing on, and it is the way
 to test a change to one of these files.
 
@@ -278,7 +283,11 @@ whose red could not matter to anyone, because it had been `continue-on-error` fo
 remember and nobody had read it. `e11.4` (`reco-374v.4`) put a number beside each of those, and a rule. All
 six rules live in `tools/check_workflows.py` — the same lint that already reads the workflows against the
 tree, so a workflow change is checked by the same job that checks a `Cargo.toml` change — and `self-test`
-makes each of them fire on a workflow written to break it.
+makes each of them fire on a workflow written to break it. A seventh, `R07`, is the census's §5.2 rather
+than `e11.4`'s money, and it is about *which branch* a gate runs on rather than what a job owes the runner;
+it lives in the same lint and is self-tested the same way. (The rule ids are per-tool, as they already were
+for `R01`–`R06`: `check_release.py` has its own `R07`, the one that refuses a hand edit of the generated
+release workflow.)
 
 ### Timeouts
 
@@ -318,6 +327,79 @@ because two Pages deploys of the same site in flight can publish half of each bu
 cancels, because a release cut torn down between the tag and the dispatch leaves a version tagged with no
 release and no run to resume from. Both state that in the comment shape below, which is what makes the
 exception checkable rather than a line a reviewer skims.
+
+### Which branch a gate runs on
+
+`R07` is older news than any of the six rules above, and it is the one a fleet needs first, because a gate
+that never runs costs nothing and proves nothing. `e11.1` §5.2 read thirty days of run history and found
+172 runs of which **not one** had been started by the work: `master` had been frozen at `e194a63d9d` since
+2026-10-26, the branch the loop actually worked on had never been pushed, and every gate file said the same
+three lines —
+
+```yaml
+on:
+  pull_request:
+  push:
+    branches: [master]
+```
+
+— which is a true statement about where merges happen that goes false the day the work moves, silently,
+with nothing left in CI to notice. The shape the rule refuses is therefore *the list of names*, and it
+refuses it two ways: a `push:` trigger may not narrow by branch, and a workflow that gates every pull
+request may not be reachable only by a pull request.
+
+* **`branches: ["**"]`, or no filter at all.** A list of names is a claim about where the work *was*. `*`
+  is not a catch-all and the rule says so in as many words: GitHub's branch globs stop at a `/`, so
+  `branches: [*]` matches `master` and refuses `feature/more_functionality` — which is the shape of branch
+  name the work happens on here, and the reason a permissive-looking filter can be the same hole wearing a
+  hat. A file that genuinely must not run on every branch says which branches and why in its own header and
+  raises the rule in the same commit, which is what every rule here asks of a decision.
+* **A gate that fires on every `pull_request` also fires on a pushed branch.** A branch with no open pull
+  request otherwise reaches nothing at all, which is the shape a loop working on an un-merged branch is
+  stuck in forever. A `pull_request:` trigger narrowed by `paths:` is exempt — that file is a specialist
+  whose cost was already decided by a decision about which files it is about (`complexity.yml` is the only
+  one here), and `R06` and `C01` hold it to its cadence.
+
+The cost is named rather than hidden. A branch that *does* have an open pull request now runs both the push
+run and the pull-request run, and the two land in different `concurrency` groups (`github.ref` versus
+`github.event.pull_request.number`), so neither cancels the other and the branch pays for both. That is
+accepted: the alternative is `e11.1`'s month of work with no run at all, the per-ref queue `R02` requires
+still cancels a superseded push of the same branch, and the fleet's expensive half is already off the
+per-push path (`e11.2`).
+
+`docs.yml` needed one more edit for the same reason, and it is the kind of second half a widened trigger
+always has: its `build` job was gated on `github.ref == 'refs/heads/master'`, so on any other branch the
+widened trigger produced a run in which every job silently skipped. It builds on every event now — a broken
+page is red on the branch that broke it — and the two halves that genuinely cannot follow a branch, the
+Pages artefact upload and the deploy, say `github.event.repository.default_branch` instead of a name, so a
+future default-branch move takes them with it rather than leaving them frozen.
+
+Ask the question before pushing rather than after. It answers from the checkout — no token, no `gh`, no
+network — and it is the thing nobody could ask during the census window:
+
+```console
+$ python3 tools/check_workflows.py triggers
+branch: `feature/more_functionality` — not visible as `origin/feature/more_functionality` in this clone, so
+no run of any kind will start for it — `git push -u origin feature/more_functionality` (or `git fetch origin`
+first, if it is pushed and this clone is merely stale)
+
+| Workflow | Triggers              | A push of this branch | A pull request |
+|---|---|---|---|
+| `ci.yml` | pull_request; push | yes | yes, every path |
+| `contracts.yml` | pull_request; push | yes | yes, every path |
+| `complexity.yml` | pull_request; schedule; workflow_dispatch | no `push:` trigger | only its `paths:` filter |
+| `nightly.yml` | schedule; workflow_dispatch | no `push:` trigger | n/a — no `pull_request` trigger |
+
+5 merge-gate workflow(s) — the ones that fire on every pull request — and 5 of them reach
+`feature/more_functionality`. A gate that reaches the branch is a gate whose verdict you can read; a file
+below that does not is scheduled or dispatch-only by design.
+```
+
+That transcript is the honest state of this repository at the time `reco-kwg6` closed, and it exits
+non-zero: the triggers reach the branch now, and the branch is still not on the remote, because pushing it
+takes a credential this checkout does not have. *Triggers are half of a run; a branch nobody pushes is the
+other half.* The command says which half is missing and prints the `git push` that fixes it, and it is the
+piece of this ticket that a workflow file could never do on its own.
 
 ### Tolerated failures
 

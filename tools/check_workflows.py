@@ -28,6 +28,7 @@ with no network and no toolchain.
     python3 tools/check_workflows.py --verbose   # the passing rules too
     python3 tools/check_workflows.py --network   # ask GitHub that every action ref resolves
     python3 tools/check_workflows.py budgets     # the artefact budget, as the docs print it
+    python3 tools/check_workflows.py triggers    # will CI run on the branch I am standing on?
     python3 tools/check_workflows.py self-test   # prove the checker can fail
 
 **The rules**, named as they are named in the failure lines:
@@ -58,6 +59,7 @@ with no network and no toolchain.
 | `R04` | cache discipline: a job that compiles without restoring the cargo cache; a `rust-cache` step that writes its own key instead of taking the bust lever from `env.CACHE_BUST`, that does not save on failure, or that leaves a second workspace it builds uncached; a hand-rolled `actions/cache` over cargo paths |
 | `R05` | an upload outside its artefact budget: an artefact no budget names, no `retention-days` or one longer than its budget, a path the budget does not describe, no size guard before it, or a guard whose limit is above the declared one, that runs under a different `if:`, that cannot fail, or that does not say which step produced the bytes |
 | `R06` | scheduled-only work on the pull-request path: a step whose entry in `CI_REQUIRED_STEPS` is `scheduled` running in a workflow that triggers on `pull_request` — the rot `e11.2` would otherwise be free to grow back |
+| `R07` | a gate that runs on no branch the work reaches: a `push` trigger narrowed to a list of branch names (`branches: [master]`, the shape that watched a frozen default branch for three weeks — `e11.1` §5.2, `reco-kwg6`), or a workflow that triggers on every pull request and on no branch push at all, so a branch with no open pull request is never measured |
 
 **The `tolerates:` note.** Two rules read a comment, and they read exactly one shape of comment, because "say why in a
 comment" is not checkable until the comment has a name a checker can look for:
@@ -71,6 +73,15 @@ comment" is not checkable until the comment has a name a checker can look for:
 refuses a `continue-on-error` without one. The note has to name a *why*, not only a *what*, and a note whose
 tolerance has been deleted is itself a failure: an explanation of a tolerance nobody still has is the same kind
 of lie in the other direction.
+
+**The branch a gate runs on.** `R07` exists because of a fact the census could only read off the API: for the
+whole thirty-day window, no run of any of these files was ever started by the work this repository was doing.
+`master` was frozen at `e194a63d9d`, the branch the loop worked on was never pushed, and every file said
+`push: branches: [master]` — a true sentence about where merges happened that had quietly gone false, with
+nothing in CI left to notice (`e11.1` §5.2, closed by `reco-kwg6`). A list of branch names is the shape the
+rule refuses, because a list of names is a claim about the past: write `branches: ["**"]`, or no filter at
+all. `python3 tools/check_workflows.py triggers` answers the same question from the other side — for the
+branch you are standing on, which gates will run, and whether that branch is even on `origin`.
 
 **Generated files are exempt from `R01`, `R04` and `R05`, and only those three.** `.github/workflows/release.yml`
 is `cargo-dist`'s output — `dist generate --check` in `ci.yml` refuses a hand edit, and `check_release.py`'s
@@ -551,6 +562,13 @@ class Workflow:
             self.triggers = {str(t): "" for t in triggers}
         elif triggers:
             self.triggers = {str(triggers): ""}
+        # The *tree* under each trigger (`{"push": {"branches": ["**"]}}`), kept beside the stringified
+        # `triggers` above rather than replacing it: every other rule wants "does this trigger exist", and
+        # only `R07` wants the list a `branches:` key holds — and it has to be a list it can match, not the
+        # repr of one. `declared_inputs` re-reads its block out of the text for the same reason; this saves
+        # the second parse.
+        self.trigger_tree: dict[str, object] = ({str(k): v for k, v in triggers.items()}
+                                                if isinstance(triggers, dict) else {})
         permissions = document.get("permissions") or {}
         self.permissions = permissions if isinstance(permissions, dict) else {"": str(permissions)}
         # Workflow-level `env:` and `concurrency:`: one carries the cache bust lever, the other is what `R02`
@@ -1155,6 +1173,121 @@ CACHE_BUST_VALUE = re.compile(r"^\d{4}-\d{2}(\.\d+)?$")
 #: the second keeps two pull requests, or two branches, out of one queue with each other.
 CONCURRENCY_PER_REF = ("github.ref", "github.event.pull_request.number", "github.head_ref")
 
+#: The one `push:` branch filter `R07` reads as "every branch the work can be on". `*` is deliberately not a
+#: catch-all: GitHub's branch globs stop at a `/`, so `*` describes `master` and `trunk` and refuses
+#: `feature/more_functionality` — the exact shape of name the work happens on here.
+BRANCH_CATCH_ALL = "**"
+
+
+def branch_glob_re(pattern: str) -> re.Pattern:
+    """One GitHub branch-glob pattern as a regex, with `/` a boundary that only `**` crosses.
+
+    Not `_glob_re` above, which is for artefact *paths* and lets `*` cross a separator on purpose: a branch
+    filter that read `*` as `**` would wave through `branches: [*]` and still never match
+    `feature/more_functionality`, which is the shape this rule exists to refuse. `?` is one character short
+    of a separator, `+` is GitHub's "any set of characters, `/` included", and a leading `!` is handled by
+    the caller because it is a veto over the whole list rather than one pattern's property.
+    """
+    out: list[str] = []
+    i = 0
+    while i < len(pattern):
+        if pattern[i:i + 2] == "**":
+            out.append(".*")
+            i += 2
+            continue
+        out.append({"*": "[^/]*", "?": "[^/]", "+": ".+"}.get(pattern[i]) or re.escape(pattern[i]))
+        i += 1
+    return re.compile("".join(out))
+
+
+def branch_glob_matches(pattern: str, branch: str) -> bool:
+    """Whether one glob — no leading `!`, that is the caller's business — names one branch."""
+    return bool(branch_glob_re(pattern).fullmatch(branch))
+
+
+def branch_pattern_matches(pattern: str, branch: str) -> bool:
+    """Whether one `branches:` entry admits one branch name, `!negation` included.
+
+    A `!` entry admits every branch except the ones its glob names — that is what a negated entry *is* — and
+    `branch_filter_matches` is where it becomes a veto over the whole list rather than a rule of its own.
+    """
+    if pattern.startswith("!"):
+        return not branch_glob_matches(pattern[1:], branch)
+    return branch_glob_matches(pattern, branch)
+
+
+def branch_filter_matches(patterns: list[str], branch: str) -> bool:
+    """GitHub's answer for a whole `branches:` (or `branches-ignore:`) list.
+
+    A `!` entry vetoes whatever else matched; an all-positive list admits only what one of its globs names;
+    an empty list admits everything.
+    """
+    if any(p.startswith("!") and branch_glob_matches(p[1:], branch) for p in patterns):
+        return False
+    positives = [p for p in patterns if not p.startswith("!")]
+    return not positives or any(branch_glob_matches(p, branch) for p in positives)
+
+
+def trigger_lists(wf: Workflow, trigger: str, key: str) -> list[str]:
+    """One list (`branches:`, `branches-ignore:`, `paths:`) out of one trigger's block.
+
+    GitHub accepts a bare scalar where it accepts a list — `push: branches: master` is legal, and it is the
+    most literal spelling of the mistake `R07` refuses — so a scalar arrives as a one-item list.
+    """
+    block = wf.trigger_tree.get(trigger)
+    if not isinstance(block, dict):
+        return []
+    for name, value in block.items():
+        if str(name) != key:
+            continue
+        if isinstance(value, list):
+            return [str(v) for v in value]
+        if value in (None, "", "{}"):
+            return []
+        return [str(value)]
+    return []
+
+
+def push_filter(wf: Workflow) -> tuple[list[str], list[str]] | None:
+    """The workflow's `push:` branch filter, or `None` when it has no `push:` trigger at all."""
+    if "push" not in wf.triggers:
+        return None
+    return trigger_lists(wf, "push", "branches"), trigger_lists(wf, "push", "branches-ignore")
+
+
+def filter_reaches_every_branch(branches: list[str], ignores: list[str]) -> bool:
+    """Whether a filter admits every branch there is, which is the only answer `R07` accepts.
+
+    Not "admits the branches that exist today" — a filter narrowed to names is a claim about where the work
+    was, and the census's whole finding was that a claim like that goes false in silence.
+    """
+    if ignores:
+        return False
+    if not branches:
+        return True
+    return BRANCH_CATCH_ALL in branches and not any(b.startswith("!") for b in branches)
+
+
+def push_reaches(wf: Workflow, branch: str) -> bool:
+    """Whether a push of `branch` starts a run of this workflow."""
+    seen = push_filter(wf)
+    if seen is None:
+        return False
+    branches, ignores = seen
+    if ignores and branch_filter_matches(ignores, branch):
+        return False
+    return branch_filter_matches(branches, branch)
+
+
+def is_merge_gate(wf: Workflow) -> bool:
+    """Whether this workflow answers "may this merge?" for *any* pull request.
+
+    A `pull_request:` trigger narrowed by `paths:` is not that: it is a specialist that was already priced
+    by a decision about which files it is about, and `R06` and `C01` hold it to its cadence. The one that
+    fires on every pull request is the gate, and a gate a pushed branch cannot reach is a gate nobody sees.
+    """
+    return "pull_request" in wf.triggers and not trigger_lists(wf, "pull_request", "paths")
+
 
 def render_artefact(name: str) -> str:
     """An artefact name with its `${{ … }}` parts replaced by the `*` the budget table is keyed with."""
@@ -1671,6 +1804,42 @@ def rule_step_cadence(wf: Workflow, problems: list[str]) -> None:
         )
 
 
+def rule_branch_reach(wf: Workflow, problems: list[str]) -> None:
+    """`R07` — every gate runs on a branch the work reaches.
+
+    Two clauses, one failure behind them. `e11.1` §5.2 counted the runs this fleet made in thirty days and
+    found not one of them started by the work: `master` had been frozen at `e194a63d9d` since 2026-10-26,
+    the branch the loop worked on was not on the remote, and every file here said
+    `push: branches: [master]`. Nothing failed, because nothing was watching: a list of branch names is a
+    claim about where the work is, and such a claim expires the day the work moves. So a `push:` trigger may
+    not narrow by branch name (clause one, which holds for every workflow that has one), and a workflow that
+    gates every pull request may not be reachable only by a pull request (clause two, the same hole in a
+    file with no `push:` at all). `reco-kwg6` is the bead; *Which branch a gate runs on* in
+    docs/concepts/ci-gate.md is the prose.
+    """
+    seen = push_filter(wf)
+    if seen is not None and not filter_reaches_every_branch(*seen):
+        branches, ignores = seen
+        wrote = ("branches-ignore: " + ", ".join(f"`{b}`" for b in ignores) if ignores
+                 else "branches: [" + ", ".join(f"`{b}`" for b in branches) + "]")
+        problems.append(
+            f"R07 {wf.name} (`{wf.filename}`): its `push:` trigger is narrowed to `{wrote}` — a list of "
+            f"names, which is a claim about where the work *was*. This file was unreachable for a whole "
+            f"thirty-day census window for exactly that reason (`e11.1` §5.2, `reco-kwg6`). Write "
+            f"`branches: [\"**\"]` — `*` will not do, it stops at a `/` and so refuses a branch named "
+            f"`feature/<something>` — or drop the filter. A file that genuinely must not run on every branch "
+            f"should say which branches and why in its own header and raise this rule in the same commit"
+        )
+    if is_merge_gate(wf) and seen is None:
+        problems.append(
+            f"R07 {wf.name} (`{wf.filename}`): triggers on every `pull_request` and on no branch `push`, so a "
+            f"branch with no open pull request is never measured here — which is the shape a loop working on "
+            f"an un-merged branch is stuck in forever (`e11.1` §5.2, `reco-kwg6`). Add `push:` with "
+            f"`branches: [\"**\"]`; the per-ref `concurrency:` group `R02` already requires keeps a superseded "
+            f"push from paying for itself twice"
+        )
+
+
 # ---------------------------------------------------------------------------
 # driving it
 # ---------------------------------------------------------------------------
@@ -1702,6 +1871,7 @@ def check(verbose: bool = False, network: bool = False) -> tuple[list[str], list
         rule_cache(wf, problems)
         rule_artefact_budget(wf, problems)
         rule_step_cadence(wf, problems)
+        rule_branch_reach(wf, problems)
     rule_budget_table(files, problems)
     if network:
         notes.extend(verify_inventory_network(problems))
@@ -2095,6 +2265,44 @@ jobs:
     steps:
       - run: cargo run --release --locked --example s1_spike -- --check
 """,
+    # The exact file shape `e11.1` §5.2 found: a gate that names a branch instead of reaching one. `master`
+    # was frozen three weeks before that census ran, and every run this file could have started went to a
+    # commit nobody was working on.
+    "r07-branch.yml": """
+name: namedbranch
+on:
+  pull_request:
+  push:
+    branches: [master]
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+permissions:
+  contents: read
+jobs:
+  a:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - run: echo the default branch stopped moving in October and this file never noticed
+""",
+    # The same hole in a file that has no `push:` trigger at all: only a pull request can reach it, and a
+    # loop that never opens one is never measured.
+    "r07-nopush.yml": """
+name: pronly
+on: pull_request
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+permissions:
+  contents: read
+jobs:
+  a:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - run: echo a branch with no pull request is a branch nobody gates
+""",
 }
 
 #: What the self-test's stand-in `.gitignore` claims is the run's own output, and the paths the workflow
@@ -2155,7 +2363,7 @@ def self_test() -> int:
     failures = [f"rule {rule} did not fire on a workflow written to break it"
                 for rule in ("A01", "A02", "D01", "E01", "E02", "E03", "E04", "P01", "P02", "P03",
                              "P04", "T01", "T02", "T03", "T04", "J01", "J02", "J03",
-                             "R01", "R02", "R03", "R04", "R05", "R06")
+                             "R01", "R02", "R03", "R04", "R05", "R06", "R07")
                 if not any(p.startswith(rule) for p in problems)]
     # `R05` has a second half that no workflow file can stage on its own: a budget row for an artefact
     # nothing uploads. It is staged here, on the table, because a budget allowed to accrete rows that
@@ -2168,6 +2376,13 @@ def self_test() -> int:
         del ARTEFACT_BUDGET["nothing-uploads-this"]
     if not any(p.startswith("R05") and "nothing-uploads-this" in p for p in _again):
         failures.append("rule R05 did not refuse a budget row for an artefact no workflow uploads")
+    # `R07` has two clauses and the list above fires the second one almost incidentally, so both are named
+    # here: the shape the census actually found is the *narrowed* one, and a rule that only catches the
+    # obvious half of itself is a rule that will be quietly satisfied tomorrow.
+    for clause, needle in (("a `push:` narrowed to a list of branch names", "is narrowed to"),
+                           ("a gate that only a pull request can reach", "and on no branch `push`")):
+        if not any(p.startswith("R07") and needle in p for p in problems):
+            failures.append(f"rule R07 did not fire on {clause}")
     if not rules:
         failures.append(
             f"the self-test's `.gitignore` ({GENERATED_IGNORE_RULE}) gave no rules, so the `P01`/`P02` "
@@ -2195,9 +2410,78 @@ def self_test() -> int:
           "timeout and one with a six-hour one, a pull-request workflow with no queue and one with the wrong "
           "queue, a tolerated failure with no reason and a reason with no tolerated failure, a compile with "
           "no cache and a cache with hand-written keys, an unbudgeted artefact, a budget stepped over "
-          "(retention, paths, and a row for nothing), and a scheduled-only step back on the pull-request "
-          "path — and a step that reads an ignored, generated path was left alone")
+          "(retention, paths, and a row for nothing), a scheduled-only step back on the pull-request "
+          "path, a `push:` trigger that named branches instead of reaching them and a gate no pushed branch "
+          "can reach — and a step that reads an ignored, generated path was left alone")
     return 0
+
+
+#: What to tell a reader who finds their own branch absent from `origin`. The point of the line is that it is
+#: the whole fix: nothing about `R07` can start a run for a branch nobody has pushed.
+BRANCH_UNPUSHED = ("not visible as `origin/{branch}` in this clone, so no run of any kind will start for it "
+                   "— `git push -u origin {branch}` (or `git fetch origin` first, if it is pushed and this "
+                   "clone is merely stale)")
+
+
+def git(*args: str) -> str:
+    """A git question asked of this checkout, offline. Empty on any failure: the caller says what it assumed."""
+    import subprocess
+
+    try:
+        found = subprocess.run(["git", "-C", str(ROOT), *args], capture_output=True, text=True,
+                               timeout=30, check=False)
+    except (OSError, subprocess.SubprocessError):
+        return ""
+    return found.stdout.strip() if found.returncode == 0 else ""
+
+
+def check_branch_reach(branch: str = "") -> tuple[list[str], list[str]]:
+    """Answer "will CI run on this branch?" from the checkout, with no network and no token.
+
+    Printed by `python3 tools/check_workflows.py triggers`, and the reason the subcommand exists: the
+    question `reco-kwg6` closes is one nobody could ask before it. A workflow that triggers on
+    `pull_request` is not a fact about a branch until somebody opens the pull request, so the honest answer
+    needs three parts — what each workflow's triggers admit, whether the branch is on the remote at all, and
+    which of the merge gates would run if it were pushed.
+    """
+    branch = branch or git("branch", "--show-current")
+    lines: list[str] = []
+    problems: list[str] = []
+    files = workflows()
+    gates = [wf for wf in files if is_merge_gate(wf)]
+    if not branch:
+        lines.append("branch: (detached HEAD)")
+        problems.append("HEAD is detached, so there is no branch to answer for; pass `--branch <name>`")
+        return lines, problems
+    sha = git("rev-parse", "--verify", "--quiet", f"refs/remotes/origin/{branch}")
+    lines.append(f"branch: `{branch}` — " + (f"`{sha[:12]}` on `origin`, per this clone" if sha
+                                             else BRANCH_UNPUSHED.format(branch=branch)))
+    if not sha:
+        problems.append(f"branch `{branch}` is {BRANCH_UNPUSHED.format(branch=branch)}")
+    lines.append("")
+    lines.append("| Workflow | Triggers | A push of this branch | A pull request |")
+    lines.append("|---|---|---|---|")
+    for wf in files:
+        triggers = "; ".join(sorted(wf.triggers)) or "none"
+        seen = push_filter(wf)
+        if seen is None:
+            push = "no `push:` trigger"
+        elif push_reaches(wf, branch):
+            push = "yes"
+        else:
+            push = "no — its filter excludes it"
+        pr = ("n/a — no `pull_request` trigger" if "pull_request" not in wf.triggers
+              else "yes, every path" if is_merge_gate(wf) else "only its `paths:` filter")
+        lines.append(f"| `{wf.filename}` | {triggers} | {push} | {pr} |")
+        if is_merge_gate(wf) and not push_reaches(wf, branch):
+            problems.append(f"`{wf.filename}` gates every pull request and its `push:` trigger does not "
+                            f"reach `{branch}`, so pushing this branch starts no run there")
+    lines.append("")
+    reached = sum(1 for wf in gates if push_reaches(wf, branch))
+    lines.append(f"{len(gates)} merge-gate workflow(s) — the ones that fire on every pull request — and "
+                 f"{reached} of them reach `{branch}`. A gate that reaches the branch is a gate whose "
+                 "verdict you can read; a file below that does not is scheduled or dispatch-only by design.")
+    return lines, problems
 
 
 def render_budgets() -> str:
@@ -2227,12 +2511,27 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=(__doc__ or "").splitlines()[0])
     parser.add_argument("--verbose", action="store_true", help="print what passed as well")
     parser.add_argument("--network", action="store_true", help="verify every action ref resolves on GitHub")
-    parser.add_argument("mode", nargs="?", default="check", choices=["check", "self-test", "budgets"])
+    parser.add_argument("--branch", default="", help="`triggers` mode: the branch to answer for "
+                                                   "(default: the one HEAD is on)")
+    parser.add_argument("mode", nargs="?", default="check", choices=["check", "self-test", "budgets",
+                                                                    "triggers"])
     args = parser.parse_args()
     if args.mode == "self-test":
         return self_test()
     if args.mode == "budgets":
         print(render_budgets())
+        return 0
+    if args.mode == "triggers":
+        lines, problems = check_branch_reach(args.branch)
+        for line in lines:
+            print(line)
+        for problem in problems:
+            print(f"triggers: {problem}", file=sys.stderr)
+        if problems:
+            print(f"\n{len(problems)} problem(s): this branch starts no run, or not every gate can see it",
+                  file=sys.stderr)
+            return 1
+        print("\nthis branch reaches every merge gate: pushing it starts a run of each one listed above")
         return 0
     problems, notes = check(args.verbose, args.network)
     for note in notes:
@@ -2244,7 +2543,7 @@ def main() -> int:
         return 1
     print("workflows OK: action inventory, expressions, paths, fuzz manifest, dist target selection, "
           "cargo targets, job wiring, artefact names, timeouts, concurrency, tolerated failures, cache "
-          "discipline, artefact budgets and step cadence")
+          "discipline, artefact budgets, step cadence and branch reach")
     return 0
 
 

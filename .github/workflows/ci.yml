@@ -95,7 +95,13 @@ name: ci
 on:
   pull_request:
   push:
-    branches: [master]
+    # Every branch, not only the default one. `branches: [master]` was a true sentence about where merges
+    # happened that went false in silence: `master` has been frozen at `e194a63d9d` since 2026-10-26 while
+    # the work sat on a branch no trigger could reach, and a whole thirty-day census of this fleet watched
+    # none of it (`e11.1` §5.2, closed by `reco-kwg6`). A list of names is the shape `R07` refuses; the
+    # per-ref queue below is what keeps a superseded push from paying for itself twice, and
+    # `python3 tools/check_workflows.py triggers` answers the question for the branch you are on.
+    branches: ["**"]
 
 # A push to a branch that already has a run in flight must not pay for it again: `e11.1` §2.4 counted 7
 # red runs in thirty days whose only fault was being superseded, and every one of them ran to the end

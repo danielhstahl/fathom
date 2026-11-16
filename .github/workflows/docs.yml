@@ -28,7 +28,11 @@ name: docs
 on:
   pull_request:
   push:
-    branches: [master]
+    # Every branch, not only the default one: `master` sat frozen for three weeks while the work was on a
+    # branch no trigger could reach, and nothing in CI could see it (`e11.1` §5.2, `reco-kwg6`). `R07` of
+    # `tools/check_workflows.py` refuses a list of names here, and *Which branch a gate runs on* in
+    # docs/concepts/ci-gate.md is the prose.
+    branches: ["**"]
 
 # Two pushes in a row must not race to publish: the second waits rather than cancelling, so Pages never
 # serves half a merge and a deploy that is midway is never torn down under the runner.
@@ -51,9 +55,11 @@ jobs:
     # mkdocs builds the whole site from the generated pages in well under a minute; the theme install is the only network call in it
     timeout-minutes: 15
     runs-on: ubuntu-latest
-    # A Pages artifact is per-branch, so only `master`'s build is publishable; a PR still builds, so a
-    # broken page is a red check on the pull request that broke it.
-    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/master'
+    # Every event builds, since `reco-kwg6`: a broken page should be red on the branch that broke it, not
+    # only on the default branch or behind an open pull request — this line used to name `master`, which is
+    # half of how a frozen default branch made the docs checks invisible for three weeks. Publishing is the
+    # half that cannot follow the branch, because a Pages artefact is per-branch: see the upload step below
+    # and the `deploy` job.
     steps:
       - uses: actions/checkout@v4
 
@@ -89,7 +95,11 @@ jobs:
           echo "pages: $(find "${{ runner.temp }}/docs-site" -name '*.html' | wc -l)"
 
       - name: upload the Pages artefact
-        if: github.event_name == 'push'
+        # The default branch only: `actions/deploy-pages` publishes the site of the branch Pages is
+        # configured for, and an artefact for a branch it is not configured for is an artefact nobody can
+        # deploy. Spelled from `github.event.repository.default_branch` rather than a name, so that moving
+        # the default branch moves the deploy with it instead of leaving it pointed at a frozen commit.
+        if: github.event_name == 'push' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
         uses: actions/upload-pages-artifact@v3
         with:
           path: ${{ runner.temp }}/docs-site
@@ -127,7 +137,9 @@ jobs:
   deploy:
     name: publish to github pages
     needs: build
-    if: github.event_name == 'push'
+    # Same clause as the upload above, for the same reason: a branch push builds, and only the default
+    # branch publishes.
+    if: github.event_name == 'push' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
     # one download, one upload, one Pages deploy; there is no build in this job at all
     timeout-minutes: 15
     runs-on: ubuntu-latest
