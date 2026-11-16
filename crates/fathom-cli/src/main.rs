@@ -116,7 +116,7 @@ mod output;
 #[cfg(feature = "tui")]
 mod patches;
 mod query;
-mod queue;
+mod triage;
 // The ratchet (`e3.10`, `reco-5ht`): the graph read the allowance ledger is judged against, the write of the
 // committed file, and the review-memory interlock. All three need a store handle, a clock and a filesystem,
 // which the shell is not allowed to have (ADR-002 §5.2).

@@ -32,6 +32,50 @@ use crate::style::{Face, StyledLine};
 use super::model::FileEntry;
 use super::scan::Scan;
 
+/// What the tree sorts on inside its groups (`e8.6`).
+///
+/// The rule of thumb the ticket names is the whole design: *sort the tree by what the reviewer is
+/// hunting for.* Hunting for "what got harder" means the per-file complexity delta first, with the
+/// largest single unit behind it second — ADR-007 §5.3's pair, and the same quantity the rail glanced
+/// at, so `d` keeps being the place the number is proved rather than a second figure that happens to
+/// be nearby.
+///
+/// The sort permutes **inside** the taxonomy groups and never dissolves them. ADR-006 §5.3 groups the
+/// tree by class because "9 source, 2 test, 1 lockfile" is the reviewer's question; a sort that
+/// promoted a hot `vendor/` file above `src/` would answer a different question and hide the noise
+/// rows at the same time.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum Sort {
+    /// Path order, directory by directory: the reader's own order, and the default.
+    #[default]
+    Path,
+    /// Complexity delta first, largest single unit second, uncountable files last.
+    Complexity,
+}
+
+impl Sort {
+    /// The two spellings the strip and the palette print, in one list a test can walk.
+    pub const ALL: [Sort; 2] = [Sort::Path, Sort::Complexity];
+
+    /// The word in the footer: `sort: path`, `sort: complexity`.
+    #[must_use]
+    pub const fn name(self) -> &'static str {
+        match self {
+            Sort::Path => "path",
+            Sort::Complexity => "complexity",
+        }
+    }
+
+    /// The next one, for `<`.
+    #[must_use]
+    pub const fn next(self) -> Sort {
+        match self {
+            Sort::Path => Sort::Complexity,
+            Sort::Complexity => Sort::Path,
+        }
+    }
+}
+
 /// What a row points at.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Target {
@@ -67,6 +111,11 @@ pub struct Directory {
     pub adds: u32,
     /// Removed lines under it.
     pub dels: u32,
+    /// Σ of the complexity deltas under it; `None` when nothing under it could be counted, which is not
+    /// the same as `Some(0)` (`e8.6`, §5.4's "zero coverage is not a zero delta").
+    pub complexity: Option<i64>,
+    /// The largest single `V(G)` under it, for the secondary sort.
+    pub max: Option<i64>,
 }
 
 /// A taxonomy class, with its directories.
@@ -80,6 +129,10 @@ pub struct Group {
     pub adds: u32,
     /// Removed lines under it.
     pub dels: u32,
+    /// Σ of the complexity deltas under it, `None` when none could be counted.
+    pub complexity: Option<i64>,
+    /// The largest single `V(G)` under it.
+    pub max: Option<i64>,
 }
 
 /// Which row a slot draws, with no text attached.
@@ -115,13 +168,23 @@ pub struct TreeShape {
     show_noise: bool,
     /// The rule that hides them.
     noise_rule: Option<String>,
+    /// Which sort built this shape, so a row drawn from it can say what it is ordered by (`e8.6`).
+    sort: Sort,
+    /// Files with a complexity delta among the rows this shape draws (§5.4's numerator).
+    cx_measured: usize,
+    /// Files the patch said something about and could not count — the `?` cells.
+    cx_unmeasured: usize,
+    /// Σ of the deltas over those rows, `None` when none could be counted.
+    cx_sum: Option<i64>,
+    /// The largest single `V(G)` over those rows.
+    cx_max: Option<i64>,
 }
 
 impl TreeShape {
     /// Group, sort and total one index. The only O(files) step there is, and it happens once per
-    /// `(load, noise)` pair rather than once per pane per frame.
+    /// `(load, noise, sort)` tuple rather than once per pane per frame.
     #[must_use]
-    pub fn build(scan: &Scan, show_noise: bool) -> Self {
+    pub fn build(scan: &Scan, show_noise: bool, sort: Sort) -> Self {
         let mut groups: BTreeMap<String, Vec<usize>> = BTreeMap::new();
         let mut hidden = 0_usize;
         for (index, file) in scan.files.iter().enumerate() {
@@ -155,6 +218,10 @@ impl TreeShape {
 
         let mut slots: Vec<Slot> = vec![Slot::Aggregate];
         let mut built: Vec<Group> = Vec::new();
+        let mut cx_measured = 0_usize;
+        let mut cx_unmeasured = 0_usize;
+        let mut cx_sum: Option<i64> = None;
+        let mut cx_max: Option<i64> = None;
         for (class, indices) in order {
             let mut dirs: BTreeMap<String, Vec<usize>> = BTreeMap::new();
             for &index in &indices {
@@ -167,22 +234,80 @@ impl TreeShape {
                 dirs: Vec::new(),
                 adds: 0,
                 dels: 0,
+                complexity: None,
+                max: None,
             };
             for (path, mut files) in dirs {
-                files.sort_by_key(|&index| scan.files[index].path.clone());
+                // The file order is the sort's; the path is always the last key, so a tie is a tie the
+                // tree resolves the same way twice (`e8.6`: two runs over one index draw one tree).
+                files.sort_by_key(|&index| {
+                    let file = &scan.files[index];
+                    (
+                        match sort {
+                            Sort::Path => (0, std::cmp::Reverse(0), std::cmp::Reverse(0)),
+                            Sort::Complexity => file.annotation.complexity.sort_key(),
+                        },
+                        file.path.clone(),
+                    )
+                });
                 let mut node = Directory {
                     path,
                     files,
                     adds: 0,
                     dels: 0,
+                    complexity: None,
+                    max: None,
                 };
                 for &index in &node.files {
-                    node.adds += scan.files[index].adds;
-                    node.dels += scan.files[index].dels;
+                    let file = &scan.files[index];
+                    node.adds += file.adds;
+                    node.dels += file.dels;
+                    let cx = &file.annotation.complexity;
+                    if cx.delta.is_some() {
+                        cx_measured += 1;
+                    } else if cx.reason.is_some() {
+                        cx_unmeasured += 1;
+                    }
+                    if let Some(delta) = cx.delta {
+                        cx_sum = Some(cx_sum.unwrap_or(0) + delta);
+                    }
+                    if let Some(max) = cx.max {
+                        cx_max = Some(cx_max.map_or(max, |current: i64| current.max(max)));
+                    }
+                    if let Some(delta) = cx.delta {
+                        node.complexity = Some(node.complexity.unwrap_or(0) + delta);
+                    }
+                    if let Some(max) = cx.max {
+                        node.max = Some(node.max.map_or(max, |current: i64| current.max(max)));
+                    }
                 }
                 group.adds += node.adds;
                 group.dels += node.dels;
+                group.complexity = match (group.complexity, node.complexity) {
+                    (Some(sum), Some(delta)) => Some(sum + delta),
+                    (Some(sum), None) => Some(sum),
+                    (None, Some(delta)) => Some(delta),
+                    (None, None) => None,
+                };
+                group.max = match (group.max, node.max) {
+                    (Some(current), Some(max)) => Some(current.max(max)),
+                    (None, Some(max)) => Some(max),
+                    (current, None) => current,
+                };
                 group.dirs.push(node);
+            }
+            if sort == Sort::Complexity {
+                // Hot directories first, ties broken by the worst unit inside them and then by path.
+                group.dirs.sort_by_key(|dir| {
+                    (
+                        match dir.complexity {
+                            Some(delta) => (0, std::cmp::Reverse(delta)),
+                            None => (1, std::cmp::Reverse(0)),
+                        },
+                        std::cmp::Reverse(dir.max.unwrap_or(i64::MIN)),
+                        dir.path.clone(),
+                    )
+                });
             }
             let group_index = built.len();
             slots.push(Slot::Group(group_index));
@@ -212,6 +337,11 @@ impl TreeShape {
             shown_noise: hidden_noise,
             show_noise,
             noise_rule: scan.noise_rule(),
+            sort,
+            cx_measured,
+            cx_unmeasured,
+            cx_sum,
+            cx_max,
         }
     }
 
@@ -370,7 +500,7 @@ impl Tree {
         // [`Tree::from_shape`]): this copy is a full index clone, which is exactly the cost the
         // virtualised tree was built to stop paying.
         Tree::from_shape(
-            Arc::new(TreeShape::build(scan, show_noise)),
+            Arc::new(TreeShape::build(scan, show_noise, Sort::default())),
             Arc::new(scan.clone()),
             width,
         )
@@ -379,8 +509,20 @@ impl Tree {
     /// The same tree over an index the caller already shares: no copy, no pass over the files.
     #[must_use]
     pub fn build_shared(scan: &Arc<Scan>, show_noise: bool, width: usize) -> Tree {
+        Tree::build_shared_sorted(scan, show_noise, Sort::default(), width)
+    }
+
+    /// [`Tree::build_shared`] at a stated sort (`e8.6`): the tree pane's `<` rebuilds the shape and
+    /// nothing else, which is one O(files) pass per keystroke and no more.
+    #[must_use]
+    pub fn build_shared_sorted(
+        scan: &Arc<Scan>,
+        show_noise: bool,
+        sort: Sort,
+        width: usize,
+    ) -> Tree {
         Tree::from_shape(
-            Arc::new(TreeShape::build(scan, show_noise)),
+            Arc::new(TreeShape::build(scan, show_noise, sort)),
             Arc::clone(scan),
             width,
         )
@@ -487,6 +629,12 @@ impl Tree {
         self.shape.show_noise
     }
 
+    /// What the rows are ordered by inside their groups (`e8.6`).
+    #[must_use]
+    pub fn sort(&self) -> Sort {
+        self.shape.sort
+    }
+
     /// The rule that hides them.
     #[must_use]
     pub fn noise_rule(&self) -> Option<&str> {
@@ -514,6 +662,7 @@ fn group_line(group: Option<&Group>, width: usize) -> StyledLine {
     line.push_str(" ");
     line.push(Face::Removed, &format!("−{}", group.dels));
     line.push_str(&format!("  ({} f)", total_files(group)));
+    push_complexity(&mut line, group.complexity);
     line.padded(width)
 }
 
@@ -529,7 +678,20 @@ fn dir_line(dir: Option<&Directory>, width: usize) -> StyledLine {
     line.push(Face::Added, &format!("+{}", dir.adds));
     line.push_str(" ");
     line.push(Face::Removed, &format!("−{}", dir.dels));
+    push_complexity(&mut line, dir.complexity);
     line.padded(width)
+}
+
+/// One complexity cell, wherever in the row it belongs: signed like every other complexity figure
+/// (ADR-007 §10.1), and absent when nothing under the row could be counted — which is a different claim
+/// from a `?` about one file, and is why the group rows carry `None` rather than `Some(0)`.
+fn push_complexity(line: &mut StyledLine, sum: Option<i64>) {
+    let Some(sum) = sum else { return };
+    line.push_str(" ");
+    line.push(
+        Face::Number,
+        &fathom_analyze::insight::complexity_signed(sum),
+    );
 }
 
 /// How many files a group covers.
@@ -562,6 +724,20 @@ fn file_line(file: &FileEntry, width: usize) -> StyledLine {
     line.push(Face::Added, &format!("+{}", file.adds));
     line.push_str(" ");
     line.push(Face::Removed, &format!("−{}", file.dels));
+    // The per-file complexity delta (`e8.6`), after the line counts it qualifies and before anything
+    // that marks the row rather than measures it. ADR-007 §10.1: where the word does not fit, the number
+    // stands alone and the word lives in the legend — here, the counts row above.
+    if let Some(cell) = file.annotation.complexity.printed() {
+        line.push_str(" ");
+        line.push(
+            if file.annotation.complexity.delta.is_some() {
+                Face::Number
+            } else {
+                Face::Warning
+            },
+            &cell,
+        );
+    }
     if let Some(bytes) = file.bytes {
         line.push_str(&format!(" {} B", crate::app::format_thousands(bytes)));
     }
@@ -620,6 +796,26 @@ impl TreeShape {
                     line.push_str(" (b)");
                 } else if self.show_noise && self.shown_noise > 0 {
                     line.push_str(" · noise shown");
+                }
+                // The legend for the column every row below carries bare numbers in (§10.1: the word
+                // lives here, not on the row), and the coverage that goes with the sum (§5.4). Said only
+                // when the patch said anything: a patch with no complexity headers draws no legend rather
+                // than a `?` about every file in it.
+                if self.cx_measured + self.cx_unmeasured > 0 {
+                    line.push_str(" · complexity ");
+                    match self.cx_sum {
+                        Some(sum) => line.push(
+                            Face::Number,
+                            &fathom_analyze::insight::complexity_signed(sum),
+                        ),
+                        None => line.push(Face::Warning, "?"),
+                    }
+                    if self.cx_unmeasured > 0 {
+                        line.push_str(&format!(" ({}?)", self.cx_unmeasured));
+                    }
+                    if let Some(max) = self.cx_max {
+                        line.push_str(&format!(" · worst {max}"));
+                    }
                 }
                 (Target::Aggregate, line.padded(width))
             }

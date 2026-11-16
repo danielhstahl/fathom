@@ -37,8 +37,9 @@ use fathom_ingest::diff::Rendered;
 use fathom_ingest::oid::Oid;
 use fathom_ingest::record::{Limits, NotExamined};
 use fathom_ingest::repo::Repository;
+use fathom_store::complexity::PathComplexity;
 use fathom_store::spine::Store;
-use fathom_tui::diff::{BytesSource, PatchProvider, PatchSource, Unavailable};
+use fathom_tui::diff::{BytesSource, FileComplexity, PatchProvider, PatchSource, Unavailable};
 
 /// The one ceiling on a materialised episode diff: past it the files beyond the cap state so in
 /// their own rows (`X-Fathom-Skip`) instead of the process swelling. Generously above what the
@@ -89,7 +90,8 @@ impl PatchProvider for StorePatches {
         match store.episode(scope) {
             Ok(Some(row)) => {
                 let label = format!("episode {} · {} commit(s)", short(scope), row.members.len());
-                return build(&store, &self.root, &row.members, &label);
+                let figures = figures(&store, &row.id);
+                return build(&store, &self.root, &row.members, &label, figures);
             }
             Ok(None) => {}
             Err(err) => {
@@ -109,6 +111,7 @@ impl PatchProvider for StorePatches {
                 &self.root,
                 &members,
                 &format!("commit {}", short(scope)),
+                commit_figures(&store, scope),
             );
         }
         Err(Unavailable::with_hint(
@@ -136,6 +139,7 @@ fn build(
     root: &Path,
     members: &[String],
     label: &str,
+    figures: Figures,
 ) -> Result<Box<dyn PatchSource>, Unavailable> {
     let repo = Repository::discover(root).map_err(|err| {
         Unavailable::with_hint(
@@ -147,7 +151,13 @@ fn build(
     let (aggs, missing) = aggregate(store, members)?;
     let mut out = Vec::new();
     for agg in &aggs {
-        emit_file(&mut out, agg, &repo, &limits);
+        emit_file(
+            &mut out,
+            agg,
+            &repo,
+            &limits,
+            figures.get(&agg.path).cloned(),
+        );
     }
     for oid in &missing {
         // A member the spine has no row for is a stated pseudo-file, not a silent shrink of the
@@ -173,6 +183,88 @@ fn build(
         ));
     }
     Ok(Box::new(BytesSource::new(label, out)))
+}
+
+/// One path's complexity, in the shape the tree pane parses back out of the patch (`e8.6`).
+#[cfg(feature = "sqlite-bundled")]
+type Figures = std::collections::BTreeMap<String, FileComplexity>;
+
+/// The episode's per-path complexity, from the one join the delta document is filled from too
+/// ([`Store::episode_complexity`], ADR-007 §9.2): base at the episode's first row for the path, head at
+/// its last. A read that failed is no figures at all, which the pane draws as no column — not as a `?`
+/// about every file in the episode.
+#[cfg(feature = "sqlite-bundled")]
+#[must_use]
+fn figures(store: &Store, episode_id: &str) -> Figures {
+    store
+        .episode_complexity(&[episode_id.to_owned()])
+        .ok()
+        .and_then(|all| all.get(episode_id).cloned())
+        .map(|roll| {
+            roll.paths
+                .iter()
+                .map(|path| (path.path.clone(), cell(path)))
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+/// The same three facts for one commit read on its own — the `d <oid>` scope, where there is no episode
+/// to roll up and the commit's own before/after pair is the whole question.
+#[cfg(feature = "sqlite-bundled")]
+#[must_use]
+fn commit_figures(store: &Store, oid: &str) -> Figures {
+    let rows = match store.commit_complexity(oid) {
+        Ok(rows) => rows,
+        Err(_) => return Figures::new(),
+    };
+    rows.iter()
+        .map(|(path, _, figure)| {
+            let delta = match (figure.before.figure(), figure.after.figure()) {
+                (Some(before), Some(after)) => Some(after - before),
+                _ => None,
+            };
+            let reason = if delta.is_some() {
+                None
+            } else {
+                [figure.before.reason(), figure.after.reason()]
+                    .into_iter()
+                    .find(|code| !code.is_empty())
+                    .map(str::to_owned)
+            };
+            (
+                path.clone(),
+                FileComplexity {
+                    delta,
+                    reason,
+                    max: figure.max,
+                },
+            )
+        })
+        .collect()
+}
+
+/// One rolled-up path, in the patch's shape: the delta if it could be subtracted, and if it could not,
+/// the one code that says why — the mixed-basis pair first, because a comparison of two rule sets is the
+/// reason no other code is the true one (ADR-007 §9.5).
+#[cfg(feature = "sqlite-bundled")]
+#[must_use]
+fn cell(path: &PathComplexity) -> FileComplexity {
+    let reason = if path.delta.is_some() {
+        None
+    } else if path.bases.len() > 1 {
+        Some(fathom_store::complexity::MIXED_BASIS.to_owned())
+    } else {
+        [path.base.reason(), path.head.reason()]
+            .into_iter()
+            .find(|code| !code.is_empty())
+            .map(str::to_owned)
+    };
+    FileComplexity {
+        delta: path.delta,
+        reason,
+        max: path.max,
+    }
 }
 
 /// One path's net state across the episode, in first-touch order.
@@ -295,7 +387,13 @@ fn aggregate(store: &Store, members: &[String]) -> Result<(Vec<Agg>, Vec<String>
 
 /// Emit one aggregated path as a file section of the patch.
 #[cfg(feature = "sqlite-bundled")]
-fn emit_file(out: &mut Vec<u8>, agg: &Agg, repo: &Repository, limits: &Limits) {
+fn emit_file(
+    out: &mut Vec<u8>,
+    agg: &Agg,
+    repo: &Repository,
+    limits: &Limits,
+    complexity: Option<FileComplexity>,
+) {
     if agg.added && agg.deleted {
         // Created and removed inside the episode: net zero, and a row for it would be the tree
         // listing a file no reviewer will ever find in either tree.
@@ -356,6 +454,26 @@ fn emit_file(out: &mut Vec<u8>, agg: &Agg, repo: &Repository, limits: &Limits) {
             )
             .as_bytes(),
         );
+    }
+    // What the path did to its own complexity (`e8.6`). The spine already holds it — `e8.3`'s columns,
+    // `e8.4`'s pass — and the tree pane is where a reviewer goes to see it per file, so the roll-up's
+    // own per-path rows travel in the patch instead of the pane re-deriving a second answer (ADR-001
+    // §7.10). Absent when the read made no roll-up, which prints no cell: a `?` would be a claim about
+    // the file, and there is no claim here at all.
+    if let Some(cx) = complexity {
+        let spelled = match (cx.delta, cx.reason.as_deref()) {
+            (Some(delta), _) => fathom_analyze::insight::complexity_signed(delta),
+            (None, Some(reason)) => format!("? {reason}"),
+            // Nothing was counted and no code came with it: say nothing rather than print a bare `?`,
+            // which §7.4 will not allow to stand on its own.
+            (None, None) => String::new(),
+        };
+        if !spelled.is_empty() {
+            out.extend_from_slice(format!("X-Fathom-Complexity: {spelled}\n").as_bytes());
+        }
+        if let Some(max) = cx.max {
+            out.extend_from_slice(format!("X-Fathom-Complexity-Max: {max}\n").as_bytes());
+        }
     }
     if agg.binary {
         emit_binary(out, &old_name, &new_name);

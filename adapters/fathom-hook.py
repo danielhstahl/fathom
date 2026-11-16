@@ -179,7 +179,7 @@ CONTENT_KEYS = {
     "messages",
     "transcript",
     # ADR-005 §2.1 carries a turn's prompt as `prompt_sha256` and `prompt_chars` and *not* as text;
-    # `docs/concepts/dependency-risk.md` is written against that (a prompt digest is a partial, never
+    # `docs/concepts/dependencies.md` is written against that (a prompt digest is a partial, never
     # a quote). A vendor that hands the prompt over in the envelope therefore has it digested here,
     # or the stream would keep what the contract says it does not keep.
     "prompt",

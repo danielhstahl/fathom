@@ -9,8 +9,9 @@
 //! So this module supplies the missing seam and nothing else:
 //!
 //! * [`Watcher`] is the question the loop asks on a wake-up it already takes — *has anything moved?* — and
-//!   [`Update`] is the answer, in the only shapes the shell can draw: a [`Batch`] of episodes and the
-//!   index's numbers. Like [`crate::frame::FrameSink`], [`crate::diff::Provider`] and
+//!   [`Update`] is the answer, in the only shapes the shell can draw: a [`Batch`] of episodes, the
+//!   index's numbers and the branch the tab bar names. Like [`crate::frame::FrameSink`],
+//!   [`crate::diff::Provider`] and
 //!   [`crate::compare::Provider`], it is a trait the composition root implements, because the shell may not
 //!   open a store, read git or run the indexer (ADR-002 §5.2, lint `E01`): `fathom-cli` probes, indexes and
 //!   re-reads, and hands over rows.
@@ -35,8 +36,9 @@ use crate::timeline::Batch;
 ///
 /// Every field is optional because a producer re-reads what its own probe says moved: a store the watcher
 /// wrote is a new batch and new numbers, a `fathom index` run by hand in another terminal is only new
-/// numbers, and a half-finished rebuild is a sentence and nothing else. An update that carries nothing is
-/// [`Update::is_empty`] and the loop draws no frame for it.
+/// numbers, a `git switch` to a sibling at the same commit is only a new label, and a half-finished rebuild
+/// is a sentence and nothing else. An update that carries nothing is [`Update::is_empty`] and the loop draws
+/// no frame for it.
 #[derive(Debug, Clone, Default)]
 pub struct Update {
     /// The rail's rows now. The whole page, not a diff: the rail's own re-attachment rule is what keeps
@@ -53,6 +55,15 @@ pub struct Update {
     /// How many commits this update brought, when the producer knows. Printed, never guessed: the shell
     /// does not know what the index held before it was asked (`ADR-001 §7.7`).
     pub new_commits: Option<u64>,
+    /// What the tab bar's right-hand column says now (`reco-nup`).
+    ///
+    /// The label is `{repository} · {branch}`, and only the composition root can read the second half: it
+    /// comes from `HEAD`, and `HEAD` is git, which the shell may not open (ADR-002 §5.2, lint `E01`). So a
+    /// `git switch` made in the first terminal reaches this frame here or nowhere — and a frame that goes
+    /// on printing `main` after the reviewer left `main` is not merely older than the repository, it is
+    /// describing a branch that is not checked out. Absent means the producer's probe says the head ref did
+    /// not move; present means the tab bar prints exactly this string from the next frame.
+    pub repo_label: Option<String>,
     /// The producer's own sentence, in preference to the one the shell composes — which is where a failed
     /// index run, a skipped slice and a store that would not open get said in the words that explain them.
     pub note: Option<String>,
@@ -140,6 +151,7 @@ impl Update {
             && self.index.is_none()
             && self.search.is_none()
             && self.new_commits.is_none()
+            && self.repo_label.is_none()
             && self.note.is_none()
             && self.work.is_none()
     }

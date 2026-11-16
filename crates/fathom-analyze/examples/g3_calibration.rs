@@ -25,7 +25,7 @@
 //!    [`fathom_analyze::risk::collect::vector`] plus [`fathom_analyze::risk::score::score`] under
 //!    [`fathom_analyze::risk::weights::Weights::defaults`]; the findings are
 //!    [`fathom_analyze::detectors::scan`] with every detector enabled; the label vocabulary is
-//!    [`fathom_analyze::queue::disposition::REASONS`], the closed list `e4.6` owns and §5.4 names as the
+//!    [`fathom_analyze::review::disposition::REASONS`], the closed list `e4.6` owns and §5.4 names as the
 //!    labelling mechanism. A τ in `thresholds.json` that disagrees with the shipped default is an error.
 //! 4. **Per detector, always.** A guardrail that cannot name which detector cried wolf is a guardrail that
 //!    gets relaxed wholesale, so `G3` is printed per detector as well as in aggregate, and `e0.12`'s rule —
@@ -53,11 +53,13 @@ use std::path::{Path, PathBuf};
 use fathom_analyze::detectors;
 use fathom_analyze::detectors::model::{Content, Corpus, Episode, FileChange};
 use fathom_analyze::detectors::policy::Policy;
+use fathom_analyze::fill;
 use fathom_analyze::index::{self, Scope, Worktree};
-use fathom_analyze::queue::is_code;
+use fathom_analyze::review::is_code;
 use fathom_analyze::risk::score;
 use fathom_analyze::risk::weights::Weights;
 use fathom_analyze::risk::{collect as risk_collect, collect::Supply};
+use fathom_analyze::structure::{ExtractPolicy, MAX_COMPLEXITY_RUN};
 use fathom_ingest::record::{Limits, Unclassified};
 use fathom_ingest::repo::Repository;
 use fathom_ingest::segment::Rules;
@@ -288,6 +290,9 @@ struct Measured {
     /// population a guardrail is measured on has to be the population it will be applied to, and if it
     /// is not, the number says so out loud.
     author_kind: String,
+    /// The episode's complexity delta in V(G), when the index could subtract one (`reco-l9bz.7`).
+    /// `None` is the axis absent, which is not the same claim as `Some(0)`.
+    complexity: Option<i64>,
     score: u8,
     scored: bool,
     /// The three features that moved the score most, as `points — reason`. The receipts print them so a
@@ -353,6 +358,9 @@ fn receipt(e: &Measured) -> Value {
 struct Repo {
     pin: Pin,
     episodes: Vec<Measured>,
+    /// What the index-time complexity pass did here, so the report can show the `complexity` axis was
+    /// measured on a pass that was never cut short.
+    complexity_pass: fill::Ledger,
     /// The reason codes the shipped vocabulary offers.
     vocabulary: BTreeSet<String>,
     /// Labels that did not resolve to an episode in the window.
@@ -361,6 +369,39 @@ struct Repo {
     refused: Vec<String>,
     /// Every score the repository produced, for the decile cut.
     scores: Vec<u8>,
+}
+
+/// The largest bound the shipped policy will honour, used for both of the pass's per-run budgets.
+///
+/// The shipped defaults are one minute and 128 MiB, which is right for a laptop and wrong for a gate: a
+/// row a budget refused is *owed* to the next `fathom index`, so a corpus measured under a binding budget
+/// is a corpus whose score depends on how fast the runner happened to be. This harness measures three
+/// pinned windows and the pass costs tens of seconds against a four-gibibyte, one-hour ceiling, so running
+/// at the ceiling means the budget cannot bind and the figures are the repository's and not the machine's.
+const CORPUS_COMPLEXITY_MAX_RUN: u64 = MAX_COMPLEXITY_RUN;
+
+/// Refuse to measure a corpus the complexity pass did not finish.
+///
+/// A budget refusal is the machine talking, not the repository: which rows the pass reaches depends on
+/// how fast this process ran, so the axis would move between two runs of the same code on two machines —
+/// which is the same defect `e4.4` fixed in the score itself when a term appeared that no run could
+/// reproduce. Deterministic refusals are fine and expected here (a file over `max_file_bytes`, a grammar
+/// a narrower build has not compiled): both runs refuse exactly the same rows in that case.
+fn check_corpus_is_whole(repository: &str, ledger: &fill::Ledger) {
+    if let Some(declined) = ledger.declined {
+        panic!(
+            "{repository}: the complexity pass was stopped by {}, so its figures are a fact about this \
+             runner and not about the corpus — raise the key in this harness and re-measure",
+            declined.key()
+        );
+    }
+    if let Some(count) = ledger.refused.get("scan_budget") {
+        panic!(
+            "{repository}: {count} file row(s) were refused the complexity count by a per-run budget, \
+             which makes the `complexity` axis depend on machine speed — this harness measures a whole \
+             corpus and must not run under a budget that binds"
+        );
+    }
 }
 
 /// One cut's numbers.
@@ -515,6 +556,20 @@ fn measure_repo(clone: &Path, pin: &Pin, truth: &Truth, work: &Path, policy: &Po
     let mut store = Store::open(&store_path).expect("a store can be opened for the corpus");
     store.advance_epoch().expect("a fresh epoch can be started");
     let options = index::Options {
+        // The complexity axis is now in the score, and the pass that fills it ships with two per-run
+        // budgets (`extract.complexity.max_run_ms`, `…max_run_bytes`) whose whole job is to bound a
+        // person's wait: past either one every remaining row prints `?` with `scan_budget` and stays
+        // owed, for the next run to pick up. For a measurement that is the wrong instrument — which rows
+        // a 60-second budget reaches is a fact about the machine and not about the repository, and a
+        // report that depends on it would not survive `--check` on a slower runner. The corpus is three
+        // pinned windows and the pass costs seconds, so this run works under a bound the corpus cannot
+        // reach; `0` is a refusal in this policy rather than a licence, which is why "no bound" is
+        // spelled as a large number. `check_corpus_is_whole` is what makes the claim stick.
+        extract: ExtractPolicy {
+            complexity_max_run_ms: CORPUS_COMPLEXITY_MAX_RUN,
+            complexity_max_run_bytes: CORPUS_COMPLEXITY_MAX_RUN,
+            ..ExtractPolicy::default()
+        },
         ingest: fathom_ingest::ingest::IngestOptions {
             walk: fathom_ingest::graph::WalkOptions {
                 // Newest-first, and only as many as the window needs. The default order follows the
@@ -537,9 +592,10 @@ fn measure_repo(clone: &Path, pin: &Pin, truth: &Truth, work: &Path, policy: &Po
         refresh: true,
         ..index::Options::head()
     };
-    index::run(&repository, &mut store, &Unclassified, &options)
+    let run = index::run(&repository, &mut store, &Unclassified, &options)
         .unwrap_or_else(|e| panic!("{}: indexing the pinned window failed: {e}", pin.repository));
     store.settle_epoch().expect("the epoch can be settled");
+    check_corpus_is_whole(&pin.repository, &run.complexity);
 
     let query = EpisodeQuery {
         limit: i64::try_from(pin.window).expect("a window fits in an i64"),
@@ -584,6 +640,15 @@ fn measure_repo(clone: &Path, pin: &Pin, truth: &Truth, work: &Path, policy: &Po
     let corpus = Corpus::of(&bare);
     let weights = Weights::defaults();
 
+    // The complexity roll-up for the whole window, in one join (`reco-l9bz.7`). This is the same read the
+    // card and the rail read — `Store::episode_complexity` — because a guardrail measured on a figure the
+    // product does not print would be measuring the harness. An episode absent from the map is an episode
+    // the complexity pass could not subtract anything on, and its `complexity` axis leaves the sum.
+    let ids: Vec<String> = rows.iter().map(|row| row.id.clone()).collect();
+    let complexity = store
+        .episode_complexity(&ids)
+        .expect("the window's complexity roll-up can be read");
+
     let mut episodes: Vec<Measured> = Vec::new();
     for (row, episode) in rows.iter().zip(content.episodes.iter()) {
         assert_eq!(
@@ -594,7 +659,8 @@ fn measure_repo(clone: &Path, pin: &Pin, truth: &Truth, work: &Path, policy: &Po
         // No store is open here: this harness scores a corpus it has already read, so the honest blast
         // reason is "nothing asked" rather than an answer attributed to some index.
         let blast = fathom_analyze::risk::blast::Availability::NotProbed;
-        let vector = risk_collect::vector(row, episode, &scan, &Supply::nothing(), &blast);
+        let figure = complexity.get(&row.id);
+        let vector = risk_collect::vector(row, episode, &scan, &Supply::nothing(), &blast, figure);
         let scored = score::score(&vector, &weights);
         episodes.push(Measured {
             id: row.id.clone(),
@@ -631,12 +697,14 @@ fn measure_repo(clone: &Path, pin: &Pin, truth: &Truth, work: &Path, policy: &Po
             rework: Rework::default(),
             mature: false,
             label: None,
+            complexity: figure.and_then(|roll| roll.delta),
         });
     }
 
     let mut repo = Repo {
         pin: pin.clone(),
-        vocabulary: fathom_analyze::queue::REASONS
+        complexity_pass: run.complexity,
+        vocabulary: fathom_analyze::review::REASONS
             .iter()
             .map(|(code, ..)| (*code).to_owned())
             .collect(),
@@ -1201,6 +1269,32 @@ fn main() {
             "score_median": percentile(&repo.scores, 0.5),
             "score_max": repo.scores.iter().copied().max().unwrap_or(0),
             "decile_tau": decile,
+            // How much of this window the `complexity` axis could actually weigh (`reco-l9bz.7`). Printed
+            // because an axis that is absent from most of a corpus must not read like an axis that measured
+            // most of it and found nothing (ADR-001 §7.7, ADR-007 §5.4).
+            "complexity_axis": {
+                "measured": repo.episodes.iter().filter(|e| e.complexity.is_some()).count(),
+                "absent": repo.episodes.iter().filter(|e| e.complexity.is_none()).count(),
+                "added_total": repo
+                    .episodes
+                    .iter()
+                    .filter_map(|e| e.complexity)
+                    .filter(|d| *d > 0)
+                    .sum::<i64>(),
+                "note": "episodes whose V(G) delta could be subtracted on both sides of at least one \
+                         path, out of the window. An episode with no figure leaves the `complexity` axis \
+                         out of its own denominator; it is not scored as having added nothing.",
+                // The pass that produced those figures, printed so a reader can see the axis was measured
+                // under a budget that did not bind (`reco-l9bz.7`). Deliberately without `ms` or
+                // `bytes_read`: those are the machine's numbers, and this file is compared byte for byte.
+                "pass": {
+                    "rows": repo.complexity_pass.rows,
+                    "measured": repo.complexity_pass.measured,
+                    "written": repo.complexity_pass.written,
+                    "refused": repo.complexity_pass.refused,
+                    "stopped_by": repo.complexity_pass.declined.map(|d| d.key().to_owned()),
+                },
+            },
             "labelled_total": repo.episodes.iter().filter(|e| e.label.is_some()).count(),
             "labels": repo
                 .episodes
@@ -1481,7 +1575,25 @@ fn main() {
             "detectors_enabled": policy.enabled.iter().cloned().collect::<Vec<_>>(),
             "note": "every detector is enabled for the measurement. The four that ship disabled have to \
                      be measured too, or nothing can decide whether they deserve to ship enabled.",
-            "weights": "features-1 as shipped, with the shipped default tau",
+            "weights": format!(
+                "{} v{} as shipped, with the shipped default tau",
+                fathom_analyze::risk::feature::MODEL,
+                fathom_analyze::risk::feature::MODEL_VERSION
+            ),
+        },
+        "build": {
+            "grammars": fathom_analyze::structure::complexity::LANGUAGES
+                .iter()
+                .filter(|language| {
+                    fathom_analyze::structure::complexity::rules(**language).is_some()
+                })
+                .map(|language| language.as_str())
+                .collect::<Vec<_>>(),
+            "note": "the grammars this binary was compiled with, because they decide what this corpus can \
+                     be measured on. A grammar that is not compiled in makes every one of that language's \
+                     files `grammar_not_compiled`, which makes the `complexity` axis absent from every \
+                     episode here — so the leg that runs this harness compiles the six (`reco-l9bz.7`), and \
+                     a report from a narrower build does not reproduce against this one.",
         },
         "repositories": repo_json,
         "aggregate": aggregate,

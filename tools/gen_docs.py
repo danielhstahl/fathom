@@ -339,17 +339,17 @@ FEATURE_DOCS = {
                        "the store: SQLite compiled into the binary rather than found on the host."),
     "langs-all": (["docs/concepts/structure-extraction.md"],
                   "all six tree-sitter grammars, so structure extraction covers the tree."),
-    "deps-all": (["docs/concepts/dependency-surface.md"],
+    "deps-all": (["docs/concepts/dependencies.md"],
                  "every dependency ecosystem, so a lockfile is never silently unread."),
     "minimal": (["docs/adr/0002-workspace.md"],
                 "the headless build for a CI gate: no terminal, no store, no grammars."),
-    "net-advisories": (["docs/concepts/dependency-risk.md"],
+    "net-advisories": (["docs/concepts/dependencies.md"],
                        "outbound advisory lookups, and only with `privacy.advisories`."),
     "net-llm": (["docs/concepts/narrative-polish.md"],
                 "an outbound model call. **Not shipped** — `e4.3a` measured it and it lost."),
     "net-http-transport": (["docs/adr/0005-harness-contract.md"],
                            "MCP over HTTP instead of stdio, gated the same way."),
-    "schema-gen": (["docs/concepts/delta-model.md", "docs/reference/cli.md"],
+    "schema-gen": (["docs/concepts/delta.md", "docs/reference/cli.md"],
                    "`--schema --write`, which is how the checked-in schemas are made."),
 }
 
@@ -445,13 +445,13 @@ VERB_DOCS = {
                     "who wrote it, and how to overrule that"),
     "review": (["docs/concepts/review-ledger.md", "docs/concepts/cli.md"],
                "the sign-offs, and whether they still match"),
-    "analyze": (["docs/concepts/delta.md", "docs/concepts/delta-model.md"],
+    "analyze": (["docs/concepts/delta.md"],
                 "the delta document, human or JSON"),
     "narrative": (["docs/concepts/episode-narrative.md", "docs/concepts/episode.md"],
                   "the prose, with a citation per claim"),
     "drift": (["docs/concepts/plan-drift.md", "docs/concepts/session-state.md"],
               "what the plan promised against what landed"),
-    "why": (["docs/concepts/risk-score.md", "docs/concepts/risk-scoring.md"],
+    "why": (["docs/concepts/risk.md", "docs/reference/cli.md"],
             "the risk score as an auditable sum"),
     # `e7.4` (reco-3q4): the verb that prints the shell's own copy of this grammar. It is in VERB_DOCS
     # for the same reason every verb is: a shipped verb with no page is an undocumented feature, and this
@@ -498,9 +498,9 @@ VERB_DOCS = {
             "the composed delta between any two episodes or revisions"),
     "search": (["docs/adr/0006-tui.md", "docs/concepts/timeline.md"],
                "one fuzzy box over episodes, paths, symbols, dependencies and findings"),
-    "context": (["docs/concepts/review-memory.md", "docs/concepts/review-ledger.md"],
+    "context": (["docs/concepts/review-ledger.md"],
                 "what this repository already knows about a path or an episode"),
-    "note": (["docs/concepts/review-memory.md", "docs/concepts/cli.md"],
+    "note": (["docs/concepts/review-ledger.md", "docs/concepts/cli.md"],
              "the review memory: decisions, questions and follow-ups, committed"),
 }
 

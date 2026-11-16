@@ -9,7 +9,7 @@
 //! | `fan_out` | modules this one depends on | the module graph ([`crate::graph::query::dependencies_of`]) |
 //! | `instability` | `fan_out / (fan_in + fan_out)` | the same two numbers, divided |
 //! | `size` | code lines in the module | `e3.1`'s file-level measurement ([`crate::structure::FileLevel::code_lines`]) |
-//! | `complexity` | branches, loops, returns and nesting | `e3.1`'s per-declaration spans ([`crate::structure::Complexity`]) |
+//! | `complexity` | branches, loops, returns and nesting | `e3.1`'s per-declaration spans ([`crate::structure::StructureProxies`]) |
 //! | `churn` | graph edge events per revision | `e3.3`'s churn window ([`crate::graph::ChurnReport`]) |
 //!
 //! # A raw number is never a value

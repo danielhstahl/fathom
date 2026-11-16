@@ -77,6 +77,17 @@ fn git(cwd: &std::path::Path, args: &[&str]) {
     assert!(out.status.success(), "git {args:?}: {}", stderr(&out));
 }
 
+/// What a sentence can wrap a token in, on either end and in any order.
+///
+/// The frame writes its promises as prose, so a promise arrives as `` `fathom --plain`. `` — with a
+/// backtick *between* the flag and the full stop. Trimming one class of wrapper and then the other
+/// leaves the first one glued to the token, and the audit then reports `--plain` — a flag this build
+/// has, and prints in `--help` — as missing (`reco-r0rj`; it showed only on a terminal that had said
+/// nothing about itself, where the notice that ends in a quoted flag is the one the frame prints).
+/// So the wrappers come off in one pass, from either end, until a character that belongs to the token
+/// survives.
+const WRAPPING: [char; 11] = ['`', '"', '\'', '(', ')', '[', ']', ',', ';', '.', ':'];
+
 /// What the binary says it can do, read off its own help rather than from a list somebody maintains.
 ///
 /// Built by running `--help` for the binary and for every verb it lists: the answer is therefore whatever
@@ -130,13 +141,12 @@ impl Surface {
 
     /// Every `fathom <word>` and `--flag` token in a sentence, with the ones that are this binary's own
     /// prose removed. Prose like "`fathom index` is the verb that fills it" counts; a path like
-    /// `fathom.toml` does not.
+    /// `fathom.toml` does not. Each candidate is read out of its wrapping first — the frame puts a
+    /// backtick around the very things it promises — see [`WRAPPING`].
     fn named(&self, text: &str) -> Vec<String> {
         let mut found = Vec::new();
         for word in text.split_whitespace() {
-            let word = word
-                .trim_matches('`')
-                .trim_end_matches([',', ';', '.', ':']);
+            let word = word.trim_matches(WRAPPING);
             if word.starts_with("--") {
                 // An option in a sentence is a promise that *something* accepts it.
                 if self.known_flag(word) {
@@ -204,6 +214,44 @@ fn nothing_the_frame_prints_names_a_command_this_build_lacks() {
         assert!(
             missing.is_empty(),
             "the frame names commands this build does not have: {missing:?}\n---\n{text}"
+        );
+    }
+}
+
+/// The tokenizer's own contract, tested on its own because the failure it guards against is a false one.
+///
+/// The audit reads promises out of prose, and prose wraps a token in whatever the sentence needs. The
+/// frame's sentence "…or read the text with `fathom --plain`." ends with the full stop *outside* the
+/// closing backtick, and reading the token back one wrapper at a time left the backtick attached — so
+/// `--plain`, a flag in this build's own `--help`, was reported missing (`reco-r0rj`). No binary here:
+/// this is the reader under test, against a `Surface` spelled out.
+#[test]
+fn a_token_is_read_out_of_prose_whatever_it_is_wrapped_in() {
+    let surface = Surface {
+        verbs: vec!["index".to_owned()],
+        flags: vec!["--plain".to_owned(), "--lines".to_owned()],
+    };
+    let cases: &[(&str, &[&str])] = &[
+        // The shape that broke it: a quoted flag ending a sentence.
+        ("or read the text with `fathom --plain`.", &["--plain"]),
+        ("the frame, as text: `--plain`.", &["--plain"]),
+        // And its neighbours, same sentence, other wrapping.
+        ("(`--plain`)", &["--plain"]),
+        ("`--plain`, then `--lines`.", &["--plain", "--lines"]),
+        ("add --plain and nothing else", &["--plain"]),
+        ("`fathom.toml` and `fathom-tui` name no flag", &[]),
+        // The rule still bites: a flag this build does not have stays missing however politely it is put.
+        ("try `fathom --frobnicate`.", &["MISSING --frobnicate"]),
+        ("or (`--no-such-flag`)", &["MISSING --no-such-flag"]),
+    ];
+    for (sentence, expected) in cases {
+        assert_eq!(
+            surface.named(sentence),
+            expected
+                .iter()
+                .map(|word| (*word).to_owned())
+                .collect::<Vec<String>>(),
+            "reading {sentence:?}"
         );
     }
 }

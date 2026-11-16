@@ -45,10 +45,15 @@ use fathom_analyze::plugin::{
     API_VERSION, Detector, Finding, FindingType, Input as PluginInput, Limits, Meta, Registry, Run,
 };
 
+/// What a scripted detector's body is. Named because it is used twice (here and in `scripted`'s bound), and
+/// because clippy's `type_complexity` is right that a `Box<dyn Fn … + Send + Sync>` inline in a field list is
+/// hard to read — the fix it suggests, not the flattening it implies.
+type ScriptedBody = Box<dyn Fn(&PluginInput<'_>) -> Vec<Finding> + Send + Sync>;
+
 /// A detector whose body is whatever a test wants it to say.
 struct Scripted {
     meta: Meta,
-    raises: Box<dyn Fn(&PluginInput<'_>) -> Vec<Finding> + Send + Sync>,
+    raises: ScriptedBody,
 }
 
 impl Detector for Scripted {

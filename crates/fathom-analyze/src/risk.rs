@@ -15,7 +15,7 @@
 //!
 //! This is a **ranking**, not a score with a claim on the future. `e4.4` owns the explainable risk
 //! score, whose feature vector includes findings and blast radius; it landed, and it prints in the same
-//! columns beside these numbers (`fathom why` scores `features-1`), while `e4.5` owns what the queue
+//! columns beside these numbers (`fathom why` scores `features-3`), while `e4.5` owned what the queue
 //! weights its ordering against (staleness, blast radius). What was deliberately kept in the shape
 //! `e4.4` needed, and is what made the swap a swap rather than a rewrite: a value in 0..=100, a component
 //! list that adds up to it, one printed reason per component, and a stated list of what the inputs
@@ -27,6 +27,10 @@
 //!   read (generated, vendored, lockfile, binary) — which is e2.2's noise claim approximated by path
 //!   rather than by token comparison, and discounted rather than dropped because noise is a view and
 //!   never a deletion;
+//! * **complexity** — what the episode did to the cyclomatic complexity of the files it touched
+//!   (`e8.5`'s figure, ADR-007 §5.2): the reading cost a line count cannot see, because forty lines
+//!   that add four branches are not a forty-line read. Counted by the same pass the card prints, and
+//!   absent — never zero — when the index holds no figure for the episode (ADR-007 §5.4);
 //! * **surfaces** — the most consequential *kind* of file the episode touched, from the closed
 //!   [`Surface`] list: a migration outranks a workflow file, which outranks a source file, which
 //!   outranks a document. This axis is why a three-line `permissions: write-all` in CI does not rank
@@ -34,9 +38,13 @@
 //! * **deletions** — how much of the churn is removal, and specifically whether the test surface
 //!   shrank while source grew. That is the shape of "380 lines of tests deleted behind a 520-line
 //!   rewrite", and it is invisible in the aggregate `n_del` the rail prints;
-//! * **breadth** — how many distinct surfaces, and how many files, which is scope creep;
-//! * **author** — an unreviewed agent turn deserves more attention than an unreviewed human turn
-//!   (ADR-001 §7.3 is the thesis behind that).
+//! * **breadth** — how many distinct surfaces, and how many files, which is scope creep.
+//!
+//! There is no `author` component. It was 8 points for a label the reviewer is no longer shown, and a
+//! component that scores an episode for something the reader cannot see is what ADR-001 §7.9 forbids;
+//! [`Signals`] no longer even carries an author kind, so the ranking cannot score one by accident. Who
+//! wrote an episode is still stored, still printed by `fathom attribution` as a confidence with its
+//! evidence, and now named in [`BLIND_SPOTS`] as a thing the ranking does not see.
 //!
 //! # The honest ceiling
 //!
@@ -46,7 +54,7 @@
 //! string is a real secret. [`BLIND_SPOTS`] states that in the product's own words, and every surface
 //! that prints a ranking prints it beside them: two of the ten episodes the MVP acceptance fixture
 //! plants are invisible here by construction, and a reviewer who knows that reads those two by hand
-//! instead of trusting the list. `docs/concepts/risk-ranking.md` and
+//! instead of trusting the list. `docs/concepts/risk.md` and
 //! `tests/test_risk_ranking_contract.py` pin the same sentence in the docs and in the fixture run.
 //!
 //! # Determinism
@@ -54,12 +62,12 @@
 //! No clock, no input outside the arguments, no accumulation order that depends on HashMap iteration:
 //! the same index yields the same numbers, per ADR-001 §7.4. The weights here are compile-time
 //! constants printed by [`components`], not configuration — which is the difference between this file
-//! and [`score`]: `spine-1` is an ordering that cannot be tuned, and `features-1` is one that can, with
+//! and [`score`]: `spine-3` is an ordering that cannot be tuned, and `features-3` is one that can, with
 //! `[risk.weights]` in `fathom.toml` as the knob and [`calibrate`] as the way to measure a turn of it.
 //!
 //! # What landed with `e4.4`
 //!
-//! The modules below are the explainable score the epic asked for, and `spine-1` above is the ordering
+//! The modules below are the explainable score the epic asked for, and `spine-3` above is the ordering
 //! the rail and the queue still print. They coexist on purpose:
 //!
 //! | module | owns | read it for |
@@ -72,8 +80,9 @@
 //!
 //! `fathom why <episode>` (`crates/fathom-cli/src/why.rs`) is the surface: it prints the vector, the
 //! weights and every contribution, which is the acceptance criterion, and `fathom why --calibrate`
-//! prints the calibration report. The queue switches from `spine-1` to `features-1` in `e4.5`
-//! (`reco-wsj`), which is the ticket that owns the ordering function.
+//! prints the calibration report. The queue switched from `spine-2` to `features-3` in `e4.5`
+//! (`reco-wsj`), which was the ticket that owned the ordering function; the ordering function is now
+//! retired with the queue (`reco-ydek.3`), and the score is the rail's per-row figure.
 
 #![deny(missing_docs)]
 
@@ -89,30 +98,93 @@ use std::collections::BTreeMap;
 
 /// The name of this ranking, printed wherever one of its numbers appears.
 ///
-/// It is in the printed sentence on purpose: `spine-1` in a strip is what tells a reviewer that the
+/// It is in the printed sentence on purpose: `spine-3` in a strip is what tells a reviewer that the
 /// number in the rail is *this* ordering and not `e4.4`'s, and it is the string a golden file, a bug
 /// report and a re-run all agree on.
-pub const MODEL: &str = "spine-1";
+///
+/// `spine-1` was the ordering from `reco-c05` until `reco-l9bz.7`, which added `complexity`; `spine-2`
+/// was that ordering until `reco-ydek.5` took `author` out of it. A component that is not there changes
+/// what a number means: a `spine-2 62` and a `spine-3 62` are two readings of the same episode, and the
+/// only honest way to say that is a different name. It is ADR-006 §5.1.2 6c's rule applied in both
+/// directions — a component and the model string move in one commit, and every gate that quotes the
+/// arithmetic is re-measured rather than restated.
+pub const MODEL: &str = "spine-3";
 
 /// The components, in the order they are printed, with the cap each can contribute.
 ///
-/// The caps sum to 100, which is the whole of the score: nothing is multiplied and nothing is hidden,
-/// so `spine-1 88 = surfaces 50 + size 12 + deletions 10 + breadth 8 + author 8` is arithmetic a
-/// reviewer can redo from the reasons printed under it.
+/// The caps sum to [`SCORE_CEILING`], which is the whole of the score: nothing is multiplied and nothing
+/// is hidden, so `spine-3 92 = surfaces 50 + complexity 12 + size 12 + deletions 10 + breadth 8` is
+/// arithmetic a reviewer can redo from the reasons printed under it.
 ///
-/// The ordering of the caps is the argument: **surfaces first, then size**. A change to a migration,
-/// a pipeline or a lockfile is what an operator has to act on and what a size-ranked list buries, so
-/// the kind of file outranks the amount of file, and size, deletions and breadth break the tie
-/// between two changes of the same kind. That is a deliberate, stated ranking, not a fact: someone
-/// who reads the fixture's 600-line feature turns as riskier than a three-line `permissions:
-/// write-all` edits these five numbers, which is exactly why they are listed here in one place.
+/// The ordering of the caps is the argument: **surfaces first, then the two accounts of how much a
+/// reviewer has to hold in their head**. A change to a migration, a pipeline or a lockfile is what an
+/// operator has to act on and what a size-ranked list buries, so the kind of file outranks the amount
+/// of file. After that sit the two ways a change is *big*: `complexity` counts the decision points it
+/// added — the shape a reader has to follow — and `size` counts the lines it added, discounted for the
+/// churn nobody reads. They stay separate rows precisely because they disagree: a 400-line reformat and
+/// a 40-line nest of conditions are the same amount of text and not the same amount of reading.
+/// `deletions` and `breadth` break the tie between two changes of the same kind and size. That is a
+/// deliberate, stated ranking, not a fact: someone who reads the fixture's 600-line feature turns as
+/// riskier than a three-line `permissions: write-all` edits these five numbers, which is exactly why
+/// they are listed here in one place.
+///
+/// Where the 12 came from is stated rather than assumed: `complexity` is capped at the share of the
+/// score that [`COMPLEXITY_CEILING`]'s worth of added decision points is, sized from the distribution
+/// of the figure over real history in [`docs/concepts/risk.md`]'s component table, and it was paid for by
+/// `size` (16 → 12), `deletions` (14 → 10) and `breadth` (12 → 8) — the three axes whose claim is
+/// about the *shape* of a diff, which is the claim `complexity` now shares. `surfaces` gave up nothing.
+///
+/// # Where `author`'s 8 went: nowhere, and why
+///
+/// `author` was 8 points for the episode's author kind — 8 for an agent, 6 for nobody credited, 4 for
+/// an unrecorded attribution, 0 for a named person. `reco-ydek.4` stopped printing that label on every
+/// surface a human reads, because an agent turn with no recorded session arc was labelled `human` often
+/// enough that the word taught reviewers to distrust the row. A component that scores an episode for a
+/// claim the reviewer is not shown is ADR-001 §7.9's forbidden thing — worse than a hidden weight, because
+/// it prints a *reason* whose noun the reader cannot go and look at — so the component is gone, and so is
+/// the `author` field of [`Signals`], which means the ranking cannot score authorship again without an
+/// edit here.
+///
+/// **The 8 are not redistributed.** Every remaining cap is a measurement-shaped number with its own
+/// derivation — `surfaces` is a surface weight on a table whose top rung is 50, `complexity` is sized
+/// off the corpus's own distribution of added V(G), `size` is a log against [`SIZE_CEILING`], `deletions`
+/// and `breadth` are counted thresholds — and none of them became more true because a component was
+/// withdrawn. Handing the 8 to any of them would raise the score of every episode that never had an
+/// author problem, which is the same over-scoring this ticket exists to remove, arrived at from the other
+/// side. So the honest consequence is taken instead of smoothed over: **the ceiling of this ranking is
+/// now [`SCORE_CEILING`], not 100.** `spine-3 92` is as high as `spine-3` can go, the printed caps add to
+/// it, and a reviewer comparing a `spine-2 46` with a `spine-3 40` is comparing one episode's number
+/// before and after one component was withdrawn — which is what the model names are for.
+///
+/// `features-3` handles its freed share differently and says so beside its own table
+/// ([`feature::DEFAULTS`]): its weights are relative shares divided by their own sum, so leaving the
+/// freed 0.04 out of the table would have quietly re-scaled every axis, and a share that is divided by
+/// its own total has to be stated as a total.
 pub const COMPONENTS: [(&str, u64); 5] = [
     ("surfaces", 50),
-    ("size", 16),
-    ("deletions", 14),
-    ("breadth", 12),
-    ("author", 8),
+    ("complexity", 12),
+    ("size", 12),
+    ("deletions", 10),
+    ("breadth", 8),
 ];
+
+/// What the caps in [`COMPONENTS`] add to, and so the highest score this ranking can print.
+///
+/// Named because it is now a number a reader has to know: the caps stopped summing to 100 when `author`
+/// left ([`COMPONENTS`] says why they were not topped back up). The component table in
+/// `docs/concepts/risk.md` and
+/// `crates/fathom-analyze/tests/risk_spine.rs` both read it out of here rather than reciting it, so the
+/// ceiling and the table cannot disagree.
+pub const SCORE_CEILING: u64 = 92;
+
+/// The added decision points at which the complexity component is full.
+///
+/// A cyclomatic delta is counted in V(G) points by `e8.2`'s pass, and an episode rarely moves a file's
+/// figure by more than a function's worth of branches. The number is read off a real distribution, not
+/// chosen: over the Guardrail 3 corpus's 540 episodes the episodes that add complexity sit in the
+/// single digits (§3), so an axis that filled at 200 would print zeros where it means to print "worth a
+/// look", and one that filled at 5 would print its cap everywhere.
+pub const COMPLEXITY_CEILING: i64 = 20;
 
 /// The churn ceiling at which the size component is full, in lines.
 ///
@@ -122,9 +194,15 @@ pub const SIZE_CEILING: u64 = 20_000;
 
 /// What this ranking cannot see, in the words a surface prints.
 ///
-/// Printed beside every ranking — in the card, in the queue's strip, in `docs/concepts/risk-ranking.md`
+/// Printed beside every ranking — in the card, in the queue's strip, in `docs/concepts/risk.md`
 /// — because these are the episodes no spine-only ordering can rank, and a reviewer who knows they
 /// exist reads the code for them instead of trusting the list.
+///
+/// The last line is `reco-ydek.5`'s. `author` used to be a component, which meant the ranking claimed to
+/// see who wrote an episode; it did not, it claimed it, and the claim was scored on a label the reviewer
+/// was no longer shown. Taking a component out does not make its subject measurable, so the subject moves
+/// here: an axis is replaced by a stated blind spot rather than by a silence, and the sentence says what a
+/// reader loses, not which ticket removed it.
 pub const BLIND_SPOTS: &[&str] = &[
     "whether a migration can be rolled back",
     "an environment variable declared and never read",
@@ -133,7 +211,104 @@ pub const BLIND_SPOTS: &[&str] = &[
     "what depends on the touched code (blast radius)",
     "a committed secret whose value is real",
     "whether a deleted test was the only cover for the behaviour",
+    "who wrote it: an agent turn reads the same here as a person's",
 ];
+
+/// What to do with a ceiling once it has been printed, in the product's own words.
+///
+/// This moved out of the TUI (`reco-5js3.3`, ADR-006 §5.1.1 rule 2): the line is a claim about *the
+/// ranking*, not about the pane that draws it, so a card, a `--plain` frame and a CLI verb printing
+/// three spellings of it is the same defect as printing the score three ways. A surface places this
+/// string; it does not write one.
+pub const CEILING_NOTE: &str =
+    "read those by hand: the ranking is a reading order, not an all-clear";
+
+/// What the ranking may know about one episode's complexity (`reco-l9bz.7`).
+///
+/// A **handover, not a second count**. The figure is the one `Store::episode_complexity` answers and
+/// [`crate::insight::ComplexityView`] carries into the delta document (ADR-001 §7.10: the rail, the card
+/// and the ranking print one figure or they print three answers that happen to agree today). A ranking
+/// that re-counted decision points out of the hunks would disagree with the card beside it the first
+/// time a path refused to parse, and the disagreement would be invisible.
+///
+/// `delta: None` is not zero. ADR-007 §5.4: an episode whose paths nothing could count leaves the axis
+/// out and says why, exactly as a missing blast radius does in `features-3` — an uncounted file made
+/// the code no easier to follow than it was, and it certainly did not make it easier.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct Complexity {
+    /// Σ(`head − base`) over the paths whose two sides were counted under one basis.
+    pub delta: Option<i64>,
+    /// Σ of the head figures over the paths this episode touched — the absolute at head, never a
+    /// repository total (ADR-007 §8.1).
+    pub absolute: Option<i64>,
+    /// The largest single unit figure at head over the episode's paths (ADR-007 §5.1).
+    pub max: Option<i64>,
+    /// Paths whose two sides could be subtracted, and so are inside [`Complexity::delta`].
+    pub measured: usize,
+    /// Paths in scope: the denominator of every coverage figure printed beside the number.
+    pub touched: usize,
+    /// Why each unmeasurable path could not be, by ADR-007 §7.1 code, most paths first.
+    pub reasons: Vec<(String, usize)>,
+    /// More than one basis token across the episode, so the two sides are not one unit (ADR-007 §9.5).
+    pub mixed_basis: bool,
+}
+
+impl Complexity {
+    /// Is there a figure at all?
+    #[must_use]
+    pub fn is_measured(&self) -> bool {
+        self.delta.is_some()
+    }
+
+    /// `3 of 4 paths counted`, or `nothing counted` — the denominator travels with the figure, because
+    /// a floor printed without one is a number whose reliability a reader cannot see (ADR-007 §5.4).
+    #[must_use]
+    pub fn coverage(&self) -> String {
+        if self.touched == 0 {
+            return "no path was in scope for the complexity pass".to_owned();
+        }
+        format!("{}/{} paths counted", self.measured, self.touched)
+    }
+
+    /// The refusal tally, in the printed order: `1 language_unknown, 2 no_bodies`.
+    #[must_use]
+    pub fn refusals(&self) -> String {
+        self.reasons
+            .iter()
+            .map(|(code, paths)| format!("{paths} {code}"))
+            .collect::<Vec<_>>()
+            .join(", ")
+    }
+
+    /// The sentence the caveat prints when this episode has no figure — the axis is absent, and the
+    /// reason is the index's own answer rather than a sentence about a plan.
+    #[must_use]
+    pub fn absent_sentence(&self) -> String {
+        let refusals = self.refusals();
+        let basis = if self.mixed_basis {
+            " · the episode carries two basis tokens, which are not comparable with each other"
+                .to_owned()
+        } else {
+            String::new()
+        };
+        if self.touched == 0 {
+            return format!(
+                "the complexity component says nothing: no path in this episode was in scope for the \
+                 complexity pass{basis}"
+            );
+        }
+        format!(
+            "the complexity component says nothing: {} of {} path(s) had no figure ({}){basis}",
+            self.measured.max(1).min(self.touched),
+            self.touched,
+            if refusals.is_empty() {
+                "no reason was recorded".to_owned()
+            } else {
+                refusals
+            }
+        )
+    }
+}
 
 /// One kind of file an episode can touch, with the attention it deserves.
 ///
@@ -669,7 +844,10 @@ impl FileChange<'_> {
 }
 
 /// Everything the ranking is allowed to know about one episode.
-#[derive(Debug, Clone, Copy)]
+///
+/// `Clone`, not `Copy`: [`Signals::complexity`] owns the reason tally it prints, so the handover costs one
+/// small allocation per episode rather than forcing every caller to borrow a lifetime it does not have.
+#[derive(Debug, Clone)]
 pub struct Signals<'a> {
     /// The files it touched, one entry per path. `e4.4` adds findings beside these; it does not
     /// replace them, which is why this is a list of inputs rather than a precomputed summary.
@@ -684,10 +862,12 @@ pub struct Signals<'a> {
     pub n_binary: u64,
     /// Member commits.
     pub n_commits: u64,
-    /// `agent`, `human` or `unknown`. The kind is the spine's; `e4.1`'s confidence rides alongside.
-    pub author: &'a str,
     /// Whether the caller's file list was truncated by a read cap, which the reasons then say.
     pub partial_files: bool,
+    /// What the episode did to the complexity of the files it touched, when the index can say
+    /// ([`Complexity`]). `None` is "this read has no figure", which is a different claim from a figure
+    /// that came back `None` for the paths.
+    pub complexity: Option<Complexity>,
 }
 
 impl Signals<'_> {
@@ -723,16 +903,29 @@ pub struct Risk {
     /// Whether the caller's file list was truncated by a read cap. Not a component — it is a caveat
     /// about the others, and it is printed as one.
     pub partial_files: bool,
+    /// Why the complexity component is absent, in the figure's own words. Printed as a caveat, because
+    /// an axis that measured nothing has to say so beside the number it did not join.
+    pub complexity_absent: Option<String>,
 }
 
 impl Risk {
-    /// The caveat to print under the reasons when the file list was capped.
+    /// The caveats to print under the reasons: a file list the store capped, and an axis the figure
+    /// could not fill. Both are claims about the reads, not about the change, and neither may be left
+    /// out of the sentence a reviewer reads instead of the number.
     #[must_use]
-    pub fn caveat(&self) -> Option<&'static str> {
-        self.partial_files.then_some(
-            "the file list this ranking read was truncated by the store's read cap — the \
-                       surfaces listed are the ones it reached",
-        )
+    pub fn caveat(&self) -> Option<String> {
+        let mut parts: Vec<String> = Vec::new();
+        if self.partial_files {
+            parts.push(
+                "the file list this ranking read was truncated by the store's read cap — the surfaces \
+                 listed are the ones it reached"
+                    .to_owned(),
+            );
+        }
+        if let Some(absent) = &self.complexity_absent {
+            parts.push(absent.clone());
+        }
+        (!parts.is_empty()).then(|| parts.join(" · "))
     }
 
     /// The score as the surfaces print it.
@@ -741,7 +934,7 @@ impl Risk {
         u64::from(self.score)
     }
 
-    /// `spine-1 88 = surfaces 50 + size 12 + deletions 14 + breadth 8 + author 4`.
+    /// `spine-3 92 = surfaces 50 + complexity 12 + size 12 + deletions 10 + breadth 8`.
     ///
     /// Printed under the reasons everywhere a score appears: the arithmetic has to be checkable, or
     /// the explainability is decorative.
@@ -821,6 +1014,60 @@ pub fn rank(signals: &Signals<'_>) -> Risk {
             format!("+{} −{} = {churn} churn", signals.n_add, signals.n_del)
         },
     });
+
+    // --- complexity -----------------------------------------------------------------
+    // The figure is handed over, never recomputed here; see [`Complexity`]. A delta that is zero or
+    // negative earns nothing — this axis risks on complexity *added*, and an episode that removed a
+    // branch is not what the ranking exists to surface — but it still prints its reason, because
+    // "counted, and it got simpler" is a different claim from "nothing counted it".
+    let mut complexity_absent: Option<String> = None;
+    match signals.complexity.as_ref() {
+        None => complexity_absent = Some(
+            "the complexity component says nothing: this read had no complexity figure for the episode, \
+             so the axis is absent from the sum rather than zero"
+                .to_owned(),
+        ),
+        Some(complexity) if !complexity.is_measured() => {
+            complexity_absent = Some(complexity.absent_sentence());
+        }
+        Some(complexity) => {
+            let delta = complexity.delta.unwrap_or(0);
+            let points = if delta <= 0 {
+                0
+            } else {
+                let limit = u64::try_from(COMPLEXITY_CEILING).unwrap_or(20);
+                let added = u64::try_from(delta).unwrap_or(limit);
+                (cap("complexity") * added.min(limit) / limit).min(cap("complexity"))
+            };
+            let mut detail = format!(
+                "{} decision point(s) of V(G) added across the paths this episode touched · {}",
+                delta,
+                complexity.coverage()
+            );
+            if let Some(max) = complexity.max {
+                detail.push_str(&format!(" · the worst single unit at head is V(G) {max}"));
+            }
+            if delta <= 0 {
+                detail.push_str(" · nothing was added, so this axis contributes nothing");
+            }
+            if complexity.measured < complexity.touched {
+                detail.push_str(&format!(
+                    " · {} of the paths it touched carried no figure ({})",
+                    complexity.touched - complexity.measured,
+                    complexity.refusals()
+                ));
+            }
+            if complexity.mixed_basis {
+                detail.push_str(" · two basis tokens in one episode");
+            }
+            components.push(Component {
+                name: "complexity",
+                points,
+                cap: cap("complexity"),
+                detail,
+            });
+        }
+    }
 
     // --- surfaces ----------------------------------------------------------------
     let top_surface = surfaces.first().copied();
@@ -938,25 +1185,13 @@ pub fn rank(signals: &Signals<'_>) -> Risk {
         ),
     });
 
-    // --- author ------------------------------------------------------------------
-    let (author_points, author_words) = match signals.author.trim().to_ascii_lowercase().as_str() {
-        "agent" => (
-            8,
-            "written by an agent — the reason this tool exists (ADR-001 §7.3)",
-        ),
-        "unknown" => (
-            6,
-            "nobody is credited, which is its own risk (ADR-001 §7.7)",
-        ),
-        "human" => (0, "written by a person"),
-        _ => (4, "attribution is not recorded"),
-    };
-    components.push(Component {
-        name: "author",
-        points: author_points,
-        cap: cap("author"),
-        detail: author_words.to_owned(),
-    });
+    // --- (no `author` component) -----------------------------------------------------
+    //
+    // There used to be one, worth up to 8 points off `episode.author_kind`, and `Signals` carried an
+    // `author` field to feed it. `reco-ydek.5` took both out: the label is no longer printed anywhere a
+    // human reads it, and a component that scores an episode for something the reviewer cannot see is
+    // what ADR-001 §7.9 refuses. Dropping the field as well as the term is the point — the ranking is not
+    // merely not using author kind, it cannot reach it. [`BLIND_SPOTS`] carries the consequence.
 
     components.retain(|component| component.points > 0);
     components.sort_by(|a, b| b.points.cmp(&a.points).then_with(|| a.name.cmp(b.name)));
@@ -966,6 +1201,7 @@ pub fn rank(signals: &Signals<'_>) -> Risk {
         components,
         surfaces,
         partial_files: signals.partial_files,
+        complexity_absent,
     }
 }
 
@@ -1011,7 +1247,7 @@ fn cap(name: &str) -> u64 {
 
 /// The ranking's own documentation as data, for `fathom doctor`, the docs page and the help pane.
 ///
-/// One function so the printed table and `docs/concepts/risk-ranking.md` can be checked against each
+/// One function so the printed table and `docs/concepts/risk.md` can be checked against each
 /// other by a test rather than kept in step by hand.
 #[must_use]
 pub fn components() -> Vec<(String, u64, String)> {
@@ -1023,6 +1259,10 @@ pub fn components() -> Vec<(String, u64, String)> {
                     "churn on a log scale, discounted for generated, lockfile, vendored and \
                           binary files"
                 }
+                "complexity" => {
+                    "decision points (V(G)) the episode added to the files it touched, counted by the \
+                     same pass the card prints; absent, never zero, when nothing could be counted"
+                }
                 "surfaces" => {
                     "the most consequential kind of file touched, plus 2 per extra operator-action \
                      surface"
@@ -1032,7 +1272,6 @@ pub fn components() -> Vec<(String, u64, String)> {
                      while source grew"
                 }
                 "breadth" => "distinct surfaces touched, plus files past 12 and past 30",
-                "author" => "an agent wrote it, or nobody is credited",
                 _ => "unstated",
             };
             ((*name).to_owned(), *cap, what.to_owned())
@@ -1040,7 +1279,7 @@ pub fn components() -> Vec<(String, u64, String)> {
         .collect()
 }
 
-/// What `features-1` cannot see, in the words `fathom why` prints under every score.
+/// What `features-3` cannot see, in the words `fathom why` prints under every score.
 ///
 /// The spine's [`BLIND_SPOTS`] list is what a spine-only ordering admits; this one is shorter, because
 /// `e4.3`'s findings close four of those holes (a destructive migration, a committed secret-shaped
@@ -1074,6 +1313,19 @@ pub fn ceiling(score: &score::Score) -> Vec<String> {
         "whether the tests that arrived assert anything: coverage shape is measurable, coverage quality \
          is not, and this model does not pretend otherwise".to_owned(),
     );
+    out.push(
+        "who wrote it, as a risk: an agent turn reads the same here as a person's, because the label it \
+         would have read from is an identity string this build cannot check and `fathom` stopped printing. \
+         `attribution` still says how sure the credit is — that is a question about the record, not about \
+         the reviewer's own agent, and ADR-001 §7.3's answer to the second question is that this score \
+         does not guess at it".to_owned(),
+    );
+    out.push(
+        "whether the complexity this score counted is the complexity that matters: the axis adds up \
+         decision points, so it cannot see a change that is hard to follow without adding any — a lock \
+         order, a lifetime, a cache that is now stale — and it cannot see complexity that was only moved \
+         around".to_owned(),
+    );
     out.push(if cfg!(feature = "net-advisories") {
         "whether a dependency is stale or vulnerable: this binary was built with `net-advisories`, but \
          the vector still has no advisory axis, because a score that moved with whatever a request \
@@ -1086,8 +1338,8 @@ pub fn ceiling(score: &score::Score) -> Vec<String> {
             .to_owned()
     });
     out.push(
-        "whether the human reviewing this has already read it: review state is the queue's ordering \
-         input, not a feature of this vector".to_owned(),
+        "whether the human reviewing this has already read it: review state is what the rail counts as \
+         unread, not a feature of this vector".to_owned(),
     );
     out
 }

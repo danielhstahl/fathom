@@ -20,7 +20,10 @@ use fathom_tui::views::ViewId;
 
 mod tables;
 
-use tables::{EXPECTED_ACTIONS, EXPECTED_DEFAULT_BINDINGS, EXPECTED_TASKS, EXPECTED_UNUSABLE};
+use tables::{
+    EXPECTED_ACTIONS, EXPECTED_DEFAULT_BINDINGS, EXPECTED_RETIRED, EXPECTED_TASKS,
+    EXPECTED_UNUSABLE,
+};
 
 /// The ADR's generated blocks, read from the file rather than copied into this test: the same
 /// reason `tools/check_docs.py` reads them (ADR-005 §12).
@@ -125,6 +128,48 @@ fn every_default_binding_is_in_the_default_table() {
     );
 }
 
+/// A retired action leaves the registry, but its row does not leave the table: the letter has to stay
+/// accounted for, or the next person to want a free key rebinds it in silence (ADR-006 §7.6,
+/// `reco-5js3.3`). Pinned against the normative Python table, like every other table here.
+#[test]
+fn a_retired_action_keeps_its_row_and_says_where_the_answer_went() {
+    assert_eq!(
+        keymap::RETIRED_CHORDS.len(),
+        EXPECTED_RETIRED.len(),
+        "the retired list drifted from the normative table"
+    );
+    for (chord, action, says) in EXPECTED_RETIRED {
+        let found = keymap::retired_chord(chord)
+            .unwrap_or_else(|| panic!("`{chord}` is retired in Python and not in Rust"));
+        assert_eq!(found.action, *action, "the retired action changed");
+        assert_eq!(found.says, *says, "the retirement note changed");
+        assert!(
+            keymap::action(action).is_none(),
+            "`{action}` is retired, so it must not be in the registry"
+        );
+        let km = Keymap::defaults();
+        for mode in Mode::PRECEDENCE {
+            assert_eq!(
+                km.resolve(&[mode], chord),
+                None,
+                "`{chord}` is retired, so no mode may resolve it in the default table"
+            );
+        }
+        assert!(
+            !EXPECTED_DEFAULT_BINDINGS
+                .iter()
+                .any(|(_, bound, _)| bound == chord),
+            "`{chord}` is retired, so the normative default table must not bind it either"
+        );
+        assert!(
+            keymap::RESERVED_FOR_USER
+                .iter()
+                .any(|reserved| reserved.chord == *chord),
+            "`{chord}` is retired, so it belongs to the user until §7.6 says otherwise"
+        );
+    }
+}
+
 #[test]
 fn the_unusable_chords_are_the_measured_ones() {
     assert_eq!(keymap::TERMINAL_UNUSABLE.len(), EXPECTED_UNUSABLE.len());
@@ -203,7 +248,7 @@ fn the_hint_line_offers_exactly_the_adrs_eight_actions() {
 fn an_override_moves_a_key_to_a_different_action() {
     let km = Keymap::merged(&[bound(Mode::Global, "x", "view.timeline")]);
     assert_eq!(
-        km.resolve(&chain(Mode::Queue), "x"),
+        km.resolve(&chain(Mode::Timeline), "x"),
         Some("view.timeline"),
         "the override must win over the default `x` = review.accept"
     );
@@ -266,7 +311,7 @@ fn the_help_overlay_prints_the_overridden_key_not_the_default_one() {
 #[test]
 fn binding_nothing_unbinds_and_the_overlay_says_so() {
     let km = Keymap::merged(&[unbound(Mode::Global, "x")]);
-    assert_eq!(km.resolve(&chain(Mode::Queue), "x"), None);
+    assert_eq!(km.resolve(&chain(Mode::Timeline), "x"), None);
     assert!(km.keys_for("review.accept").is_empty());
     assert!(km.help_lines(100).join("\n").contains("(palette only)"));
     assert!(km.applied().iter().any(|a| a == "unbind global x"));
@@ -277,7 +322,7 @@ fn a_chord_that_cannot_arrive_is_refused_with_the_reason() {
     for chord in ["<C-i>", "<C-j>", "<C-m>", "<C-[>", "<C-@>"] {
         let km = Keymap::merged(&[bound(Mode::Global, chord, "view.graph")]);
         assert_eq!(
-            km.resolve(&chain(Mode::Queue), chord),
+            km.resolve(&chain(Mode::Timeline), chord),
             None,
             "{chord} must not become live"
         );
@@ -292,7 +337,7 @@ fn a_chord_that_cannot_arrive_is_refused_with_the_reason() {
 #[test]
 fn an_action_that_does_not_exist_is_refused_with_the_name() {
     let km = Keymap::merged(&[bound(Mode::Global, "y", "review.deny_everything")]);
-    assert_eq!(km.resolve(&chain(Mode::Queue), "y"), None);
+    assert_eq!(km.resolve(&chain(Mode::Timeline), "y"), None);
     assert!(
         km.problems()
             .iter()
@@ -304,10 +349,10 @@ fn an_action_that_does_not_exist_is_refused_with_the_name() {
 
 #[test]
 fn an_action_is_only_bindable_in_the_modes_that_declare_it() {
-    // `diff.hunk_next` means nothing in the queue (ADR-006 §7.0 K2), so binding it globally is a
+    // `diff.hunk_next` means nothing on the rail (ADR-006 §7.0 K2), so binding it globally is a
     // typo, reported instead of installed.
     let km = Keymap::merged(&[bound(Mode::Global, "y", "diff.hunk_next")]);
-    assert_eq!(km.resolve(&chain(Mode::Queue), "y"), None);
+    assert_eq!(km.resolve(&chain(Mode::Timeline), "y"), None);
     assert!(
         km.problems()
             .iter()
@@ -324,7 +369,7 @@ fn an_action_is_only_bindable_in_the_modes_that_declare_it() {
 #[test]
 fn a_view_mode_cannot_shadow_a_reserved_navigation_key() {
     // ADR-006 §7.2 K4: `p` inside the graph canvas must still mean "go to deps".
-    let km = Keymap::merged(&[bound(Mode::Graph, "p", "view.queue")]);
+    let km = Keymap::merged(&[bound(Mode::Graph, "p", "view.artefact")]);
     assert_eq!(
         km.resolve(&keymap::mode_chain(Mode::Graph, Mode::Body), "p"),
         Some("view.deps"),
@@ -344,8 +389,8 @@ fn a_view_mode_cannot_shadow_a_reserved_navigation_key() {
         "the conflict report is what `config get keys.overrides` prints"
     );
     // At global level the same key is the user's to take.
-    let km = Keymap::merged(&[bound(Mode::Global, "p", "view.queue")]);
-    assert_eq!(km.resolve(&chain(Mode::Graph), "p"), Some("view.queue"));
+    let km = Keymap::merged(&[bound(Mode::Global, "p", "view.artefact")]);
+    assert_eq!(km.resolve(&chain(Mode::Graph), "p"), Some("view.artefact"));
     assert!(km.problems().is_empty());
 }
 
@@ -353,28 +398,29 @@ fn a_view_mode_cannot_shadow_a_reserved_navigation_key() {
 fn precedence_is_interaction_then_view_then_global() {
     let km = Keymap::merged(&[
         bound(Mode::Global, "y", "view.graph"),
-        bound(Mode::Queue, "y", "view.deps"),
+        bound(Mode::Timeline, "y", "view.deps"),
     ]);
     // Nothing in `list` binds `y`, so the view mode answers.
-    assert_eq!(km.resolve(&chain(Mode::Queue), "y"), Some("view.deps"));
-    assert_eq!(km.resolve(&chain(Mode::Timeline), "y"), Some("view.graph"));
+    assert_eq!(km.resolve(&chain(Mode::Timeline), "y"), Some("view.deps"));
+    // A view that did not bind it falls through to the global one.
+    assert_eq!(km.resolve(&chain(Mode::Structure), "y"), Some("view.graph"));
     assert_eq!(
-        km.resolving_mode(&chain(Mode::Queue), "y"),
-        Some(Mode::Queue)
+        km.resolving_mode(&chain(Mode::Timeline), "y"),
+        Some(Mode::Timeline)
     );
     // Add the same chord to the interaction mode and it wins: the focused pane owns the key.
     let km = Keymap::merged(&[
         bound(Mode::Global, "y", "view.graph"),
-        bound(Mode::Queue, "y", "view.deps"),
+        bound(Mode::Timeline, "y", "view.deps"),
         bound(Mode::List, "y", "review.flag"),
     ]);
-    assert_eq!(km.resolve(&chain(Mode::Queue), "y"), Some("review.flag"));
+    assert_eq!(km.resolve(&chain(Mode::Timeline), "y"), Some("review.flag"));
     assert_eq!(
-        km.resolving_mode(&chain(Mode::Queue), "y"),
+        km.resolving_mode(&chain(Mode::Timeline), "y"),
         Some(Mode::List)
     );
     // An exclusive interaction mode replaces the chain instead of joining it (ADR-006 §7.1).
-    let prompt = keymap::mode_chain(Mode::Queue, Mode::Prompt);
+    let prompt = keymap::mode_chain(Mode::Timeline, Mode::Prompt);
     assert_eq!(prompt, vec![Mode::Prompt]);
     assert_eq!(
         km.resolve(&prompt, "y"),
@@ -432,12 +478,12 @@ fn the_space_bar_is_text_in_the_modes_that_own_the_keyboard() {
 
 #[test]
 fn a_view_mode_may_add_a_key_of_its_own() {
-    let km = Keymap::merged(&[bound(Mode::Queue, "y", "review.flag")]);
-    assert_eq!(km.resolve(&chain(Mode::Queue), "y"), Some("review.flag"));
+    let km = Keymap::merged(&[bound(Mode::Timeline, "y", "review.flag")]);
+    assert_eq!(km.resolve(&chain(Mode::Timeline), "y"), Some("review.flag"));
     assert_eq!(
-        km.resolve(&chain(Mode::Timeline), "y"),
+        km.resolve(&chain(Mode::Structure), "y"),
         None,
-        "the key belongs to the queue, so another view must not answer it"
+        "the key belongs to the rail's mode, so another view must not answer it"
     );
 }
 
@@ -460,7 +506,7 @@ fn feed(state: &mut ChordState, km: &Keymap, view: Mode, chords: &[&str]) -> Vec
 fn a_prefix_waits_and_a_complete_chord_fires() {
     let km = Keymap::defaults();
     let mut state = ChordState::new();
-    let chain = chain(Mode::Queue);
+    let chain = chain(Mode::Timeline);
     let first = state.feed(&km, &chain, "<C-w>");
     assert_eq!(first.len(), 1);
     assert!(matches!(first[0], KeyStep::Pending), "`<C-w>` alone waits");
@@ -478,7 +524,7 @@ fn a_dead_end_flushes_the_prefix_as_its_own_key_and_keeps_the_new_one() {
     let mut state = ChordState::new();
     // `<C-w>` waits; `<C-w> y` is not a chord anybody meant, so the prefix is flushed as unbound
     // and `y` is then resolved on its own rather than swallowed.
-    let out = feed(&mut state, &km, Mode::Queue, &["<C-w>", "y"]);
+    let out = feed(&mut state, &km, Mode::Timeline, &["<C-w>", "y"]);
     assert_eq!(
         out,
         vec!["<pending>", "<unbound <C-w>y>"],
@@ -491,7 +537,7 @@ fn a_dead_end_flushes_the_prefix_as_its_own_key_and_keeps_the_new_one() {
 #[test]
 fn a_timeouted_prefix_resolves_alone_and_clears() {
     let km = Keymap::defaults();
-    let chain = chain(Mode::Queue);
+    let chain = chain(Mode::Timeline);
     let mut state = ChordState::new();
     state.feed(&km, &chain, "<C-w>");
     assert!(state.is_pending());
@@ -513,7 +559,7 @@ fn a_timeouted_prefix_resolves_alone_and_clears() {
 fn a_double_tap_resolves_without_waiting_for_the_timeout() {
     let km = Keymap::defaults();
     let mut state = ChordState::new();
-    let out = feed(&mut state, &km, Mode::Queue, &["g", "g"]);
+    let out = feed(&mut state, &km, Mode::Timeline, &["g", "g"]);
     assert_eq!(out, vec!["<pending>", "list.first"]);
 }
 
@@ -523,7 +569,7 @@ fn two_keys_in_one_batch_flush_the_prefix_on_the_second_key_not_on_the_timer() {
     // a user who stops mid-chord.
     let km = Keymap::defaults();
     let mut state = ChordState::new();
-    let out = feed(&mut state, &km, Mode::Queue, &["<C-w>", "c"]);
+    let out = feed(&mut state, &km, Mode::Timeline, &["<C-w>", "c"]);
     assert_eq!(out, vec!["<pending>", "tab.close"]);
 }
 

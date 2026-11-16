@@ -225,7 +225,7 @@ mod tests {
         ]);
         assert!(
             detect(&episode, &Corpus::default(), &Policy::all_enabled()).is_empty(),
-            "four files in four places is a small fix, and printing it teaches a reviewer to ignore the queue"
+            "four files in four places is a small fix, and printing it teaches a reviewer to ignore the rail"
         );
     }
 

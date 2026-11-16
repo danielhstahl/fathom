@@ -12,15 +12,15 @@ page:
 * the **generator cannot eat the tree**: `packaging/` also holds a hand-written release script, and an
   early version of the generator pruned it. `write` prunes only what it renders, inside two directories;
 * the **`.deb`/`.rpm` are checked by their own formats' tools** — the packager's reader and, in CI,
-  `dpkg-deb`, `dpkg --install` and `rpm -qp` — and the packager's nine self-claims include the two that
-  matter most (a control member with the wrong size, a package name that disagrees with `--version`);
+  `dpkg-deb`, `dpkg --install` and `rpm -qp` — and the packager's thirteen self-claims include the two
+  that matter most (a control member with the wrong size, a package name that disagrees with `--version`);
 * the **curl installer's promise is rehearsed locally**, mirror and all, and its four negative controls
   are part of the run: a rehearsal that cannot fail is not a test;
 * the **secrets story is a table**, not a paragraph, so "which steps need a maintainer-only secret" stays
     a thing that can be checked rather than reworded away.
 
 Run: python3 -m pytest tests/test_packaging_contract.py -q
-(The two tests that need a built binary skip without one, like every other binary-backed contract here;
+(The three tests that need a built binary skip without one, like every other binary-backed contract here;
 the installer rehearsal additionally needs `dist` and a local build — see `docs/concepts/release.md` §4.)
 """
 
@@ -102,6 +102,21 @@ def test_the_generator_owns_two_directories_and_not_the_whole_tree():
 
 
 def test_the_generator_can_go_red_four_ways():
+    """`self-test` breaks a copy of the tree and asks the checker whether it noticed — which needs a binary.
+
+    Every case is a mutated *file*, but what it is mutated away from is the set the binary renders:
+    `self-test` compares each throwaway tree against `render(binary(args))`, because the only thing that
+    knows which verbs have man pages and which shells have completions is the `clap::Command` the shipped
+    CLI parses with. So it refuses to run without a build, and that refusal is a statement about the
+    runner, not about the diff under review.
+
+    This is the same mistake `reco-p40` made one layer down in `check_ci_gate.py`: the job that runs this
+    suite — `docs + workspace contracts` — is documented as needing no Rust toolchain, so a test that
+    demands a compiled binary there is red on every push and green on every laptop that has ever built.
+    It skips like the two siblings above it, and the self-test still runs for real where a binary exists:
+    `ci.yml`'s `e7.4 packaging:` step builds `-p fathom-cli` and runs `check` and `self-test` back to back.
+    """
+    binary()  # skip without a build; the generator's `self-test` renders from it
     result = run(str(GENERATOR), "self-test")
     assert result.returncode == 0, result.stdout + result.stderr
     assert "self-test OK" in result.stdout
@@ -141,6 +156,34 @@ def test_the_packagers_claims_all_hold():
     result = run(str(PACKAGER), "--self-test")
     assert result.returncode == 0, result.stdout + result.stderr
     assert "self-test OK" in result.stdout
+
+
+def test_the_rpm_spec_claims_every_file_with_an_absolute_path():
+    """`rpmbuild` refuses a whole package over one relative `%files` entry (**reco-ndf**).
+
+    The release job died with `error: File must begin with "/": usr/share/zsh/site-functions/_fathom`,
+    which is not a warning about one file: it is no `.rpm` at all, refused in the one stage of the release
+    that has `rpmbuild` and gets no second chance. The installed paths are kept relative on purpose — that
+    is what a `.deb`'s data tar and a build-root copy both need — so the claim has to be made here, in the
+    spelling rpm wants, on a machine with no rpm installed.
+    """
+    meta = P.metadata()
+    spec = P.render_spec(meta, "/stage", "x86_64")
+    entries = P.spec_file_entries(spec)
+    assert entries, "the spec claims no files at all, which is not a package"
+    assert [entry for entry, _ in entries if not entry.startswith("/")] == [], \
+        "every `%files` entry has to begin with /: " + spec
+    # And one statement, not two: the completions the packager installs are the ones the spec claims.
+    for dest in P.SHELL_DIRS["rpm"].values():
+        assert ("/" + dest, False) in entries, "%s is installed but claimed by nothing" % dest
+    assert P.spec_problems(spec) == []
+
+
+def test_the_packager_refuses_its_own_bad_specs_before_asking_rpmbuild():
+    """The two refusals, as negative controls: a checker that cannot go red is a decoration."""
+    assert P.spec_problems("%files\n/usr/bin/fathom\nusr/share/zsh/site-functions/_fathom\n") != []
+    assert P.spec_problems("%files\n/usr/bin/fathom\n", staged={"usr/bin/other"}) != []
+    assert P.spec_problems("%files\n/usr/bin/fathom\n", staged={"usr/bin/fathom"}) == []
 
 
 def test_the_package_names_carry_the_package_spelling_of_the_version():
@@ -196,12 +239,28 @@ def test_ci_actually_runs_these_checks():
     ci = CI.read_text()
     for needle in ["tools/gen_shell_artifacts.py check",
                    "tools/package_release.py --self-test",
-                   "python3 tools/package_release.py\n",
+                   "python3 tools/package_release.py --verify\n",
                    "tools/rehearse_installer.py --no-extra-artifacts",
                    "tools/rehearse_installer.py --skip-build --self-test",
                    "dpkg --install",
                    "rpm -qip"]:
         assert needle in ci, "no CI step runs %r" % needle
+
+
+def test_the_archive_the_packages_come_from_is_this_runner_s_own():
+    """`dist build --artifacts=local` with no `--target` means "all six triples, on this one machine".
+
+    That is what `dist` does with a bare `--artifacts=local`: the triples come from `dist-workspace.toml`,
+    and the first macOS one stops the job with `Cross-compilation from x86_64-unknown-linux-gnu to
+    aarch64-apple-darwin is not supported` — which is how the packaging job died while asking for the
+    archive for its *own* triple (`reco-hzr`). The step asks the compiler which machine it is on, so the
+    step cannot outlive the runner label it was written against.
+    """
+    lines = [line.strip() for line in CI.read_text().splitlines()
+             if "dist build" in line and ("artifacts=local" in line or "artifacts=all" in line)]
+    assert lines, "the packaging job no longer builds a local archive; where do the .debs come from?"
+    for line in lines:
+        assert "--target" in line, f"`{line}` asks `dist` for every triple in `dist-workspace.toml`"
 
 
 def test_the_release_document_tells_the_packaging_story():

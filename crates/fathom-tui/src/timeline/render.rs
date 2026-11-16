@@ -2,25 +2,49 @@
 //! narrow.
 //!
 //! ADR-006 §5.2 fixes the drop order and this file implements exactly it: **sparkline first, then
-//! relative time to date-only, then author, then the risk number — and the state glyph survives
-//! last**, because the marker is the one column that also carries *state* with colour switched off
-//! (§10.2). Deciding that in one function means the ladder is testable at every width instead of
-//! being a rumour in a comment, and `tests/timeline_behaviour.rs` walks it.
+//! relative time to date-only, then the risk number — and the state glyph survives last**, because
+//! the marker is the one column that also carries *state* with colour switched off (§10.2).
+//! Deciding that in one function means the ladder is testable at every width instead of being a
+//! rumour in a comment, and `tests/timeline_behaviour.rs` walks it.
+//!
+//! The author badge used to stand between the time and the risk number, and `e10.4`
+//! (`reco-ydek.4`) took it out: ADR-006 §5.1.2 §6 retires the printed verdict, because the rung
+//! that says `human` says it because nothing said otherwise. Its rung went with it and its six cells
+//! bought back rungs rather than content — every threshold below moved down by exactly those six
+//! cells, so a 34-column pane now shows what a 40-column one used to. The floor does not move: the
+//! 18-column identity strip, the view's `min`/`floor` and the card's row budget are different
+//! currencies and stay where §3 leaves them (§5.1.2 §6a).
 //!
 //! Nothing here touches the rail's own state: the row is a pure function of one episode, the frame's
 //! instant and the loaded corpus's scale, which is what lets a golden file pin a row without a whole
 //! application in the fixture.
 
+use fathom_analyze::insight::{ComplexityView, complexity_signed};
 use fathom_core::time::Timestamp;
 use unicode_width::UnicodeWidthStr;
 
 use crate::style::{Face, StyledLine};
 
 use super::days;
-use super::episode::{AuthorKind, Episode};
+use super::episode::Episode;
 
 /// How many cells the change-size sparkline draws.
 pub const SPARK_CELLS: usize = 6;
+
+/// The overflow-surrender priority of the complexity delta (`e8.6`).
+///
+/// Above the risk number (`6`) and the change size (`5`), and above the identity (`0`) and the state glyph
+/// (`1`), which are never surrendered at all; only its own coverage half (`8`) gives way sooner. The
+/// reasons are on [`episode_line`]; the number is public because the rail's strip reads it back out of the
+/// row to say, in the footer, that the column is not drawn here (ADR-007 §5.3).
+pub const COMPLEXITY_PRIORITY: u8 = 7;
+
+/// The coverage half surrenders one step ahead of the figure it qualifies (`e8.6`, ADR-007 §5.3: "the
+/// delta alone plus, **when width allows**, the coverage in parentheses"). Separate from
+/// [`COMPLEXITY_PRIORITY`] rather than equal to it because the rail's footer has to tell the two events
+/// apart: losing ` (2/5)` leaves a floor that still says it is a floor, and is not worth a sentence; losing
+/// the Δ is a column going out, and has to be said.
+pub const COVERAGE_PRIORITY: u8 = 8;
 
 /// The faces a rail row uses, in one table so `e5.6`'s theme has one thing to map. Not colours —
 /// [`Face::style`] is the only place a colour is named; this is the *choice* of face per column, so
@@ -29,8 +53,9 @@ mod face {
     use super::Face;
     pub(super) const ID: Face = Face::Muted;
     pub(super) const TIME: Face = Face::Text;
-    pub(super) const AUTHOR: Face = Face::Text;
     pub(super) const SIZE: Face = Face::Text;
+    pub(super) const COMPLEXITY: Face = Face::Number;
+    pub(super) const COVERAGE: Face = Face::Muted;
     pub(super) const SPARK: Face = Face::Faint;
     pub(super) const RISK: Face = Face::Number;
     pub(super) const STATE: Face = Face::Marker;
@@ -42,14 +67,17 @@ mod face {
 /// Which columns a rail row has room for.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Columns {
-    /// Everything: `▸ e8f1a2 0:12 agent  +412 −90 ●●●●○○ 82 ⚑` (ADR-006 §5.2's own row).
+    /// Everything: `▸ e8f1a2 0:12 +412 −90 ●●●●○○ +7 82 ⚑` (ADR-006 §5.2's own row; five content
+    /// columns since `e10.4` took the author cell out of it, six again since `e8.6` put the complexity
+    /// delta in).
     Full,
+    /// No complexity Δ — the sparkline is back, because a rung that cannot pay for both sells the newer
+    /// column rather than the separator the older one needs (`e8.6`, ADR-007 §10.1).
+    NoComplexity,
     /// No sparkline — the first thing the ADR sells.
     NoSparkline,
     /// Relative time collapses to a date: `14 Oct` instead of `0:12`.
     DateOnly,
-    /// No author badge.
-    NoAuthor,
     /// No risk *number*; the state glyph stays, because it is also the state.
     NoRisk,
     /// Identity and state only — the 18-column strip the ladder sells the rail down to.
@@ -57,21 +85,54 @@ pub enum Columns {
 }
 
 impl Columns {
+    /// Does this rung still draw the complexity column?
+    ///
+    /// Named rather than inlined at its two call sites because the rail's strip has to say *why* the
+    /// column is missing when it is missing (ADR-007 §5.3: a dropped column may not be confusable with
+    /// an unknown figure), and the reason is exactly this predicate.
+    ///
+    /// Only [`Columns::Full`], and the reason is ADR-007 §10.1 rather than taste: the rail may print the
+    /// signed delta *"only in a column apart from `+adds −dels`"*. Below this rung the sparkline cell is
+    /// gone, and `+412 −90 +7` is not a column apart — it is a third line count with a plus on it, which
+    /// is the misreading §10.1 exists to prevent. So the rail sells its newest column before it sells the
+    /// separator that makes the newest column honest.
+    #[must_use]
+    pub const fn carries_complexity(self) -> bool {
+        matches!(self, Columns::Full)
+    }
+
     /// The width ladder, in cells of rail content.
     ///
     /// The thresholds are the pane's own documented numbers from the view registry (`ideal_cols` 42,
     /// `min_cols` 32, `strip_width` 18, `hard_min` 28) with the columns' own widths added up, so the
     /// ladder and the layout come from the same arithmetic rather than two guesses.
+    ///
+    /// `e10.4`'s six freed cells are spent here and nowhere else: the three upper rungs each moved
+    /// down by 6 — the width of the author cell that went — and the two lower ones did not move at
+    /// all, because the identity floor is the 18-column strip §3 documents and selling the badge
+    /// does not re-open it.
+    ///
+    /// `e8.6`'s complexity delta is a **new rung**, not a widening of the old ones: every threshold
+    /// `e10.4` set is still the threshold it set, and a rail between 34 and 37 columns now reads
+    /// `no complexity Δ` and draws exactly the five cells it drew before. That is the honest shape of the
+    /// trade — the newer column pays for itself instead of taxing rows that have no figure to draw — and
+    /// it keeps the ladder monotone in the direction that matters: narrowing a rail never costs a cell a
+    /// wider rail kept, and never costs the sparkline sooner than it used to.
+    ///
+    /// The coverage half (` (2/5)`) is in no threshold: it is the conditional half — ADR-007 §5.3, "the
+    /// delta alone plus, when width allows, the coverage in parentheses" — so the overflow loop in
+    /// [`episode_line`] takes it off first, six cells at a time, and the tilde on the delta keeps
+    /// saying "floor" whatever fits.
     #[must_use]
     pub const fn for_width(width: usize) -> Columns {
-        if width >= 40 {
+        if width >= 37 {
             Columns::Full
         } else if width >= 34 {
+            Columns::NoComplexity
+        } else if width >= 28 {
             Columns::NoSparkline
-        } else if width >= 32 {
+        } else if width >= 26 {
             Columns::DateOnly
-        } else if width >= 27 {
-            Columns::NoAuthor
         } else if width >= 22 {
             Columns::NoRisk
         } else {
@@ -84,9 +145,9 @@ impl Columns {
     pub const fn name(self) -> &'static str {
         match self {
             Columns::Full => "all six columns",
+            Columns::NoComplexity => "no complexity Δ",
             Columns::NoSparkline => "no sparkline",
             Columns::DateOnly => "date instead of age",
-            Columns::NoAuthor => "no author",
             Columns::NoRisk => "no risk number",
             Columns::Identity => "id and state only",
         }
@@ -151,16 +212,84 @@ impl Scale {
     }
 }
 
+/// The rail's complexity cells: the signed delta, and the coverage half it travels with.
+///
+/// The figure arrives already counted — `fathom-analyze` owns the arithmetic and lint `M02` keeps this
+/// crate from inventing any (ADR-002 §5.3) — so all this chooses is the *rail's* shape of it: the short
+/// coverage form `(4/5)` of ADR-007 §5.4 rather than the card's whole sentence, and the crate's own
+/// [`complexity_signed`] for the sign, so a rail row and a `fathom analyze` line cannot print two signs
+/// for one figure. A floor keeps its `~`: §5.1's three states are the same three here, and a floor
+/// printed as a plain `+7` is the silent undercount §7.2 refuses.
+#[must_use]
+pub fn complexity_cells(view: &ComplexityView) -> (String, Option<String>) {
+    // `?` for a figure that was not measured, and never a bare `0` for one: §5.4's "zero coverage is not
+    // a zero delta", and the same reason the risk column prints `?` rather than nothing.
+    let Some(delta) = view.delta.filter(|_| view.measured) else {
+        return ("?".to_owned(), None);
+    };
+    let signed = complexity_signed(delta);
+    if view.unmeasurable_paths == 0 || view.touched == 0 {
+        return (signed, None);
+    }
+    (
+        format!("~{signed}"),
+        Some(format!(" ({}/{})", view.measured_paths, view.touched)),
+    )
+}
+
 /// One episode row, fitted to `width`.
 ///
 /// The columns are the ADR-006 §5.2 set in the ADR's order, and `columns` picks how far down the
 /// ladder the width has pushed them. The extra rule here is the one the ladder exists to make true:
 /// when the row still does not fit the pane — a wide `+1 204 −904`, a six-digit risk, a terminal
-/// narrower than any documented minimum — the cells that go are the risk and then the change size,
-/// never the state glyph, because the glyph is the only cell that also encodes *state* under
-/// `NO_COLOR`. A rail that clipped the glyph away would be dropping the one column the ladder says
-/// it does not drop, and the truncation `…` would not make that honest.
+/// narrower than any documented minimum — the cells that go are the complexity delta, then the risk,
+/// then the change size, never the state glyph, because the glyph is the only cell that also encodes
+/// *state* under `NO_COLOR`. A rail that clipped the glyph away would be dropping the one column the
+/// ladder says it does not drop, and the truncation `…` would not make that honest.
+///
+/// # Where the complexity delta sits, and why there
+///
+/// [`Columns::carries_complexity`] is the rung rule — the column is drawn only where the pane can still
+/// pay for the sparkline that separates it from the size cell — and `7` below is the overflow rule, which
+/// says the delta is the **first** cell the row gives up, ahead of the risk number (`6`) and ahead of
+/// the change size (`5`). Three reasons, in the order they were weighed:
+///
+/// * **ADR-007 §5.3 already ranks it below the size cell** — "the figure is allowed to be dropped
+///   before the change-size cell is", because `+412 −90` is what the ledger and the diff summary state
+///   their totals in, so dropping that one first would make two surfaces disagree about the size of one
+///   change. That fixes the bottom of the choice; the rest is this ticket's to make.
+/// * **It is the one figure on the row whose proof is a keystroke away, and getting closer.** A dropped
+///   risk number leaves a rank the reviewer cannot re-derive without the card; a dropped complexity
+///   delta points at `d`, which since this ticket sorts its tree by that exact per-file figure and
+///   prints it per file — the pane where, in §5.3's words, "the number is *proved*". Losing the glance
+///   loses a hint, not the fact.
+/// * **It is the most expensive cell on the row.** `+7` is two cells, but a floor that says so is
+///   `~+7 (4/5)` — ten. The cell that can cost five times its usual width is the cell that should be
+///   first out of the way when the row is already too wide, and the pane says the column went out loud
+///   ([`super::Rail::strip`] names a dropped column rather than letting silence read as `?`).
+///
+/// The coverage half surrenders one step ahead of the figure ([`COVERAGE_PRIORITY`]), which is what makes
+/// the overflow loop — surrender the right-most cell of the highest priority — eat `(4/5)` before it eats
+/// `~+7`. A floor that still names its denominator is an honest floor; a floor that lost that warning is a
+/// number, and §5.4 will not have it.
+///
+/// One drawn rail row, and what it gave up to fit.
+#[derive(Debug)]
+pub struct Row {
+    /// The row itself, cells in ladder order.
+    pub line: StyledLine,
+    /// Did the overflow loop have to drop the complexity **figure** — not merely its coverage half, which
+    /// goes quietly because the tilde still says "floor", but the `Δ` cell itself? The rail reports this in
+    /// its footer, because a column that vanished silently reads as an unknown figure and the two are
+    /// different claims (ADR-007 §5.3).
+    pub dropped_complexity: bool,
+}
+
+/// [`episode_line`], plus the priorities the row surrendered to fit — which is how the rail knows to say
+/// out loud that the complexity column is not drawn here instead of leaving silence to be read as `?`
+/// (ADR-007 §5.3's second sentence).
 #[must_use]
+#[allow(clippy::too_many_lines)] // one row, built in one straight pass: splitting it would split the ladder
 pub fn episode_line(
     episode: &Episode,
     now: Timestamp,
@@ -168,9 +297,12 @@ pub fn episode_line(
     columns: Columns,
     cursor: bool,
     width: usize,
-) -> StyledLine {
+) -> Row {
     // Every cell carries the priority it surrenders at on overflow: the bigger the number, the sooner
-    // it goes. `0` is the identity, `1` the state — the two cells that are never surrendered.
+    // it goes. `0` is the identity, `1` the state — the two cells that are never surrendered. The run of
+    // priorities keeps a gap where the author badge used to stand (`3`), so a number quoted by an older
+    // comment, golden or bisected blame still means the cell it always meant. `7` is `e8.6`'s complexity
+    // delta and `8` is its coverage half, the two topmost of the run, for the reasons on [`episode_line`].
     let mut cells: Vec<(Face, String, u8)> = vec![(
         face::CURSOR,
         if cursor {
@@ -182,21 +314,12 @@ pub fn episode_line(
     )];
     cells.push((face::ID, format!(" {}", episode.short_id()), 0));
     let time = match columns {
-        Columns::Full | Columns::NoSparkline => days::relative(now, episode.created),
+        Columns::Full | Columns::NoComplexity | Columns::NoSparkline => {
+            days::relative(now, episode.created)
+        }
         _ => days::date_only(episode.created),
     };
     cells.push((face::TIME, format!(" {time}"), 2));
-    if columns < Columns::NoAuthor {
-        cells.push((
-            if episode.author == AuthorKind::Unknown {
-                face::MISSING
-            } else {
-                face::AUTHOR
-            },
-            format!(" {:<5}", episode.author.badge()),
-            3,
-        ));
-    }
     cells.push((
         face::SIZE,
         format!(" +{} −{}", compact(episode.n_add), compact(episode.n_del)),
@@ -204,6 +327,27 @@ pub fn episode_line(
     ));
     if columns < Columns::NoSparkline {
         cells.push((face::SPARK, format!(" {}", scale.spark(episode)), 4));
+    }
+    // The complexity delta (`e8.6`, ADR-007 §5.3): the signed episode delta, plus its coverage when the
+    // delta is a floor. An episode whose document carries no complexity block prints no cell at all —
+    // "this read never looked" is not the same claim as "this file could not be read", and `?` belongs to
+    // the second one (ADR-007 §7.4's fourth row is answered per episode, on the card).
+    if columns.carries_complexity()
+        && let Some(view) = episode.complexity()
+    {
+        let (figure, coverage) = complexity_cells(view);
+        cells.push((
+            if view.measured {
+                face::COMPLEXITY
+            } else {
+                face::MISSING
+            },
+            format!(" {figure}"),
+            COMPLEXITY_PRIORITY,
+        ));
+        if let Some(coverage) = coverage {
+            cells.push((face::COVERAGE, coverage, COVERAGE_PRIORITY));
+        }
     }
     match episode.risk() {
         Some(risk) if columns < Columns::NoRisk => {
@@ -225,6 +369,7 @@ pub fn episode_line(
     cells.push((face::STATE, format!(" {marker}"), 1));
 
     let mut used: usize = cells.iter().map(|(_, text, _)| text.width()).sum();
+    let mut dropped_complexity = false;
     // Surrender the most expendable cell until the row fits, then stop: below the identity-plus-state
     // floor there is nothing left to drop, and `fit` will clip with `…` and say so.
     while used > width {
@@ -241,6 +386,7 @@ pub fn episode_line(
             .rposition(|(_, _, priority)| *priority == worst)
             .unwrap_or(0);
         used -= cells[index].1.width();
+        dropped_complexity |= cells[index].2 == COMPLEXITY_PRIORITY;
         cells.remove(index);
     }
 
@@ -248,7 +394,10 @@ pub fn episode_line(
     for (face, text, _) in cells {
         line.push(face, &text);
     }
-    line
+    Row {
+        line,
+        dropped_complexity,
+    }
 }
 
 /// The empty rail's own rows: the statement, wrapped to the pane, and nothing else.

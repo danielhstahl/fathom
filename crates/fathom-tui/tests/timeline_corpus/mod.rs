@@ -20,8 +20,13 @@
 
 #![allow(dead_code)] // each test binary uses part of it
 
+use fathom_analyze::insight::{
+    self, ComplexityView, EpisodeDelta, EpisodeRef, FileDelta, Input, Provenance, RiskComponent,
+    RiskView, Supplied, SuppliedBlock,
+};
 use fathom_core::time::Timestamp;
 use fathom_tui::timeline::{AuthorKind, Episode, ReviewState};
+use std::collections::BTreeMap;
 
 /// The instant every timeline fixture is drawn for: Tue 14 Oct 2025, 12:00 UTC. Fixed, not `now`.
 pub const NOW: Timestamp = Timestamp::from_unix_micros(1_760_443_200_000_000);
@@ -441,4 +446,255 @@ pub fn without(rows: &[Episode], id: &str) -> Vec<Episode> {
         .filter(|episode| episode.id != id)
         .cloned()
         .collect()
+}
+
+// ---------------------------------------------------------------------------------------------
+// the delta document — what `fathom-cli` hands over beside the row (`e2.11`)
+// ---------------------------------------------------------------------------------------------
+
+/// The newest row, with the delta document the CLI would have handed over beside it.
+///
+/// Every other case in this corpus loads rows with **no** document, which is the Epic 1 build: an indexed
+/// spine with counters and nothing else. That fixture can only ever show the card's no-delta shape, and
+/// a golden set made entirely of that shape is a golden set that cannot see a single analysis figure —
+/// which is exactly how a card that never printed the code delta stayed unblessed for an epic (**reco-
+/// 5js3.2**). This is the other half of the fixture: the same row, with a document.
+///
+/// The rows and the totals are made to agree, because `compose` reconciles them and a fixture that sums
+/// wrong spends the card's rows on the reconciliation gap instead of on the change.
+#[must_use]
+pub fn with_delta(mut rows: Vec<Episode>) -> Vec<Episode> {
+    let Some(episode) = rows.first_mut() else {
+        return rows;
+    };
+    // A lockfile beside the source: the noise fold needs something to fold, and a fixture that is all
+    // hand-written source can never print the figure that says how much of the churn is real.
+    if !episode.paths.iter().any(|path| path == "Cargo.lock") {
+        episode.paths.push("Cargo.lock".to_owned());
+        episode.n_files += 1;
+    }
+    let delta = delta_for(episode);
+    episode.delta = Some(delta);
+    rows
+}
+
+/// Compose the document for one row: file rows behind the counters, the analyses a caller lends, one
+/// ranking with its ceiling, and the intent the harness recorded.
+#[must_use]
+pub fn delta_for(episode: &Episode) -> EpisodeDelta {
+    compose_delta(episode, None)
+}
+
+/// The complexity roll-up the fixture lends a document (`e8.6`).
+///
+/// Built here rather than in each test because the three shapes the rail, the card and the goldens have
+/// to draw are exactly three: a figure with every path counted, a floor with some paths missing, and a
+/// roll-up that counted nothing. The numbers are the ADR's own example figures, so a golden that prints
+/// `+6 (2 of 5)` is checkable against [ADR-007 §5.4](../../../../docs/adr/0007-complexity.md).
+#[must_use]
+pub fn complexity(kind: Complexioned) -> ComplexityView {
+    let (touched, measured, delta, reasons) = match kind {
+        Complexioned::Measured => (5_i64, 5_i64, Some(6_i64), BTreeMap::new()),
+        Complexioned::Floor => (
+            5,
+            2,
+            Some(6),
+            [("language_unknown".to_owned(), 3_i64)]
+                .into_iter()
+                .collect(),
+        ),
+        Complexioned::Unmeasured => (
+            5,
+            0,
+            None,
+            [("column_not_filled".to_owned(), 5_i64)]
+                .into_iter()
+                .collect(),
+        ),
+    };
+    ComplexityView {
+        basis: vec!["mccabe-1".to_owned()],
+        delta,
+        absolute: delta.map(|d| 41 + d),
+        max: delta.map(|_| 9),
+        touched,
+        measured_paths: measured,
+        unmeasurable_paths: touched - measured,
+        reasons,
+        measured: measured > 0,
+        state: if measured == 0 {
+            "unavailable".to_owned()
+        } else if measured < touched {
+            "partial".to_owned()
+        } else {
+            "measured".to_owned()
+        },
+        // `compose` settles the state, the coverage and the gap from the counts (`e8.5`), so the fixture
+        // leaves all three for the composition to write — a fixture that invented its own coverage would
+        // be a second answer, and the one it would disagree with is the one the card prints.
+        coverage: None,
+        gap: None,
+    }
+}
+
+/// Which of the three shapes [`complexity`] builds.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Complexioned {
+    /// Every path in scope was counted.
+    Measured,
+    /// Some were: the figure is a floor and says its own denominator.
+    Floor,
+    /// None were: `?`, with its reason and its owner.
+    Unmeasured,
+}
+
+/// Attach a complexity figure to the first row, composed into the document the way the shipped bridge
+/// composes it — so the rail's cell and the card's row are the same figure and not two fixtures that
+/// happen to agree (`e8.6`, ADR-001 §7.10).
+#[must_use]
+pub fn with_complexity(mut rows: Vec<Episode>, kind: Complexioned) -> Vec<Episode> {
+    let Some(episode) = rows.first_mut() else {
+        return rows;
+    };
+    let delta = compose_delta(episode, Some(complexity(kind)));
+    episode.delta = Some(delta);
+    rows
+}
+
+/// Compose the document for one row, optionally with the complexity roll-up `e8.5` carries beside the
+/// line counts.
+fn compose_delta(episode: &Episode, complexity: Option<ComplexityView>) -> EpisodeDelta {
+    let mut input = Input::new(EpisodeRef::sparse(&episode.id, &episode.summary));
+    input.complexity = complexity;
+    input.episode.n_commits = i64::try_from(episode.n_commits()).unwrap_or(1);
+    input.episode.author_kind = episode.author.as_str().to_owned();
+    input.episode.author_name = episode.author_name.clone();
+    input.episode.author_confidence = episode.author_confidence;
+    input.episode.members = episode.members.clone();
+    input.episode.session = episode.session.clone();
+    input.episode.turn = episode.turn.clone();
+    input.episode.review = episode.state.as_str().to_owned();
+    let paths = &episode.paths;
+    let count = i64::try_from(paths.len().max(1)).unwrap_or(1);
+    input.totals.n_files = count;
+    input.totals.n_add = i64::try_from(episode.n_add).unwrap_or(0);
+    input.totals.n_del = i64::try_from(episode.n_del).unwrap_or(0);
+    input.provenance.files_detail = Provenance::DETAIL_FULL.to_owned();
+    // The counters are the truth the rail is cited on, so the rows are cut to sum to them: the first row
+    // takes the remainder and the rest take an equal share. Any other split and `reconciles` says `false`,
+    // and the card spends a row on the fixture's arithmetic.
+    let share = |total: i64, index: usize| -> i64 {
+        let even = total / count;
+        if index == 0 {
+            even + (total - even * count)
+        } else {
+            even
+        }
+    };
+    input.files = paths
+        .iter()
+        .enumerate()
+        .map(|(index, path)| FileDelta {
+            path: path.clone(),
+            old_path: None,
+            change: "modified".to_owned(),
+            add: share(input.totals.n_add, index),
+            del: share(input.totals.n_del, index),
+            binary: false,
+            commits: 1,
+            path_class: class_of(path).to_owned(),
+            noise_class: if path == "Cargo.lock" {
+                "generated"
+            } else {
+                "unknown"
+            }
+            .to_owned(),
+            surface: insight::classify(
+                path,
+                class_of(path),
+                if path == "Cargo.lock" {
+                    "generated"
+                } else {
+                    "unknown"
+                },
+            )
+            .as_str()
+            .to_owned(),
+            basis: Provenance::DETAIL_FULL.to_owned(),
+        })
+        .collect();
+    input.supplied = Supplied {
+        dependencies: Some(SuppliedBlock {
+            headline: "1 added (`zstd`), 3 bumped".to_owned(),
+            basis: "resolved imports over the changed paths".to_owned(),
+            figures: Default::default(),
+            confidence: Some(0.9),
+            owner: "e2.6".to_owned(),
+            run: Some("fathom check --only dependencies".to_owned()),
+        }),
+        tests: Some(SuppliedBlock {
+            headline: "1 test file moved beside 10 source files".to_owned(),
+            basis: "path classes of the changed rows".to_owned(),
+            figures: Default::default(),
+            confidence: None,
+            owner: "e2.9".to_owned(),
+            run: None,
+        }),
+        blast: Some(SuppliedBlock {
+            headline: "2 direct, 1 one-hop".to_owned(),
+            basis: "reverse call edges over the whole commit graph".to_owned(),
+            figures: Default::default(),
+            confidence: Some(0.9),
+            owner: "e3.2".to_owned(),
+            run: Some("fathom graph blast".to_owned()),
+        }),
+        surface: None,
+        structure: None,
+        findings: vec![],
+    };
+    input.risk = Some(RiskView {
+        model: "spine-3".to_owned(),
+        score: 62,
+        vector: "spine-3 62 = surfaces 50 + size 12".to_owned(),
+        components: vec![RiskComponent {
+            name: "surfaces".to_owned(),
+            points: 50,
+            cap: 50,
+            detail: "a configuration file moved".to_owned(),
+        }],
+        surfaces: vec!["ci-config".to_owned()],
+        caveat: None,
+        blind_spots: insight::BLIND_SPOTS
+            .iter()
+            .map(|spot| (*spot).to_owned())
+            .collect(),
+    });
+    let mut delta = insight::compose(&input);
+    // The intent arrives as the store wrote it, so the fixture is the document's JSON rather than a
+    // reconstruction of a type this crate may not name (ADR-002 §5.2, lint `M02`).
+    delta.episode.intent = serde_json::from_value(serde_json::json!({
+        "schema": "fathom-intent/1",
+        "state": "recorded",
+        "source": "hook-prompt",
+        "text": "make the store epoch-safe without dropping the reader's cursor, and keep the rail's counters the ones the worklist cites",
+        "confidence": 0.95,
+        "session_id": "4",
+        "turn_id": "4:12",
+        "plan": [{"text": "keep the selection on the episode", "status": "in_progress"}],
+        "scope": ["crates/fathom-store/**"],
+        "evidence": [{"source": "hook-prompt", "confidence": 0.95, "detail": "prompt from the harness"}]
+    }))
+    .ok();
+    delta
+}
+
+/// A path class for a fixture path — the taxonomy the index would have stored.
+fn class_of(path: &str) -> &'static str {
+    if path.starts_with("tests/") {
+        "test"
+    } else if path.ends_with(".lock") || path.ends_with(".toml") {
+        "configuration"
+    } else {
+        "source"
+    }
 }

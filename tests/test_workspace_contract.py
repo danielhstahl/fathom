@@ -31,6 +31,7 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
 
 import check_workspace as CW          # noqa: E402
+import check_workflows as WF          # noqa: E402
 import workspace_model as M           # noqa: E402
 
 ADR_TEXT = (ROOT / "docs" / "adr" / "0002-workspace.md").read_text()
@@ -260,10 +261,214 @@ def test_the_adr_names_its_own_rule_ids():
 def test_ci_wiring_is_present_and_agrees_on_the_msrv():
     assert CW.check_ci_wiring() == []
     workflows = "\n".join(p.read_text() for p in sorted((ROOT / ".github" / "workflows").glob("*.yml")))
-    for _name, needle in M.CI_REQUIRED_STEPS:
-        assert needle in workflows
-    assert "cargo deny check" in workflows
+    for _name, needle, _cadence, _home in M.CI_REQUIRED_STEPS:
+        assert needle in workflows, "%s: %r is in no workflow" % (_name, needle)
+    assert "EmbarkStudios/cargo-deny-action" in workflows
     assert "tools/check_workspace.py lint" in workflows
+
+
+def test_the_required_step_list_says_which_cadence_each_step_owes():
+    """`e11.2` and `e11.3`: every required step names a cadence and a home, and both are real.
+
+    A list where everything says `pull_request` would enforce nothing about the schedule and vice versa, so
+    the split is asserted to be a split: the per-PR half is the gate a contributor waits behind, the
+    scheduled half is the long tail that reproduces a committed measurement or re-measures a calibration.
+    The home is the other half: an empty string is a deliberate "any workflow of that cadence", anything else
+    is a file that must exist and must be the only one running the needle.
+    """
+    cadences = {cadence for _name, _needle, cadence, _home in M.CI_REQUIRED_STEPS}
+    assert cadences == set(M.CI_CADENCES), "every cadence must be exercised by at least one step"
+    files = {p.name for p in (ROOT / ".github" / "workflows").glob("*.yml")}
+    for name, needle, cadence, home in M.CI_REQUIRED_STEPS:
+        assert cadence in M.CI_CADENCES, "%s: unknown cadence %r" % (name, cadence)
+        assert needle.strip(), "%s: empty needle" % name
+        assert home == "" or home in files, "%s: home %r is not a workflow file" % (name, home)
+
+
+def test_the_changelog_gate_reports_from_one_job_of_one_workflow():
+    """`e11.3` (**reco-374v.3**): one missing `[Unreleased]` entry is one red, in one place.
+
+    The audit used to run in `ci.yml`'s `e7.7` beta-loop step *and* in `contracts.yml`'s contract suite, and
+    `e11.1` §4 counted the bill: the same `C03` finding reddened two jobs on three consecutive commits, and a
+    ticket was filed per job. This is the acceptance criterion written as a test: the needle lives in exactly
+    one workflow, in exactly one job of it, and that workflow is the cheap one that fetches the whole history
+    the audit reads. `tests/test_beta_loop_contract.py` calls the same `audit()` inside the same job, which is
+    a mirror; the copy that was deleted was the other *job*.
+    """
+    needles = {name: needle for name, needle, _c, _h in M.CI_REQUIRED_STEPS}
+    needle = needles["changelog-audit"]
+    home = {name: h for name, _n, _c, h in M.CI_REQUIRED_STEPS}["changelog-audit"]
+    assert home == "contracts.yml", "the release-note gate belongs to the job that compiles no Rust"
+
+    hits = []
+    for path in sorted((ROOT / ".github" / "workflows").glob("*.yml")):
+        wf = WF.Workflow(path)
+        for job in wf.jobs.values():
+            for step in job.steps:
+                executed = "\n".join([step.uses, step.run, *[str(v) for v in step.with_.values()]])
+                if needle in executed:
+                    hits.append((path.name, job.id, step.name))
+    assert len(hits) == 1, "the changelog audit runs in %s; it must run once" % (hits,)
+    assert hits[0][0] == home, hits
+    assert "changelog gate" in hits[0][2].lower(), hits
+
+    # ...and the step that audits still carries the `lint` and the draft smoke that came with it here.
+    step_run = next(s.run for p in (ROOT / ".github" / "workflows").glob("*.yml")
+                    for j in WF.Workflow(p).jobs.values() for s in j.steps if needle in s.run)
+    assert "gen_changelog.py lint" in step_run and "gen_changelog.py draft" in step_run, step_run
+
+
+def test_the_gates_the_epic_close_deduplicated_each_report_from_one_workflow():
+    """`e11` closed `e11.1` §3's duplicate table: four questions, one reporter each, and a lint for that.
+
+    The census listed nine places where CI asked one question twice. Four were real duplicates and were
+    deleted; two (`check_ci_gate.py`, `check_docs_site.py`) turned out to be halves — their other half needs
+    a compiled binary, prints that it skipped without one, and so belongs in `ci.yml`'s built leg; the rest
+    are one workflow's own two jobs or one cadence's two homes, written down in
+    `tools/workspace_model.py`. What this test refuses is the regression: a deleted copy growing back in a
+    second workflow (which `C01`'s home column already refuses, asserted from the model rather than from a
+    hard-coded pair) and — the half `C01` cannot see, because a home names a workflow and not a job — the
+    packager's negative controls running in two jobs of the one file that already runs them.
+    """
+    expect = {"egress-closure-query": "privacy.yml", "demo-repo-assembly": "contracts.yml",
+              "generated-docs-pages": "docs.yml", "packager-negative-controls": "ci.yml"}
+    rows = {name: (needle, home) for name, needle, _cadence, home in M.CI_REQUIRED_STEPS}
+    assert set(expect) <= set(rows), "the deduplicated gates must each be a required step with a home"
+    for name, workflow in expect.items():
+        assert rows[name][1] == workflow, "%s: model says %r, this test says %r" % (name, rows[name][1], workflow)
+
+    hits: dict[str, list] = {name: [] for name in expect}
+    for path in sorted((ROOT / ".github" / "workflows").glob("*.yml")):
+        for job in WF.Workflow(path).jobs.values():
+            for step in job.steps:
+                executed = "\n".join([step.uses, step.run, *[str(v) for v in step.with_.values()]])
+                for name, (needle, _home) in rows.items():
+                    if name in hits and needle in executed:
+                        hits[name].append((path.name, job.id, step.name))
+    for name, places in hits.items():
+        assert [p[0] for p in places] == [expect[name]], (
+            "%s runs in %s; it must run in %s alone" % (name, places, expect[name]))
+        assert places[0][2], "%s: the surviving step must be named, so a red says where to look" % name
+
+    ci = WF.Workflow(ROOT / ".github" / "workflows" / "ci.yml")
+    jobs = sorted({job.id for job in ci.jobs.values()
+                   for step in job.steps if "package_release.py --self-test" in step.run})
+    assert jobs == ["release-skeleton"], (
+        "the packager's controls belong to the job that needs no toolchain, not to both of them: %s" % jobs)
+
+
+def test_a_shell_comment_inside_a_run_block_is_no_gate(tmp_path, monkeypatch):
+    """`C01` reads what a runner executes, and a `#` line inside a `run:` block is not that either.
+
+    `test_a_comment_cannot_satisfy_a_required_step` already refuses the YAML half — the lie `e11.1` §3 found,
+    `cargo deny check` discharging a rule from a header comment while no step ran it. The same lie is
+    available one level down: a `#` line inside a step's shell script is text in `step.run`, and a substring
+    test cannot tell it from a command. `e11`'s close hit it while proving its own deletions stay deleted, and
+    `workflow_executables` strips those lines for the same reason it ignores the YAML's.
+    """
+    real = ROOT / ".github" / "workflows"
+    fake = tmp_path / "workflows"
+    fake.mkdir()
+    for path in real.glob("*.yml"):
+        shutil.copy(path, fake / path.name)
+    monkeypatch.setattr(CW, "WORKFLOWS", fake)
+    assert not any(p.rule == "C01" for p in CW.check_ci_wiring()), "the copied fleet must start clean"
+
+    needle = {name: n for name, n, _c, _h in M.CI_REQUIRED_STEPS}["egress-closure-query"]
+    path = fake / "privacy.yml"
+    lines = path.read_text().splitlines(keepends=True)
+    first = next(i for i, line in enumerate(lines) if needle in line)
+    lines[first] = "          # " + lines[first].strip() + "\n"
+    lines[first + 1] = "          # " + lines[first + 1].strip() + "\n"
+    path.write_text("".join(lines))
+
+    problems = [p for p in CW.check_ci_wiring() if p.rule == "C01" and p.where == "egress-closure-query"]
+    assert len(problems) == 1, problems
+    assert "appears in no workflow's steps" in problems[0].message, problems[0].message
+
+
+def test_a_pinned_step_that_turns_up_in_a_second_workflow_is_red(tmp_path, monkeypatch):
+    """`C01`'s home half: a second copy of a pinned gate is a failure, not a free addition.
+
+    The cadence half cannot see this at all — the needle is still where it is required, and also somewhere
+    else — which is precisely how the changelog audit ended up reporting from two jobs.
+    """
+    real = ROOT / ".github" / "workflows"
+    fake = tmp_path / "workflows"
+    fake.mkdir()
+    for path in real.glob("*.yml"):
+        shutil.copy(path, fake / path.name)
+    monkeypatch.setattr(CW, "WORKFLOWS", fake)
+    assert not any(p.rule == "C01" for p in CW.check_ci_wiring()), "the copied fleet must start clean"
+
+    needle = {n: needle for n, needle, _c, _h in M.CI_REQUIRED_STEPS}["changelog-audit"]
+    # Add the audit back to `ci.yml`, the way it was before `e11.3`: a step that looks reasonable.
+    (fake / "ci.yml").write_text(
+        (fake / "ci.yml").read_text()
+        + "\n  changelog-again:\n    name: the changelog audit, run a second time\n"
+          "    runs-on: ubuntu-latest\n    steps:\n      - run: python3 %s\n" % needle)
+    problems = [p for p in CW.check_ci_wiring() if p.rule == "C01" and p.where == "changelog-audit"]
+    assert len(problems) == 1, problems
+    assert "ci.yml" in problems[0].message and "only home" in problems[0].message, problems[0].message
+
+    # And the other half: a gate that vanishes from its home is refused even while it still runs somewhere.
+    (fake / "contracts.yml").write_text(
+        (fake / "contracts.yml").read_text().replace("python3 tools/gen_changelog.py audit", "run: echo later"))
+    problems = [p for p in CW.check_ci_wiring() if p.rule == "C01" and p.where == "changelog-audit"]
+    assert any("does not run in `contracts.yml`" in p.message for p in problems), problems
+
+
+def test_a_required_step_that_only_runs_on_the_wrong_cadence_is_red(tmp_path, monkeypatch):
+    """`C01` must fail a per-PR step that survives only on the schedule, not just one that vanished.
+
+    That is the failure `e11.2` had to be able to refuse: a step moved to `nightly.yml` is still textually
+    present in `.github/workflows/*.yml`, so the old substring rule was green while the pull request stopped
+    guarding anything.
+    """
+    real = ROOT / ".github" / "workflows"
+    fake = tmp_path / "workflows"
+    fake.mkdir()
+    for path in real.glob("*.yml"):
+        shutil.copy(path, fake / path.name)
+    monkeypatch.setattr(CW, "WORKFLOWS", fake)
+    assert not any(p.rule == "C01" for p in CW.check_ci_wiring()), "the copied fleet must start clean"
+
+    # Move the fmt gate: out of the per-PR file, into the scheduled one.
+    (fake / "ci.yml").write_text(
+        (fake / "ci.yml").read_text().replace("run: cargo fmt --all --check", "run: echo moved"))
+    (fake / "nightly.yml").write_text(
+        (fake / "nightly.yml").read_text()
+        + "\n  fmt-moved:\n    name: fmt, moved to the schedule by mistake\n"
+          "    runs-on: ubuntu-latest\n    steps:\n      - run: cargo fmt --all --check\n")
+    problems = [p for p in CW.check_ci_wiring() if p.rule == "C01"]
+    assert [p.where for p in problems] == ["fmt", "fmt", "fmt"], problems
+    assert any("pull_request" in p.message for p in problems), problems
+    # Two of the three are the new home clauses, and they are the same finding seen twice: the gate left the
+    # workflow it is pinned to (`e11.3`), so it is missing from its home *and* running where it is not wanted.
+    assert sum(1 for p in problems if "does not run in" in p.message) == 1, problems
+    assert sum(1 for p in problems if "only home" in p.message) == 1, problems
+
+
+def test_a_comment_cannot_satisfy_a_required_step(tmp_path, monkeypatch):
+    """`e11.1` §3: `cargo deny check` in prose used to be enough. Prose is not an execution.
+
+    The needle is the action now, and this proves the matcher reads steps: the sentence naming the boundary
+    check is left in a comment while the step that runs it is deleted.
+    """
+    real = ROOT / ".github" / "workflows"
+    fake = tmp_path / "workflows"
+    fake.mkdir()
+    for path in real.glob("*.yml"):
+        shutil.copy(path, fake / path.name)
+    contracts = (fake / "contracts.yml").read_text()
+    assert "run: python3 tools/check_workspace.py check" in contracts
+    (fake / "contracts.yml").write_text(
+        contracts.replace("      - name: ADR-002 model, generated tables, ticket->crate map, this file's wiring\n"
+                          "        run: python3 tools/check_workspace.py check\n",
+                          "      # python3 tools/check_workspace.py check (deleted step, kept the sentence)\n"))
+    monkeypatch.setattr(CW, "WORKFLOWS", fake)
+    problems = [p for p in CW.check_ci_wiring() if p.rule == "C01"]
+    assert any("tools/check_workspace.py check" in p.message for p in problems), problems
 
 
 def test_ci_wiring_check_actually_fails_when_a_step_disappears(tmp_path, monkeypatch):
@@ -271,13 +476,14 @@ def test_ci_wiring_check_actually_fails_when_a_step_disappears(tmp_path, monkeyp
     fake = tmp_path / "workflows"
     fake.mkdir()
     text = "\n".join(p.read_text() for p in sorted(real.glob("*.yml")))
-    (fake / "contracts.yml").write_text(text.replace("cargo deny check", "echo later"))
+    (fake / "contracts.yml").write_text(text.replace("EmbarkStudios/cargo-deny-action", "echo later"))
     monkeypatch.setattr(CW, "WORKFLOWS", fake)
     problems = CW.check_ci_wiring()
-    assert any(p.rule == "C01" and "cargo deny" in p.message for p in problems)
+    assert any(p.rule == "C01" and "cargo-deny" in p.where for p in problems)
 
     (fake / "contracts.yml").write_text(
-        text.replace("cargo deny check", "echo later").replace('MSRV: "1.97.0"', 'MSRV: "1.80.0"'))
+        text.replace("EmbarkStudios/cargo-deny-action", "echo later")
+            .replace('MSRV: "1.97.0"', 'MSRV: "1.80.0"'))
     assert any(p.rule == "T07" for p in CW.check_ci_wiring())
 
 
@@ -787,12 +993,25 @@ def test_the_gate_judges_this_repositorys_own_boundaries():
     )
 
 
-def test_ci_builds_on_all_three_operating_systems_and_both_channels():
-    """§8.3's matrix, as a matrix — `C01` proves the steps exist, this proves they run in triplicate."""
+def test_ci_builds_on_both_channels_and_the_schedule_carries_the_third():
+    """§8.3's matrix, as a matrix — `C01` proves the steps exist, this proves the legs are the documented ones.
+
+    This test used to demand `macos-latest` and `windows-latest` from a matrix `e7.4` deleted in
+    `59a0079c60`, which made it red at every commit after the one it described: a gate asserting a frozen
+    past (`e11.1` §2.2, §5.4). What it asserts now is the split `e11.2` actually drew — the pull request
+    builds linux on `stable` and on the MSRV, and the `beta` channel is built once a day, where being
+    allowed to fail is not a per-push tax. It reads the `strategy:` block rather than the file, because a
+    comment is allowed to *talk* about a runner without running on one.
+    """
     ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text()
-    for runner in ("ubuntu-latest", "macos-latest", "windows-latest"):
-        assert runner in ci, f"§8.3: CI must build on {runner}"
-    for channel in ("stable", "msrv", "beta"):
-        assert channel in ci, f"§2: CI must cover the {channel} channel"
+    nightly = (ROOT / ".github" / "workflows" / "nightly.yml").read_text()
+    matrix = ci.split("strategy:", 1)[1].split("runs-on:", 1)[0]
+    assert "ubuntu-latest" in matrix, "§8.3: CI must build on linux"
+    for runner in ("macos-latest", "windows-latest"):
+        assert runner not in matrix, f"the per-PR matrix has no {runner} leg; the release matrix has the OS"
+    assert re.search(r"channel:\s*\[stable,\s*msrv\]", matrix), "§2: the PR legs are stable and the MSRV"
+    assert "RUSTUP_TOOLCHAIN: beta" not in ci, "beta is a scheduled lane (e11.2), not a per-PR job"
+    assert "RUSTUP_TOOLCHAIN: beta" in nightly, "§2: CI must cover the beta channel, somewhere"
     # A matrix that silently runs one compiler on three OSes would pass every other check in this file.
     assert "RUSTUP_TOOLCHAIN" in ci, "the toolchain file outranks rustup default; the matrix must override it"
+    assert "RUSTUP_TOOLCHAIN" in nightly, "the scheduled legs state their toolchain for the same reason"

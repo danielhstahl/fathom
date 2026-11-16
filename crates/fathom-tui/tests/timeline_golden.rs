@@ -42,7 +42,7 @@ use fathom_tui::views::{self, ViewId};
 #[path = "timeline_corpus/mod.rs"]
 mod corpus;
 
-use corpus::{NOW, generated, mock, without};
+use corpus::{Complexioned, NOW, generated, mock, with_complexity, with_delta, without};
 
 /// The rail's golden width: the view registry's `ideal_cols` for the rail pane.
 const RAIL_COLS: usize = 42;
@@ -81,6 +81,12 @@ enum Rows {
     MinusOne,
     /// The 10 000-row index, so the ladder is checked against numbers with four digits in them.
     Big,
+    /// The mock rows with a delta document attached to the selected one — the card with figures in it,
+    /// which is the shape no other case in this file has ever drawn (`e9.2`).
+    Delta,
+    /// The delta rows, plus a complexity roll-up on the selected episode: the rail's Δ column, the floor
+    /// form with its coverage, and the card row that spells the word out (`e8.6`).
+    Complexity,
     /// Nothing at all.
     None,
 }
@@ -139,9 +145,36 @@ fn cases() -> Vec<Case> {
             ..Case::default()
         },
         Case {
+            golden: "card_delta_80x24",
+            note: "the selected row with a delta document on it, at the size §5.2 is quoted at: every \
+                   band gets its row - the code delta and its noise fold first, then where it landed, the \
+                   four reach rows, the ranking with its ceiling, and one line of intent",
+            frame: Some((80, 24)),
+            rows: Rows::Delta,
+            ..Case::default()
+        },
+        Case {
+            golden: "card_delta_floor",
+            note: "the same episode at the timeline's ladder floor (41x9): the header, the code delta \
+                   and the first reach row are what survives; the provenance is what gets cut",
+            frame: Some((41, 9)),
+            rows: Rows::Delta,
+            ..Case::default()
+        },
+        Case {
             golden: "rail_wide",
             note: "one pane at the rail's ideal width: all six columns, `?` standing for the risk no \
                    build has computed",
+            ..Case::default()
+        },
+        Case {
+            golden: "rail_complexity",
+            note: "the rail's sixth column, at its ideal width: `~+6 (2/5)` is a floor - three of the \
+                   five files this episode touched could not be counted - and the tilde, the sign and \
+                   the denominator are glyphs and digits, so a monochrome rail loses no fact (`e8.6`, \
+                   ADR-007 §5.3, §10.1). The card row below is the same figure with the word on it.",
+            rows: Rows::Complexity,
+            cursor: 0,
             ..Case::default()
         },
         Case {
@@ -255,6 +288,8 @@ fn build(case: &Case, size: (u16, u16)) -> App {
             without(&rows, "e8f1a2")
         }
         Rows::Big => generated(),
+        Rows::Delta => with_delta(mock()),
+        Rows::Complexity => with_complexity(with_delta(mock()), Complexioned::Floor),
         Rows::None => {
             app.timeline.set_filter(case.filter.clone());
             return app;
@@ -361,8 +396,7 @@ fn render(case: &Case) -> String {
 fn ladder_golden() -> String {
     let mut out = String::new();
     out.push_str(
-        "# ladder\n# the column ladder, §5.2's fixed order: sparkline, relative time to \
-                  date, author, risk number, and the state glyph last of all.\n\n",
+        "# ladder\n# the column ladder, §5.2's fixed order: sparkline, relative time to \n# date, the risk number, and the state glyph last of all. There is no author rung: e10.4 took\n# the cell out, spent its six cells on the three upper thresholds, and left the floor where\n# §3 puts it.\n\n",
     );
     let mut rows = mock();
     // A risk number, so the rung that drops it has something to drop. A bare ranked delta is the bare form:
@@ -374,7 +408,7 @@ fn ladder_golden() -> String {
     ));
     let mut rail = timeline::Rail::new(NOW);
     rail.load(Batch::new("fixture index", rows));
-    for width in [42, 40, 38, 34, 32, 30, 27, 24, 22, 18] {
+    for width in [42, 40, 38, 34, 33, 30, 28, 27, 26, 24, 22, 18] {
         let text = rail.text(width, 1);
         let line = text.first().map(String::as_str).unwrap_or_default();
         assert_eq!(

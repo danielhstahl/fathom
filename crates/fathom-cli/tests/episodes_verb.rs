@@ -19,6 +19,12 @@
 //! The `--json` document's shape is `schemas/episodes.schema.json`, checked by the round trip in
 //! `tests/schemas.rs`; this file is about what the verb decides, not about whether it validates.
 #![allow(clippy::unwrap_used, clippy::expect_used)]
+// Every test in this file is store-backed: the fixture builds its index with `fathom index`, and `fathom episodes`
+// reads that index back — both halves of that are compiled only when a SQLite backend is on (ADR-002
+// §6.1, §6.2), so on the headless `minimal` build the fixture cannot be built at all and the verb answers
+// `FEATURE_ABSENT` (9) instead of answering. Gated in the spelling `tests/check_verb.rs` and
+// `tests/show_trailers.rs` use; on every store-backed build the whole suite still runs.
+#![cfg(feature = "sqlite-bundled")]
 
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
@@ -214,22 +220,16 @@ fn the_text_report_prints_every_column_the_ticket_names() {
         .lines()
         .find(|line| line.starts_with("ID"))
         .unwrap_or_else(|| panic!("no column header:\n{text}"));
-    for column in [
-        "ID",
-        "WHEN",
-        "KIND",
-        "+ADD",
-        "-DEL",
-        "FILES",
-        "STATE",
-        "SESSION/TURN",
-        "SUMMARY",
-    ] {
-        assert!(
-            header.contains(column),
-            "no {column} column in the header: {header}"
-        );
-    }
+    // The column set, pinned exactly. Pinned rather than looped over because the loop is the shape that
+    // let a column quietly be added last time, and because `e10.4` (`reco-ydek.4`) deleted one: the
+    // `KIND` cell is gone, and the rows print no `human`/`agent`/`unknown` word either — ADR-006 §5.1.2 §6
+    // retires the verdict wherever a human reads it, while `--json` below still carries `author_kind`
+    // with its confidence. (The word inside a row's SUMMARY is that commit's own subject, not a badge.)
+    let columns = header.split_whitespace().collect::<Vec<_>>().join(" ");
+    assert_eq!(
+        columns, "ID WHEN (UTC) +ADD -DEL FILES STATE SESSION/TURN SUMMARY",
+        "the columns this verb prints, in the order it prints them: {header:?}"
+    );
     // One row per episode, newest first, and each row carries the row's whole story.
     let rows: Vec<&str> = text
         .lines()
@@ -242,10 +242,22 @@ fn the_text_report_prints_every_column_the_ticket_names() {
         rows[0]
     );
     assert!(
-        rows[0].contains("agent") && rows[0].contains("+1") && rows[0].contains("-0"),
-        "author kind and the churn on one line: {}",
+        rows[0].contains("+1") && rows[0].contains("-0"),
+        "the churn is on the row: {}",
         rows[0]
     );
+    // The retired verdict is nowhere in the cells before the summary, which is where the column used to
+    // sit. Asserted against the row's prefix rather than the whole line because these fixtures name their
+    // commits `agent: …`, `human: …`, `unknown: …` on purpose, and a subject is not a badge.
+    for row in [&rows[0], &rows[1], &rows[2]] {
+        let before_summary = row.split("  ").take(7).collect::<Vec<_>>().join(" ");
+        for verdict in ["agent", "human", "unknown"] {
+            assert!(
+                !before_summary.contains(verdict),
+                "a row printed the retired verdict `{verdict}`: {row}"
+            );
+        }
+    }
     assert!(
         rows[0].contains("sess-7:3"),
         "the turn id is session-qualified (ADR-003 §18.2 D5): {}",
@@ -256,9 +268,10 @@ fn the_text_report_prints_every_column_the_ticket_names() {
         "the time and the review state are on the row: {}",
         rows[0]
     );
-    // The human commit has no harness session, and that is printed as a word, not left blank.
+    // The human commit has no harness session, and that is printed as a word, not left blank. The
+    // verdict that used to sit beside it is gone (`e10.4`); the absence of a session still is not.
     assert!(
-        rows[2].contains("human") && rows[2].contains("no-session"),
+        rows[2].contains("no-session"),
         "an absence is stated: {}",
         rows[2]
     );

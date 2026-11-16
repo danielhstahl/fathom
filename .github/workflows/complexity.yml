@@ -1,0 +1,175 @@
+# The complexity corpus reproduces (`e8.2`, **reco-l9bz.2**) — a reproduction, not a per-PR gate.
+#
+# ADR-007 gave cyclomatic complexity a contract: `V(G) = 1 + decision points`, an unknown that prints
+# `?` with a reason code instead of `0`, per-language decision-point tables whose node kinds must exist
+# in the *pinned* grammar, and a hand-authored corpus under
+# `crates/fathom-analyze/complexity/<language>/` whose `truth.json` files were written by a person
+# counting constructs the way §4 says to count them. The report this job re-measures is the recorded
+# answer. It is a measurement of a corpus and a pass, and both are checked into this repository, so it
+# has no business moving when nothing moved — which is the whole argument for `--check` existing.
+#
+# # Why it is a scheduled job and not a step in `ci.yml`
+#
+# The step list in `.github/workflows/ci.yml` is what a contributor pays on every pull request, and
+# epic 11 (**reco-374v**) exists because that list has been growing in exactly the direction that
+# makes a red tick meaningless: reproduce-a-report checks, calibration re-measures and generated-docs
+# comparisons all run there today, on commits that touched none of them. `e11.1` (`reco-374v.1`) is the
+# spike that decides the cut list, and every candidate in it is one of those report reproductions.
+# This file does not wait for that decision and does not pre-empt it: it puts a *new* reproduction where
+# that decision is already going to put the old ones — a scheduled workflow, dispatchable by hand, and
+# triggered by paths so that the pull request which changes the counting rules, the corpus or the
+# report is the pull request that has to reproduce it. When `e11.2` (`reco-374v.2`) folds the long tail
+# into one scheduled workflow, this job moves with them by deleting a file, not by rewriting `ci.yml`.
+#
+# Two properties are worth naming, because they are the reason the job is cheap enough to schedule:
+#
+# * **It builds nothing that a PR job did not build.** The pass is library code behind the existing
+#   `lang-*` gates (`langs-all` for all six grammars); `--check` needs the grammars and nothing else —
+#   no store, no release profile, no corpus fetch, no network. C-KIND reads `node-types.json` out of
+#   the vendored crate `Cargo.lock` pins, which is why this job has no setup step beyond the cache.
+# * **It is deterministic, so a diff is a fact.** Same tree, same bytes out. The report carries no
+#   timestamp and no timing: an earlier ticket's lesson, written down in `s1`'s own step, is that a
+#   committed report which contains a wall clock reproduces nowhere, not even on the machine that
+#   wrote it.
+#
+# What a failure here means, in order of likelihood: a corpus file was edited without re-deriving its
+# `truth.json` by hand (the harness prints the first differing byte and line, and `--suggest-truth`
+# exists to *diff* against, never to bless); a decision-point list names a kind the pinned grammar
+# stopped emitting, which is C-KIND and is what a grammar bump is expected to catch; the pass produced
+# a `0` where ADR-007 §7.1 demands a `?`; or the counting really changed, in which case the report is
+# regenerated with the command below and the commit says which figure moved and why.
+
+name: complexity corpus (six languages, hand-authored truth)
+
+on:
+  schedule:
+    # Nightly. The corpus and the pass only move when a pull request moves them, and the path filter
+    # below already catches those; the schedule is here to catch the third thing that can change an
+    # answer while nobody is looking — a vendored grammar that a lockfile bump swapped underneath the
+    # decision-point list. Late enough to be out of the way, before anyone's morning build.
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+  pull_request:
+    paths:
+      # The pass, its corpus, the report it writes, the harness that checks them, and this file. A
+      # pull request that touches none of these cannot change a figure, and this job has nothing to
+      # say about it.
+      - "crates/fathom-analyze/src/structure/**"
+      - "crates/fathom-analyze/src/fill.rs"
+      - "crates/fathom-analyze/src/index.rs"
+      - "crates/fathom-analyze/tests/complexity_fill.rs"
+      - "crates/fathom-store/src/complexity.rs"
+      - "crates/fathom-cli/src/state.rs"
+      - "crates/fathom-cli/src/guide.rs"
+      - "crates/fathom-cli/src/verbs.rs"
+      - "crates/fathom-ingest/src/paths.rs"
+      - "src/recommender/config/schema.py"
+      - "tools/complexity_cost.py"
+      - "tests/test_complexity_fill_contract.py"
+      - "benchmarks/reports/e8-4-index-time-complexity.json"
+      - "benchmarks/reports/e8-4-index-time-complexity-monorepo.json"
+      - "schemas/index.schema.json"
+      - "docs/concepts/complexity-ceilings.md"
+      - "docs/concepts/structure-extraction.md"
+      - "crates/fathom-analyze/complexity/**"
+      - "crates/fathom-analyze/examples/complexity_harness*"
+      - "crates/fathom-analyze/examples/complexity_harness/**"
+      - "crates/fathom-analyze/tests/complexity.rs"
+      - "benchmarks/reports/e8-2-complexity-core.json"
+      - "docs/adr/0007-complexity.md"
+      - ".github/workflows/complexity.yml"
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: "0"
+  # The one hand-written cache lever in this file, and the only one `R04` lets anyone pull. It is the
+  # *prefix* of `Swatinem/rust-cache`'s derived key — the action derives the rest from the lock files, the
+  # toolchain in `rustc -Vv`, the cargo env, the workflow and the job, which together are every input a
+  # cargo build reads — so moving it starts a fresh cache family rather than shuffling one job's objects
+  # into a drawer that does not describe them.
+  #
+  # The rule, in one sentence: **bust the prefix when the bytes already in the cache would be wrong, not
+  # merely stale.** Stale is cargo's own job — a source change re-checks its fingerprints and rebuilds what
+  # moved. Wrong is a registry that no longer holds what the lock file names, a cache written under a
+  # toolchain the key does not name, or an upgrade of the action that changes what it stores. And a bump
+  # only stops new runs *writing* the old family: evicting the old bytes is the second half, and the only
+  # eviction that does not wait out the retention period. Date it and name the bead that moved it;
+  # *Cache discipline* in docs/concepts/ci-gate.md is the prose and `R04` is the gate.
+  CACHE_BUST: "2026-11"
+
+# A push to a branch that already has a run in flight must not pay for it again: `e11.1` §2.4 counted 7
+# red runs in thirty days whose only fault was being superseded, and every one of them ran to the end
+# anyway. Per workflow, so two workflows never share a queue; per ref, so two pull requests never cancel
+# each other. Rule `R02` of `tools/check_workflows.py` asks every `pull_request` workflow for this block.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  complexity-corpus:
+    name: the committed complexity report reproduces (six languages)
+    runs-on: ubuntu-latest
+    # Twenty minutes was enough while this job only re-derived figures. It now also cold-indexes the
+    # repository twice with a release build (`e8.4`'s cost gate), and a cold index of this repository is a
+    # couple of minutes each way: the budget is the build plus two indexes plus the harness, with room.
+    timeout-minutes: 40
+    env:
+      RUSTUP_TOOLCHAIN: stable
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Swatinem/rust-cache@v2
+        with:
+          # The lever and the save. `prefix-key` is the one hand-written half of the derived key and it comes
+          # from `env.CACHE_BUST` below, not from a string written here; `cache-on-failure` is the census:
+          # 102 of `ci.yml`'s 233 cargo-cache saves never happened because the job was red when the cache
+          # would have been written, and a red job's compiled objects are still correct objects. `R04`.
+          prefix-key: ${{ env.CACHE_BUST }}
+          cache-on-failure: "true"
+      - name: "e8.2: the committed complexity report reproduces byte for byte"
+        # Every number in `benchmarks/reports/e8-2-complexity-core.json` is re-measured here and
+        # compared byte for byte: 69 per-function figures across 18 corpus files and six grammars,
+        # each one a hand-counted `V(G)` or a hand-named reason code. A debug build is deliberate —
+        # `--check` compares figures, and a figure is not a timing (ADR-007 §10.1 refuses throughput
+        # as a gate for the same reason `s1` and `e3.1` do).
+        run: >
+          cargo run --locked -p fathom-analyze --features langs-all sqlite-bundled
+          --example complexity_harness -- --repo .
+          --report benchmarks/reports/e8-2-complexity-core.json --check
+      - name: "e8.2: the ADR, the reason vocabulary and the six rule tables agree, and the budget bites"
+        # The parts of ADR-007 a report cannot assert on its own: that §7.1's code list, the six rule
+        # tables and the shared `structure::UnavailableReason` enum are one vocabulary rather than
+        # three that drifted; that the basis token is the one the ADR registered; that an unknown
+        # never arrives as `0`; and that a spent node budget changes the state and the code instead of
+        # quietly shortening a figure (§7.2).
+        run: >
+          cargo test --locked -p fathom-analyze --features langs-all --test complexity
+      - name: "e8.4: the index-time ceilings, the owed-set rules, and the progress row that admits them"
+        # The pass that fills ADR-007 §9.1's columns during the index run, against real `git` fixtures: each
+        # of the three ceilings produces its `?` with its reason and its count; a row a *ceiling* refused
+        # stays owed, so raising the ceiling and re-indexing fills it (the converging series §9.6 promises);
+        # the base side is borrowed from the parent's stored figure rather than recomputed; a warm run reads
+        # only what is new; and the progress tick carries the note that stops `100 % · done` from reading as
+        # "everything was measured" over a column of refusals.
+        run: >
+          cargo test --locked -p fathom-analyze --features langs-all --test complexity_fill
+      - name: "e8.4: the cost of counting complexity at index time is inside what the ticket declared"
+        # `benchmarks/reports/e8-4-index-time-complexity.json` is a before/after measurement of one binary
+        # in two configurations — the complexity pass declining everything, and the pass at its shipped
+        # ceilings — so the delta attributes the contents pass and nothing else. This step re-measures it on
+        # this checkout and fails past the allowance the report declares, which is the only way the ADR-007
+        # §9.7 decision ("at index time, because the bytes are already in hand") stays an argument with a
+        # price attached rather than a preference. A release build is deliberate: a debug build would gate
+        # the parser's optimisation level instead of the pass's cost.
+        run: |
+          cargo build --locked --release -p fathom-cli
+          python3 tools/complexity_cost.py --repo . --bin target/release/fathom --reps 2 \
+              --corpus-note "this repository: the checkout the workflow is running" \
+              --report benchmarks/reports/e8-4-index-time-complexity.json --check
+      - name: "e8.2: the harness builds with every grammar it claims to speak"
+        # `--all-targets` so the corpus generators and every other target in the crate still compile
+        # against all six grammars; a rule table added for a seventh language nobody gated would fail
+        # here rather than in a report run nobody scheduled.
+        run: cargo build --locked -p fathom-analyze --features langs-all --all-targets

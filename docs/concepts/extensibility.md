@@ -9,7 +9,7 @@
 >
 > [ADR-002]: ../adr/0002-workspace.md
 > [the detector catalogue]: pathology-detectors.md
-> [the delta model]: delta-model.md
+> [the delta model]: delta.md
 
 A detector is a pure function over one episode. That is the whole reason any of this is possible: a function
 with no capabilities can be called by code this repository has never seen, and its output can be checked by a
@@ -31,7 +31,7 @@ pipe is a thing a reader has to be told about rather than shown in a shell metac
 |---|---|---|---|
 | **built-in** | this repository, in [`detectors/`](../../crates/fathom-analyze/src/detectors) | inside `fathom` | on by default, or `detectors.enabled` |
 | **plugin detector** | anyone, against the published `fathom-analyze` crate | inside the binary that registers it | by name, always: `--detectors +acme.thing` |
-| **out-of-tree program** | anyone, against the [delta document](delta-model.md) | its own process, reading `fathom analyze --json` | whatever that program does |
+| **out-of-tree program** | anyone, against the [delta document](delta.md) | its own process, reading `fathom analyze --json` | whatever that program does |
 
 The third row is the one most people actually want, and it needs no API at all — the delta model is
 versioned, published and stable, so `fathom analyze --json \| your-thing` is a supported integration surface

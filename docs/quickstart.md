@@ -43,12 +43,13 @@ configuration is read, and deleting the cache directory is a complete undo. Real
 ```text
 fathom demo · a miniature repository of 21 commits, unpacked to
   /tmp/fth-demo/fathom/13088a3d85a5/signal (pack @ 13088a3d85a5)
-  two people and one agent wrote it, so the queue ranks agent work against human work; its history has
+  two people and one agent wrote it, and every row is scored the same way whichever of them wrote it; its
+  history has
   a rename, a dependency bump in two ecosystems, a deleted test, a CI job, a cycle and a merge
   indexing it now, with `fathom index` exactly as you would run it on your own history
   …/.fathom/index.sqlite3: 21 commit(s) walked, 21 new, 56 analyse unit(s) computed in 66 ms
   intent: 0 recorded (0 from the harness), 0 digest-only, 21 none recorded · harness: no stream at .fathom/events.jsonl
-  `?` lists the keys · `q` queue · `t` timeline · `d` diff · `s` structure · `g` graph · `p` dependencies · `o` export
+  `?` lists the keys · `t` timeline · `d` diff · `s` structure · `g` graph · `p` dependencies · `o` export
   nothing here is yours: it is a copy under your cache directory, and deleting that directory is a complete undo
 ```
 
@@ -60,11 +61,16 @@ With no terminal to take (CI, a pipe, a screen reader), add `--plain`, and `--li
 instead of a grid. Every fact on the screen has a text form; ADR-006 §6.7 makes that a rule rather than a
 hope.
 
-## 2 · Look at the queue
+## 2 · Look at the rail
 
-Press `q` for the queue — the ranked worklist, which is the product's home screen — then `j`/`k` to move,
-`?` for the keymap (rendered from the shipped bindings, not from this page), and `,` for the palette, which
-lists every command with its current binding.
+The timeline is what opens: the rail on the left, every episode newest-first, the selected one's card on the
+right. `j`/`k` move, `?` lists the keymap (rendered from the shipped bindings, not from this page), and `,`
+opens the palette, which lists every command with its current binding. Each row prints its risk figure beside
+its date, and `w` expands the figure into the vector behind it; `fathom why` prints the same thing in text.
+
+There is no second, ranked list. `e10.3` deleted the Queue pane and retired its letter `q` to your own
+keymap file — [ADR-006 §5.1.2](adr/0006-tui.md) is the decision, and [review a session](recipes/review-a-session.md)
+is the walkthrough that replaced this section.
 
 The full keyboard reference is [the cheatsheet](reference/cheatsheet.md), and it is generated from the same
 table the overlay uses, so it cannot lie about a key that moved.
@@ -87,18 +93,28 @@ fathom --demo --plain show HEAD~1
 episode d367b98 — HEAD~1
   message   add toml to the dependency surface
   author    Dana Stahl <dana@example.com>  2025-04-30T18:00:00Z
+  tree      6fbc7798501616ba723c7b0befcb739594702c84
+  parents   85b4f18
   scale     1 file(s), +1 -0, 0 binary
-  grouping  ep-06cf9f46eaf35e6b071c · 1 commit(s) · boundary time-gap 0.60 · author human 0.50
+  grouping  ep-06cf9f46eaf35e6b071c · 1 commit(s) · boundary time-gap 0.60
   intent    no recorded intent · no harness events for this repository, and no `Intent:` or `Task:` trailer …
-  attribution  human · — · 0.50 via identity
+  attribution  via identity · confidence 0.50
+  evidence    identity 0.50 · an ordinary identity with no agent evidence anywhere on the episode
+  store     .fathom/index.sqlite3
   files     1
     modify      +1    -0  unknown      Cargo.toml
 ```
 
 That `grouping` line is the episode: this commit is one member of it, and `ep-06cf…` is the address that
 survives a rebase. The `boundary time-gap 0.60` beside it names the rung of the cascade that drew the line
-([episode](concepts/episode.md)), and the `0.50` is how sure the tool is about who wrote it — printed as a
-number because "we think a person did" is a claim, not a fact.
+([episode](concepts/episode.md)).
+
+The `attribution` block is separate, and it is sparse on purpose. The verdict word is gone from that first
+line: since `e10.4` no surface prints `human` or `agent` where a reviewer reads, because a verdict beside a
+commit count reads as a fact about the author when it is an inference from who owns the email address
+(`0.50` here is the bottom rung — nothing said otherwise). What is printed instead is what the claim is
+made of: the source, the confidence, and the evidence, with the correction verb named inline.
+`fathom analyze --json` still ships the verdict itself, as a datum for a machine that can weigh it.
 
 ## 4 · Read one, and ask why it ranked
 
@@ -113,7 +129,7 @@ The narrative opens by putting the ranking where the reader will see it:
 ep-06cf — add toml to the dependency surface
 
 Read this first:
-  The ranking puts it at `spine-1 11 = surfaces 10 + size 1`[c1].
+  The ranking puts it at `spine-3 11 = surfaces 10 + size 1`[c1].
 ```
 
 `narrative` composes its paragraphs out of the [delta document](concepts/delta.md) and refuses to state
@@ -121,7 +137,7 @@ anything it cannot cite; the watermark line at the bottom (`fathom-template/1 ve
 citations, 6 checks`) is the self-audit's verdict, and no model was in the path
 ([episode narrative](concepts/episode-narrative.md)). `why` prints the score as a sum — feature, weight,
 contribution, and the axes it could not measure, each with the ticket that owns it
-([risk score](concepts/risk-score.md)). An absent axis leaves the denominator instead of pretending to be a
+([risk score](concepts/risk.md)). An absent axis leaves the denominator instead of pretending to be a
 `0`, which is the single most important rule in the product.
 
 ## 5 · Sign it off
@@ -188,7 +204,7 @@ fathom                  # the UI; `fathom --plain` for the text frame
 ```
 
 Expect the first index to take a moment and every later one to be fast — that is the cache doing its job, and
-`fathom stats` prints the hit rate if you want to see it. If the queue is empty, the pane says why and what
+`fathom stats` prints the hit rate if you want to see it. If the rail is empty, the pane says why and what
 to type; if it is wrong, `fathom doctor` is the verb with a remedy per finding
 ([troubleshooting](troubleshooting.md)).
 
@@ -214,6 +230,6 @@ Three sentences, and they are the acceptance criterion for this page:
 | the verbs and flags | [CLI reference](reference/cli.md) |
 | what the findings are | [detector catalogue](detectors/index.md) |
 | a task, step by step | [recipes](recipes/) |
-| the six nouns | [episode](concepts/episode.md) · [delta](concepts/delta.md) · [risk score](concepts/risk-score.md) · [review ledger](concepts/review-ledger.md) · [ratchet](concepts/ratchet.md) · [ambient mode](concepts/ambient-mode.md) |
+| the six nouns | [episode](concepts/episode.md) · [delta](concepts/delta.md) · [risk score](concepts/risk.md) · [review ledger](concepts/review-ledger.md) · [ratchet](concepts/ratchet.md) · [ambient mode](concepts/ambient-mode.md) |
 | why it is built this way | [the thesis](concepts/thesis.md) and [the ADRs](adr/) |
 | it went wrong | [troubleshooting](troubleshooting.md) |

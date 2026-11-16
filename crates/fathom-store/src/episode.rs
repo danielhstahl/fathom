@@ -141,8 +141,8 @@ CREATE TABLE IF NOT EXISTS session_state (
 ///
 /// Only the new table lives here. SQLite has no `ADD COLUMN IF NOT EXISTS`, and §9.5 requires every
 /// migration in [`crate::spine::MIGRATIONS`] to be re-runnable against a store that already has it — so the
-/// six column additions are [`ADDED_COLUMNS`], applied by a probe-then-add step that is idempotent for
-/// exactly the reason a `CREATE TABLE IF NOT EXISTS` is.
+/// column additions are [`ADDED_COLUMNS`], applied by a probe-then-add step that is idempotent for exactly
+/// the reason a `CREATE TABLE IF NOT EXISTS` is.
 ///
 /// `author_kind` / `author_confidence` stay exactly as they are: they are ADR-003's columns and the
 /// segmentation still writes them from the same verdict. The `attribution_*` columns are the extra detail
@@ -189,7 +189,113 @@ pub const ADDED_COLUMNS: &[(&str, &str, &str)] = &[
     ("episode", "intent_confidence", "REAL NOT NULL DEFAULT 0"),
     ("episode", "intent_text", "TEXT NOT NULL DEFAULT ''"),
     ("episode", "intent_reason", "TEXT NOT NULL DEFAULT ''"),
+    // The complexity figure for each side of one file row — ADR-007 §9.1, `e8.3` (`reco-l9bz.3`).
+    //
+    // # What the six columns are
+    //
+    // `complexity_before` / `complexity_after` are the file's `Σ V(G)` at the row's base side and at its
+    // head side (§5.1), `complexity_max` the largest single figure on the head side, and each figure side
+    // carries the reason code that explains its absence. `complexity_basis` names the rule set that
+    // counted them (`mccabe-1`, §9.5) and is what makes a figure from before a rule change comparable
+    // with one from after it — labelled, which is the whole reason the token exists.
+    //
+    // # Why the defaults are `NULL` / `''` and not a reason code
+    //
+    // The stored shapes are ADR-007 §7.4's four rows, and row four — figure `NULL`, reason `''` — means
+    // *this build never looked*, which is a different claim from *this file cannot be read* and is fixed
+    // by running `fathom index` rather than by changing the file. A reader maps that pair to
+    // `column_not_filled` on the way out (`crate::complexity::Side::NotMeasured`); the column never
+    // writes it, because a reason the pass recorded and a reason the reader improvised are two answers
+    // and only one of them can be traced back to the thing that happened.
+    //
+    // # The two `CHECK`s, and the two things they have to allow
+    //
+    // ADR-007 §9.1 names the invariant as two constraints: *a side with no figure always names why*, so
+    // `?`-without-a-reason is not representable. As literally written they also reject **every row an
+    // older fathom wrote** — such a row has `NULL` figures and `''` reasons, which is exactly §7.4's
+    // fourth row and exactly what §9.1 itself requires be satisfiable, since a store written by fathom
+    // N has to open in fathom N+1 without re-counting anything. The escape is the basis token, which is
+    // already the store's own marker for "some build that knew about these columns wrote this row": a row
+    // with no basis carries no figures to defend. So each constraint carries `complexity_basis = ''` as
+    // its first disjunct.
+    //
+    // Each carries one clause the ADR does not spell out, and it is the same clause for both sides: *a
+    // figure always names its basis* (§9.5: "every figure carries `complexity_basis`", because a figure
+    // counted under unknown rules cannot be compared with one counted under known ones). Without it the
+    // basis escape above would leave a back door — a figure written with `basis = ''` would read as a
+    // figure that shares a basis with everything, which is the silent mislabel §9.5 exists to prevent.
+    // Both deviations are recorded in the ADR (§9.1, as shipped).
+    //
+    // Order matters, and not only for style: `ALTER TABLE … ADD COLUMN` compiles a `CHECK` against the
+    // columns the table has *at that moment*, so the reason and basis columns are added before the two
+    // figure columns whose constraints name them.
+    //
+    // # What this costs a store, and what it does not
+    //
+    // The columns are here rather than in a migration string because SQLite has no
+    // `ADD COLUMN IF NOT EXISTS` and §9.5 requires a migration to be re-runnable against a store that
+    // already has it — so this list is the DDL and [`MIGRATION_12`] is the stamp that says it ran.
+    // `SCHEMA_VERSION` moves to 12 and `user_version` / `meta.schema_version` move with it (§9.1), which
+    // costs exactly one thing: an *older* fathom now refuses this store, because reading a store whose
+    // shape it cannot name is the refusal ADR-004 §9.5 publishes. It costs no derived row.
+    //
+    // **Complexity evicts zero derived rows** — ADR-007 §9.3, stated here because this is where a reader
+    // looks. Cache-key field 9 is [`crate::cache::ROW_SCHEMA_VERSION`], the highest migration that
+    // creates or alters `cache`, `blob` or `blob_ref` (`reco-3sa` took it off [`crate::spine::SCHEMA_VERSION`]
+    // after measuring what that coupling cost: 2 686 per-file rows in this repository's own store, dead).
+    // These six columns are on `git_commit_file`, which is none of those three, and the probe step does
+    // not so much as touch the cache tables. What *is* cold is only the new work: whichever analyzer comes
+    // to produce these figures is a new producer whose rows are cold on first use, and anything that
+    // declares it as a dependency rides `dep_digest` with it — which is field 3's business, not this
+    // migration's. `spine`'s `the_complexity_columns_land_on_an_older_store_and_evict_nothing` opens a
+    // store written without them, with a live derived row in it, and asserts the row survives the upgrade
+    // at the same key; the same test shows the lever that *would* evict everything, so the claim can fail.
+    //
+    // And nothing here re-counts anything. §9.5's rule is that a migration invalidates rather than
+    // migrates; here even the invalidation is unnecessary, because an unfilled column is an absent figure
+    // rather than a stale one. Filling it is the next index run over that revision, and until then
+    // `fathom doctor` says how much of the column is missing ([`crate::complexity::Store::complexity_coverage`])
+    // instead of letting a half-filled one print as a whole one.
+    (
+        "git_commit_file",
+        "complexity_before_reason",
+        "TEXT NOT NULL DEFAULT ''",
+    ),
+    (
+        "git_commit_file",
+        "complexity_after_reason",
+        "TEXT NOT NULL DEFAULT ''",
+    ),
+    (
+        "git_commit_file",
+        "complexity_basis",
+        "TEXT NOT NULL DEFAULT ''",
+    ),
+    ("git_commit_file", "complexity_max", "INTEGER"),
+    (
+        "git_commit_file",
+        "complexity_before",
+        "INTEGER CHECK ((complexity_basis = '' OR complexity_before IS NOT NULL OR complexity_before_reason <> '') AND (complexity_before IS NULL OR complexity_basis <> ''))",
+    ),
+    (
+        "git_commit_file",
+        "complexity_after",
+        "INTEGER CHECK ((complexity_basis = '' OR complexity_after IS NOT NULL OR complexity_after_reason <> '') AND (complexity_after IS NULL OR complexity_basis <> ''))",
+    ),
 ];
+
+/// Migration 12: `e8.3`'s complexity columns (`reco-l9bz.3`), which have no DDL of their own.
+///
+/// The version is real — a store with six complexity columns on `git_commit_file` is not the same store as
+/// one without them, and [`crate::spine::SCHEMA_VERSION`] exists to say which is which — but its content is
+/// [`ADDED_COLUMNS`], applied by the probe step because SQLite has no `ADD COLUMN IF NOT EXISTS` (§9.5).
+/// So the batch is empty, which is what an empty migration *means*: everything version 12 contributes is the
+/// stamping, `user_version` and `meta.schema_version` moving together (§9.1), and the probe landing the
+/// columns whether or not a store reached this version by the ordinary route.
+///
+/// [`crate::spine::MIGRATIONS`] must stay contiguous and end at `SCHEMA_VERSION`; this entry is what keeps
+/// that true, and `the_migrations_are_contiguous_and_cover_the_version_this_build_writes` is the check.
+pub const MIGRATION_12: &str = "";
 
 /// Migration 5: the search document `e4.2` fills and `e5.2` reads (`reco-c54`).
 ///

@@ -126,10 +126,11 @@ graph TD
 Arrows are `[dependencies]`; every arrow points to a strictly lower layer (R1). `fathom-fixtures` is dashed because it is a `[dev-dependencies]` crate and nothing else (R7) — no production crate depends on it. There is no arrow from `fathom-tui` or `fathom-mcp` to `fathom-store` even though the layering would allow it (§5.2), and the two arrows that do exist from those crates are narrowed to `insight`/`export` by §5.3.
 <!-- END GENERATED: diagram -->
 
-Read the picture by what is *missing*: there is no arrow from `fathom-tui` or `fathom-mcp` to
-`fathom-store`, even though the layering would allow it (§5.2); there is no arrow from
-`fathom-fixtures` into anything (it is a leaf nobody ships, §4.4); and there is no crate called
-`fathom-config` (§4.5).
+Read the picture by what is *missing* — the paragraph inside the generated block names the three absences
+(`fathom-tui`/`fathom-mcp` never reach `fathom-store`, `fathom-fixtures` is a leaf, and there is no
+`fathom-config` crate), and each has its own section: §5.2, §4.4 and §4.5. This page describes the *shipped*
+workspace graph; the graph of a repository fathom is analysing is a different noun and lives on
+[architecture-graph.md](../concepts/architecture-graph.md).
 
 ---
 
@@ -670,14 +671,31 @@ are contracts, and an undocumented contract is a negotiation.
 ### 8.1 The gate list
 
 <!-- BEGIN GENERATED: ci -->
-| Required step | Text that must appear in `.github/workflows/*.yml` |
-|---|---|
-| `workspace-boundary-lint` | `tools/check_workspace.py lint` |
-| `workspace-boundary-check` | `tools/check_workspace.py check` |
-| `cargo-deny` | `cargo deny check` |
-| `cargo-msrv-build` | `cargo +$MSRV` |
-| `clippy-strict` | `clippy::unwrap_used` |
-| `fmt` | `cargo fmt` |
+| Required step | Text that must appear in a step that runs (`run:` / `uses:` / `with:`) | When it must run | The one workflow that runs it |
+|---|---|---|---|
+| `workspace-boundary-lint` | `tools/check_workspace.py lint` | pull_request | any pull_request workflow |
+| `workspace-boundary-check` | `tools/check_workspace.py check` | pull_request | `contracts.yml` |
+| `cargo-deny` | `EmbarkStudios/cargo-deny-action` | pull_request | `ci.yml` |
+| `cargo-msrv-build` | `cargo +$MSRV` | pull_request | `ci.yml` |
+| `clippy-strict` | `clippy::unwrap_used` | pull_request | `ci.yml` |
+| `fmt` | `cargo fmt` | pull_request | `ci.yml` |
+| `headless-minimal-tests` | `cargo test -p fathom-cli --no-default-features --features minimal` | pull_request | `ci.yml` |
+| `changelog-audit` | `tools/gen_changelog.py audit` | pull_request | `contracts.yml` |
+| `cli-reference-page` | `gen_docs.py check --page cli` | pull_request | `ci.yml` |
+| `egress-closure-query` | `cargo tree -p fathom-cli` | pull_request | `privacy.yml` |
+| `demo-repo-assembly` | `tools/publish_demo_repo.py check` | pull_request | `contracts.yml` |
+| `generated-docs-pages` | `gen_docs.py check --page cheatsheet` | pull_request | `docs.yml` |
+| `packager-negative-controls` | `tools/package_release.py --self-test` | pull_request | `ci.yml` |
+| `spike-s1-report` | `--example s1_spike` | scheduled | `nightly.yml` |
+| `spike-s2-report` | `--example s2_spike` | scheduled | `nightly.yml` |
+| `spike-s6-report` | `--example s6_spike` | scheduled | `nightly.yml` |
+| `structure-core-report` | `--example structure_harness` | scheduled | `nightly.yml` |
+| `g3-calibration-check` | `--example g3_calibration` | scheduled | `nightly.yml` |
+| `out-of-tree-plugin` | `plugins/acme-detectors/Cargo.toml` | scheduled | `nightly.yml` |
+| `beta-channel-build` | `rustup toolchain install beta` | scheduled | `nightly.yml` |
+| `perf-measurement` | `tools/perf_gate.py --check` | scheduled | `perf.yml` |
+| `fuzz-campaign` | `cargo +nightly fuzz run` | scheduled | `fuzz.yml` |
+| `release-artifact-matrix` | `workflow run release.yml` | scheduled | any scheduled workflow |
 <!-- END GENERATED: ci -->
 
 `tools/check_workspace.py check` fails (`C01`) if any of those strings disappears from
@@ -685,6 +703,29 @@ are contracts, and an undocumented contract is a negotiation.
 criterion is *"cargo-deny + module-boundary lint in CI"*, and a lint that exists but is never invoked is
 the most common way such a criterion is quietly missed. So the presence of the invocation is itself a
 test.
+
+Four rule statements, each one added after a measurement (`e11.1` §3, `e11.2`, `e11.3`, then the epic's own
+close), and each one a separate way for a gate to go missing:
+
+* **The needle is matched against the steps that execute** — a step's `run:`, `uses:` or `with:` value —
+  and never against prose, comments stripped at both levels. How that came to be a rule, and the sentence
+  that satisfied it, is on [the CI gate page](../concepts/ci-gate.md).
+* **Every step carries a cadence.** `pull_request` steps must live in a `pull_request` workflow,
+  `scheduled` ones in a `schedule:` workflow, so the long tail `e11.2` moved to the nightly cannot drift
+  back and a per-PR gate cannot leave.
+* **A step may name the one workflow that runs it**, and then `C01` refuses both halves of the accident:
+  the needle missing from its home, and the needle turning up in a second workflow. The changelog audit is
+  the row that bought the column — one missing paragraph, two red jobs, two tickets.
+* **A duplicate is one question asked twice, not a repeated file name.** Two rows the census proposed as
+  duplicates turned out to be halves: `check_ci_gate.py`'s verb-and-flag rules and
+  `check_docs_site.py`'s documented-command check need a compiled binary, print that they skipped when
+  there is none, and so belong in `ci.yml`'s built leg as well as in `contracts.yml`.
+
+The list of what a pull request actually pays for is the header of `.github/workflows/ci.yml`; the
+scheduled half explains itself in `.github/workflows/nightly.yml`, `perf.yml` and `fuzz.yml`; and
+[the CI gate](../concepts/ci-gate.md) and [release](../concepts/release.md) are the pages that describe the
+fleet, the census behind it and what each job owes the runner.
+
 
 ### 8.2 The boundary lint, in three sentences
 
@@ -719,20 +760,19 @@ python3 tools/check_privacy.py check          # V01-V07: closure, consent table,
 python3 tools/gen_sbom.py check                # the committed SBOM and licence report match the lockfile
 ```
 
-Matrix: `linux` × `macOS` × `windows`, on `stable` and on the MSRV; `beta` allowed to fail. The
-headless `minimal` build is built and tested on every PR because `e6.6`'s CI-gate binary is what users
-put inside pipelines, and a TUI-only test suite would never notice that `fathom check` had grown a
-dependency on a terminal.
+**The matrix is `linux` × {`stable`, the MSRV}, per `C01`'s needles, and the headless `minimal` binary is
+built and tested on every PR** — `e6.6`'s CI-gate binary is what users put inside pipelines, and a
+TUI-only test suite would never notice that `fathom check` had grown a dependency on a terminal. The
+macOS, Windows and `beta` legs are daily rather than per-PR, and [the CI gate page](../concepts/ci-gate.md)
+carries the queue-cost argument for each.
 
-The privacy job (`e6.8`, `reco-h7p`) runs the shipped binary in a network-less namespace and asserts
-zero connection attempts, and additionally runs `cargo tree -e normal -p fathom-cli --no-default-features
---features minimal` and fails if any crate on §6's network-capable list appears. Per ADR-005's habit of
-marking claims by how they were established: that assertion was `e6.8`'s to write, and it is now
-measured rather than promised — `.github/workflows/privacy.yml` builds the default binary, proves its
-egress trap actually traps (`python3 tools/check_privacy.py selftest`), then runs the binary's verbs and
-a cold index with egress refused and requires byte-identical output. Where a runner provides no user
-namespaces the job falls back to an `LD_PRELOAD` tripwire that also *counts* attempts, and the report
-names the trap it used. The page is [docs/concepts/privacy.md](../concepts/privacy.md).
+The privacy job (`e6.8`, `reco-h7p`) is named here because it is the measurable half of §6.3: it runs the
+shipped binary in a network-less namespace and asserts zero connection attempts, and it runs
+`cargo tree -e normal -p fathom-cli --no-default-features --features minimal` and fails if any crate on
+§6's network-capable list appears. Measured rather than promised, in ADR-005's habit of marking claims by
+how they were established; how the trap is chosen and proved is
+[docs/concepts/privacy.md](../concepts/privacy.md).
+
 
 ### 8.4 `cargo-deny`, and why an ignore needs a signature
 
@@ -763,10 +803,10 @@ and invisible, and cargo-deny will not tell anybody it is still there.
 | 4 | `ingest-git` | `fathom-ingest` | everything | gix access, normalisation, segmentation, hook events, watch |
 | 5 | `analyze-change` | `fathom-analyze` | src/taxonomy/, src/noise/, src/structure/, src/deps/, src/noncode/, src/testsurface/ | epic 2 |
 | 6 | `analyze-arch` | `fathom-analyze` | src/graph/, src/cycles/, src/layers/, src/api/, src/hotspots/ | epic 3 |
-| 7 | `analyze-agents` | `fathom-analyze` | src/attrib/, src/intent/, src/detect/, src/risk/, src/queue/, src/narrate/, src/export/ | epic 4 + `e5.7` |
+| 7 | `analyze-agents` | `fathom-analyze` | src/attrib/, src/intent/, src/detect/, src/risk/, src/review/, src/narrate/, src/export/ | epic 4 + `e5.7` |
 | 8 | `analyze-insight` | `fathom-analyze` | src/insight/ | the facade: `e2.11`; owns the schema version and the budget of every view |
 | 9 | `tui-shell` | `fathom-tui` | src/app/, src/keymap/, src/layout/, src/ambient/ | epic 5 shell |
-| 10 | `tui-views` | `fathom-tui` | src/views/ | queue, timeline, diff, structure, deps, search, compare |
+| 10 | `tui-views` | `fathom-tui` | src/views/ | timeline, diff, structure, deps, search, compare |
 | 11 | `mcp` | `fathom-mcp` | everything | ADR-005 §4 surface, shared review memory |
 <!-- END GENERATED: teams -->
 
@@ -1011,9 +1051,7 @@ mutations are not hypothetical: every one of them is something a reasonable, in-
 | `cargo --version` | 1.99.0 | `resolver = "3"` (MSRV-aware, cargo ≥ 1.84) is available and used |
 | C toolchain | `gcc` and `cc` **present**, `make` absent | `sqlite-bundled` and the tree-sitter grammars can build here, so the heavy-feature policy is about build *time*, not about a missing compiler |
 | `cargo deny` | **not installed**, and installing it needs a network fetch the ADR does not need | `deny.toml` is written and its own discipline (`D01`–`D08`) is checked in Python today; `cargo deny check` becomes live the moment `e0.7` lands `Cargo.lock` and the runner has the tool — recorded as deferred, not silently claimed |
-| `clippy`, `rustfmt` | present in the toolchain | §8.3's two clippy invocations are runnable as written |
-| `crates.io` reachability | reachable from this container (`cargo search` resolves) | nothing in the checker depends on it; the lint is offline by construction |
-| Registry cache | empty | the scaffold uses `"0.0.0"` placeholder versions on purpose: it is a *shape*, and pinning is `e0.7`'s (§10.1) |
+| `crates.io` reachability, registry cache | reachable, cache empty | nothing in the checker depends on either: the lint is offline by construction, and the scaffold uses `"0.0.0"` placeholder versions on purpose — it is a *shape*, and pinning is `e0.7`'s (§10.1) |
 
 ---
 

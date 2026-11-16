@@ -14,7 +14,9 @@ fn fixtures_link_and_the_facade_is_named_not_bypassed() {
     let status = insight::status();
     assert!(status.views_ready, "the delta model is published");
     assert_eq!(
-        status.contract, "fathom-delta/1",
+        status.contract, "fathom-delta/2",
+        // `e10.3` (`reco-ydek.3`) is the bump: the queue's placement figures left the document with the
+        // pane that printed them, and a removal is breaking however few readers used it.
         "the contract id is what a consumer pins; changing it is a version bump, not an edit"
     );
 }

@@ -86,16 +86,16 @@ fn toast(app: &App) -> String {
 fn turning_the_hint_line_off_gives_its_rows_to_the_list() {
     // The claim is arithmetic, not cosmetic. A hint line "hidden" by drawing over it would pass a
     // screenshot and fail this: `chrome_rows` is the number every row computation downstream reads.
-    let queue = views::view(ViewId::Queue);
+    let rail = views::view(ViewId::Timeline);
 
     let mut on = app((100, 24));
-    on.set_view(ViewId::Queue);
-    let on_chrome = layout::chrome_rows(queue, &on.fit.applied);
+    on.set_view(ViewId::Timeline);
+    let on_chrome = layout::chrome_rows(rail, &on.fit.applied);
 
     let mut off = app((100, 24));
     off.set_hints(false);
-    off.set_view(ViewId::Queue);
-    let off_chrome = layout::chrome_rows(queue, &off.fit.applied);
+    off.set_view(ViewId::Timeline);
+    let off_chrome = layout::chrome_rows(rail, &off.fit.applied);
 
     assert!(
         off_chrome < on_chrome,
@@ -137,7 +137,7 @@ fn a_hint_line_the_reviewer_turned_off_is_not_reported_as_a_degradation() {
     // would train a reviewer to distrust notices.
     let mut wide = app((100, 24));
     wide.set_hints(false);
-    wide.set_view(ViewId::Queue);
+    wide.set_view(ViewId::Timeline);
     assert!(
         !wide
             .fit
@@ -160,7 +160,7 @@ fn a_hint_line_the_reviewer_turned_off_is_not_reported_as_a_degradation() {
     // the reviewer disabled still does not show up among the losses.
     let mut tiny = app((60, 8));
     tiny.set_hints(false);
-    tiny.set_view(ViewId::Queue);
+    tiny.set_view(ViewId::Timeline);
     assert!(
         !tiny
             .fit
@@ -173,7 +173,7 @@ fn a_hint_line_the_reviewer_turned_off_is_not_reported_as_a_degradation() {
     // The same frame with the hint line *on* and the ladder selling it for itself: then it is a loss,
     // and the notice says so.
     let mut squeezed = app((60, 8));
-    squeezed.set_view(ViewId::Queue);
+    squeezed.set_view(ViewId::Timeline);
     assert!(
         squeezed
             .fit
@@ -805,7 +805,7 @@ fn a_refused_override_names_the_file_and_line_to_fix() {
     let km = Keymap::merged(&[Override {
         mode: Mode::Timeline,
         chord: "p".to_owned(),
-        action: Some("view.queue".to_owned()),
+        action: Some("view.artefact".to_owned()),
         source: Some(source.clone()),
     }]);
     let problems = km.problems();

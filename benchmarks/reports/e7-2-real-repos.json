@@ -25,7 +25,7 @@
    "after": "pass",
    "before": "fail"
   },
-  "query.queue.ms.aws-sdk-go": {
+  "query.rail_keystroke.ms.aws-sdk-go": {
    "after": "pass",
    "before": "pass"
   },
@@ -74,7 +74,7 @@
  },
  "generated_utc": "2026-10-22T04:19:36Z",
  "harness": "tools/perf_realrepo.py",
- "read_me_first": "The prose is e7-2-real-repos.md; the budgets are ADR-004 \u00a711 and the written revision is \u00a711.9. `repositories` is the aws pair tagged by the state of the tree each binary was built from; `runs_not_completed` is what the store held when a deadline killed a run, which is a bound on a cost and not a measurement of a whole index, and every field that says so does.",
+ "read_me_first": "The prose is e7-2-real-repos.md; the budgets are ADR-004 \u00a711 and the written revision is \u00a711.9. `repositories` is the aws pair tagged by the state of the tree each binary was built from; `runs_not_completed` is what the store held when a deadline killed a run, which is a bound on a cost and not a measurement of a whole index, and every field that says so does. Budget ids here are the names `reco-15wk` gave them: what this run published as `query.queue.ms` is `query.rail_keystroke.ms` now \u2014 same probe, same rows, same number; only the key moved, and it moved to match the pane the probe presses.",
  "repositories": [
   {
    "analyzers": [
@@ -445,10 +445,10 @@
      "verdict": "pass"
     },
     {
-     "budget": "query.queue.ms.medium",
+     "budget": "query.rail_keystroke.ms.medium",
      "budget_value": 12.0,
      "how": "`j` written one row down the rail (median of 2 pty probe(s))",
-     "id": "query.queue.ms.aws-sdk-go",
+     "id": "query.rail_keystroke.ms.aws-sdk-go",
      "samples": [
       0.1,
       0.1
@@ -1054,10 +1054,10 @@
      "verdict": "pass"
     },
     {
-     "budget": "query.queue.ms.medium",
+     "budget": "query.rail_keystroke.ms.medium",
      "budget_value": 12.0,
      "how": "`j` written one row down the rail (median of 2 pty probe(s))",
-     "id": "query.queue.ms.aws-sdk-go",
+     "id": "query.rail_keystroke.ms.aws-sdk-go",
      "samples": [
       0.1,
       0.1
@@ -1588,10 +1588,10 @@
      "verdict": "pass"
     },
     {
-     "budget": "query.queue.ms.medium",
+     "budget": "query.rail_keystroke.ms.medium",
      "budget_value": 12.0,
      "how": "`j` written one row down the rail (median of 2 pty probe(s))",
-     "id": "query.queue.ms.aws-sdk-go",
+     "id": "query.rail_keystroke.ms.aws-sdk-go",
      "samples": [
       0.1,
       0.3

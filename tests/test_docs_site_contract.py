@@ -47,10 +47,12 @@ def _problems() -> list[str]:
     site.check_reachability(problems, report)
     site.check_anchors(problems, report)
     site.check_nav(problems, report)
+    site.check_fenced_tables(problems, report)
     site.check_generated_fresh(problems, report, BINARY)
     site.check_features(problems, report)
     site.check_detectors(problems, report)
     site.check_views(problems, report)
+    site.check_html_build(problems, report)
     return problems
 
 
@@ -59,12 +61,39 @@ def test_the_site_shape_holds():
     assert _problems() == []
 
 
+def test_the_html_site_builds():
+    """The same build `.github/workflows/docs.yml` publishes, asserted in memory."""
+    problems: list[str] = []
+    site.check_html_build(problems, [])
+    assert problems == []
+
+
 def test_no_orphan_pages():
     pages = set(site.md_files())
     assert pages, "the docs directory is empty"
     problems: list[str] = []
     site.check_reachability(problems, [])
     assert problems == []
+
+
+def test_no_pasted_table_lives_inside_a_fence():
+    """`reco-u962`: a markdown table pasted inside a fence is invisible to the render gate and to the
+    generated-freshness gate, so this rule reads fences and this assertion keeps the tree clean.
+
+    The predicate, the false-positive verdict and the defect that motivated all of it are in
+    `docs/reference/site.md` §"No table inside a fence"; the rule's ability to *fail* is proved by
+    `tools/check_docs_site.py --self-test`, which plants one on a scratch copy of this tree. What is asserted
+    here is the other half: that the parser is reading something, because a census of zero blocks would pass
+    the rule exactly as loudly as a clean manual does.
+    """
+    problems: list[str] = []
+    site.check_fenced_tables(problems, [])
+    assert problems == []
+    pages = [path for path in site.fence_scan_files(site.ROOT) if path.is_file()]
+    blocks = sum(1 for path in pages for _ in site.fence_blocks(path.read_text(encoding="utf-8")))
+    assert len(pages) >= 50 and blocks >= 300, (
+        "the fence parser read %d blocks on %d pages: the rule above is passing on an empty tree, not on a "
+        "clean one" % (blocks, len(pages)))
 
 
 def test_every_fragment_link_lands_on_a_heading():
@@ -145,7 +174,7 @@ def test_every_keymap_action_is_reachable_and_published():
 
 
 def test_the_quickstart_carries_the_six_nouns():
-    for page in ("episode", "delta", "risk-score", "review-ledger", "ratchet", "ambient-mode"):
+    for page in ("episode", "delta", "risk", "review-ledger", "ratchet", "ambient-mode"):
         assert "concepts/%s.md" % page in QUICKSTART, "the quickstart never links concepts/%s.md" % page
 
 

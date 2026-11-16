@@ -452,6 +452,11 @@ fn compose(
     let ids: Vec<String> = walked.iter().map(|row| row.id.clone()).collect();
     let files = store.episode_files(&ids).map_err(crate::verbs::failed)?;
     let states = store.review_states().map_err(crate::verbs::failed)?;
+    // One more batched read for the whole span — the roll-up is a join, and paying for it per episode is
+    // what ADR-007 §9.2 exists to prevent.
+    let complexity = store
+        .episode_complexity(&ids)
+        .map_err(crate::verbs::failed)?;
     let mut items: Vec<Contribution> = Vec::with_capacity(walked.len());
     for (index, row) in walked.iter().enumerate() {
         let stats: &[fathom_store::episode::EpisodeFile] =
@@ -461,6 +466,7 @@ fn compose(
             stats,
             states.get(&row.id).copied().unwrap_or(ReviewState::Unread),
             files.truncated,
+            complexity.get(&row.id),
         );
         // The detectors are the one part of a range that is quadratic — the history-shaped ones re-read
         // their corpus per episode — so they run for the near end of the range and the gap says which end

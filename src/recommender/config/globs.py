@@ -50,6 +50,14 @@ The two engines accept the same language. That is not assumed:
 every pattern in the shipped tables plus hostile ones, and names the one place the new
 code deliberately differs (`[!a]`, which the old translation handed to `re` and `re` read
 as the two-character set `!` and `a` instead of the glob complement).
+
+Before either engine runs, a third and dumber test runs: every maximal run of literal characters a
+pattern insists on must be present in the path (`Glob.required`). That is what keeps the *cost* claim
+above true for a pattern like `**/*.egg-info/**` — three unbounded wildcards, so the linear engine,
+and the taxonomy's broad bucket tries it for every path in the repository, so the Python state machine
+was answering "no" for every one of them (four fifths of a cold lookup; `reco-ghao`). It cannot change
+which paths match — a literal run has to appear, whatever the wildcards do around it — and the test
+suite checks that it does not.
 """
 
 from __future__ import annotations
@@ -319,21 +327,59 @@ def _to_machine(tokens: list[tuple]) -> _Machine:
 # ---------------------------------------------------------------------------
 # the object callers hold
 # ---------------------------------------------------------------------------
+def _required_literals(tokens: list[tuple]) -> tuple[str, ...]:
+    """The literal runs no text can match without containing, longest first.
+
+    A maximal run of `LIT` tokens consumes exactly those characters in exactly that order,
+    whatever the wildcards around it do — so a text missing one of them cannot match, and
+    `needle not in text` is a C-level substring test against a needle the pattern chose.
+    It is worth a line of its own because of the shape it catches: the one machine-engine
+    pattern in the shipped table is `**/*.egg-info/**`, and the broad bucket tries that
+    pattern against *every* path, so without this the Python state machine ran twice per
+    file to say "no" to a table that only a `*.egg-info` path can answer yes to
+    (`reco-ghao`: the taxonomy's cold-lookup budget was 87 µs against an 80 µs bar, and
+    this pattern was most of the difference).
+
+    `CLS`, `ALT` and every wildcard break a run: none of them says which character it will
+    take. A pattern made only of wildcards demands nothing and yields `()`.
+    """
+    runs: list[str] = []
+    current: list[str] = []
+    for token in tokens:
+        if token[0] == LIT:
+            current.append(token[1])
+        elif current:
+            runs.append("".join(current))
+            current = []
+    if current:
+        runs.append("".join(current))
+    return tuple(sorted(set(runs), key=len, reverse=True))
+
+
 class Glob:
     """One compiled glob: an accept test over the whole path, whichever engine runs it."""
 
-    __slots__ = ("pattern", "_tokens", "_fast", "_regex", "_machine")
+    __slots__ = ("pattern", "_tokens", "_fast", "_regex", "_machine", "_needs")
 
     def __init__(self, pattern: str, tokens: list[tuple]):
         self.pattern = pattern
         self._tokens = tokens
         counted = sum(1 for token in tokens if token[0] in _UNBOUNDED)
         self._fast = counted <= WILDCARD_BUDGET
+        self._needs = _required_literals(tokens)
         self._regex: re.Pattern | None = None
         self._machine: _Machine | None = None
 
+    @property
+    def required(self) -> tuple[str, ...]:
+        """The literal substrings a match must contain; `()` for a pattern that demands none."""
+        return self._needs
+
     def match(self, text: str) -> bool:
         """True when `text` is matched in full — what the old anchored translation meant."""
+        for needle in self._needs:
+            if needle not in text:
+                return False
         if self._fast and len(text) <= REGEX_PATH_LIMIT:
             if self._regex is None:
                 self._regex = _to_regex(self._tokens)

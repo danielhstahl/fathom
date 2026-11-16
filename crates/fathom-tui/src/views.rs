@@ -27,12 +27,13 @@ pub const CH_STATUS: u8 = 1 << 3;
 /// The hint line: the first thing the ladder sells.
 pub const CH_HINT: u8 = 1 << 4;
 
-/// Which of the nine views a state refers to (ADR-006 §4).
+/// Which of the eight views a state refers to (ADR-006 §4).
+///
+/// Eight, not nine with a hole where the Queue was: `e10.3` deleted that view (ADR-006 §5.1.2 §1) and the
+/// registry renumbered rather than leaving a variant nobody can reach.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum ViewId {
-    /// The home view: the ranked attention worklist.
-    Queue,
-    /// Chronological episode rail plus card.
+    /// The home view: the chronological episode rail, with the disposition acts bound under it.
     Timeline,
     /// File tree plus hunks.
     Diff,
@@ -51,9 +52,8 @@ pub enum ViewId {
 }
 
 impl ViewId {
-    /// All nine, in the order ADR-006 §4 lists them.
-    pub const ALL: [ViewId; 9] = [
-        ViewId::Queue,
+    /// All eight, in the order ADR-006 §4 lists them.
+    pub const ALL: [ViewId; 8] = [
         ViewId::Timeline,
         ViewId::Diff,
         ViewId::Structure,
@@ -68,7 +68,6 @@ impl ViewId {
     #[must_use]
     pub const fn name(self) -> &'static str {
         match self {
-            ViewId::Queue => "queue",
             ViewId::Timeline => "timeline",
             ViewId::Diff => "diff",
             ViewId::Structure => "structure",
@@ -81,10 +80,12 @@ impl ViewId {
     }
 
     /// The global key that opens it (ADR-006 §7.2 K3: one letter each, plus `/` and `o`).
+    ///
+    /// `q` opens nothing: it was the deleted Queue view's letter and §5.1.2 §1 retired it to the
+    /// user-override set rather than handing it to the next tenant.
     #[must_use]
     pub const fn key(self) -> &'static str {
         match self {
-            ViewId::Queue => "q",
             ViewId::Timeline => "t",
             ViewId::Diff => "d",
             ViewId::Structure => "s",
@@ -207,91 +208,13 @@ pub struct View {
     pub drills: &'static [(&'static str, &'static str, &'static str)],
 }
 
-/// The nine views — ADR-006 §4's inventory table.
+/// The eight views — ADR-006 §4's inventory table.
+///
+/// The Queue entry was here until `e10.3` (`reco-ydek.3`) deleted the view; ADR-006 §5.1.2 is the decision
+/// and the Timeline below is what it names as home. This table is the Rust half of
+/// `src/recommender/tui/views.py`'s `VIEWS` — `crates/fathom-tui/tests/layout.rs` and
+/// `tests/layout_matrix.rs` are where the two are pinned together.
 pub const VIEWS: &[View] = &[
-    View {
-        id: "queue",
-        key: "q",
-        title: "Queue",
-        kind: "view",
-        owner: "e4.5",
-        question: "What is the next thing I have to look at, and why that one?",
-        ideal_cols: 80,
-        ideal_rows: 24,
-        min_rows: 18,
-        min_content_rows: 3,
-        chrome: CH_FRAME | CH_TABS | CH_STRIPS | CH_STATUS | CH_HINT,
-        panes: &[
-            Pane {
-                name: "worklist",
-                role: Role::Primary,
-                focus_order: 1,
-                kind: PaneKind::List,
-                ideal_cols: 48,
-                min_cols: 36,
-                strip_width: 18,
-                hard_min: 32,
-                trim_rows: 0,
-                strip: true,
-                ticket: "e4.5",
-                reads: &[
-                    "episode.identity",
-                    "episode.created_at",
-                    "episode.attribution.kind",
-                    "risk.score",
-                    "risk.reasons[]",
-                    "blast_radius.direct_count",
-                    "review.state",
-                    "noise.share",
-                ],
-            },
-            Pane {
-                name: "card",
-                role: Role::Secondary,
-                focus_order: 2,
-                kind: PaneKind::Body,
-                ideal_cols: 29,
-                min_cols: 24,
-                strip_width: 16,
-                hard_min: 20,
-                trim_rows: 0,
-                strip: true,
-                ticket: "e2.10",
-                reads: &[
-                    "delta.structure.*",
-                    "delta.dependencies.*",
-                    "delta.non_code.*",
-                    "delta.tests.*",
-                    "blast_radius.*",
-                    "findings[].severity",
-                    "intent.*",
-                    "review.state",
-                ],
-            },
-        ],
-        drills: &[
-            (
-                "worklist · <Enter>",
-                "card",
-                "drill in: the episode card, pane 2",
-            ),
-            (
-                "worklist · x f - z",
-                "ledger",
-                "disposition; the worklist advances",
-            ),
-            (
-                "anywhere · d s g p",
-                "that view",
-                "same scope, different question",
-            ),
-            (
-                "card · <Esc>",
-                "worklist",
-                "pop back; the selection is preserved",
-            ),
-        ],
-    },
     View {
         id: "timeline",
         key: "t",
@@ -320,7 +243,6 @@ pub const VIEWS: &[View] = &[
                 reads: &[
                     "episode.identity",
                     "episode.created_at",
-                    "episode.attribution.kind",
                     "delta.structure.*",
                     "review.state",
                     "episode.members[].sha",
@@ -358,6 +280,16 @@ pub const VIEWS: &[View] = &[
                 "card · <Enter>",
                 "Diff",
                 "a second drill opens the diff at that episode",
+            ),
+            (
+                "rail · x f - z",
+                "ledger",
+                "the four acts, on the row under the cursor",
+            ),
+            (
+                "rail · r",
+                "acts",
+                "the same pane listing *acts*: what was dismissed, by whom, under which reason (`e10.2`)",
             ),
             (
                 "<Esc>",
@@ -675,14 +607,18 @@ pub const VIEWS: &[View] = &[
                 "episode.identity",
                 "risk.score",
                 "review.state",
-                "queue counts",
+                "review.state counts",
                 "index epoch (ADR-004 §6.3)",
                 "caught-up state",
             ],
         }],
         drills: &[
             ("<Enter>", "card", "the one keypress ADR-001 §4.1 promises"),
-            ("q / t", "view", "leave glance mode"),
+            (
+                "t",
+                "view",
+                "leave glance mode for the rail, where the episode is selected",
+            ),
         ],
     },
     View {
@@ -710,7 +646,9 @@ pub const VIEWS: &[View] = &[
                 trim_rows: 0,
                 strip: false,
                 ticket: "e5.2",
-                reads: &["(input) free text plus filter tokens author: path: risk> dep:"],
+                reads: &[
+                    "(input) free text plus filter tokens author: since: risk> kind: path: dep:",
+                ],
             },
             Pane {
                 name: "results",

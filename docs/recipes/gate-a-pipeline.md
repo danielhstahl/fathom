@@ -150,7 +150,7 @@ And two rules that outlive any gate:
 * **do not** gate on the raw risk score. `risk.tau` is a routing knob and a repository-wide threshold on it
   will fail on a large honest change and pass a small dishonest one. The gate's own `sign-off` check pairs
   the score with *and nobody signed it off* for exactly that reason
-  ([risk score](../concepts/risk-score.md)).
+  ([risk score](../concepts/risk.md)).
 
 ## The gates that are already in this repository's own CI
 

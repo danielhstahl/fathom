@@ -425,6 +425,15 @@ measured result is
 [`benchmarks/reports/e3-1-structure-core.json`](../../benchmarks/reports/e3-1-structure-core.json), and every
 number below came out of that file rather than being typed into it.
 
+One word of that sentence has since grown a sibling, and the difference matters to anyone reading a
+number. The "complexity proxy" above is `e3.1`'s structural count — body lines, branches, loops — and it
+is still what `e3.8`'s hotspots axis weights. A real per-function cyclomatic complexity now ships beside
+it: decision points counted per grammar, a figure of `1 + points`, and an unknown that prints `?` with a
+reason code instead of `0`, all of it specified in
+[ADR-007](../adr/0007-complexity.md) and measured against a hand-authored corpus in
+[`benchmarks/reports/e8-2-complexity-core.json`](../../benchmarks/reports/e8-2-complexity-core.json). Two
+names for two measurements is deliberate; one name for both would be the confusion.
+
 | language | definitions | exports | imports | supertypes | synthetic scopes | wildcards | verdict |
 |---|---|---|---|---|---|---|---|
 | Rust | P 1.000 / R 1.000 | P 1.000 / R 1.000 | P 1.000 / R 1.000 | P 1.000 / R 1.000 | 1/1 | 1/1 | `conditions` |

@@ -321,6 +321,70 @@ def test_every_read_tool_answers_and_carries_its_cost(indexed: Path) -> None:
 # --------------------------------------------------------------------------- 2 · the gated half
 
 
+def test_the_episode_answer_carries_the_complexity_figure(indexed: Path) -> None:
+    """The complexity figure an agent gets is the model's, not one it derived (`e8.5`, `reco-l9bz.5`).
+
+    ADR-007 §5.4 fixes both shapes: a number when the touched paths could be counted, and a
+    `measured: false` block whose one-line gap names the plan key that owns the fix — never a zero. Either
+    way the tool result carries the figure the card draws, because an MCP agent that summed the store's
+    columns itself would be a fifth opinion of the same change.
+    """
+    session = Session(indexed, _env())
+    try:
+        _, body = session.call("explain_episode", {"episode_id": "HEAD"})
+        _envelope(body)
+    finally:
+        session.close()
+    assert not body.get("error"), "explain_episode refused the tip: %s" % body
+
+    block = body.get("complexity")
+    assert block is not None, "the answer carries no complexity roll-up: %s" % sorted(body)
+    assert isinstance(block["measured"], bool), "`measured` is the field that says which shape this is"
+
+    figures = [
+        figure
+        for section in body["sections"]
+        if section["id"] == "what"
+        for figure in section["figures"]
+        if figure["label"] == "complexity"
+    ]
+    assert len(figures) == 1, "exactly one complexity figure, in the section the line counts are in"
+    figure = figures[0]
+    assert figure["evidence"]["pointer"] == "#/complexity", "the figure points at its own evidence"
+    # A figure's machine form (`raw`) is refused at this door by name — ADR-005 §4.3, every figure's alike —
+    # so what crosses is the printed string and the roll-up, which is exactly what the card draws.
+    if block["measured"]:
+        assert figure["value"], "a measured figure prints a value"
+        assert isinstance(block["delta"], int), "a measured block carries its number: %s" % block
+    else:
+        gap = block["gap"]
+        printed = '%s (%s)' % (gap["short"], gap["owner"])
+        assert len(printed) <= 35, "the card's line does not fit a card: %r" % printed
+        assert gap["owner"].startswith("e"), "the gap blames a plan key: %r" % gap
+
+    # And it is the same answer the human verb prints — one model, two doors.
+    analyzed = _fathom(["analyze", "HEAD", "--json"], indexed, _env())
+    assert analyzed.returncode == 0, analyzed.stderr
+    printed_doc = json.loads(analyzed.stdout)
+    printed_block = printed_doc.get("complexity")
+    assert printed_block is not None, "`fathom analyze --json` carries no complexity roll-up"
+    assert printed_block.get("delta") == block.get("delta"), (
+        "the tool and the verb disagree about the same episode: %s vs %s" % (block, printed_block)
+    )
+    assert printed_block.get("measured") == block.get("measured")
+    printed_figure = [
+        figure
+        for section in printed_doc["sections"]
+        if section["id"] == "what"
+        for figure in section["figures"]
+        if figure["label"] == "complexity"
+    ][0]
+    assert printed_figure["value"] == figure["value"], (
+        "the agent's figure and the reviewer's figure are two strings: %r vs %r"
+        % (figure["value"], printed_figure["value"])
+    )
+
+
 def test_the_write_tools_are_off_by_default(indexed: Path) -> None:
     session = Session(indexed, _env())
     try:

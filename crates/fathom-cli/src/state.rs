@@ -488,6 +488,154 @@ fn notice_note(notice: &HealthNotice) -> Option<String> {
     })
 }
 
+/// The remedy for a complexity column the index has not finished measuring.
+#[cfg_attr(not(feature = "sqlite-bundled"), allow(dead_code))]
+pub const REMEDY_COMPLEXITY: &str = "`fathom index` measures complexity as it indexes; a row it has \
+     not reached prints `?` with `column_not_filled` until it has — rows an older index wrote are filled by \
+     `fathom index --refresh`, which re-derives over the whole lineage (ADR-007 §9.6)";
+
+/// The remedy for a complexity column that a run budget stopped short.
+///
+/// A different remedy text from [`REMEDY_COMPLEXITY`] because running the same command with the same budget
+/// re-spends the same budget: the row that printed `?` for `scan_budget` will print it again. This is the
+/// finding where the key has to be named, because naming the ceiling is the remedy.
+#[cfg_attr(not(feature = "sqlite-bundled"), allow(dead_code))]
+pub const REMEDY_COMPLEXITY_BUDGET: &str = "raise `extract.complexity.max_run_bytes` or \
+     `extract.complexity.max_run_ms` in `fathom.toml` and run `fathom index` again: a row refused by a \
+     budget stays owed, so the next run fills what this one declined (ADR-007 §7.1)";
+
+/// What the complexity pass has cost this store, as JSON: the counters, grouped.
+#[cfg_attr(not(feature = "sqlite-bundled"), allow(dead_code))]
+fn complexity_pass_json(counters: &std::collections::BTreeMap<String, i64>) -> Value {
+    let named = |prefix: &str| {
+        counters
+            .iter()
+            .filter(|(name, _)| name.starts_with(prefix))
+            .map(|(name, value)| json!({"key": name.trim_start_matches(prefix), "value": value}))
+            .collect::<Vec<_>>()
+    };
+    let get = |key: &str| counters.get(key).copied().unwrap_or(0);
+    json!({
+        "rows_measured": get("complexity.rows_measured"),
+        "bytes_read": get("complexity.bytes_read"),
+        "ms": get("complexity.ms"),
+        "refused": named("complexity.refused."),
+        "budgets_spent": named("complexity.budget_spent."),
+    })
+}
+
+/// The complexity pass's own line for `fathom stats` / `fathom doctor`.
+///
+/// The coverage line answers *how much of the column is a figure*; this one answers *what the pass spent and
+/// what stopped it*, which is the half a reader needs before deciding whether the fraction is the
+/// repository's fault or a budget's. Printed only when a run has actually counted something here: a store
+/// where the pass never ran has nothing to say about its cost, and `0 ms` would be a claim about a run that
+/// did not happen.
+#[must_use]
+pub fn complexity_pass_line(index: &Value) -> Option<String> {
+    use std::fmt::Write as _;
+    let pass = index.get("complexity_pass")?;
+    let measured = pass.get("rows_measured")?.as_i64()?;
+    if measured == 0 {
+        return None;
+    }
+    let mut line = String::from("  complexity  ");
+    let _ = write!(
+        line,
+        "pass has read {} MiB of file content in {} ms over the store's life",
+        pass.get("bytes_read")?.as_i64().unwrap_or(0) / (1024 * 1024),
+        pass.get("ms")?.as_i64().unwrap_or(0)
+    );
+    let spent: Vec<String> = pass
+        .get("budgets_spent")?
+        .as_array()?
+        .iter()
+        .filter_map(|row| {
+            let key = row.get("key")?.as_str()?;
+            let runs = row.get("value")?.as_i64()?;
+            Some(format!("{key} spent on {runs} run(s)"))
+        })
+        .collect();
+    if !spent.is_empty() {
+        let _ = write!(
+            line,
+            "; {} — those rows are owed, not finished",
+            spent.join("; ")
+        );
+    }
+    Some(line)
+}
+
+/// How much of the complexity column the index carries, as one line of `fathom stats` / `fathom doctor`.
+///
+/// ADR-007 §9.6 asks doctor to report the coverage over the index, split by reason code, and §8.3 gives the
+/// "what counts as low coverage worth warning about" decision to whoever prints the warning — in the line
+/// that prints it, with the number in it. This is that line, and it is one function rather than two so
+/// `fathom stats` and `fathom doctor` cannot print different fractions of the same column.
+#[must_use]
+pub fn complexity_coverage_line(index: &Value) -> Option<String> {
+    use std::fmt::Write as _;
+    let column = index.get("complexity_column")?;
+    let measurable = column.get("measurable").and_then(Value::as_i64)?;
+    let filled = column.get("filled").and_then(Value::as_i64)?;
+    if measurable == 0 {
+        return Some(
+            "  complexity  no file row here can carry a figure (every one git reports as binary)"
+                .to_owned(),
+        );
+    }
+    let mut line = String::from("  complexity  ");
+    let _ = write!(line, "{filled} of {measurable} file row(s) measured");
+    if let Some(percent) = column.get("percent").and_then(Value::as_f64) {
+        let _ = write!(line, " ({percent:.0} %)");
+    }
+    if filled < measurable {
+        line.push_str(" — the rest print `?`, never a figure");
+    }
+    // "Measured" and "carries a figure" are two claims, and collapsing them is the quiet lie ADR-007 §9.6
+    // exists to prevent: a run that looked at every row and was refused by a budget has filled the column
+    // 100 % and printed a figure on a third of it, and a reader who is told "100 %" will not go looking for
+    // the difference. Said only when it differs, because a line that repeats itself stops being read.
+    let figures = column.get("with_figure").and_then(Value::as_i64);
+    if let Some(figures) = figures
+        && figures < filled
+    {
+        let _ = write!(line, ", figure on {figures}");
+    }
+    // The basis token(s). Two of them means a re-count is in flight and the column is two columns.
+    let bases: Vec<&str> = column
+        .get("bases")
+        .and_then(Value::as_array)
+        .map(|rows| {
+            rows.iter()
+                .filter_map(|row| row.get("basis").and_then(Value::as_str))
+                .collect()
+        })
+        .unwrap_or_default();
+    if !bases.is_empty() {
+        let _ = write!(line, "; basis {}", bases.join(" + "));
+    }
+    // The reason tally, split by code as §9.6 asks, most frequent first, three of them: a line is a line.
+    let reasons: Vec<String> = column
+        .get("reasons")
+        .and_then(Value::as_array)
+        .map(|rows| {
+            rows.iter()
+                .filter_map(|row| {
+                    let code = row.get("code").and_then(Value::as_str)?;
+                    let rows = row.get("rows").and_then(Value::as_i64)?;
+                    Some(format!("{code} {rows}"))
+                })
+                .take(3)
+                .collect()
+        })
+        .unwrap_or_default();
+    if !reasons.is_empty() {
+        let _ = write!(line, "; reasons: {}", reasons.join(", "));
+    }
+    Some(line)
+}
+
 /// Everything the repository says about itself that a reviewer should know before trusting an answer,
 /// one line each, each with what to do about it.
 ///
@@ -959,6 +1107,15 @@ fn describe_index(
     let cache_footprint = store.cache_footprint().ok();
     let counters = store.counters("cache.").unwrap_or_default();
     let pending = store.pending_derivation().unwrap_or_default();
+    // How much of the complexity column the index actually carries (ADR-007 §9.6). Read here, next to the
+    // scale and the dead set, because this is the one read `fathom stats` and `fathom doctor` share and the
+    // coverage has to be the same number in both.
+    let complexity = store.complexity_coverage().ok();
+    // The complexity pass's own durable counts (`e8.4`): what it read, how long it took, and — the part
+    // doctor exists to say — how many times a per-run ceiling stopped it. Read beside the coverage because
+    // the two answer one question together: *how much of the index is a figure*, and *was the answer set by
+    // the repository or by a budget somebody chose*.
+    let complexity_counters = store.counters("complexity.").unwrap_or_default();
     let integrity = match check {
         Check::Structural => store.structural_check().unwrap_or_default(),
         Check::Quick => store.integrity_check(false).unwrap_or_default(),
@@ -1077,6 +1234,73 @@ fn describe_index(
             ExitCode::IndexDegraded,
         ));
     }
+    // The half-filled complexity column, said as untidy. A column nobody has filled prints `?` everywhere —
+    // the coverage line says so and no figure is at risk of being believed — and that is the state of *every*
+    // store until `e8.4` wires the counting pass to this column, so warning on it would be a warning about
+    // this build rather than about the repository. A column filled on part of the index is the one that can
+    // lie: a confident number beside a `?` invites a reader to add them, and ADR-007 §9.6's rule is that
+    // partial progress has to be *observable while it runs*. The threshold is this verb's, named in the line
+    // that prints it (§8.3), and the remedy is the run that fills it.
+    if let Some(coverage) = complexity
+        .as_ref()
+        .filter(|coverage| coverage.half_filled())
+    {
+        findings.push(Finding::untidy(
+            "index_complexity_partial",
+            "index",
+            format!(
+                "the complexity column is filled on {} of {} measurable file row(s); the other {} print `?`",
+                coverage.filled,
+                coverage.measurable,
+                coverage.unfilled()
+            ),
+            REMEDY_COMPLEXITY,
+            ExitCode::IndexDegraded,
+        ));
+    }
+
+    // A complexity column a budget stopped short is not an unfinished index; it is a configured one. It is
+    // still reported, because the difference between "`fathom index` will fill it" and "`fathom index` will
+    // decline it again" is the whole content of the `?` a reviewer is looking at, and because the ceiling
+    // that is binding right now is the number a person would have to change. The count of refused rows comes
+    // from the column itself, not from the counters: the rows are the durable truth, the counters are the
+    // history of the runs that wrote them.
+    let spent: Vec<(String, i64)> = complexity_counters
+        .iter()
+        .filter(|(name, _)| name.starts_with("complexity.budget_spent."))
+        .map(|(name, runs)| {
+            (
+                name.trim_start_matches("complexity.budget_spent.")
+                    .to_owned(),
+                *runs,
+            )
+        })
+        .collect();
+    let scan_budget = complexity
+        .as_ref()
+        .and_then(|coverage| {
+            coverage
+                .reasons
+                .iter()
+                .find(|(code, _)| code == "scan_budget")
+        })
+        .map_or(0, |(_, rows)| *rows);
+    if !spent.is_empty() && scan_budget > 0 {
+        let keys = spent
+            .iter()
+            .map(|(key, runs)| format!("{key} (spent on {runs} run(s))"))
+            .collect::<Vec<_>>()
+            .join(", ");
+        findings.push(Finding::untidy(
+            "index_complexity_budget",
+            "index",
+            format!(
+                "{scan_budget} file row(s) print `?` with `scan_budget` because a per-run ceiling was spent: {keys}"
+            ),
+            REMEDY_COMPLEXITY_BUDGET,
+            ExitCode::IndexDegraded,
+        ));
+    }
 
     let index = json!({
         "present": true,
@@ -1119,6 +1343,28 @@ fn describe_index(
             .unwrap_or_default(),
         "head_indexed": head_indexed,
         "pending_derivation": pending.len(),
+        // How much of the complexity column this index actually carries (ADR-007 §9.6): the numbers, the
+        // reason split, and the basis tokens in use. A half-filled column is a figure that lies quietly, and
+        // the way to stop it lying is to print the fraction next to every total it could be confused with.
+        "complexity_pass": complexity_pass_json(&complexity_counters),
+        "complexity_column": complexity.map(|coverage| json!({
+            "rows": coverage.rows,
+            "measurable": coverage.measurable,
+            "filled": coverage.filled,
+            "with_figure": coverage.with_figure,
+            "unfilled": coverage.unfilled(),
+            "percent": coverage.percent(),
+            "reasons": coverage
+                .reasons
+                .iter()
+                .map(|(code, rows)| json!({"code": code, "rows": rows}))
+                .collect::<Vec<_>>(),
+            "bases": coverage
+                .bases
+                .iter()
+                .map(|(basis, rows)| json!({"basis": basis, "rows": rows}))
+                .collect::<Vec<_>>(),
+        })),
         "ref_tips": tips
             .iter()
             .map(|tip| json!({"name": tip.name, "oid": tip.oid, "kind": tip.kind}))

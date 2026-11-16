@@ -15,7 +15,10 @@ window, grades the output against the hand-authored pairs across a grid of displ
 applies the selection rule in :func:`choose` to produce the recommendation. `--check` re-measures and
 fails on any drift in the parts that must be reproducible: counts, scores, thresholds, gates.
 Wall-clock costs are recorded but excluded from the comparison, for the reason ADR-002 §8 states for
-every other bench — a busy runner is not a regression.
+every other bench — a busy runner is not a regression. So is the machine: `environment`'s interpreter,
+platform, core count and `git` build are recorded, printed when they differ from the committed run, and
+excluded for the same reason in one sentence — CI is a different computer from the one that authored the
+report, and a runner fact that only one machine can satisfy is a gate that is red forever (`reco-v1z`).
 
 **Prototype floors.** This is Python, one process, one container, a hand-written shingle sketch
 standing in for whatever `e2.4` ships, and `git`'s CLI standing in for `gix`'s rewriter — the same
@@ -880,16 +883,88 @@ def rule_note() -> dict:
 
 # -- report plumbing ------------------------------------------------------------------------------
 
-#: Excluded from `--check`: wall-clock is a property of the runner, not of the measurement.
-VOLATILE = ("ms_mean", "ms_p95", "ms_max", "build_seconds", "measured_in_seconds", "scenarios")
+#: Excluded from `--check` wherever the key appears: wall-clock is a property of how loaded the runner
+#: was, never of what the fixtures contain, and the same three names appear under one parent per
+#: configuration (`algorithms[].cost.ms_mean` and its two siblings), so they are matched by key name.
+VOLATILE_KEYS = ("ms_mean", "ms_p95", "ms_max")
+
+#: The four `environment` fields that record *which machine* ran the measurement. They stay in the
+#: report — a reader has to know which `git` scored the git rows, and `gen_rename_tables.py` prints
+#: them into the concept document — but they cannot be a reproducibility claim, because CI is not the
+#: laptop that authored the report. `contracts.yml` runs this step on an x86_64 runner under
+#: `setup-python` 3.12 while the committed report was written on an aarch64 box under 3.14, so
+#: comparing these four made the step red on every push for a reason that was not a drift in any
+#: measurement (`reco-v1z`). Everything else in `environment` *is* the measurement's own configuration
+#: — the permutation count, the shingle width, the prototype's stated profile — and is still compared.
+RUNNER_FACTS = ("python", "platform", "cpu_count", "git")
+
+#: Excluded from `--check` by exact path, because the same key name means different things in
+#: different places: `corpus.scenarios` is the count of fixture scenarios (a claim, and compared) while
+#: `meta.scenarios` is the list of which ones *this* run built — which is everything, unless somebody
+#: ran `--scenario`, and a partial run must not be able to satisfy a whole run's contract.
+VOLATILE_PATHS = ("corpus.build_seconds", "meta.measured_in_seconds", "meta.scenarios",
+                  *tuple(f"environment.{name}" for name in RUNNER_FACTS))
 
 
-def strip_volatile(node):
+def strip_volatile(node, path: str = ""):
+    """Project out the parts of a report that describe a run rather than a measurement."""
     if isinstance(node, dict):
-        return {k: strip_volatile(v) for k, v in node.items() if k not in VOLATILE}
+        out = {}
+        for key, value in node.items():
+            here = f"{path}.{key}" if path else key
+            if key in VOLATILE_KEYS or here in VOLATILE_PATHS:
+                continue
+            out[key] = strip_volatile(value, here)
+        return out
     if isinstance(node, list):
-        return [strip_volatile(v) for v in node]
+        return [strip_volatile(v, f"{path}[]") for v in node]
     return node
+
+
+def diff_paths(committed, measured, path: str = "") -> list[str]:
+    """Every leaf that moved, named by path — the answer a reader of a red build actually needs.
+
+    The report is ~2 600 lines of JSON, so a line diff between the two serialisations says "line 1972
+    differs" and then everything below it shifts, which names one runner fact and looks like a
+    catastrophe. This walks both structures and reports only the leaves that disagree, so the output
+    reads as a list of claims that moved.
+    """
+    if isinstance(committed, dict) and isinstance(measured, dict):
+        out: list[str] = []
+        for key in sorted(set(committed) | set(measured)):
+            here = f"{path}.{key}" if path else key
+            if key not in committed:
+                out.append(f"{here}: absent in the committed report, measured {measured[key]!r}")
+            elif key not in measured:
+                out.append(f"{here}: {committed[key]!r} is no longer measured")
+            else:
+                out.extend(diff_paths(committed[key], measured[key], here))
+        return out
+    if isinstance(committed, list) and isinstance(measured, list):
+        if len(committed) != len(measured):
+            return [f"{path}: {len(committed)} entries committed, {len(measured)} measured"]
+        out = []
+        for index, (left, right) in enumerate(zip(committed, measured)):
+            out.extend(diff_paths(left, right, f"{path}[{index}]"))
+        return out
+    return [] if committed == measured else [f"{path}: {committed!r} -> {measured!r}"]
+
+
+def environment_note(committed: dict, measured: dict) -> str:
+    """One line saying which machine the fresh numbers came from, when it is not the committed one.
+
+    Excluding the runner facts from the comparison must not mean hiding them: the git rows are git's,
+    so the log has to say which git produced them, and a silent difference between the committed
+    environment and the measuring one is how a machine-specific result gets read as a real one.
+    """
+    before = committed.get("environment", {})
+    now = measured.get("environment", {})
+    moved = [f"{key} {before.get(key)} -> {now.get(key)}" for key in RUNNER_FACTS
+             if before.get(key) != now.get(key)]
+    if not moved:
+        return ""
+    return "note: measured on a different machine than the committed report (not a drift): " + \
+        "; ".join(moved)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -924,24 +999,21 @@ def main(argv: list[str] | None = None) -> int:
         if not args.report or not args.report.exists():
             print("no committed report to check against", file=sys.stderr)
             return 1
-        committed = strip_volatile(json.loads(args.report.read_text()))
+        committed_raw = json.loads(args.report.read_text())
+        committed = strip_volatile(committed_raw)
         fresh = strip_volatile(report)
+        note = environment_note(committed_raw, report)
+        if note:
+            print(note)
         if committed != fresh:
             print("spike s4 does not reproduce: the measured report differs from the committed one",
                   file=sys.stderr)
-            left = json.dumps(committed, indent=1, sort_keys=True).splitlines()
-            right = json.dumps(fresh, indent=1, sort_keys=True).splitlines()
-            shown = 0
-            for index, (a, b) in enumerate(zip(left, right)):
-                if a != b:
-                    print(f"  line {index + 1}:\n    committed: {a.strip()}\n"
-                          f"    measured:  {b.strip()}", file=sys.stderr)
-                    shown += 1
-                    if shown >= 8:
-                        break
-            if len(left) != len(right):
-                print(f"  (committed has {len(left)} lines, the fresh run has {len(right)})",
-                      file=sys.stderr)
+            drift = diff_paths(committed, fresh)
+            print(f"  {len(drift)} field(s) of the measurement moved:", file=sys.stderr)
+            for line in drift[:12]:
+                print(f"  {line}", file=sys.stderr)
+            if len(drift) > 12:
+                print(f"  ... and {len(drift) - 12} more", file=sys.stderr)
             return 1
         print(f"spike s4 reproduces: {report['corpus']['true_pairs']} true pairs, "
               f"{len(report['algorithms'])} configurations, {len(report['gates'])} gates passing")

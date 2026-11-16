@@ -94,7 +94,7 @@ Two further annotation rules, because both appear in the real history:
 
 A **pathology** is a hand-annotated fact of the form *"this problem is only reviewable if these commits are
 on one card"*. The spike scores each strategy for how many annotated pathologies it would hide; `docs
-/concepts/episode-segmentation.md` §4 states the scoring of each kind exactly, and `hides_via` in the spike
+/concepts/episode-derivation.md` §*How a boundary is found* §4 states the scoring of each kind exactly, and `hides_via` in the spike
 is the one place that mapping lives. Two sources: the fixture stratum's pathologies *are* `e0.10`'s
 hand-authored findings, carried across verbatim (`kind`, the commit, the episode, the paths, the detail),
 and the real and authored strata use the named kinds `same_turn_rework`, `absorbed_turn`,

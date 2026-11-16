@@ -21,8 +21,8 @@ use std::collections::BTreeMap;
 use std::process::Command;
 
 use fathom_analyze::insight::{
-    self, EpisodeDelta, EpisodeRef, Evidence, FileChange, Finding, Input, Provenance, RiskView,
-    Signals, Supplied, SuppliedBlock, classify, rank,
+    self, ComplexityView, EpisodeDelta, EpisodeRef, Evidence, FileChange, Finding, Input,
+    Provenance, RiskView, Signals, Supplied, SuppliedBlock, classify, rank,
 };
 use serde_json::Value;
 
@@ -59,7 +59,8 @@ fn corpus() -> Vec<(&'static str, EpisodeDelta)> {
         ),
     ));
 
-    // A real ranking: components, vector, surfaces, blind spots, and a rank within a set.
+    // A real ranking: components, vector, surfaces and blind spots. No place in a set — `rank`/
+    // `ranked` left the document with the ranked pane in `e10.3`.
     // An array, not a `Vec`: it is borrowed and iterated, never grown, and the row count is the fixture.
     let files = [
         ("src/store/epoch.rs", 412, 90, false, "source", "none"),
@@ -86,15 +87,15 @@ fn corpus() -> Vec<(&'static str, EpisodeDelta)> {
         n_files: 5,
         n_binary: 1,
         n_commits: 4,
-        author: "agent",
         partial_files: false,
+        complexity: None,
     });
     corpus.push((
         "ranked",
         EpisodeDelta::sparse(
             "e-cccc3333",
             "make the store epoch-safe",
-            Some(RiskView::of(&ranking, Some(1), Some(3))),
+            Some(RiskView::of(&ranking)),
         ),
     ));
 
@@ -129,7 +130,7 @@ fn corpus() -> Vec<(&'static str, EpisodeDelta)> {
             },
         )
         .collect();
-    input.risk = Some(RiskView::of(&ranking, Some(2), Some(9)));
+    input.risk = Some(RiskView::of(&ranking));
     corpus.push(("measured", insight::compose(&input)));
 
     // A capped read: the rows seen are fewer than the episode counted, and `reconciles` has to say
@@ -206,6 +207,53 @@ fn corpus() -> Vec<(&'static str, EpisodeDelta)> {
         run: None,
     });
     corpus.push(("fully-lent", insight::compose(&full)));
+
+    // The complexity roll-up in the three shapes ADR-007 §5.4 distinguishes (`e8.5`, `reco-l9bz.5`): a
+    // figure, a floor that says what it is a floor of, and a `?` that names who owns the fix. All three
+    // validate and all three verify, because every surface reads the one block rather than an opinion of it.
+    let mut counted = input.clone();
+    counted.complexity = Some(ComplexityView {
+        basis: vec!["mccabe-1".to_owned()],
+        delta: Some(41),
+        absolute: Some(188),
+        max: Some(22),
+        touched: 5,
+        measured_paths: 5,
+        unmeasurable_paths: 0,
+        ..ComplexityView::default()
+    });
+    corpus.push(("complexity-measured", insight::compose(&counted)));
+
+    let mut floored = input.clone();
+    floored.complexity = Some(ComplexityView {
+        basis: vec!["mccabe-1".to_owned()],
+        delta: Some(12),
+        absolute: Some(96),
+        max: Some(22),
+        touched: 5,
+        measured_paths: 2,
+        unmeasurable_paths: 3,
+        reasons: BTreeMap::from([
+            ("language_unknown".to_owned(), 2),
+            ("too_large".to_owned(), 1),
+        ]),
+        ..ComplexityView::default()
+    });
+    corpus.push(("complexity-partial", insight::compose(&floored)));
+
+    let mut dark = input.clone();
+    dark.complexity = Some(ComplexityView {
+        basis: Vec::new(),
+        delta: None,
+        absolute: None,
+        max: None,
+        touched: 5,
+        measured_paths: 0,
+        unmeasurable_paths: 5,
+        reasons: BTreeMap::from([("column_not_filled".to_owned(), 5)]),
+        ..ComplexityView::default()
+    });
+    corpus.push(("complexity-unmeasured", insight::compose(&dark)));
 
     corpus
 }
@@ -388,7 +436,11 @@ fn every_key_a_document_writes_is_declared_by_the_schema() {
         // — and they are declared by `additionalProperties`, not by a name per key. Matching a free-form
         // key against a property of the same name elsewhere in the schema would only ever produce a false
         // alarm (a `raw.binary` integer is not the `binary` boolean on a file row).
-        if path.contains(".raw.") || path.contains(".models.") {
+        //
+        // `complexity.reasons` is a third such map: its keys are ADR-007 §7.1's closed vocabulary of reason
+        // codes, declared as a pattern-ish `{string: integer}` map rather than one property per code, so
+        // that adding a code is additive (an older reader ignores the code it has not met).
+        if path.contains(".raw.") || path.contains(".models.") || path.contains(".reasons.") {
             continue;
         }
         let key = path.rsplit('.').next().unwrap_or(path);
@@ -556,7 +608,53 @@ fn the_analyze_verb_prints_one_schema_valid_document() {
     // printed — one model, three surfaces, no second computation.
     let rendered = stdout(&run(&["analyze", "HEAD", "--root", root]));
     assert!(rendered.contains("what"), "{rendered}");
-    assert!(rendered.contains("fathom-delta/1"), "{rendered}");
+    assert!(
+        rendered.contains(fathom_analyze::insight::CONTRACT),
+        "the text render signs the contract the model writes ({rendered})"
+    );
+
+    // The complexity figure rides in the `what` section beside the line counts it qualifies (`e8.5`,
+    // `reco-l9bz.5`). This is the assertion the whole ticket is about at the process boundary: the card,
+    // the export and the MCP tool print *this* figure, so the verb that prints it has to print the same
+    // number the block beside it was read from.
+    let what = value["sections"]
+        .as_array()
+        .expect("the seven sections")
+        .iter()
+        .find(|section| section["id"] == "what")
+        .expect("`what` is always present");
+    let figure = what["figures"]
+        .as_array()
+        .expect("a section carries figures")
+        .iter()
+        .find(|figure| figure["label"] == "complexity")
+        .expect("a read over a filled store prints a complexity figure");
+    let block = &value["complexity"];
+    assert_eq!(
+        block["measured"].as_bool(),
+        Some(true),
+        "`fathom index` fills the column, so this episode's figure is a number: {block}"
+    );
+    assert_eq!(
+        figure["raw"]["delta"], block["delta"],
+        "the printed figure and the roll-up beside it are one number"
+    );
+    assert_eq!(figure["evidence"]["pointer"], "#/complexity");
+    assert_eq!(
+        value["provenance"]["models"]["complexity"].as_str(),
+        Some("structure::complexity (mccabe-1)"),
+        "the basis token travels with the figure, on the model map every surface prints"
+    );
+
+    // `fathom show` is a commit card rather than a delta, and it reaches the same block through the same
+    // deriving rules — two verbs, one answer (ADR-001 §7.10).
+    let shown: Value =
+        serde_json::from_str(stdout(&run(&["show", "HEAD", "--root", root, "--json"])).trim())
+            .expect("`show --json` prints JSON");
+    assert_eq!(
+        shown["episode"]["identity"]["complexity"]["delta"], block["delta"],
+        "`fathom show` and `fathom analyze` printed two different complexity answers"
+    );
     let _ = std::fs::remove_dir_all(&dir);
 }
 

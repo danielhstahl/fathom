@@ -37,16 +37,17 @@ mod rail;
 mod render;
 mod session;
 
-pub use card::intent_lines;
+pub use card::Window as CardWindow;
+pub use card::document as card_document;
+pub use card::explain_words;
 pub use card::lines as card_lines;
-pub use card::risk_lines;
 pub use days::{date_only, date_or_any, day_label, day_start, relative};
 pub use editor::{Editor, Next as EditorNext, Row as EditorRow, Stage as EditorStage, Target};
 pub use episode::{
     AuthorKind, Batch, Episode, EpisodeSource, GroupKey, MemorySource, NoIndex, ReviewState, Risk,
 };
-pub use filter::{Dimension, FACET_CAP, Facets, Filter, GroupBy};
-pub use rail::{Anchor, Rail, RailStats, Slot};
+pub use filter::{Dimension, FACET_CAP, Facets, Filter, GroupBy, retired_keys};
+pub use rail::{Anchor, Rail, RailStats, Slot, chooser, prompt_line};
 pub use render::{Columns, SPARK_CELLS, Scale, compact};
 pub use session::{KEY_FILTER, KEY_MEMBERS, KEY_SELECTION, Restore, SESSION_MAX, Session};
 
@@ -89,8 +90,12 @@ impl Timeline {
 
     /// Reset it (the frame's instant, on every draw, because a long-lived shell must not age against a
     /// timestamp it started with an hour ago).
-    pub fn set_now(&mut self, now: Timestamp) {
-        self.rail.set_now(now);
+    ///
+    /// Returns whether the instant crossed a minute mark — the resolution at which the rail's ages
+    /// change — so a caller that re-ages from a clock can tell a redraw apart from a bookkeeping write
+    /// (`reco-5oe`, [`crate::app::App::age_clock`]).
+    pub fn set_now(&mut self, now: Timestamp) -> bool {
+        self.rail.set_now(now)
     }
 
     /// Hand the rail a batch of episodes. Returns the sentence for the toast line.
@@ -167,6 +172,15 @@ impl Timeline {
         self.rail.set_state(id, state)
     }
 
+    /// Every loaded row, filtered or not, in load order.
+    ///
+    /// The shell needs the whole batch for the passes that are about the ledger rather than about what is
+    /// on screen — a released snooze is a released snooze whether or not the filter is showing it.
+    #[must_use]
+    pub fn episodes(&self) -> &[Episode] {
+        self.rail.episodes()
+    }
+
     /// One episode by id, filtered or not.
     ///
     /// The panes mostly act on the cursor, but a pane that answers a question about *this* episode (its
@@ -199,8 +213,8 @@ impl Timeline {
 
     /// The rows the filter selects, as episodes, in the rail's order (newest first).
     ///
-    /// This is the set the queue ranks: a filter has to mean the same thing in `t` and in `q`, or the
-    /// reviewer is shown a ranking of a list they did not ask for (`reco-c05`).
+    /// One answer to "which episodes does the filter keep": the rail draws them, the strip counts them
+    /// and the ambient line counts the same set, so a filter means one thing in every surface.
     #[must_use]
     pub fn on_screen(&self) -> Vec<&Episode> {
         self.rail
@@ -210,31 +224,18 @@ impl Timeline {
             .collect()
     }
 
-    /// The same rows, riskiest first — `reco-c05`'s answer to "which three episodes are the riskiest",
-    /// ordered by the number the ranking handed over rather than by anything computed here.
-    ///
-    /// The order itself lives in the rail, next to the display order, and is rebuilt with it: a frame
-    /// that re-ranked every held episode would cost what the index costs.
+    /// How many rows the rail lists — the number the motion keys clamp against and the denominator the
+    /// open-work count is quoted against.
     #[must_use]
-    pub fn ranked(&self) -> Vec<&Episode> {
-        self.rail
-            .ranked()
-            .iter()
-            .filter_map(|index| self.rail.episodes().get(*index))
-            .collect()
+    pub fn listed_len(&self) -> usize {
+        self.rail.listed().len()
     }
 
-    /// How many rows the queue has — the number the motion keys clamp against.
+    /// The listed row `at`, without building the list it came from.
     #[must_use]
-    pub fn ranked_len(&self) -> usize {
-        self.rail.ranked().len()
-    }
-
-    /// The queue's row `at`, without building the list it came from.
-    #[must_use]
-    pub fn ranked_row(&self, at: usize) -> Option<&Episode> {
+    pub fn listed_row(&self, at: usize) -> Option<&Episode> {
         self.rail
-            .ranked()
+            .listed()
             .get(at)
             .and_then(|index| self.rail.episodes().get(*index))
     }
@@ -242,11 +243,11 @@ impl Timeline {
     /// `(rows carrying a ranking, rows still unread)` over the rows on screen — the strip's and the
     /// status line's numbers.
     #[must_use]
-    pub fn queue_counts(&self) -> (usize, usize) {
+    pub fn open_work(&self) -> (usize, usize) {
         self.rail.counts()
     }
 
-    /// How many rows on screen are still unread — the `queue N open` number, and the only honest one
+    /// How many rows on screen are still unread — the `N unread` number, and the only honest one
     /// the shell can produce without a store handle. Counted when the order was built, not at draw
     /// time: a status line that costs O(episodes) per frame is what `timeline_bench` exists to catch.
     #[must_use]
@@ -398,16 +399,37 @@ impl Timeline {
         self.rail.text(width, visible)
     }
 
-    /// The preview of the selected episode, styled.
+    /// The preview of the selected episode, styled: the pane's window into the card (`e9.3`).
     #[must_use]
-    pub fn preview_lines(&self, width: usize, visible: usize) -> Vec<StyledLine> {
+    pub fn preview_lines(
+        &self,
+        width: usize,
+        visible: usize,
+        window: card::Window,
+    ) -> Vec<StyledLine> {
         card::lines(
             self.rail.selected(),
             self.rail.now(),
             self.rail.origin(),
             width,
             visible,
+            window,
         )
+    }
+
+    /// How many rows the selected episode's card has at this width: what the pane's motion clamps
+    /// against, since the card is a document the reader walks rather than a glance that truncates.
+    #[must_use]
+    pub fn preview_rows(&self, width: usize, budget: usize, window: card::Window) -> usize {
+        card::document(
+            self.rail.selected(),
+            self.rail.now(),
+            self.rail.origin(),
+            width,
+            budget,
+            window,
+        )
+        .len()
     }
 
     /// The rail's footer strip.
@@ -498,6 +520,9 @@ impl Timeline {
             filter: self.rail.filter().clone(),
             selection: self.rail.selection_id().map(str::to_owned),
             members: self.rail.anchor_members(),
+            // Nothing to report on the way out: a notice is about what a *stored* value could no longer
+            // mean here, and this is the value this build is choosing to store.
+            notices: Vec::new(),
         }
     }
 

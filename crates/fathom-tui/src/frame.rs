@@ -7,8 +7,12 @@
 //! that arrived, applies all of it, and draws once. A key held down therefore costs one frame per
 //! coalesced batch instead of one per keystroke, and an idle Fathom beside somebody else's shell
 //! costs nothing at all. The only timed wake-ups are the [`crate::terminal::SIGNAL_POLL`] check
-//! that notices `<C-c>` and the [`crate::keymap::CHORD_TIMEOUT`] that decides a half-typed `g` was
-//! meant as the graph view.
+//! that notices `<C-c>`, the [`crate::keymap::CHORD_TIMEOUT`] that decides a half-typed `g` was
+//! meant as the graph view, and the toast's own deadline. None of them buys a draw on its own: a
+//! wake-up that changed nothing draws nothing. The one thing that can change without an event is how
+//! old the rail's rows are, and [`App::age_clock`] is asked on the `SIGNAL_POLL` wake-up so a rail
+//! that has been open all morning stops claiming its newest row is brand new (`reco-5oe`) — a minute
+//! of drift is the finest change it will ever spend a frame on.
 //!
 //! The loop is written against [`FrameSink`] rather than at a terminal, so the same code runs the
 //! real screen and a `Vec<Vec<String>>` in a test — which is what makes the 80×24 / 100×30 / 200×60
@@ -118,6 +122,11 @@ pub struct Options {
     pub notices: Vec<String>,
     /// The instant the run is drawn for, passed in: only `fathom-cli` reads the clock
     /// (ADR-002 §4.4).
+    ///
+    /// It is a starting instant, not a frozen one: an interactive loop carries it forward from its own
+    /// monotonic clock so a frame that stays open for an hour ages its rows with it
+    /// ([`App::age_clock`], `reco-5oe`). A one-frame render — `--plain`, `--json` — is exactly this
+    /// instant and nothing else, which is what makes a piped frame reproducible.
     pub now: Timestamp,
     /// The environment the copy and `$EDITOR` plans read: variables and the `PATH` answer, gathered by
     /// `fathom-cli`, because this crate reads neither (ADR-002 §3).
@@ -215,13 +224,13 @@ pub struct Options {
     /// shell has no opinion about colour and none is its to have. Folding to what the terminal answered
     /// happens at draw time, not here.
     pub theme: crate::theme::Theme,
-    /// Everything the queue needs to triage: vocabulary, actor, ledger and the acts already in it
+    /// Everything the ledger needs to take an act: vocabulary, actor, ledger and the acts already in it
     /// (`e4.5`, `reco-wsj`).
     ///
     /// `Default` is `Setup::default()`, which is a shell that takes acts in memory and says so: the
     /// `--plain` path and every embedder keep compiling, and none of them silently pretend to have written
     /// a sign-off.
-    pub queue: crate::queue::Setup,
+    pub review: crate::review::Setup,
     /// What keeps this frame current, and what it says when nothing does (`reco-bpc`).
     ///
     /// The frame has no producer of its own — no store handle, no git, no indexer, and no business having
@@ -258,7 +267,7 @@ impl Default for Options {
             lines: false,
             term: crate::terminal::Probe::unknown(),
             theme: crate::theme::Theme::default_theme(),
-            queue: crate::queue::Setup::default(),
+            review: crate::review::Setup::default(),
             watch: None,
         }
     }
@@ -577,6 +586,17 @@ pub fn run_loop(
         if app.age_toast(Instant::now()) {
             scheduler.mark_dirty();
         }
+        // The rail's ages are a clock reading, not a snapshot (`reco-5oe`). The frame was handed one
+        // instant and would otherwise print it forever: an episode that landed while the reviewer was
+        // reading says `<1m` for as long as the frame stays open, which is a fact about the frame's
+        // age and not about the repository. The loop already owns the monotonic clock this needs and
+        // already wakes on it ten times a second, so this is a subtraction per wake-up and a draw once
+        // a minute at the most — the rail's own resolution, and nothing is drawn that a person cannot
+        // see. A rail the ladder has narrowed to dates has no age to turn, and `App::age_clock` says so:
+        // there the day is what costs a frame.
+        if app.age_clock(Instant::now()) {
+            scheduler.mark_dirty();
+        }
         if arrived || flushed || app.repaint {
             app.repaint = false;
             scheduler.mark_dirty();
@@ -702,9 +722,9 @@ pub fn apply(app: &mut App, message: Message) {
     }
 }
 
-/// Apply one watcher's update: the rows, the index's numbers, the row saying how far a run the producer
-/// is running has got, and the sentence that says why the frame moved under the reviewer's hands
-/// (`reco-bpc`, `reco-j7t`).
+/// Apply one watcher's update: the rows, the index's numbers, the branch the tab bar names, the row saying
+/// how far a run the producer is running has got, and the sentence that says why the frame moved under the
+/// reviewer's hands (`reco-bpc`, `reco-j7t`, `reco-nup`).
 ///
 /// Separate from [`apply`] on purpose: a watcher is not on the bus, because there is no producer to send
 /// on its behalf — the loop asks it, on the wake-ups it already takes. Everything in an [`Update`][crate::watch::Update]
@@ -731,7 +751,7 @@ pub fn apply_update(app: &mut App, update: crate::watch::Update) {
         let grew = u64::try_from(batch.len().saturating_sub(before)).unwrap_or(u64::MAX);
         // A `next-index` snooze is stamped against the epoch the rows came from, so the table that decides
         // whether one has released moves with the rows it was computed from.
-        app.queue.sessions = crate::queue::State::sessions_of(&batch.episodes);
+        app.review.sessions = crate::review::State::sessions_of(&batch.episodes);
         let line = app.timeline.load(batch);
         said = Some(match update.new_commits.or(Some(grew)) {
             Some(n) if n > 0 => format!("{} new · {line}", crate::app::format_thousands(n)),
@@ -751,6 +771,19 @@ pub fn apply_update(app: &mut App, update: crate::watch::Update) {
             Some(line) => format!("{line} · search corpus re-read ({symbols} symbol names)"),
             None => format!("search corpus re-read ({symbols} symbol names)"),
         });
+    }
+    // The tab bar's claim about which branch this is (`reco-nup`). The producer re-reads `HEAD`; the shell
+    // is the only party that can print it and the only one that ever drew it, so this is the whole seam: a
+    // `git switch` made in another terminal arrives here or the frame goes on naming a branch nobody has
+    // checked out. Only the change is applied — re-reading the same name is not news, and a label the shell
+    // has already got draws the same pixels. Said out loud only when nothing else in the update is, because
+    // a switch that also brought new commits already has the rail to announce itself with and the tab bar is
+    // where the reviewer reads the branch from.
+    if let Some(label) = update.repo_label.filter(|label| *label != app.repo_label) {
+        if said.is_none() && update.note.is_none() {
+            said = Some(format!("now on {label}"));
+        }
+        app.repo_label = label;
     }
     if let Some(note) = update.note {
         app.toast(note);
@@ -827,14 +860,14 @@ pub fn run(options: &Options) -> Result<Report, Error> {
     // is on, and this provider is the only party that can read the record behind it (`e3.4`).
     app.graph.set_citations(options.citations.clone());
     app.set_hints(options.hints);
-    // The queue's triage world, installed before `prime` for the same reason the patch provider is: a
-    // session that resumes straight into the queue must be able to disposition from the first keystroke,
+    // The ledger's world, installed before `prime` for the same reason the patch provider is: a
+    // session that resumes straight onto the rail must be able to disposition from the first keystroke,
     // with the vocabulary and the actor that belong to this repository (`e4.5`, `reco-wsj`).
-    app.queue = options.queue.state();
+    app.review = options.review.state();
     if let Some(batch) = &options.episodes {
         // The `new-in-session` snooze needs to know what a session holds; the shell cannot look that up,
         // because the shell is not allowed to open the index.
-        app.queue.sessions = crate::queue::State::sessions_of(&batch.episodes);
+        app.review.sessions = crate::review::State::sessions_of(&batch.episodes);
     }
     let resumed = prime(&mut app, options);
     // The size to open at, in the order anyone's authority outranks anyone else's: what the caller
@@ -993,11 +1026,11 @@ pub fn render_plain(options: &Options) -> Vec<String> {
     }
     app.graph.set_citations(options.citations.clone());
     app.set_hints(options.hints);
-    // The queue's triage world, same as the interactive path: a piped frame shows the same worklist, so
-    // it shows the same vocabulary, actor and ledger — or says in the same words that it has none.
-    app.queue = options.queue.state();
+    // The ledger's world, same as the interactive path: a piped frame shows the same rail and the same
+    // acts, so it shows the same vocabulary, actor and ledger — or says in the same words that it has none.
+    app.review = options.review.state();
     if let Some(batch) = &options.episodes {
-        app.queue.sessions = crate::queue::State::sessions_of(&batch.episodes);
+        app.review.sessions = crate::review::State::sessions_of(&batch.episodes);
     }
     let resumed = prime(&mut app, options);
     // A piped frame has no terminal to ask, so the reviewer's own last frame size is the honest answer
@@ -1007,9 +1040,9 @@ pub fn render_plain(options: &Options) -> Vec<String> {
     {
         app.resize(cols, rows);
     }
-    // Not `app.view = ViewId::Queue` any more (`e1.11`): `--plain` promises the same frame the terminal
+    // Not a hard-coded view (`e1.11`): `--plain` promises the same frame the terminal
     // would have been given, and a resumed session's frame is the reviewer's view. A first session lands
-    // on the queue anyway, because that is what `App::new` opens.
+    // on the home view anyway, because that is what `App::new` opens (ADR-006 §5.1.2 §1: the timeline).
     if options.lines {
         crate::render::plain_flow(&app)
     } else {

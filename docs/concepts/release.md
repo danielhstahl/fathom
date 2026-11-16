@@ -106,7 +106,18 @@ writing down because it has been misunderstood twice: GitHub **workflow artefact
 uploads) require a signed-in human, and no `cargo-dist` setting changes that. The auth-free artefact is
 the GitHub **release** a tag produces — public assets, plus the installers and the formula. A per-PR link
 that needs no login needs an object store this project does not have, and that half of the sentence is
-still true: `pr-run-mode = "upload"` gives a reviewer a build of every target on every PR, behind a login.
+still true, and it is now the only half of the sentence that was ever true about a pull request: since
+`e11.2` (`reco-374v.2`) `pr-run-mode = "skip"`, so a pull request gets **no** per-target build at all. The
+matrix runs on `workflow_dispatch`, on a tag, and once a day against `master` — `nightly.yml` dispatches
+`release.yml` with `tag=dry-run` (§3.1); what a PR still proves about packaging is the `.deb`, the `.rpm`
+and the installer, which is `ci.yml`'s `packaging` job.
+
+The two kinds are budgeted differently, and only one of them is this document's. What a **release** may
+publish is the table above. What a **workflow artefact** may be — how large it is allowed to get, how long it
+is kept, which paths it is made of, and which step is held to those three — is the artefact budget in
+[ci-gate.md](ci-gate.md) (*The artefact budget*), which `e11.4` (`reco-374v.4`) made a rule rather than a
+habit. The release matrix's own artefacts are deliberately outside that table: they are the shipped product,
+and their retention is the release they are attached to.
 
 The four `.deb` and `.rpm` rows are `[[dist.extra-artifacts]]`: `cargo-dist` has no deb or rpm target, so
 `packaging/linux-packages.sh` builds them (§1.3). They carry their own `.sha256` beside them, in the same
@@ -163,6 +174,16 @@ refuses to run if the archive has no completions in it, which is the failure mod
 `include`; and the `.rpm` is written by `rpmbuild` — the reference implementation, installed by the
 script because the runner image lacks it — so it is guaranteed to be an RPM but not byte-reproducible,
 while the `.deb` is written here with zero timestamps and is.
+
+The spec's `%files` list is **generated from that table** (`spec_files`) rather than typed next to it, and
+the reason is a whole release that went red (**reco-ndf**). The table is written in the relative spelling —
+`usr/share/zsh/site-functions/_fathom` — because that is what a `.deb`'s data tar names its members and
+what `cp -a` into `$RPM_BUILD_ROOT` lays down, and `rpmbuild` refuses any `%files` entry that does not
+begin with `/`. One relative line there is not one missing file; it is no `.rpm` at all, on the one runner
+of the six that has `rpmbuild`, with the message `error: File must begin with "/": …`. `rpm_file()` is
+where the two spellings meet, `spec_problems()` is the same claim made before `rpmbuild` is asked (so it
+holds on a laptop with no rpm installed), and `rpm -qlp` under `--verify` is what reads the answer back
+out of the finished package.
 
 ## 2 The version, and what a tag means
 
@@ -301,8 +322,9 @@ offline); the target set still covers three operating systems (`R02`) and the tw
 (`R14`); the msi can still be built, because its `upgrade-guid` survived (`R14`); the system packages
 are still named for the version being released (`R15`); the completions and man pages exist, are not
 empty, and are still `include`d (`R16`) — and are byte-identical to what the binary renders, checked by
-`tools/gen_shell_artifacts.py` in its own CI job; every PR builds every target and uploads it (`R04`,
-`pr-run-mode = "upload"`); one crate is releasable and it is the binary (`R06`); the documented install
+`tools/gen_shell_artifacts.py` in its own CI job; the six-target matrix is **not** built per PR, and `R04`
+is what keeps it off (`pr-run-mode = "skip"`, `e11.2`) — it is built on dispatch, on a tag, and daily from
+`nightly.yml`; one crate is releasable and it is the binary (`R06`); the documented install
 URL is the baked one (`R09`); the captured plan still describes the config (`R10`); a prerelease cannot
 publish itself as latest (`R12`); and the document still says which steps need a secret (§8, `R17`).
 
@@ -326,7 +348,9 @@ python3 tools/rehearse_installer.py --self-test        # negative controls: the 
 python3 tools/rehearse_installer.py --json             # the ledger row, mechanically
 ```
 
-It runs `dist build --artifacts=global` (plus `cargo build --release` for this machine's triple), copies
+It runs `dist build --artifacts=local --target=<this machine's triple>` and then `dist build
+--artifacts=global` (the triple is named because `dist` reads a bare `--artifacts=local` as "every target
+in `dist-workspace.toml`, on this one machine", and stops when it reaches macOS — `reco-hzr`), copies
 the installers and the local archives into a temporary mirror, runs
 `curl --fail --silent --show-error --proto '=https' --url <mirror>/install.sh --output - | sh` against it
 — the README's one-liner, with only the host changed — into a prefix that cannot touch `$HOME`, and then
@@ -366,9 +390,11 @@ The reason this rehearsal exists as a script and not as prose is the third bulle
 once — it is `ARG0`, `awk` and `tail` finding a marker line (`#{0} …`), with no external parser.
 
 The `.deb` rehearses the same way, one step earlier: `python3 tools/package_release.py --self-test`
-fails loudly on five corruptions of its own inputs, and `dpkg-deb --install --force-all` in a container
-followed by `fathom --version` is the equivalent of the `curl` line for the packager. CI runs the
-self-tests and `dpkg-deb --info --contents`; it does not run `apt install`, and does not pretend to.
+fails loudly on its own negative controls — a stale artefact name in `dist-workspace.toml`, a spec whose
+`%files` list has a relative entry, and one that claims a file nothing staged — and `dpkg-deb --install
+--force-all` in a container followed by `fathom --version` is the equivalent of the `curl` line for the
+packager. CI runs the self-tests and `dpkg-deb --info --contents`; it does not run `apt install`, and
+does not pretend to.
 
 ## 5 Adoption: counting people without watching them
 
@@ -498,7 +524,7 @@ cadence only the author can follow is not a cadence, it is a mood.
 |---|---|---|
 | **weekly, Tuesday** | `0.1.0-alpha.N+1` from `master` | the release job is green; `[Unreleased]` accounts for every commit since the last tag (`tools/gen_changelog.py audit` refuses anything else); the two graphs and the demo checks are green |
 | **on a merged defect a user hit** | a patch, any day | the defect is a row in [the intake register](feedback.md) with a disposition, and the release notes carry its three sentences (§5 of that page) |
-| **at an epic's close** | a minor | the epic's exit criteria are a runnable gate — `tools/epic6_acceptance.py` is the pattern and `tools/epic7_acceptance.py` is the second one, with the rule that a gate whose clauses are prose is not a gate — and the demo is re-recorded, §3 step 6 |
+| **at an epic's close** | a minor | the epic's exit criteria are a runnable gate — `tools/epic6_acceptance.py` is the pattern, `tools/epic7_acceptance.py` is the second one, with the rule that a gate whose clauses are prose is not a gate, and `tools/epic8_acceptance.py` is the third, with the rule that a gate which has never been seen to fail is a print statement (its `--self-test` doctors the corpus and the store and requires each fault to be caught) — and the demo is re-recorded, §3 step 6 |
 | **at 1.0** | the minor that stops the `alpha` suffix | the calibration bars in [false-positive calibration](false-positive-calibration.md) §5 and the two external pipelines this project counts |
 
 Two rules that keep a weekly cut cheap: **nothing waits for a release**, because the cut is Tuesday whether
@@ -523,6 +549,22 @@ python3 tools/gen_changelog.py lint             # which commits are conventional
 python3 tools/gen_changelog.py cut --version 0.1.0-alpha.2   # rename the heading, date it, open a new one
 python3 tools/gen_changelog.py self-test        # two consecutive cuts, in a throwaway repository
 ```
+
+`audit` reads commits, so it needs them: the one job that runs it — `docs + workspace contracts`, the
+contract suite's own job in `.github/workflows/contracts.yml` — checks out with `fetch-depth: 0`, the same
+sentence [the CI-gate page](ci-gate.md) makes about `fathom check`. At actions/checkout's default depth of one
+the audit cannot see the release it is measuring from, and says so as a `C06` naming `fetch-depth: 0` rather
+than dying inside `git log` (`reco-ghao`).
+
+**An entry lands in the commit that is the work, and `audit` is the command that says whether it did.** The
+audit counts commits, not diffs, so a branch that carries the code and postpones the prose is a red build on
+the one job that reports it — the `docs + workspace contracts` job, named in `AGENTS.md` and pinned there by
+`C01` since `e11.3` (`reco-374v.3`), which is where it answers in seconds instead of behind a workspace build
+that had nothing to do with the missing paragraph. It is not the release cut that finds this.
+That is what a leg's worth of CLI feature gates left behind (`reco-kltg`): the change was right, the note was
+never written, and `C03` named the commit on a job that had nothing else to complain about (`reco-0qq9`). So
+run `audit` in the branch, before the pull request: it needs nothing but the history, and a reminder you see
+locally is worth more than the same finding waiting on somebody else's runner.
 
 **Conventional commits, and the house style they have to share a file with.** The header grammar is the usual
 one — `feat(scope)!:` / `fix:` / `perf:` / `refactor:` / `docs:` / `deprecated:` / `removed:` / `security:`,

@@ -1,19 +1,25 @@
 # The timeline
 
-Status: built by `reco-bjo` (stage `e1.6`). Code: `crates/fathom-tui/src/timeline/`.
+Status: built by `reco-bjo` (stage `e1.6`), and home since `e10.1` (`reco-ydek.1`) — the view a start
+lands on, and the host of the four review acts and their audit trail since `e10.2`
+(`reco-ydek.2`, §12 and §13; [ADR-006 §5.1.2](../adr/0006-tui.md)).
+Code: `crates/fathom-tui/src/timeline/`.
 Surface: view `Timeline` (`t`) in `crates/fathom-tui/src/views.rs`, panes `rail` → `card`; the
 state lives in `crates/fathom-tui/src/timeline/mod.rs` (`Timeline`) and is held by `App` next to the
-diff viewer's own state. Bindings: `src/recommender/tui/keymap.py` (the source of truth, generated
+diff viewer's own state, with the acts' rollup the rail's second subject (§13). Bindings:
+`src/recommender/tui/keymap.py` (the source of truth, generated
 into `crates/fathom-tui/src/keymap.rs` and `docs/adr/0006-tui.md` §7).
 
 The timeline is the screen a reviewer arrives at first and returns to whenever they lose the thread:
 *what happened, in what order, and which of it have I not read?* It is a list of episodes — one row per
 episode — with grouping, composable filters, quick jumps, and a details pane about the row under the
 cursor. Everything below follows from the same rule the diff viewer plays by: **the rail never lies and
-never goes quiet.** A row with no author prints `unknown`; a risk nothing could rank prints `?`, and a
-risk the spine did rank prints its number with `w` beside it
-([risk-ranking.md](risk-ranking.md)); a group that is collapsed says how many rows are behind it; a
-rail with nothing loaded names the command that fills it.
+never goes quiet.** A risk nothing could rank prints `?`, and a risk the spine did rank prints its
+number with `w` beside it ([the risk page](risk.md)); a group that is collapsed says how many
+rows are behind it; a rail with nothing loaded names the command that fills it. Attribution is not one of
+the things the rail went quiet *about*: since `e10.4` it prints no `human`/`agent` word at all, in any
+spelling, in any column — the verdict is a datum for `fathom analyze --json` and not a fact to hand a
+reviewer ([ADR-006 §5.1.2 §6](../adr/0006-tui.md)).
 
 ## 1 What it reads, and what it refuses to read
 
@@ -38,12 +44,12 @@ way rows enter, and it is also the way a **re-index** enters — same method, sa
 The batch reaches the shell through `frame::Options::episodes`, which `fathom-cli` fills from the spine
 (`crates/fathom-cli/src/episodes.rs`, the read `reco-glv`'s first P1 asked for): the live episodes,
 newest first, one page of them, with the review markers, the paths each one touched, and the per-file
-rollup the ranking reads. That read needs no delta model — identity, authorship, scale, session/turn
-and review state are rows `e1.3` already writes, and the per-file sums are `git_commit_file` rows —
+rollup the ranking reads. That read needs no delta model — identity, scale, session/turn and review state
+are rows `e1.3` already writes, and the per-file sums are `git_commit_file` rows —
 which is why the rail has rows in an Epic 1 build while `insight::episodes` is still `e2.11`'s to
 answer. What the store cannot say stays `None` and prints `?`, so a filled rail is not a claim that the
 delta model landed: the risk column carries the spine-only ranking's number and its reasons
-([risk-ranking.md](risk-ranking.md)) while the card's `delta` row is still the stated absence (§8). The
+([the risk page](risk.md)) while the card's `delta` row is still the stated absence (§8). The
 toast line at open
 says `500 episodes from index epoch 1 (ready) · index holds 4 000`, because a rail that is merely full
 does not otherwise tell the reviewer how much of the index it was given.
@@ -66,6 +72,14 @@ is passed in the same way (`Options::now`, ADR-002 §4.4): the rail ages every
 row against a `Timestamp` it was handed, never against `now`, which is what makes every golden in
 `tests/golden/timeline/` stable enough to read.
 
+An interactive frame does not freeze at that one read. Held there, a rail ages badly in silence: the
+newest row keeps the age it had when the frame opened, and says so for as long as the reviewer leaves
+it up. So the loop carries the instant forward on the monotonic clock it already holds for the toast
+and the chord timeout (`App::age_clock`, **reco-5oe**) — a monotonic clock is the right instrument for
+an age, because NTP cannot step it backwards and make a row younger, and a laptop that slept cannot
+make an episode younger than it was when the lid closed. A one-frame render — `--plain`, `--json` — is
+exactly that one instant and nothing else, which is what keeps a piped frame reproducible.
+
 An `Episode` carries exactly the fields the rail can name: identity and digests, members, created/last,
 author kind/name/confidence, summary, paths, file/add/del/binary counts, review state, session and turn,
 boundary rule and confidence, an optional risk, and whether the episode is still live. There is no
@@ -75,18 +89,47 @@ where the run handed it no document it prints the verb that would fill the row (
 ## 2 The row, and the six columns it is made of
 
 ```
-▸ e8f1a2 0:12 agent  +412 −90 ●●●●●● ? ⚑
+▸ e8f1a2 0:12  +412 −90 ●●●●●● +7 82 ⚑
 ```
 
 | Column | Source | What it cannot say |
 |---|---|---|
 | `e8f1a2` | `Episode::short_id` | — (never dropped) |
-| `0:12` | `days::relative(now, created)` | a date at narrow widths — the same fact, coarser |
-| `agent` | `AuthorKind` badge: `agent`, `human`, `?` | the `?` **is** the answer: attribution failed, and blank would read as "no author" |
+| `0:12` | `days::relative(now, created)` | a date at narrow widths — the same fact, coarser; `<1m` below a minute, `ahead` for a row the frame has not reached |
 | `+412 −90` | `n_add`/`n_del`, compacted | a rename or a mode change — those are the diff pane's |
 | `●●●●●●` | `Scale::spark`, a log scale over the loaded corpus | a size comparison across epochs; the scale is what *this* rail holds |
-| `?` / `82` | `Episode::risk`, `Some` from the spine-only ranking (`surfaces`, `size`, `deletions`, `breadth`, `author`) and `None` when the read never reached that episode | a number the reviewer can interrogate with `w`, or `?` — never a `0` standing in for "nobody ranked this" |
+| `+7` / `~+7 (4/5)` / `?` | `delta.complexity` — `EpisodeDelta::complexity`, the roll-up `e8.5` put in the document and `fathom-store` computed at the path grain | a line count: it is a **delta**, signed for exactly that reason, and the sparkline cell between it and `−90` is what keeps ADR-007 §10.1's warning from being true of this row. A floor prints its tilde and its denominator; nothing counted prints `?`, never a `0` |
+| `?` / `82` | `Episode::risk`, `Some` from the spine-only ranking (`surfaces`, `complexity`, `size`, `deletions`, `breadth`, `author`) and `None` when the read never reached that episode | a number the reviewer can interrogate with `w`, or `?` — never a `0` standing in for "nobody ranked this" |
 | `⚑` | `ReviewState::glyph`: `⚑ ⚐ ✓ ✔ × z ?`, or `gone` | colour: under `NO_COLOR` the glyph is the whole state, which is why it is the last column to go |
+
+The complexity column is `e8.6` (**reco-l9bz.6**), and it is the sixth in the sense that ADR-006 §5.2 counts
+them, not in the sense that it is the newest thing on the row: the `?` in the risk column and the `?` in
+the complexity column are different unknowns about different things, which is why neither one is allowed
+to be the other. A rail whose episodes carry no complexity block prints no cell at all — "this read never
+looked" is not the same claim as "this file could not be counted", and the second one is what `?` means
+([ADR-007 §7.4](../adr/0007-complexity.md)). When the column is not drawn because the pane is narrow, the
+rail's strip says so out loud rather than leaving the gap to be read as a `?`.
+
+There was a sixth column here, `agent`/`human`/`?` after the age, and `e10.4` (**reco-ydek.4**) deleted it
+rather than narrowed it ([ADR-006 §5.1.2 §6](../adr/0006-tui.md)). The reason was the rung, not the
+reader: an episode with no session arc, no claim trailer and a person-shaped git author string fell
+through to `human` at `0.50`, so the cell was confidently wrong in exactly the cases a reviewer cared
+about — and the `?` that was meant to be the honest bucket was reserved for a *missing* identity, a
+different failure. The datum is untouched: `author_kind`, `author_confidence` and the evidence list are
+still written, still correctable with `fathom attribution correct`, and still shipped by
+`fathom analyze --json` as an `AttributionRef` carrying all three, so a consumer can weigh the claim
+instead of inheriting it. What changed is that no surface prints the verdict where a human reads it.
+
+The age column has four shapes and none of them is a zero (**reco-5oe**): `<1m` below a minute, `h:mm`
+below a day, `2d4h`, then `3mo`. `0:00` was what the `h:mm` arithmetic said at forty seconds, and it
+read as *this hour* about a row that was seconds old — which is the claim the ticket was filed on.
+A row dated ahead of the frame gets `ahead`, and the card's sentence gets *dated ahead of this frame*,
+because an age cannot be negative and the frame must not pretend otherwise; that is clock skew or a
+fixture dated forward, and saying so is the answer, exactly as
+[the glance pane](ambient-mode.md) says `unknown` for a queue it never read.
+
+The column turns on a minute and on nothing finer, and a rail whose rung has already traded the age for
+a date turns on nothing until the day does (ADR-006 §0.1: a draw is for a change somebody can see).
 
 The sparkline is a **log** scale against the largest loaded episode, in six cells, clamped to at least
 one filled cell: a linear scale puts every ordinary 40-line commit at zero cells beside an agent's
@@ -95,24 +138,40 @@ binary prints `bin` rather than a chart of nothing.
 
 ## 3 The column ladder
 
-`Columns::for_width` (ADR-006 §6.3) drops columns in the order the ADR fixes — sparkline, then
-relative time to a date, then author, then the risk *number*, then the risk glyph last of all:
+`Columns::for_width` (ADR-006 §6.3) drops columns in the order the ADR fixes — complexity Δ, then the
+sparkline, then relative time to a date, then the risk *number*, then the risk glyph last of all. There is
+no author rung any more: `e10.4` deleted the cell, and the six columns it cost were spent on the
+thresholds rather than on new content. Every rung above the floor moved down by what the cell cost —
+40→34 for the full row, 34→28, 32→26 — and the floor itself did not move, because ADR-006 §3 says where a
+row stops being a row and one ticket's tidiness is not a reason to move a line another ticket is standing
+on.
+
+`e8.6` then added a rung rather than widening one. A rail between 34 and 37 columns reads `no complexity Δ`
+and draws exactly what it drew before, which is the honest shape of the trade: the new column pays for its
+own three cells instead of taxing every row that has no figure to draw. And it is the only honest shape for
+a second reason — below the sparkline rung there is no cell between `−90` and `+7`, and a bare `+7` after
+`+412 −90` reads as a third line count, which is the misreading ADR-007 §10.1 names this column as only
+being allowed to exist when it is *apart* from the size columns. So the rail sells the new column before it
+sells the separator that makes the new column legible.
 
 | Pane columns | Rung | Row |
 |---:|---|---|
-| ≥ 40 | all six columns | `▸ e8f1a2 0:12 agent +412 −90 ●●●●●● 82 ⚑` |
-| ≥ 34 | no sparkline | `▸ e8f1a2 0:12 agent +412 −90 82 ⚑` |
-| ≥ 32 | date instead of age | `▸ e8f1a2 14 Oct agent +412 −90 82 ⚑` |
-| ≥ 27 | no author | `▸ e8f1a2 14 Oct +412 −90 82 ⚑` |
+| ≥ 37 | all six columns | `▸ e8f1a2 0:12 +412 −90 ●●●●●● +7 82 ⚑` |
+| ≥ 34 | no complexity Δ | `▸ e8f1a2 0:12 +412 −90 ●●●●●● 82 ⚑` |
+| ≥ 28 | no sparkline | `▸ e8f1a2 0:12 +412 −90 82 ⚑` |
+| ≥ 26 | date instead of age | `▸ e8f1a2 14 Oct +412 −90 82 ⚑` |
 | ≥ 22 | no risk number | `▸ e8f1a2 14 Oct +412 −90 ⚑` |
 | below | id and state only | `▸ e8f1a2 14 Oct ⚑` |
 
 Then a **fit rule**, because the ladder's thresholds cannot promise arithmetic for every terminal: if a
-built row is still wider than its pane, the risk cell goes, then the change size — never the identity
-and never the state glyph (`render::episode_line`). The ADR's promise is that the *glyph* is the last
-cell standing; a row that kept a risk number and clipped the glyph would be keeping the more decorative
-of the two. `tests/golden/timeline/ladder.txt` prints every rung over one corpus, widths 42 down to 18,
-so a rung that comes back into existence at a narrower width is visible in a diff.
+built row is still wider than its pane, the cells go in the same priority order the rungs do — the
+complexity coverage ` (4/5)`, then the complexity Δ, then the risk cell, then the change size — and never
+the identity and never the state glyph (`render::episode_line`). The ADR's promise is that the *glyph* is
+the last cell standing; a row that kept a risk number and clipped the glyph would be keeping the more
+decorative of the two. And a row that lost the Δ says so in the strip, because a column that vanished
+silently is a column a reviewer will read as an unknown. `tests/golden/timeline/ladder.txt` prints every
+rung over one corpus, widths 42 down to 18, so a rung that comes back into existence at a narrower width is
+visible in a diff.
 
 ## 4 Grouping, and what a collapsed group must say
 
@@ -139,21 +198,29 @@ content is deliberately off screen, which is exactly why it is annotated.
 
 ## 5 Filters
 
-Seven dimensions, and the rule is the store's rule: **OR inside a dimension, AND across them**, so the
+Six dimensions, and the rule is the store's rule: **OR inside a dimension, AND across them**, so the
 same filter means the same rows in the rail and in an `EpisodeQuery` (`filter::Filter::matches` is
 written against the same semantics, and `timeline_behaviour.rs` cross-checks the composition against
 the model rather than against the rail's own arithmetic).
 
 | Dimension | Values | Notes |
 |---|---|---|
-| `author` | names, with counts | multi-valued; `unknown` is a value |
-| `kind` | `agent`, `human`, `unknown` | multi-valued |
+| `author` | names, with counts | multi-valued; git's **name**, recorded at commit time — not the retired author-*kind* verdict, which is not a filter any more (below) |
 | `state` | `unread`, `read`, `accepted`, `refused`, `dismissed`, `flagged`, `snoozed` | `read` means *opened* — read or any verdict — which is the store's rule, not a shortcut |
 | `area` | a path fragment, facet-suggested | matched case-insensitively against every path, so `tests` finds `tests/test_epoch.rs` |
 | `since`, `until` | `2026-10-14`, `today`, `yesterday`, `week`, `7d`, `2w`, `month`, `year`, `any` | typed spans resolve to a **bound**, not a suggestion: `7d` becomes the start of the day seven days back and does not move as the frame redraws |
 | `group` | `day`, `session`, `none` | the view option, editable here because the surface that edits filters is where a reviewer expects it |
 
-Facets (`Facets::of`) are computed from the loaded rows in one pass: authors, kinds, path areas up to
+There is no `kind=` dimension, and it went in the same commit as the badge for the same reason
+([ADR-006 §5.1.2 §6b](../adr/0006-tui.md)): a rail filter cannot carry a confidence, so offering
+`agent`/`human`/`unknown` in the `F` editor meant asserting the verdict in the one surface that had
+neither confidence nor evidence beside it — and a rail reporting 300 rows under such a filter asserts that
+300 *is* the number of human-authored episodes, which the rung that answers `human` because nothing said
+otherwise cannot support. The token the epic did not touch survives: `author=` matches a git name, which
+is a fact git states. (`fathom episodes --kind` survives too, on the CLI, where the rows ship their
+uncertainty beside the claim.)
+
+Facets (`Facets::of`) are computed from the loaded rows in one pass: authors, path areas up to
 three segments, and the states present, each with a count, each capped at `FACET_CAP` values so a
 repository with 900 authors does not produce a chooser nobody can scroll. A capped list says it is
 capped; typing a value that is not on the list is always allowed.
@@ -175,17 +242,45 @@ contract: the keys, the damage rules, two TUIs in one repository, `--fresh`. Thr
 `ui_state_all("timeline.")`:
 
 ```
-timeline.filter     = author=pi&author=stahl;kind=agent;state=unread;area=src/store;since=…;group=session
+timeline.filter     = author=pi&author=stahl;state=unread;area=src/store;since=…;group=session
 timeline.selection  = e8f1a2…            (the id, first tier of §6)
 timeline.members    = e8f1a2:0,e8f1a2:1  (up to SESSION_MAX, the tier-3 ride)
 ```
 
 `Filter::decode` ignores keys it does not know and defaults what is missing, so a filter written by a
-newer fathom degrades to the parts this one understands instead of refusing to start. Restoring applies
+newer fathom degrades to the parts this one understands instead of refusing to start. A key this build
+*used* to know is a different case, and it does not go silently: a store written when `kind=` was a
+dimension still names a constraint the reviewer set, so `filter::retired_keys` turns it into a sentence on
+the resume toast — `session restored — filter state=unread, cursor on 40c9b3; stored ``kind`` filter —
+the author-kind filter is retired …` — because a rail that quietly stopped honouring a filter is a rail
+lying about what it is showing. Restoring applies
 the filter first (it decides which rows exist), then the cursor, then reports what actually came back —
 "session restored — filter state=unread, cursor on `40c9b3`", or "`e8f1a2` is not in this index — it
 moved or left, and the cursor is at the top instead". A resume that guessed silently is worse than one
 that admits it found nothing.
+
+### The strip, and the number that leads it
+
+One line under the rail, built by `Rail::strip`, and it leads with the open-work count since `e10.2`
+(ADR-006 §5.1.2 §3 part 2) rather than trailing it:
+
+```text
+4 unread · 1 snoozed · filter: area=any state=any group=day (F edits) · 10 of 10
+```
+
+| Part | Said when | Why it sits where it sits |
+|---|---|---|
+| `4 unread` | always, over the rows on screen | the number the four acts move (§12). The strip is sold from the right at narrow panes, so a count at the end of the line is a count nobody at the rail's 42 columns ever sees — and "the strip's unread count drops by one" is worth nothing as a sentence about a hidden part |
+| `1 snoozed` | only while it is true | a snoozed row is neither unread nor decided; `z` is what puts rows in that state (§12) |
+| `filter: …` | always, and `F edits` is inside it | a live filter is a claim about the *set* and the thing most worth undoing — but it is a claim about the same 10 rows the next two parts count |
+| `10 of 10` | always | what the filter kept over what the rail holds; beside a longer page this is where `index holds 3 412 (index epoch 41)` joins it (§9) |
+| `3 opened, not marked` | only while it is true | rows that read `unread` in the ledger and were opened anyway — `opened` is not `marked` (`e1.11`) |
+
+Both counts are counted when the order is built, never at draw time, and an act re-counts them where it
+stands: a strip that costs O(episodes) per frame is what `timeline_bench` exists to catch (§10), and a
+strip that said `4 unread` about a row the reviewer had just signed off would be the rail lying about a
+decision (§12). The same rule makes an act re-filter where it stands when a filter is in force — a
+`state=unread` rail that went on listing a row that no longer matches is the same lie wearing a filter.
 
 ## 6 Selection follows the episode
 
@@ -238,18 +333,24 @@ cannot fill:
 
 ```
 delta    no document was handed to this card — `fathom analyze <episode>` is the one source
-risk     spine-1 82 = surfaces 50 + author 8 + size 24 · rank 1 of 21
+risk     ~ attention spine-3 74 = surfaces 50 + complexity 12 + size 12
 ```
 
 That is the whole design constraint in two lines: a pane whose data has not been handed to it says which
 verb produces it, rather than rendering a confident `0` or an empty box. The `risk` row
-is the one that changed: it is a spine ranking rather than `e4.4`'s findings, so it prints its model
+is the one that changed twice: it is a spine ranking rather than `e4.4`'s findings, so it prints its model
 name, its vector and its own ceiling, and `w` opens all of it
-([risk-ranking.md](risk-ranking.md)). What it *can*
-say it says precisely: commit count, author kind with its confidence, age, review state, the timezone
+([the risk page](risk.md)). `e10.3` then took `rank 1 of 21` off the end of it — a place in a set
+nothing ranks any more is not a fact (ADR-006 §5.1.2 §5) — and `e10.5` changed what the vector adds up, so
+the row names `spine-3` and its five components rather than `spine-2`'s six. What it *can*
+say it says precisely: commit count, age, review state, the timezone
 the day bounds use, where the change landed (top path prefixes with file counts), the boundary rule and
 its confidence labelled "a rule, not a fact" (ADR-003 §4.7), the session and turn, and the member SHAs
-the review is keyed to — truncated with `…` and `+N more`, never mid-token.
+the review is keyed to — truncated with `…` and `+N more`, never mid-token. The attribution word used to
+close that row, as `4 commits · agent 0.94 · 0:12 ago · unread`; `e10.4` struck the word and its
+confidence together ([ADR-006 §5.1.2 §6a](../adr/0006-tui.md)). A reader handed a bare conclusion cannot
+argue with it, and the row had no room for what would make one arguable — the rung, the evidence, the
+reason a label was refused. The card says nothing about attribution now, rather than saying less of it.
 
 ## 9 Empty, filtered and partial states
 
@@ -258,14 +359,14 @@ is not an answer (ADR-001 §7.2, ADR-006 §6):
 
 | Situation | What the rail prints |
 |---|---|
-| there is no index | `no index here yet — run \`fathom index\` here, then reopen fathom` |
-| the index is finished and this pane is the queue | `index epoch 1 ready · 500 commits · 412 eps — \`t\` opens the timeline, which lists them as the index knows them; \`fathom show <episode>\` prints one in full` |
-| the index is finished and holds no episodes | `index epoch 1 ready · 0 commits · 0 eps — the index has nothing to list; \`fathom doctor\` says whether that is the repository or the run` |
-| the epoch is still `building` | `index epoch 2 building · 500 commits · 0 eps — the epoch is still being written — wait for it; if a rebuild died halfway, \`fathom index --rebuild\` starts a clean one` |
-| the store would not open | `the index would not open — \`fathom doctor\` says what is wrong` |
+| there is no index | ``no index here yet — run `fathom index` here, then reopen fathom`` |
+| the index is finished and this pane is the queue | ``index epoch 1 ready · 500 commits · 412 eps — `t` opens the timeline, which lists them as the index knows them; `fathom show <episode>` prints one in full`` |
+| the index is finished and holds no episodes | ``index epoch 1 ready · 0 commits · 0 eps — the index has nothing to list; `fathom doctor` says whether that is the repository or the run`` |
+| the epoch is still `building` | ``index epoch 2 building · 500 commits · 0 eps — the epoch is still being written — wait for it; if a rebuild died halfway, `fathom index --rebuild` starts a clean one`` |
+| the store would not open | ``the index would not open — `fathom doctor` says what is wrong`` |
 | the caller said nothing (a test frame, an embedding shell) | `nothing loaded yet — the shell was handed no index state` |
 | the index answered nothing | whatever `Batch::why_empty` said, verbatim |
-| the filter selects nothing | `the filter selects nothing — \`F\` edits it, \`filter clear\` is in the palette` |
+| the filter selects nothing | ``the filter selects nothing — `F` edits it, `filter clear` is in the palette`` |
 | a page of a bigger index | strip: `500 of 3 412 · index holds 3 412 (index epoch 41)` |
 | the selection left the index | `…left the index`, cursor at the top |
 | the card has nothing selected | `no episode selected`, then the two keys that would |
@@ -311,6 +412,11 @@ deletion). It is shared so a fixture cannot be tuned to make one file pass.
   author AND area AND unread, the store's OR-inside/AND-across rule, date bounds, session round-trip,
   every relink tier, the column ladder, grouping and collapse, every motion key, the `F` surface, and the
   four registry entries this view owns.
+* `timeline_acts.rs` — the four review acts taken from the rail (`e10.2`, §12 and §13): the ledger write
+  that comes first, the refusing ledger that changes nothing, the run with no ledger that says so, the
+  cursor that does not move, the counts the acts move, and `r`'s two states. Three of them are
+  `queue_triage.rs`'s, moved rather than rewritten green, and the timed 100-episode budget is `e4.5`'s bar
+  re-hosted with the filter and motion in it.
 * `timeline_golden.rs` — pinned frames and panes: the ADR's own 80×24 picture, the view's documented
   minimum 61×16, each degenerate state, and `ladder.txt`. Re-bake with
   `FATHOM_GOLDEN=write cargo test -p fathom-tui --test timeline_golden`, then read the diff.
@@ -320,11 +426,71 @@ deletion). It is shared so a fixture cannot be tuned to make one file pass.
   that "a fixture handed to the view" is never mistaken for "the binary can fill a rail" — the check
   the walkthrough's first P1 asked for.
 
-## 12 Deliberately not here yet
+## 12 The four acts, taken from the rail
+
+`x` accepts, `f` flags, `-` dismisses with a reason from the closed vocabulary, `z` snoozes until a
+condition (`e4.5`, `reco-wsj`). All four are `global` bindings and always were, and `App::act_target`
+already addressed the rail's cursor row; what `e10.2` (`reco-ydek.2`) moved is the **host of the
+feedback** — the queue's worklist used to be the pane that showed an act happening, and the rail is now
+(ADR-006 §5.1.2 §2). Three things had to be true of the rail for that to be a move rather than a loss:
+
+* **The row says it, in the same frame.** The state column is the confirmation: `⚑`→`✔` for `x`, `⚐` for
+  `f`, `×` for `-`, `z` for `z`. It is the one cell the ladder promises never to drop, which is why a
+  one-cell change is proof and not a thin excuse for it. The strip's open-work count moves beside it (§5).
+* **The cursor stays put.** A queue's whole content is undispositioned work, so `x` advancing was the queue
+  being useful; a chronology's cursor is a *place in time*, and a keystroke that jumped forward would break
+  the next keystroke — which is `d` on *that* episode nine times in ten. The reviewer working a run of rows
+  uses the filter that already exists (`F` → `state=unread`, and then an accepted row leaves the filter
+  because the filter reads the marker) or walks with `j`. `timeline_acts.rs`
+  (`an_act_leaves_the_cursor_on_the_row_it_just_changed`) pins all three acts to one row.
+* **Nothing is marked until it is written.** `Ledger::record` runs before any shell state changes and
+  `State::commit` returns where the act landed — `Landed::Recorded`, `Landed::InMemory`, `Landed::Refused`.
+  A refusal changes nothing anywhere: not the row, not the counts, not the cursor, and the toast says the
+  ledger's own words with `NOT written` in front of it. `None` (no ledger at all — a `--plain` frame over an
+  unindexed directory, a test, an embedder) is the third answer and not a failure: the act is taken, the
+  row marks, and both the toast and §13's strip say out loud that nothing was written this run. That
+  three-way answer is why the rule could move to the rail whole; a bare "was it written?" flag marked
+  nothing on a rail, because the queue had been hiding the difference behind its own `decided` map.
+
+The pickers are the acts' other half and their host moved with them: `-`, `z` and `f`'s note draw their
+chooser in the rail pane, about the row the rail's cursor is on, and the picker's own cursor — not the
+rail's — names the reason that gets written.
+
+## 13 The rail's other subject: what was skipped, and why
+
+`r` (`review.retrospect`, `global` since `e10.2`; it was `queue.retrospect` in the `queue` mode) puts the
+timeline on screen from wherever the reviewer was standing and has the rail list *acts* instead of
+episodes: what was dismissed, by whom, under which reason, over what coverage denominator. `r` again puts
+the episodes back; `<Esc>` pops exactly one thing (§R2), which is this listing and nothing else.
+
+What it prints is `fathom_analyze::review::retrospect`'s rollup, unchanged (the module was `queue::`
+until `e10.3` deleted the pane it was named after), and the honesty rule came with
+it verbatim: an unreadable ledger prints its complaint and the *nothing dismissed* line is withheld,
+because silence about the ledger plus a clean sheet is the lie a reviewer would act on. The strip is
+replaced wholesale while the rail is on this subject — `ledger: 41 acts · 12 dismissed · 3 reasons ·
+Dana Stahl`, or `no ledger — nothing written this run` — because a footer describing the filter would be
+a strip about a list the pane is not showing.
+
+This is not the queue back under another name: the queue showed one set of episodes twice under two
+orderings, and this is a different subject with different rows, a different count and its own denominator.
+The deep form is still the verbs' — `fathom review list --state dismissed`, `fathom review status`, `fathom
+review verify` — and the ledger itself did not change at all ([review ledger](review-ledger.md)).
+
+## 14 Deliberately not here yet
+
+`e10.1` retired the queue as the home view and `e10.3` deleted the pane. The risk number in the rail and
+in the card is still the spine-only ranking, and its published ceiling is
+[the risk page](risk.md)'s `queue-1` record — which since `e10.1` is the record of a **retired** ordering and
+no longer describes what the product ranks by. `e10.4` took the `human`/`agent` badge out of this view's
+row, out of the card's header and out of the `F` editor, and spent the six freed cells on the ladder's
+thresholds instead of on new content ([ADR-006 §5.1.2
+§6](../adr/0006-tui.md)). `e10.5` then changed what the risk number on a row is computed from — the
+`author` component is gone from the spine, so §8's line no longer spends points on who wrote the change,
+and the model name beside the figure reads `spine-3`.
 
 `delta.*` and `findings[]` rows in the card (`e2.11`, `e4.3`); the *finding-shaped* risk number the
-queue now orders by — what it orders by is the spine-only ranking and its stated ceiling
-([risk-ranking.md](risk-ranking.md)), which `e4.4` replaces the inputs of, while `e4.5` replaces the
+queue once ordered by — what it orders by is the spine-only ranking and its stated ceiling
+([the risk page](risk.md)), which `e4.4` replaces the inputs of, while `e4.5` replaces the
 ordering function itself with risk × staleness × blast radius (`e1.8`'s worklist); the queue's own
 selection history and per-view scroll (one cursor and one filter are what the session carries,
 which is the honest amount); the delta model's own read —
@@ -334,3 +500,13 @@ bigger than a page; saved, named filters and
 filter history (`e1.11`'s session state stores one filter, which is the honest amount); `gone` derived
 from the store's dead-episode markers rather than handed in per row (`e1.3`'s ledger edge); colour-blind
 verification of the glyph set (`e5.6`).
+
+`e10.2` left its own list behind, and these are the parts of it that are *decisions* rather than unfinished
+work: the queue's pane was still on screen when `e10.2` wrote this, and still owned `s`, `J`/`K`, its run
+mode and its flip until `e10.3` deleted it — so a disposition now reads its marker in one place, and the
+rail's act listing
+is a **read** of the ledger and nothing else — retracting, reclassifying and bulk-applying stay the verbs'
+(`fathom review retract`, `fathom review apply --all`, `fathom review verify`), because a rail that could
+edit an act would be a second place a decision could change and the ledger is one place on purpose; and the
+`-`/`z`/`f` chooser is `e4.5`'s, re-hosted unchanged into the rail pane — it is not `F`'s filter editor and
+never was, and the two surfaces did not merge.

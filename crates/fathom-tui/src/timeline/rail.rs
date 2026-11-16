@@ -158,6 +158,13 @@ pub struct Rail {
     rows_built: Cell<usize>,
     /// Characters the last frame built, for the bench.
     chars_built: Cell<usize>,
+    /// Why the complexity column was not drawn in the last frame, if it was not (`e8.6`).
+    ///
+    /// ADR-007 §5.3's second sentence: a dropped column must not be confusable with an unknown figure,
+    /// so the strip says the column is not drawn rather than letting a missing cell read as `?`. Set
+    /// while the rows are drawn — the frame paints bodies before footers, so the note is always the
+    /// current frame's — and read by [`Rail::strip`].
+    complexity_absent: Cell<Option<&'static str>>,
     /// Collapsed groups.
     collapsed: BTreeSet<GroupKey>,
     /// Episodes this reviewer opened — in this session, or in one it resumed (`e1.11`).
@@ -187,16 +194,19 @@ pub struct Rail {
     kept: usize,
     /// The order is stale and will be rebuilt before anything reads it.
     dirty: bool,
-    /// The rows on screen in queue order — episode indices, riskiest first (`reco-c05`). Built here
-    /// for the same reason the display order is: `rebuild()` is the only place the rail is
-    /// O(episodes), and a worklist that re-ranked on every frame would cost what the index costs
-    /// (which is what `timeline_bench` measures).
-    ranked: Vec<usize>,
+    /// The rows on screen, in the rail's own order — chronology, newest first inside each group
+    /// (ADR-006 §5.1.2 §3 part 1). Built here for the same reason the display order is: `rebuild()` is
+    /// the only place the rail is O(episodes). It used to be sorted riskiest-first, because the deleted
+    /// Queue view drew a window of it; what the counts need is the *set*, and a chronology is a set too.
+    listed: Vec<usize>,
     /// How many on-screen rows carry a ranking, and how many are unread. Both are printed every
-    /// frame — the strip's `N ranked of M held` and the status line's `queue N open` — so neither
+    /// frame — the strip's risk model clause and the status line's `N unread` — so neither
     /// may be a pass over the index at draw time.
     risked: usize,
     unread: usize,
+    /// How many on-screen rows a snooze is holding (`e10.2`): the strip says it only while it is
+    /// true, but the keystroke that makes it true must not have to wait for a rebuild to be seen.
+    snoozed: usize,
     /// The last re-attach: the tier that fired, and its words.
     pub reattached: Option<(u8, String)>,
     /// The counters.
@@ -213,6 +223,7 @@ impl Default for Rail {
             visible: Cell::new(1),
             rows_built: Cell::new(0),
             chars_built: Cell::new(0),
+            complexity_absent: Cell::new(None),
             collapsed: BTreeSet::new(),
             seen: BTreeSet::new(),
             anchor: None,
@@ -229,9 +240,10 @@ impl Default for Rail {
             why_empty: None,
             now: Timestamp::UNIX_EPOCH,
             kept: 0,
-            ranked: Vec::new(),
+            listed: Vec::new(),
             risked: 0,
             unread: 0,
+            snoozed: 0,
             dirty: true,
             reattached: None,
             stats: RailStats::default(),
@@ -326,8 +338,16 @@ impl Rail {
     }
 
     /// Tell the rail what instant to age itself against.
-    pub fn set_now(&mut self, now: Timestamp) {
+    ///
+    /// Returns whether the instant crossed a minute mark, which is the frame loop's whole question
+    /// when it decides to draw (`reco-5oe`): every age in [`days::relative`] turns on a minute and on
+    /// nothing finer, so an instant inside the same minute is a fact nobody can see and a draw nobody
+    /// can notice. Whether an age is what this rail is *printing* is a rung question, and the caller
+    /// who owns the layout answers it ([`crate::app::App::age_clock`]).
+    pub fn set_now(&mut self, now: Timestamp) -> bool {
+        let seen = days::minute_of(self.now);
         self.now = now;
+        days::minute_of(now) != seen
     }
 
     /// The instant the rail is drawn for.
@@ -372,11 +392,49 @@ impl Rail {
     /// difference between a badge that means "a reviewer decided this" and one that means "a key was
     /// pressed". Returns whether the row was found, so the caller can say which it did.
     pub fn set_state(&mut self, id: &str, state: ReviewState) -> bool {
-        if let Some(row) = self.episodes.iter_mut().find(|episode| episode.id == id) {
-            row.state = state;
+        let Some(row) = self.episodes.iter_mut().find(|episode| episode.id == id) else {
+            return false;
+        };
+        row.state = state;
+        // Two numbers and one order depend on this marker. The counts are the strip's `N unread` and
+        // `N snoozed` — the numbers an act is supposed to move in the same frame (ADR-006 §5.1.2 §2: the
+        // glyph *and* the count are the confirmation) — and a live filter may read the marker too
+        // (`state=unread` is a filter over review state, not over time). So an act with a filter in force
+        // re-filters where it stands: the draw paths take `&self` and cannot rebuild for themselves, and a
+        // `state=unread` rail that went on displaying a row the reviewer had just signed off would be the
+        // rail lying about a decision. Re-ordering never happens: the row keeps its place in the
+        // chronology, and the cursor goes with it.
+        if self.filter.active() > 0 {
+            self.dirty = true;
+            self.rebuild();
             return true;
         }
-        false
+        let on_screen = self.order();
+        let (risked, unread, snoozed) = self.count_over(&on_screen);
+        self.risked = risked;
+        self.unread = unread;
+        self.snoozed = snoozed;
+        true
+    }
+
+    /// `(ranked, unread, snoozed)` over the given rows — the three numbers the strip and the status
+    /// line print, counted once here so the rebuild and an act cannot give different answers.
+    #[must_use]
+    fn count_over(&self, on_screen: &[usize]) -> (usize, usize, usize) {
+        (
+            on_screen
+                .iter()
+                .filter(|index| self.episodes[**index].risk().is_some())
+                .count(),
+            on_screen
+                .iter()
+                .filter(|index| self.episodes[**index].is_unread())
+                .count(),
+            on_screen
+                .iter()
+                .filter(|index| self.episodes[**index].state == ReviewState::Snoozed)
+                .count(),
+        )
     }
 
     /// The rows on screen as episode indices, collapsed groups excluded — what a test counts when it
@@ -386,11 +444,11 @@ impl Rail {
         self.slots.iter().filter_map(Slot::index).collect()
     }
 
-    /// The on-screen rows in queue order: episode indices, riskiest first, unranked ones last
-    /// (`reco-c05`). A slice, because the worklist draws a window of it and must not rebuild one.
+    /// The on-screen rows in the rail's order: episode indices, newest first, collapsed groups
+    /// excluded. A slice, because the counts are taken over it and a frame must not rebuild one.
     #[must_use]
-    pub fn ranked(&self) -> &[usize] {
-        &self.ranked
+    pub fn listed(&self) -> &[usize] {
+        &self.listed
     }
 
     /// How many on-screen rows carry a ranking, and how many are still unread: the strip's and the
@@ -469,22 +527,14 @@ impl Rail {
         self.stats.slots = slots.len();
         self.stats.retained_bytes = self.episodes.iter().map(Episode::retained_bytes).sum();
         self.slots = slots;
-        // The queue's order over the same rows the rail is showing, so a filter is one question
-        // answered once: the worklist ranks what the filter kept (`reco-c05`).
+        // The rows the pane is showing, in the order it shows them. The counts below and the status
+        // line's open-work figure are taken over this set, so a filter is one question answered once.
         let on_screen: Vec<usize> = self.slots.iter().filter_map(Slot::index).collect();
-        self.risked = on_screen
-            .iter()
-            .filter(|index| self.episodes[**index].risk().is_some())
-            .count();
-        self.unread = on_screen
-            .iter()
-            .filter(|index| self.episodes[**index].is_unread())
-            .count();
-        let mut ranked = on_screen;
-        ranked.sort_by(|left, right| {
-            crate::worklist::precede(&self.episodes[*left], &self.episodes[*right])
-        });
-        self.ranked = ranked;
+        let (risked, unread, snoozed) = self.count_over(&on_screen);
+        self.risked = risked;
+        self.unread = unread;
+        self.snoozed = snoozed;
+        self.listed = on_screen;
         self.cursor = self.cursor.min(self.slots.len().saturating_sub(1));
         self.clamp_offset();
     }
@@ -834,7 +884,14 @@ impl Rail {
         format!("nothing on or before {}", days::day_label(self.now))
     }
 
-    /// The strip under the rail: the filter, what survived it, and how much of the index is loaded.
+    /// The strip under the rail: the order, how much of it is still asking to be read, the filter, and
+    /// where the printed score came from.
+    ///
+    /// The four parts are ADR-006 §5.1.2 §3 and they are in decreasing priority, because the strip is
+    /// sold from the right: `order: newest first · 7 unread · filter: state=unread (F edits) · risk
+    /// spine-3`, and the last thing standing at the rail's minimum is the order. The order clause is the
+    /// rule the deleted Queue view's strip was the first place that obeyed — *a list names the order it is
+    /// in, in words the renderer implements* — and it survives the pane that carried it.
     ///
     /// The "index holds N" half matters: a rail that was given a page and shows only it must not let
     /// the reviewer conclude the repository has been quiet (ADR-001 §7.2).
@@ -842,9 +899,31 @@ impl Rail {
     pub fn strip(&self) -> String {
         let mut out = self.filter.summary();
         if self.episodes.is_empty() {
+            // No open-work count on an empty rail: `0 unread` beside a rail that is empty because the
+            // index was empty and `0 unread` beside one the filter emptied are different facts, and the
+            // sentence printed in place of the rows already says which it is.
             out.push_str(&format!(" · {}", self.empty_words()));
-            return out;
+            return format!("{} · {}", self.order_words(), out);
         }
+        // The open-work count leads everything but the order (`e10.2`, ADR-006 §5.1.2 §3 part 2), for two
+        // reasons that are one reason: it is the number the four acts are supposed to move in the same
+        // frame the glyph changes — `accept_writes_before_it_moves` was the queue's proof, and a rail that
+        // only moves one cell proves less than a row leaving a list did — and the strip is sold from the
+        // right, so a part at the end of this line is a part the reviewer at the rail's 42 columns never
+        // sees. The count the acts move has to be a count that survives the pane.
+        out = format!(
+            "{} unread",
+            format_thousands(u64::try_from(self.unread).unwrap_or(u64::MAX))
+        );
+        // Said only when it is true, like every other conditional part of this line: a snoozed row is
+        // neither unread nor decided, and `z` is the act that puts rows into that state.
+        if self.snoozed > 0 {
+            out.push_str(&format!(
+                " · {} snoozed",
+                format_thousands(u64::try_from(self.snoozed).unwrap_or(u64::MAX))
+            ));
+        }
+        out.push_str(&format!(" · {}", self.filter.summary()));
         out.push_str(&format!(
             " · {} of {}",
             format_thousands(u64::try_from(self.kept).unwrap_or(u64::MAX)),
@@ -872,7 +951,43 @@ impl Rail {
                 format_thousands(u64::try_from(opened).unwrap_or(u64::MAX))
             ));
         }
-        out
+        // Said only when it is true, and said last: every part of this line is sold from the right, so a
+        // clause about what a *narrow* pane could not draw belongs at the end of a line a narrow pane is
+        // going to clip anyway. ADR-007 §5.3 makes it mandatory — a column the ladder dropped and a
+        // figure that could not be read are two claims, and silence is not allowed to spell either one.
+        if let Some(why) = self.complexity_absent.get() {
+            out.push_str(&format!(" · {why}"));
+        }
+        // Part 4 of §5.1.2 §3, and last for the same reason: a score with no named model beside it is the
+        // recommendation ADR-001 §7.9 forbids, so the rows' number gets a citation — but only while the
+        // rows print a number at all. A model name beside no figure is a citation to nothing.
+        if self.risked > 0
+            && let Some(model) = self.risk_model()
+        {
+            out.push_str(&format!(" · risk {model}"));
+        }
+        format!("{} · {}", self.order_words(), out)
+    }
+
+    /// Part 1 of §5.1.2 §3: the order, in the words the renderer implements. The rail groups by day (or
+    /// by session under `group=session`) and prints newest first inside each group, and says exactly that;
+    /// a strip that named an order the code did not would be worse than no strip, which is the entire
+    /// argument for having one.
+    #[must_use]
+    fn order_words(&self) -> String {
+        "order: newest first".to_owned()
+    }
+
+    /// The risk model name the rows print, read off the rows rather than from a constant the shell could
+    /// be wrong about.
+    #[must_use]
+    fn risk_model(&self) -> Option<&str> {
+        self.listed
+            .iter()
+            .filter_map(|index| self.episodes.get(*index))
+            .filter_map(Episode::risk)
+            .find(|risk| !risk.model.is_empty())
+            .map(|risk| risk.model.as_str())
     }
 
     /// The windowed, drawn rows: exactly `visible` lines, each `width` cells.
@@ -890,6 +1005,8 @@ impl Rail {
             // to do — `fathom index`, or `F` to widen the filter — and it fills the pane with that
             // rather than with rows nobody can read.
             let out = render::empty_lines(&self.empty_words(), width, visible);
+            // No rows, so no column was dropped: the emptiness is already stated, twice over.
+            self.complexity_absent.set(None);
             self.rows_built.set(out.len());
             self.chars_built
                 .set(out.iter().map(StyledLine::cells).sum());
@@ -897,6 +1014,14 @@ impl Rail {
         }
         let mut out: Vec<StyledLine> = Vec::with_capacity(visible);
         let mut chars = 0_usize;
+        // Whether the complexity column went out of a row that was drawn too wide for the pane. The
+        // rung rule is decided before any row is built; this is the other way the column can be absent,
+        // and both belong in the footer for the same reason (§5.3).
+        let mut surrendered = false;
+        // Whether there was anything to draw at all. A read that produced no complexity block says
+        // nothing about complexity, and the rail must not say something (`e8.3`: absence is not `?`) —
+        // so the footer stays quiet instead of announcing a column nobody claimed.
+        let mut offered = false;
         for row in 0..visible {
             let index = offset + row;
             let Some(slot) = self.slots.get(index) else {
@@ -907,18 +1032,32 @@ impl Rail {
             let line = match slot {
                 Slot::Group { label, .. } => render::group_line(label, cursor),
                 Slot::Hidden { count } => render::hidden_line(*count, cursor),
-                Slot::Episode { index } => render::episode_line(
-                    &self.episodes[*index],
-                    self.now,
-                    self.scale,
-                    columns,
-                    cursor,
-                    width,
-                ),
+                Slot::Episode { index } => {
+                    let row = render::episode_line(
+                        &self.episodes[*index],
+                        self.now,
+                        self.scale,
+                        columns,
+                        cursor,
+                        width,
+                    );
+                    surrendered |= row.dropped_complexity;
+                    offered |= self.episodes[*index].complexity().is_some();
+                    row.line
+                }
             };
             chars += line.cells();
             out.push(line.padded(width));
         }
+        self.complexity_absent.set(if !offered {
+            None
+        } else if !columns.carries_complexity() {
+            Some("complexity Δ not drawn at this width")
+        } else if surrendered {
+            Some("complexity Δ dropped to fit this row")
+        } else {
+            None
+        });
         self.rows_built.set(out.len());
         self.chars_built.set(chars);
         out
@@ -1125,4 +1264,91 @@ impl Rail {
         let max = self.slots.len().saturating_sub(self.visible.get());
         self.offset = self.offset.min(max);
     }
+}
+
+/// Draw an open chooser — the dismiss reason (`-`) or the snooze condition (`z`) — at the top of the
+/// rail, in place of the rows (`e4.5`).
+///
+/// Drawn in the pane rather than floated over it on purpose: the reviewer is picking a claim *about the
+/// row they can see*, and a modal that hides it while they choose makes the choice worse, not safer.
+/// The rows behind are not gone; `<Esc>` brings them back with the cursor where it was.
+///
+/// It came from the deleted Queue view's worklist module (`e10.3`); what it draws and why it is drawn
+/// in the pane did not change when the pane that hosted the acts did.
+#[must_use]
+pub fn chooser(
+    title: &str,
+    hint: &str,
+    rows: &[(String, String)],
+    cursor: usize,
+    width: usize,
+    height: usize,
+) -> Vec<StyledLine> {
+    use crate::style::Face;
+
+    let mut out: Vec<StyledLine> = Vec::new();
+    out.push(StyledLine::with_face(title, Face::Emphasis));
+    for (row, (code, label)) in rows.iter().enumerate() {
+        let mut line = StyledLine::new();
+        line.push(
+            if row == cursor {
+                Face::Emphasis
+            } else {
+                Face::Muted
+            },
+            &format!("{}{:>2} ", if row == cursor { "▸" } else { " " }, row + 1),
+        );
+        line.push(
+            if row == cursor {
+                Face::Text
+            } else {
+                Face::Muted
+            },
+            &format!("{code:<16}"),
+        );
+        line.push(Face::Text, label);
+        out.push(clip(line, width));
+    }
+    out.push(StyledLine::with_face(hint, Face::Faint));
+    while out.len() < height {
+        out.push(StyledLine::plain(""));
+    }
+    out.truncate(height);
+    out.into_iter().map(|line| line.padded(width)).collect()
+}
+
+/// The one-line prompt for a flag's note (`f`), drawn where the rows are for exactly as long as the
+/// reviewer is typing it.
+#[must_use]
+pub fn prompt_line(label: &str, typed: &str, width: usize) -> StyledLine {
+    use crate::style::Face;
+
+    let mut line = StyledLine::new();
+    line.push(Face::Emphasis, label);
+    line.push(Face::Text, typed);
+    line.push(Face::Muted, "▏");
+    line.padded(width)
+}
+
+/// Clip a row to the pane rather than let it break the frame's border, and say so with `…`.
+fn fit_line(text: &str, width: usize) -> String {
+    let chars: Vec<char> = text.chars().collect();
+    if chars.len() <= width {
+        return text.to_owned();
+    }
+    let kept: String = chars[..width.saturating_sub(1)].iter().collect();
+    format!("{}…", kept.trim_end())
+}
+
+/// [`fit_line`] with the faces flattened: rebuilding in the same faces is more work than the pane
+/// needs, because the clipped row is the same sentence and the faces of what got clipped do not change
+/// what is left readable.
+fn clip(line: StyledLine, width: usize) -> StyledLine {
+    use crate::style::Face;
+
+    let text = line.text();
+    if crate::layout::display_width(text) <= width {
+        return line;
+    }
+    StyledLine::with_face(fit_line(text, width), Face::Text)
 }

@@ -9,6 +9,12 @@
 //! `--plain` because a test has no terminal, and `--self-check` for the numbers the acceptance criteria
 //! quote. Nothing reaches into the store to check what the pane said: the pane is the thing under test, so
 //! the pane is what gets read.
+// Two features, both of which the suite needs and `minimal` turns off: every fixture indexes its
+// repository with `fathom index` (a store, ADR-002 §6.2), and the subject is `fathom ambient`, the pane the
+// shell draws (`tui`, §6.1). Without either, the fixture cannot be built and the verb answers
+// `FEATURE_ABSENT` (9). Gated in the spelling `tests/check_verb.rs` and `tests/show_trailers.rs` use.
+#![cfg(feature = "tui")]
+#![cfg(feature = "sqlite-bundled")]
 #![allow(clippy::unwrap_used, clippy::expect_used)] // a test that cannot fail loudly is not a test
 
 use std::io::{BufRead, BufReader, Write};
@@ -19,7 +25,7 @@ use std::time::{Duration, Instant};
 /// The three facts that are always on the pane, plus the reason line, which is labelled by what the
 /// reason *is* — `look now` for a high-risk episode, `waiting` for ordinary work, `caught up` when there
 /// is nothing — so it is matched as a set.
-const PROMISES: [&str; 3] = ["latest", "queue  ", "index  "];
+const PROMISES: [&str; 3] = ["latest", "open   ", "index  "];
 const REASONS: [&str; 7] = [
     "no index",
     "index behind",
@@ -320,7 +326,7 @@ fn a_new_episode_is_on_the_pane_inside_a_second() {
     );
     assert!(
         next["attention"]["kind"].as_str() == Some("high_risk")
-            || next["attention"]["kind"].as_str() == Some("open_queue"),
+            || next["attention"]["kind"].as_str() == Some("open_work"),
         "the reason to look now is named: {next}"
     );
     let _ = child.kill();
@@ -332,13 +338,13 @@ fn a_new_episode_is_on_the_pane_inside_a_second() {
 fn the_first_object_answers_the_questions_the_pane_is_asked() {
     let dir = repository("contract");
     let object = json(&dir, &["--once", "--json", "--no-index"]);
-    assert_eq!(object["contract"].as_str(), Some("fathom.cli.ambient/1"));
+    assert_eq!(object["contract"].as_str(), Some("fathom.cli.ambient/2"));
     for key in [
         "caught_up",
         "attention",
         "drill",
         "latest",
-        "queue",
+        "open_work",
         "index",
         "watch",
         "lines",
@@ -347,7 +353,7 @@ fn the_first_object_answers_the_questions_the_pane_is_asked() {
     }
     assert_eq!(object["caught_up"].as_bool(), Some(false));
     assert_eq!(object["latest"]["summary"].as_str(), Some("first"));
-    assert_eq!(object["queue"]["counts"]["open"].as_u64(), Some(1));
+    assert_eq!(object["open_work"]["counts"]["open"].as_u64(), Some(1));
     assert!(
         object["lines"]
             .as_array()

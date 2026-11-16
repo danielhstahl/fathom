@@ -210,8 +210,8 @@ test rather than guessed. A language whose call sites pass by position cannot se
 but a rename; a language whose call sites pass by name sees a rename as a removal and an addition,
 which is exactly what it is to the caller.
 
-Every change carries **all** the reasons found, each with the source's own text in the note (`was
-\`f64\`, now \`Option<f64>\``), and the class is the worst of them. A reviewer who disagrees with the
+Every change carries **all** the reasons found, each with the source's own text in the note (`` was
+`f64`, now `Option<f64>` ``), and the class is the worst of them. A reviewer who disagrees with the
 ranking can still see the reasons; a reviewer given only a verdict cannot check anything.
 
 ## 5. Ruby is a file, and saying so is the answer

@@ -14,21 +14,30 @@
 //! | `surface`, `breadth`, `size`, `noise` | the episode's own per-path rows (`episode_member ⋈ git_commit_file`) |
 //! | `migration` | those paths, plus the added lines of any file that reads as a migration |
 //! | `test_ratio`, `deletions` | those paths, split by surface |
+//! | `complexity` | the episode's complexity roll-up — `Store::episode_complexity`, the same join the card's `complexity` figure is built from |
 //! | `dependency` | those paths, split into lockfiles and manifests, plus anything a caller supplies |
-//! | `attribution`, `authorship` | the `episode` row's attribution columns (`e4.1`) |
+//! | `attribution` | the `episode` row's attribution columns (`e4.1`) |
 //! | `blast` | whatever a caller hands over, and otherwise a *question asked of the index* — see below |
 //!
-//! # The one authorship verdict that is not a measurement
+//! # There is no `authorship` axis, and `attribution` is not its replacement
 //!
-//! `authorship` is [`Measurement::missing`] on a `human` episode whose verdict came from the `identity`
-//! rung, and the reason printed beside the `—` says why. ADR-003 §8 **H4** prices that rung at 0.50 on
-//! purpose: it fires when every rung above it looked for an agent and found nothing, so it is a sentence
-//! about the evidence and not about the author. Score it as `0.0` — "a person wrote this" — and every
-//! repository whose harness stamps no turn and no claim trailer gets the *same* number as the one where a
-//! human signed the correction saying so, including the repositories this tool was written for
-//! (`reco-0er`: 102 of 109 episodes in an agent's own repository read `human` at 0.50, so the thesis axis
-//! contributed 0.00 in all of them). Absent is the honest state, and it is a state with a door: turn
-//! evidence, a claim trailer, a registry entry or a stored correction each put a number on the axis.
+//! `authorship` — "is the thing that wrote this a program", 0.04 of the weight — left in `reco-ydek.5`, and
+//! with it went `CONFIDENCE_IDENTITY`, the constant that priced ADR-003 §8 **H4**'s fall-through rung, and
+//! the rule that made a guessed `human` an *absent* axis rather than a `0.0`. That reasoning was sound as
+//! far as it went: the `identity` rung fires when every rung above it looked for an agent and found
+//! nothing, so scoring it as "a person wrote this" credited somebody who was never named (`reco-0er`: 102
+//! of 109 episodes in an agent's own repository read `human` at 0.50). What settled the question is not
+//! that the axis was measured badly but that the thing it scored is no longer shown to a reviewer: this
+//! epic stopped printing `human`/`agent` on every surface a human reads, because the label was wrong often
+//! enough to teach reviewers to distrust the row, and ADR-001 §7.9 does not let a score keep an input the
+//! reader is not allowed to see.
+//!
+//! `attribution` stays, and it is a different claim: it scores **how sure the attribution is**, not who won.
+//! A reader who is told "we are 0.40 sure who wrote this" is being told something about the evidence, which
+//! is a measurement; a reader who is told "an agent wrote this" is being handed a conclusion they cannot
+//! check, which is what the label was. `fathom attribution` still prints the kind, the confidence and the
+//! evidence list, and `fathom analyze --json` still carries the `AttributionRef` — attribution as data, with
+//! its confidence, for whoever can use one.
 //!
 //! # The one hole, asked rather than recited
 //!
@@ -58,6 +67,7 @@ use std::collections::BTreeMap;
 
 use fathom_ingest::record::Limits;
 use fathom_ingest::repo::Repository;
+use fathom_store::complexity::{Completeness, EpisodeComplexity};
 use fathom_store::episode::{EpisodeQuery, EpisodeRow};
 use fathom_store::spine::Store;
 
@@ -112,7 +122,7 @@ impl Supply {
 /// One episode read, and everything the vector is built from.
 #[derive(Debug)]
 pub struct Read {
-    /// The vector: twelve measurements, all of them accounted for.
+    /// The vector: thirteen measurements, all of them accounted for.
     pub vector: Vector,
     /// The detector report behind the `findings` measurement, kept so a surface can print the findings
     /// themselves beside the number they produced.
@@ -127,7 +137,7 @@ pub struct Read {
 /// # Errors
 ///
 /// [`fathom_store::error::Error`] when a read fails. A read that *partly* failed is not an error: it is a
-/// caveat on a measurement, because half a score with a stated hole beats no score at all.
+/// caveat on a measurement, because half a score with a stated hole beats no score all.
 pub fn read(
     store: &Store,
     repo: &Repository,
@@ -149,7 +159,12 @@ pub fn read(
     // Asked of the index, on the paths of the episode being scored, so that the reason printed beside a
     // missing `blast` is an answer about this store rather than a sentence about a plan (`reco-j1o`).
     let blast = Availability::probe(store, episode.files.iter().map(|file| file.path.as_str()))?;
-    let vector = vector(&row, &episode, &report, supply, &blast);
+    // The same join the card reads, so the score's complexity axis and the card's complexity figure are
+    // one figure (ADR-001 §7.10). One episode, one id, one query.
+    let complexity = store
+        .episode_complexity(std::slice::from_ref(&row.id))?
+        .remove(&row.id);
+    let vector = vector(&row, &episode, &report, supply, &blast, complexity.as_ref());
     Ok(Some(Read { vector, report }))
 }
 
@@ -202,13 +217,19 @@ fn corpus(store: &Store) -> Result<Vec<DetectorEpisode>, fathom_store::error::Er
 /// `blast` is what the index answered when the read asked it whether the module graph could say who
 /// depends on this episode's paths ([`Availability::probe`]); a caller that has no store to ask passes
 /// [`Availability::NotProbed`] and gets a reason that says exactly that.
+///
+/// `complexity` is the episode's roll-up from [`Store::episode_complexity`], or `None` when the caller
+/// read none — which is a different claim from a roll-up whose figure is `None`, and the two print
+/// differently ([`complexity_measurement`]).
 #[must_use]
+#[allow(clippy::too_many_arguments)]
 pub fn vector(
     row: &EpisodeRow,
     episode: &DetectorEpisode,
     report: &Report,
     supply: &Supply,
     blast: &Availability,
+    complexity: Option<&EpisodeComplexity>,
 ) -> Vector {
     let mut measurements = Vec::with_capacity(Feature::ALL.len());
     let mut caveats: Vec<String> = Vec::new();
@@ -255,13 +276,13 @@ pub fn vector(
     ));
     measurements.push(blast_measurement(supply, blast));
     measurements.push(test_ratio(&sum, churn));
+    measurements.push(complexity_measurement(complexity));
     measurements.push(size(row, &sum, churn));
     measurements.push(dependency(episode, &sum, supply));
     measurements.push(deletions(&sum, churn, row));
     measurements.push(noise(row, &sum, churn));
     measurements.push(breadth(&by_surface, row));
     measurements.push(attribution(row));
-    measurements.push(authorship(row));
 
     let mut vector = Vector::new(row.id.clone(), measurements);
     if !episode.content.examined() {
@@ -569,6 +590,77 @@ fn size(
     Measurement::measured(Feature::Size, discounted as f64, "episode rollup", detail)
 }
 
+/// The complexity axis, from the same join the card prints (`reco-l9bz.7`).
+///
+/// Three states, and they are not the same claim:
+///
+/// * **no roll-up at all** (`None`) — this read did not ask, or the store has no complexity columns; the
+///   axis leaves the denominator and says so;
+/// * **a roll-up with no figure** ([`EpisodeComplexity::delta`] is `None`) — paths were in scope and
+///   nothing could be subtracted from them. ADR-007 §5.4: that is `?` with its reason codes, never a 0;
+/// * **a figure** — signed, and a floor whenever [`Completeness::Partial`] says some of its paths were
+///   refused. A floor enters the arithmetic as the smaller claim it is, with its coverage printed beside
+///   it (ADR-007 §5.4).
+fn complexity_measurement(figure: Option<&EpisodeComplexity>) -> Measurement {
+    let Some(figure) = figure else {
+        return Measurement::missing(
+            Feature::Complexity,
+            "this read took no complexity roll-up for the episode, so the axis has no figure to weigh \
+             and leaves the arithmetic with its weight still printed; `fathom index` fills the column",
+            "e8.2",
+        );
+    };
+    let Some(delta) = figure.delta else {
+        let mut why = format!(
+            "{} of {} path(s) this episode touched carried no complexity figure",
+            figure.unmeasured,
+            figure.paths_total()
+        );
+        if !figure.reasons.is_empty() {
+            let codes: Vec<String> = figure
+                .reasons
+                .iter()
+                .map(|(code, paths)| format!("{paths} {code}"))
+                .collect();
+            why.push_str(&format!(" ({})", codes.join(", ")));
+        }
+        if figure.bases.len() > 1 {
+            why.push_str(&format!(
+                " · the episode carries {} basis tokens ({}), which are not one unit",
+                figure.bases.len(),
+                figure.bases.iter().cloned().collect::<Vec<_>>().join(", ")
+            ));
+        }
+        return Measurement::missing(Feature::Complexity, why, "the index");
+    };
+    let mut detail = format!(
+        "{delta:+} V(G) across the {} path(s) this episode touched, of which {} could be counted on \
+         both sides",
+        figure.paths_total(),
+        figure.measured
+    );
+    if let Some(max) = figure.max {
+        detail.push_str(&format!(" · the worst single unit at head is V(G) {max}"));
+    }
+    if figure.absolute.is_some() {
+        detail.push_str(" · counted over this episode's paths, not the repository");
+    }
+    if figure.state == Completeness::Partial {
+        detail.push_str(
+            " · a floor: some paths refused a figure, so the true delta is at least this",
+        );
+    }
+    if delta <= 0 {
+        detail.push_str(" · nothing was added, so this axis contributes nothing");
+    }
+    Measurement::measured(
+        Feature::Complexity,
+        f64::from(i32::try_from(delta).unwrap_or(i32::MAX)),
+        "episode complexity roll-up (`mccabe-1`)",
+        detail,
+    )
+}
+
 /// Lockfiles and manifests, told apart because they ask for different attention: a lockfile records what
 /// a resolver chose, a manifest records what a person asked for.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -820,94 +912,4 @@ fn attribution(row: &EpisodeRow) -> Measurement {
         "`episode.author_confidence`",
         detail,
     )
-}
-
-/// The price ADR-003 §8 **H4** puts on "a real identity with no agent evidence".
-///
-/// Named here rather than typed so the two places that read it — the rung that sets it and the axis that
-/// refuses to score it — cannot drift apart.
-const CONFIDENCE_IDENTITY: f64 = 0.50;
-
-/// Did this row's authorship verdict come from evidence, or from the absence of it?
-///
-/// `identity` is the attribution ladder's fall-through: nothing above it found an agent, so the classifier
-/// said "there is a name here, so probably a person" at 0.50 and marked the guess (`e4.1`). A *stated*
-/// `human` — a stored correction, the one rung that can assert a person — arrives with its own source and
-/// its 1.00, and measures.
-#[must_use]
-pub fn verdict_without_evidence(row: &EpisodeRow) -> bool {
-    if row.author_confidence.clamp(0.0, 1.0) > CONFIDENCE_IDENTITY {
-        return false;
-    }
-    let source = row.attribution_source.trim().to_ascii_lowercase();
-    // An empty source is the same case in older rows: no rung was recorded, and the only rung that can
-    // leave a `human` at 0.50 or below is the one that recorded nothing because it found nothing.
-    source.is_empty() || source == "identity"
-}
-
-fn authorship(row: &EpisodeRow) -> Measurement {
-    let kind = row.author_kind.trim().to_ascii_lowercase();
-    if kind == "human" && verdict_without_evidence(row) {
-        return Measurement::missing(
-            Feature::Authorship,
-            "nothing on this episode says who wrote it: `human` is what the ladder falls through to when \
-             no agent evidence exists, at 0.50, and reading that as a person would credit somebody who \
-             was never named. Turn evidence from a harness, a claim trailer naming an agent, \
-             `attribution.agents` naming this identity, or a stored `fathom attribution correct` each \
-             put a measurement on this axis",
-            "the harness",
-        );
-    }
-    let (raw, detail) = match kind.as_str() {
-        "agent" => {
-            let agent = if row.attribution_agent.is_empty() {
-                "an agent"
-            } else {
-                row.attribution_agent.as_str()
-            };
-            (
-                0.7,
-                format!("{agent} wrote this, which is the reason this tool exists (ADR-001 §7.3)"),
-            )
-        }
-        "human" => (0.0, "a person wrote this, and is named as having done so".to_owned()),
-        _ => (
-            1.0,
-            "nobody is credited: the attention is for the unknown, not for the person who might be \
-             behind it"
-                .to_owned(),
-        ),
-    };
-    Measurement::measured(Feature::Authorship, raw, "`episode.author_kind`", detail)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::verdict_without_evidence;
-    use fathom_store::episode::EpisodeRow;
-
-    /// A row carrying only what the authorship axis reads.
-    fn row(kind: &str, source: &str, confidence: f64) -> EpisodeRow {
-        EpisodeRow {
-            author_kind: kind.to_owned(),
-            attribution_source: source.to_owned(),
-            author_confidence: confidence,
-            ..EpisodeRow::default()
-        }
-    }
-
-    #[test]
-    fn the_fall_through_is_the_only_human_that_measures_nothing() {
-        // The rung that fires when nothing above it found an agent (`reco-0er`'s 102 of 109).
-        assert!(verdict_without_evidence(&row("human", "identity", 0.50)));
-        // A row written before the rung was recorded is read the same way: nothing was said.
-        assert!(verdict_without_evidence(&row("human", "", 0.50)));
-        // A human a person *said* so — the one rung that can assert a person — is evidence.
-        assert!(!verdict_without_evidence(&row("human", "correction", 1.00)));
-        // An agent verdict came from a rung that found something, whatever its price.
-        assert!(!verdict_without_evidence(&row("agent", "trailer", 0.95)));
-        assert!(!verdict_without_evidence(&row("agent", "author", 0.85)));
-        // `unknown` is its own answer — nobody is credited, which is a fact about the row, not an absence.
-        assert!(!verdict_without_evidence(&row("unknown", "absent", 0.0)));
-    }
 }

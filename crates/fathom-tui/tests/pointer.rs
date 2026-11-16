@@ -215,34 +215,6 @@ fn the_row_under_the_pointer_is_the_row_that_gets_selected() {
         "only {checked} rail rows could be checked at {SIZE:?}"
     );
 
-    // The worklist draws two lines per row, so the arithmetic a click has to agree with is different
-    // in kind: two neighbouring cells are one row, and the cell after them is the next one down.
-    // The worklist's rows are the ranking's, and since `reco-c05` each one is drawn on two lines — an
-    // odd shape for a list, and the one place the pointer's arithmetic could go quietly wrong.
-    let queue_plan = plan(&shell(ViewId::Queue));
-    let work = queue_plan
-        .panes
-        .iter()
-        .find(|rect| rect.pane.name == "worklist")
-        .expect("the worklist");
-    let cell = |line: usize| at(work.x + 1, queue_plan.body_y + line);
-    let clicked = |line: usize| {
-        let mut app = shell(ViewId::Queue);
-        let (col, row) = cell(line);
-        press(&mut app, col, row);
-        app.selected_row()
-    };
-    assert_eq!(
-        clicked(0),
-        clicked(1),
-        "the first two lines of a worklist row are the same row"
-    );
-    assert_eq!(
-        clicked(2),
-        clicked(0) + 1,
-        "and the third line is the next row down"
-    );
-
     // The diff tree: the file under the pointer is the file that opens. A real patch, because a tree
     // with nothing in it would pass this test by checking nothing.
     let mut app = diffcorpus::app_with("mixed", (110, 30));
@@ -687,14 +659,14 @@ fn capture_is_asked_for_only_when_it_was_asked_for() {
         "the text render never takes the pointer"
     );
 
-    let mut off = shell(ViewId::Queue);
+    let mut off = shell(ViewId::Timeline);
     off.mouse = false;
     assert!(
         !off.status_bits().join(" · ").contains("mouse"),
         "with capture off the status line says nothing about it: {}",
         off.status_bits().join(" · ")
     );
-    let mut on = shell(ViewId::Queue);
+    let mut on = shell(ViewId::Timeline);
     on.mouse = true;
     let status = on.status_bits().join(" · ");
     assert!(

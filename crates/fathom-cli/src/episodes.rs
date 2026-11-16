@@ -120,18 +120,19 @@ pub fn load(root: &Path, facts: &Facts) -> Option<Batch> {
         states,
         paths,
         files,
+        complexity,
     } = raw;
     let held = u64::try_from(rows.len()).unwrap_or(u64::MAX);
-    let mut episodes: Vec<Episode> = rows
+    let episodes: Vec<Episode> = rows
         .into_iter()
         .map(|row| {
             let state = states.get(&row.id).copied().unwrap_or_default();
             let touched = paths.get(&row.id).cloned().unwrap_or_default();
             let stats = files.by_episode.get(&row.id).map(Vec::as_slice);
-            into_episode(row, state, touched, stats, files.truncated)
+            let roll = complexity.get(&row.id);
+            into_episode(row, state, touched, stats, files.truncated, roll)
         })
         .collect();
-    rank_page(&mut episodes);
     Some(Batch {
         origin: facts.origin(),
         episodes,
@@ -150,7 +151,7 @@ pub fn load(_root: &Path, _facts: &Facts) -> Option<Batch> {
     None
 }
 
-/// The three reads one page of the rail needs, kept together so "the read failed" is one branch.
+/// The four reads one page of the rail needs, kept together so "the read failed" is one branch.
 #[cfg(all(feature = "tui", feature = "sqlite-bundled"))]
 struct Raw {
     /// The live episodes the page selects, newest first.
@@ -162,6 +163,9 @@ struct Raw {
     /// What happened to each path (`reco-c05`): the per-file adds and deletes the ranking reads, and
     /// whether the read had to stop early.
     files: fathom_store::episode::EpisodeFiles,
+    /// What each selected episode did to complexity (`e8.5`): the same join, one statement for the page,
+    /// so the card's complexity row costs the rail a query and not a file walk (ADR-007 §9.2).
+    complexity: BTreeMap<String, fathom_store::complexity::EpisodeComplexity>,
 }
 
 /// Run them. The order is deliberate: the path join is keyed by the ids the episode read returned.
@@ -177,6 +181,7 @@ fn read(store: &Store, page: &PageWindow) -> Result<Raw, StoreError> {
         states: store.review_states()?,
         paths: store.episode_paths(&ids)?,
         files: store.episode_files(&ids)?,
+        complexity: store.episode_complexity(&ids)?,
         rows,
     })
 }
@@ -202,6 +207,7 @@ fn into_episode(
     paths: Vec<String>,
     stats: Option<&[fathom_store::episode::EpisodeFile]>,
     partial: bool,
+    complexity: Option<&fathom_store::complexity::EpisodeComplexity>,
 ) -> Episode {
     let scale = |value: i64| u64::try_from(value).unwrap_or(u64::MAX);
     let micros = |millis: i64| Timestamp::from_unix_micros(millis.saturating_mul(1_000));
@@ -217,6 +223,7 @@ fn into_episode(
             StoredState::Snoozed => fathom_store::episode::ReviewState::Snoozed,
         },
         partial,
+        complexity,
     );
     Episode {
         id: row.id,
@@ -235,57 +242,17 @@ fn into_episode(
         n_add: scale(row.n_add),
         n_del: scale(row.n_del),
         n_binary: scale(row.n_binary),
-        // The queue's third factor, and the honest answer this build has: nothing has measured what
-        // depends on this change. `e3.1`/`e3.2` own the module graph; until it exists the composition root
-        // says so rather than guessing from path prefixes, and the queue's strip prints the gap
-        // (`e4.5`, `reco-wsj`).
-        blast: fathom_analyze::insight::BlastInput::Unmeasured,
         state: ReviewState::parse(state.as_str()),
         session: row.session_id,
         turn: row.turn_id,
         boundary_rule: (!delta.episode.boundary_rule.is_empty())
             .then(|| delta.episode.boundary_rule.clone()),
         boundary_confidence: delta.episode.boundary_confidence,
-        // The ranking lives inside the delta. Ranks 1..=N are filled by [`rank_page`] once every row of
-        // the page exists; a score is meaningless among its peers until there are peers to compare it with.
+        // The ranking lives inside the delta, and it carries no place in a set: `risk.rank`/`risk.ranked`
+        // went with the ranked pane in `e10.3`, so the page stamps nothing and the score stands as a
+        // figure per row, which is the only claim the shell is allowed to make (ADR-006 §5.1.2 §5).
         delta: Some(delta),
         live: row.live,
-    }
-}
-
-/// Give every row of the page its place in the page: `risk.rank` / `risk.ranked`.
-///
-/// The order is the queue's order and is stated here rather than trusted from the shell because the
-/// number printed in a row has to agree with the position of that row in the list, and the two are
-/// computed in different crates. A row that is unranked (the file read never reached it) is not
-/// counted, so "rank 3 of 212" never has holes in it.
-#[cfg(all(feature = "tui", feature = "sqlite-bundled"))]
-fn rank_page(episodes: &mut [Episode]) {
-    let mut places: Vec<usize> = episodes
-        .iter()
-        .enumerate()
-        .filter(|(_, episode)| episode.risk().is_some())
-        .map(|(index, _)| index)
-        .collect();
-    let score = |episode: &Episode| episode.risk().map_or(0, |risk| risk.score);
-    places.sort_by(|a, b| {
-        let (left, right) = (&episodes[*a], &episodes[*b]);
-        score(right)
-            .cmp(&score(left))
-            .then_with(|| right.size().cmp(&left.size()))
-            .then_with(|| right.created.cmp(&left.created))
-            .then_with(|| left.id.cmp(&right.id))
-    });
-    let ranked = places.len();
-    for (place, index) in places.into_iter().enumerate() {
-        if let Some(risk) = episodes[index]
-            .delta
-            .as_mut()
-            .and_then(|delta| delta.risk.as_mut())
-        {
-            risk.rank = i64::try_from(place + 1).ok();
-            risk.ranked = Some(i64::try_from(ranked).unwrap_or(i64::MAX));
-        }
     }
 }
 
@@ -690,16 +657,19 @@ fn render(report: &Report) -> Vec<String> {
         }
     ));
     out.push(String::new());
+    // No author-kind column (`e10.4`, `reco-ydek.4`): ADR-006 §5.1.2 §6 retires the verdict wherever a
+    // human reads it, and this table is where a human reads it. `--kind` still filters (the machine
+    // channel is the named exception, and a filter echoes the reviewer's own words back), and
+    // `--json` still ships `author_kind` with `author_confidence` beside it.
     out.push(format!(
-        "{:<24}  {:<22}  {:<7}  {:>8} {:>7} {:>6}  {:<10}  {:<18}  {}",
-        "ID", "WHEN (UTC)", "KIND", "+ADD", "-DEL", "FILES", "STATE", "SESSION/TURN", "SUMMARY"
+        "{:<24}  {:<22}  {:>8} {:>7} {:>6}  {:<10}  {:<18}  {}",
+        "ID", "WHEN (UTC)", "+ADD", "-DEL", "FILES", "STATE", "SESSION/TURN", "SUMMARY"
     ));
     for row in report.page.rows() {
         out.push(format!(
-            "{:<24}  {:<22}  {:<7}  {:>8} {:>7} {:>6}  {:<10}  {:<18}  {}",
+            "{:<24}  {:<22}  {:>8} {:>7} {:>6}  {:<10}  {:<18}  {}",
             row.episode.id,
             stamp(row.episode.last_utc),
-            row.episode.author_kind,
             format!("+{}", row.episode.n_add),
             format!("-{}", row.episode.n_del),
             row.episode.n_files,

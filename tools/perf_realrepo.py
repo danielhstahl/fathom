@@ -25,7 +25,7 @@ What it measures, and where each number is charged:
   synthetic probe file (`warm.reindex.ms`, and `warm.reindex.noop.ms` from the run's own `elapsed_ms`).
 * **the keystroke path** — the same pty probe `make bench` runs, through `tools/tui_session.py`:
   time to first frame, `t`, `j`, `d`, the first `@@` on screen, and the TUI's own `VmHWM`
-  (`cold.queue_visible.ms`, `query.timeline.ms`, `query.queue.ms`, `query.diff_open.ms`,
+  (`cold.rail_visible.ms`, `query.timeline.ms`, `query.rail_keystroke.ms`, `query.diff_open.ms`,
   `query.diff_first_hunk.ms`, `rss.tui.mib`).
 * **bytes** — the store file, §11.6's three-way `dbstat` split (commit tables, graph lane, cache, and
   the rest), and the size of the analysis cache's blob directory, which is what `cache.budget.mib` has
@@ -590,14 +590,14 @@ class Repo:
                             samples=[round(v, 1) for v in values]))
 
         if paints:
-            self.record(Row(f"cold.queue_visible.ms.{self.label}", "ms",
+            self.record(Row(f"cold.rail_visible.ms.{self.label}", "ms",
                             round(statistics.median(paints), 2),
-                            f"cold.queue_visible.ms.{cls}",
-                            budget_value(f"cold.queue_visible.ms.{cls}"),
+                            f"cold.rail_visible.ms.{cls}",
+                            budget_value(f"cold.rail_visible.ms.{cls}"),
                             how="TUI spawn to first frame on a warm store",
                             samples=[round(v, 1) for v in paints]))
         keystroke("query.timeline.ms", "t", "visible_ms", "`t` written to the grid changed")
-        keystroke("query.queue.ms", "j", "visible_ms", "`j` written one row down the rail")
+        keystroke("query.rail_keystroke.ms", "j", "visible_ms", "`j` written one row down the rail")
         keystroke("query.diff_open.ms", "d", "visible_ms", "`d` written to the diff pane painting")
         keystroke("query.diff_first_hunk.ms", "d", "until_ms",
                   "`d` written to the first `@@` on screen")

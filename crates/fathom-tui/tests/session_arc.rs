@@ -24,7 +24,7 @@
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
-use fathom_analyze::insight::{EpisodeDelta, QueuePolicy, ReasonVocabulary, TriageRecord};
+use fathom_analyze::insight::{EpisodeDelta, ReasonVocabulary, TriageRecord};
 use fathom_analyze::search::{Corpus, Entry, Index};
 use fathom_core::time::Timestamp;
 use fathom_tui::ambient::{Glance, Latest};
@@ -32,8 +32,8 @@ use fathom_tui::app::{App, Model, Overlay};
 use fathom_tui::compare::{CompareProvider, Provider as CompareShell};
 use fathom_tui::diff::{BytesSource, PatchProvider, PatchSource, Provider, Unavailable};
 use fathom_tui::keymap::Keymap;
-use fathom_tui::queue::{Ledger, LedgerHandle, Setup};
 use fathom_tui::render::frame_lines;
+use fathom_tui::review::{Ledger, LedgerHandle, Setup};
 use fathom_tui::timeline::{AuthorKind, Batch, Episode, ReviewState};
 use fathom_tui::views::ViewId;
 
@@ -199,9 +199,8 @@ fn session() -> (App, Arc<Recorder>) {
     );
     app.timeline.set_now(NOW);
     app.load_episodes(Batch::new("fixture index", rows()));
-    app.queue = Setup {
+    app.review = Setup {
         vocabulary: ReasonVocabulary::shipped(),
-        policy: QueuePolicy::default(),
         actor: "ada <ada@example.com>".to_owned(),
         ledger: Some(LedgerHandle(Arc::clone(&recorder) as Arc<dyn Ledger>)),
         history: Vec::new(),
@@ -209,7 +208,7 @@ fn session() -> (App, Arc<Recorder>) {
         total: 2,
     }
     .state();
-    app.queue.sessions = fathom_tui::queue::State::sessions_of(&rows());
+    app.review.sessions = fathom_tui::review::State::sessions_of(&rows());
     app.patches = Some(Provider(Arc::new(Fixture) as Arc<dyn PatchProvider>));
     app.search = Some(Arc::new(Index::build(&corpus())));
     app.compare = Some(CompareShell::new(Counted));
@@ -262,15 +261,20 @@ fn notification_to_sign_off_happens_without_leaving_the_keyboard() {
         frame(&app)
     );
 
-    // 2 · the queue, and the row the reviewer picks up.
-    press(&mut app, "q");
-    assert_eq!(app.view, ViewId::Queue);
+    // 2 · the rail, and the row the reviewer picks up. `e10.2` moved the acts' feedback here, so the
+    //     arc walks the chronology now (ADR-006 §5.1.2 §7: *t* where this pressed *q*): the published T1
+    //     is `t j <Enter> d x`, and this arc is that task with the rest of the session bolted on. The
+    //     entry cursor is already the newest episode — the one the glance pane led with — and `j`/`k`
+    //     walk the rail's slots, day header included.
+    press(&mut app, "t");
+    assert_eq!(app.view, ViewId::Timeline);
     press(&mut app, "j");
     press(&mut app, "k");
     let selected = app
-        .queue_selected()
+        .timeline
+        .selected()
         .map(|episode| episode.id.clone())
-        .expect("the worklist has a row under the cursor");
+        .expect("the rail has a row under the cursor");
 
     // 3 · drill in, then the diff: patch bytes, not a shrug.
     press(&mut app, "<Enter>");
@@ -283,12 +287,24 @@ fn notification_to_sign_off_happens_without_leaving_the_keyboard() {
     press(&mut app, "j");
     press(&mut app, "<Tab>");
 
-    // 4 · `w`: why this episode is where it is.
+    // 4 · `w`: why this episode is where it is. It is a band of the card now, not a pane the key
+    //     swapped in, so what the keystroke leaves behind is an opened section about *that* episode.
     press(&mut app, "t");
+    let in_scope = app
+        .timeline
+        .selected()
+        .map(|episode| episode.id.clone())
+        .expect("the rail has a row under the cursor");
     press(&mut app, "w");
-    assert!(
-        app.explain.is_some(),
-        "`w` answered about the episode in scope"
+    assert_eq!(
+        app.expanded_rank.as_deref(),
+        Some(in_scope.as_str()),
+        "`w` opened the ranking band about the episode in scope"
+    );
+    press(&mut app, "w");
+    assert_eq!(
+        app.expanded_rank, None,
+        "the same key folds the band it opened, rather than stacking a pane on it"
     );
 
     // 5 · `/`: one box, and the hit deep-links to whichever view owns it.
@@ -337,6 +353,16 @@ fn notification_to_sign_off_happens_without_leaving_the_keyboard() {
         written[0].episode, in_scope,
         "the act is about the episode that was in scope"
     );
+    // And the row says it. `e10.2`'s acceptance criterion is that the state glyph *is* the feedback —
+    // same frame, no second view to confirm it — so the arc checks the cell and not the toast.
+    assert_eq!(
+        app.timeline
+            .find(&in_scope)
+            .map(|episode| episode.state)
+            .unwrap_or(ReviewState::Unread),
+        ReviewState::Accepted,
+        "the rail's state cell reads accepted in the frame the keystroke caused"
+    );
 
     // 8 · the artefact: `o` is the shell's half of the record, and it says which verb writes it.
     press(&mut app, "o");
@@ -366,7 +392,7 @@ fn the_palette_reaches_every_step_of_the_arc() {
     let (mut app, _recorder) = session();
     for (query, wanted) in [
         ("ambent", "view.ambient"),
-        ("queue", "view.queue"),
+        ("t", "view.timeline"),
         ("dif", "view.diff"),
         ("artefact", "view.artefact"),
     ] {

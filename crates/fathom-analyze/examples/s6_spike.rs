@@ -2,10 +2,10 @@
 //!
 //! **This is a spike, not a library.** ADR-003 §13.1 declined fuzzy re-linking "pending the false-relink
 //! and missed-relink rates against annotated ground truth", spike `s2` measured *boundaries* instead, and
-//! `docs/concepts/episode-segmentation.md` §8 recorded that the relink half was still owed. This is that
+//! `docs/concepts/episode-derivation.md` §*How a boundary is found* §8 recorded that the relink half was still owed. This is that
 //! half. The corpus is `crates/fathom-fixtures/corpus/relinks/` — hand-authored rewrites over `s2`'s
 //! annotated turn corpus, each stating where a decision belongs after the rewrite — and the written answer
-//! is `docs/concepts/episode-relink.md`.
+//! is `docs/concepts/episode-derivation.md`.
 //!
 //! ```text
 //! cargo run -q -p fathom-analyze --features sqlite-bundled --example s6_spike -- \

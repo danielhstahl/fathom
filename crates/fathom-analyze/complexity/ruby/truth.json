@@ -1,0 +1,47 @@
+{
+  "language": "ruby",
+  "basis": "mccabe-1",
+  "notes": "Hand-authored against ADR-007 §4.5. Ruby spells a test in more shapes than the other five grammars put together, and the modifier forms are the ones a by-eye count misses, so `Shape.label` (`x if y`), `Shape.risky` (`x rescue y`) and the `if`/`unless`/`while` modifiers on `Shape.each` each earn a point even though they are one line long and read as an afterthought. `case`/`when` counts one point per `when` clause, so `when 0, 1` is one arm and not two (§3.4), and the trailing `else` is none. `case`/`in` counts each `in` clause, plus one for the guard on it — `in Integer => count if count.positive?` is two tests. Safe navigation is a test wearing a call, so it is a token rule (`&.`) rather than a node kind: that is how this grammar spells it. The three scope facts are the ones `s1` measured as irreducible and ADR-007 §7.3 turned into marks: `Extras.class_eval` writes a method into a class this file does not declare (`monkeypatch`), `Computed` computes method names from an array at run time (`dynamic_method`), and `attr_accessor :name` yields two named members over one node — those two *are* in the file, so they are units with figures of their own, and each scores 1 because an accessor has one path. Two units therefore share a span, and the points in it are counted once, for the first of them. `branches.rb` is a file that C-KIND wrote: the first pass of this corpus declared `while_modifier`, `until_modifier`, `unless_modifier`, `unless_guard`, `&&`, `||`, `and`, `or` and `&.` and produced none of them from any file, which is the §4 failure the ADR spells out: a kind nobody exercises is a kind whose counting code has never run. Each method in it earns exactly one of those spellings and nothing else, so a figure of 2 or 3 beside it is a claim about one construct, not about a method that happens to have four things in it.",
+  "files": {
+    "branches.rb": {
+      "state": "measured",
+      "sum": 25,
+      "max": 3,
+      "reason": "",
+      "functions": [
+        { "n": "Modifiers.trim", "kind": "method", "v": 2, "points": 1 },
+        { "n": "Modifiers.skip", "kind": "method", "v": 2, "points": 1 },
+        { "n": "Modifiers.consume", "kind": "method", "v": 2, "points": 1 },
+        { "n": "Modifiers.drain", "kind": "method", "v": 2, "points": 1 },
+        { "n": "Modifiers.either", "kind": "method", "v": 3, "points": 2 },
+        { "n": "Modifiers.neither", "kind": "method", "v": 3, "points": 2 },
+        { "n": "Modifiers.loose", "kind": "method", "v": 3, "points": 2 },
+        { "n": "Modifiers.anyway", "kind": "method", "v": 3, "points": 2 },
+        { "n": "Modifiers.length_of", "kind": "method", "v": 2, "points": 1 },
+        { "n": "Modifiers.only", "kind": "method", "v": 3, "points": 2 }
+      ]
+    },
+    "worked.rb": {
+      "state": "partial",
+      "sum": 33,
+      "max": 6,
+      "reason": "",
+      "marks": ["dynamic_method", "monkeypatch"],
+      "functions": [
+        { "n": "Shape.name", "kind": "method", "v": 1, "points": 0 },
+        { "n": "Shape.name=", "kind": "method", "v": 1, "points": 0 },
+        { "n": "Shape.perimeter", "kind": "method", "v": 2, "points": 1 },
+        { "n": "Shape.initialize", "kind": "method", "v": 1, "points": 0 },
+        { "n": "Shape.describe", "kind": "method", "v": 4, "points": 3 },
+        { "n": "Shape.short?", "kind": "method", "v": 1, "points": 0 },
+        { "n": "Shape.label", "kind": "method", "v": 2, "points": 1 },
+        { "n": "Shape.risky", "kind": "method", "v": 2, "points": 1 },
+        { "n": "Shape.kind", "kind": "method", "v": 3, "points": 2 },
+        { "n": "Shape.matched", "kind": "method", "v": 5, "points": 4 },
+        { "n": "Shape.each", "kind": "method", "v": 6, "points": 5 },
+        { "n": "Shape.build", "kind": "method", "v": 3, "points": 2 },
+        { "n": "Extras.extra", "kind": "method", "v": 2, "points": 1 }
+      ]
+    }
+  }
+}

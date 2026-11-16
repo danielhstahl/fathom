@@ -7,8 +7,8 @@
 //!
 //! Proving that for *this* corpus is done the exhausting way: every golden fixture is run through every
 //! degradation, and every (fixture, degradation) pair has to come back with a status, a reason if it is
-//! unparsed, a preview if there were bytes to preview, and no panic in between. That is ~28 fixtures × ~10
-//! degradations = 280 scans, and it is the only kind of test that catches the parser-specific ways a file can
+//! unparsed, a preview if there were bytes to preview, and no panic in between. That is ~28 fixtures × ~14
+//! degradations = ~400 scans, and it is the only kind of test that catches the parser-specific ways a file can
 //! be wrong — a YAML tab in a `pnpm-lock.yaml`, a TOML header with no closing bracket, a POM cut inside a
 //! start tag.
 #![allow(clippy::unwrap_used, clippy::expect_used)]
@@ -77,6 +77,15 @@ fn degradations() -> Vec<Degradation> {
             out.extend_from_slice(&[0xc3, 0x28, 0xa0]);
             out
         }),
+        // Every degradation above that adds bad bytes adds them at one *end* of the file, which is where a
+        // reader that walks by byte is least likely to be standing when it trips. **reco-eyo** is the proof:
+        // a `pom.xml` with `café` in it panicked the XML reader in the middle of the file, and no degradation
+        // here could reach it. A wide character spread through the file is the missing axis, in both
+        // spellings a file can arrive with: one the file really holds (`é`, two bytes), and one the lossy
+        // decode invents (`0xbe` is a lone continuation byte, and becomes a three-byte U+FFFD — the width
+        // the fuzzer handed the reader).
+        ("wide text through the file", |b| spread(b, "é".as_bytes())),
+        ("invalid utf-8 through the file", |b| spread(b, &[0xbe])),
         ("open braces", |_| vec![b'{'; 512]),
         ("open quotes", |_| vec![b'"'; 256]),
         ("null body", |b| {
@@ -88,6 +97,21 @@ fn degradations() -> Vec<Degradation> {
         }),
         ("whitespace only", |_| b"  \n\t\n  \n".to_vec()),
     ]
+}
+
+/// Insert `needle` every 64 bytes of `bytes`, so a file of any length gets several of them at different
+/// offsets. One insertion point would only test the readers that happen to stand there when the file cuts;
+/// a stride of 64 lands inside a tag, inside a value and inside the whitespace between elements at least
+/// once for every fixture shape here.
+fn spread(bytes: &[u8], needle: &[u8]) -> Vec<u8> {
+    let mut out = Vec::with_capacity(bytes.len() + bytes.len() / 64 * needle.len() + needle.len());
+    for (index, byte) in bytes.iter().enumerate() {
+        if index > 0 && index % 64 == 0 {
+            out.extend_from_slice(needle);
+        }
+        out.push(*byte);
+    }
+    out
 }
 
 fn scan_one(path: &str, bytes: &[u8]) -> Surface {

@@ -53,10 +53,11 @@ The codes you will actually meet, and the sentence each one is trying to tell yo
 |---|---|---|
 | `is not a git repository this build can read` (exit `3`) | wrong directory, a bare repo, or a `.git` file pointing somewhere unreadable | `cd` into the work tree, or `--root /path/to/repo` |
 | `no index yet` / exit `12` | nobody has indexed here, or the epoch was thrown away | `fathom index`, then `fathom stats` |
-| the queue is empty but there are commits | a stored filter, or everything is signed off, or the index is behind | `fathom --fresh`; `fathom tui --show-session`; `fathom index` |
+| the rail is empty but there are commits | a stored filter, or everything is signed off, or the index is behind | `fathom --fresh`; `fathom tui --show-session`; `fathom index` |
 | the frame will not draw, and says `LAYOUT REFUSED` | the terminal is below the view's floor | widen it, or use `--plain`; ambient needs 40×3 ([ambient](concepts/ambient-mode.md)) |
 | no progress row during `fathom index` | stderr is not a terminal — a pipe, a CI step, a `tee` | `fathom index --progress` asks for the row anyway |
 | `--json` refuses to run with `--progress` | deliberate: one document on stdout, no decoration | drop `--progress`; the row is for humans |
+| `fathom open` prints its plan and then sits there | the editor it planned needs a terminal to draw on and this run has none — a pipe, a CI step, a `tee` | `Ctrl-C` and use `fathom open … --print`, then run the printed line in a terminal; `$EDITOR` naming a GUI editor (`code`, `zed`) needs nothing |
 | a key does nothing | you are in `prompt`/`pick` mode, where letters are text; or an override took it | `?` for the merged table; `fathom tui --show-keys` |
 | your key override did nothing | unknown mode, unknown action, a collision, or a shadowed reserved key | it is a **startup report**, not a silent fallback — read it; then `fathom tui --show-keys` |
 | colours are wrong, or absent | `NO_COLOR`, a theme that failed a floor, or a terminal without colour | `fathom tui --show-theme`, `--list-themes`, `--show-theme --audit` ([theming](concepts/theming.md)) |
@@ -64,7 +65,7 @@ The codes you will actually meet, and the sentence each one is trying to tell yo
 | `review sign` refuses with "the index holds no diff for this episode" | the episode genuinely has no diff — a merge commit is the usual case | sign a member commit instead. A sign-off that could never be checked for staleness is not written |
 | `fathom review status` says the ledger is ignored by git | `.fathom/*` is gitignored and the negation line is missing | add `!.fathom/reviews/` to `.gitignore` (ADR-004 §12's stanza) |
 | every figure says `unknown` | the analyses did not run, or their feature is not compiled in | `fathom doctor`, `fathom stats`; check the feature line from `--version` ([features](reference/features.md)) |
-| a dependency ecosystem is unread | the ecosystem is not in the 25 formats, or the file failed to parse | `--json` names which, with a raw-text preview per unparsed file ([dependency surface](concepts/dependency-surface.md)) |
+| a dependency ecosystem is unread | the ecosystem is not in the 25 formats, or the file failed to parse | `--json` names which, with a raw-text preview per unparsed file ([dependency surface](concepts/dependencies.md#the-surface-what-a-revision-declares-what-it-resolved-and-what-this-build-could-not-read)) |
 | advisory lookup refuses (exit `8`) | a `net-*` feature is compiled in and not consented to | the message names the key. **The default build cannot reach a network at all** ([features](reference/features.md)) |
 | `fathom check` says a check is `blocked` | the input that check needs is missing — no index, no module graph, a base outside a shallow clone, or a binary built without the feature | the row prints the remedy; [the CI gate](concepts/ci-gate.md#no-silent-passes) explains why a blocked check is never a pass |
 | a finding you already suppressed is back | the episode id moved and the key was derived wrong, or the config layer changed | the key is `detector:subject` and contains no episode id — so check which `fathom.toml` won |

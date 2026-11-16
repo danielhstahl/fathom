@@ -147,7 +147,11 @@ impl FromStr for Oid {
             return Err(OidParseError::WrongLength { given: bytes.len() });
         }
         let mut out = [0u8; Self::LEN];
-        for (index, pair) in bytes.chunks_exact(2).enumerate() {
+        // `as_chunks`, not `chunks_exact(2)`: clippy's `chunks_exact_to_as_chunks` (rust 1.99) says a
+        // constant chunk size should say so in the type, and the length check above already guarantees
+        // there is no remainder to ignore. `as_chunks` is in the pinned MSRV (1.97), so both the floor and
+        // stable build this — which is the only reason the lint can be satisfied rather than allowed.
+        for (index, pair) in bytes.as_chunks::<2>().0.iter().enumerate() {
             let hi = hex_value(pair[0]).ok_or(OidParseError::NotHex {
                 position: index * 2 + 1,
             })?;

@@ -2,10 +2,10 @@
 
 - **Status**: Accepted, and implemented
 - **Ticket / plan key**: `reco-1tn` (`e5.7`)
-- **Depends on**: [the delta model](delta-model.md) (`e2.11`) for every figure,
+- **Depends on**: [the delta](delta.md) (`e2.11`) for every figure,
   [the episode narrative](episode-narrative.md) (`e4.7`) for the prose,
   the review ledger of `e4.6` (crates/fathom-analyze/src/ledger/) for the sign-offs,
-  [the dependency delta](dependency-delta.md) (`e2.6`) and
+  [the dependency delta](dependencies.md#the-delta-what-the-episode-did-to-the-graph-and-what-proves-it) (`e2.6`) and
   [the folder-structure delta](folder-structure.md) (`e2.3`) for the two range-wide comparisons
 - **Implements**: the plan's `e5.7` acceptance criteria — markdown that renders in a GitHub PR preview with
   nested evidence links, two consecutive exports of the same range that are byte-identical, one
@@ -148,7 +148,8 @@ says `0 of 2 … · 1 undecided · 1 refused or deferred` rather than rounding a
 
 The sign-off says a person accepted a change; the memory says what they wrote down while doing it — the
 decision and its reason, the question nobody has answered, the follow-up somebody owes
-([the review memory](review-memory.md)). Each note prints its kind, its status, its author and author kind,
+([the review ledger and the review memory](review-ledger.md)). Each note prints its kind, its status, its
+author and author kind,
 the instant the file holds, its text as written, and the evidence: the episode it is about *after* the re-link
 ladder, the rung that placed it, the episode it was written against when a rebase moved it, its four identity
 digests, its own tamper digest and the file-and-anchor a reader can open.

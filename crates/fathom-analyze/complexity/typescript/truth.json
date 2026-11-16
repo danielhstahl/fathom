@@ -1,0 +1,45 @@
+{
+  "language": "typescript",
+  "basis": "mccabe-1",
+  "notes": "Hand-authored against ADR-007 §4.3. The awkward half of TypeScript is not its branches, it is its signatures: an interface method, an `abstract` method, an overload signature and a `.d.ts` `declare function` are units whose bodies are not in the file, so they are `?` with `body_not_visible` and the file prints a floor with a count. Five of `worked.ts`'s thirteen units are like that, which is a real property of a `.ts` file with a public interface and nothing to apologise for; `decls.d.ts` goes further and prints `?` for the whole file, because *nothing* in it is countable and every unit names the same reason, so the file's `?` is that reason rather than a bare glyph (§7.1). `for…of` and `for…in` are the same node kind in this grammar (`for_in_statement`) and the same point. `?.` is a node here (`optional_chain`) and `??` and `&&` are operators — all three are tests, and a counter that counted `binary_expression` instead of the operator's spelling would have counted every `<` in the file. Two `case` labels stacked on one body (`case 0: case 1:`) are two arms, which is what a reader counting arms by eye writes down. `arrowed` is a `const` bound to an arrow function, and `e3.1`'s export rule names it, so it is a unit (see the `unit_list` row in the report): the ADR's 'an arrow is not a unit' is about the anonymous ones, whose branches belong to the function that lexically encloses them. The three `overlapped` rows are two signatures and one implementation sharing a dotted name, which the harness matches in source order, position by position.",
+  "files": {
+    "worked.ts": {
+      "state": "partial",
+      "sum": 33,
+      "max": 9,
+      "reason": "",
+      "functions": [
+        { "n": "Shape.area", "kind": "method", "v": null, "r": "body_not_visible" },
+        { "n": "Shape.describe", "kind": "method", "v": null, "r": "body_not_visible" },
+        { "n": "Figure.area", "kind": "method", "v": null, "r": "body_not_visible" },
+        { "n": "Figure.describe", "kind": "method", "v": 4, "points": 3 },
+        { "n": "classify", "kind": "fn", "v": 9, "points": 8 },
+        { "n": "loops", "kind": "fn", "v": 9, "points": 8 },
+        { "n": "guarded", "kind": "fn", "v": 3, "points": 2 },
+        { "n": "counted", "kind": "fn", "v": 3, "points": 2 },
+        { "n": "asExpression", "kind": "fn", "v": 2, "points": 1 },
+        { "n": "arrowed", "kind": "fn", "v": 2, "points": 1 },
+        { "n": "overlapped", "kind": "fn", "v": null, "r": "body_not_visible" },
+        { "n": "overlapped", "kind": "fn", "v": null, "r": "body_not_visible" },
+        { "n": "overlapped", "kind": "fn", "v": 1, "points": 0 }
+      ]
+    },
+    "decls.d.ts": {
+      "state": "unavailable",
+      "sum": null,
+      "max": null,
+      "reason": "body_not_visible",
+      "functions": [
+        { "n": "read", "kind": "fn", "v": null, "r": "body_not_visible" },
+        { "n": "write", "kind": "fn", "v": null, "r": "body_not_visible" }
+      ]
+    },
+    "notes.txt": {
+      "state": "unavailable",
+      "sum": null,
+      "max": null,
+      "reason": "language_unknown",
+      "functions": []
+    }
+  }
+}

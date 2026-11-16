@@ -12,6 +12,12 @@
 //!   dependency; a downgrade, a registry→git switch and an integrity change must each be detected.
 //! * **The parts**: version ordering and range satisfaction, and the hunk locator, tested directly, because
 //!   every claim above is built on them.
+//!
+//! One claim cuts across all three and is asserted on its own: a case read from a checkout that stores its
+//! files with CRLF (`a_checkout_with_windows_line_endings_reads_the_same_as_a_unix_one`) is the same case.
+//! A repository under review is allowed to be written on Windows, and two of these tests were red there and
+//! green here before anything said so (`reco-d3p9`; the checkout half of that lives in
+//! `tests/test_line_endings_contract.py`).
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use std::path::{Path, PathBuf};
@@ -36,6 +42,55 @@ fn golden_root() -> PathBuf {
         .join("tests")
         .join("golden")
         .join("deps-delta")
+}
+
+/// Every case directory, in name order.
+fn golden_cases() -> Vec<PathBuf> {
+    let mut cases: Vec<PathBuf> = std::fs::read_dir(golden_root())
+        .expect("the golden directory exists")
+        .filter_map(|entry| entry.ok().map(|entry| entry.path()))
+        .filter(|path| path.is_dir())
+        .collect();
+    cases.sort();
+    cases
+}
+
+/// The bytes of a file with every CRLF folded back to LF — what the same file is in a Unix checkout.
+fn with_unix_endings(bytes: &[u8]) -> Vec<u8> {
+    let mut out = Vec::with_capacity(bytes.len());
+    let mut index = 0;
+    while index < bytes.len() {
+        if bytes[index] == b'\r' && bytes.get(index + 1) == Some(&b'\n') {
+            index += 1; // drop the carriage return, keep the line feed it led
+        }
+        out.push(bytes[index]);
+        index += 1;
+    }
+    out
+}
+
+/// The bytes of a file as a `core.autocrlf` checkout hands them to a Windows test run: every LF becomes
+/// CRLF, and a line that already carried a CR is left alone.
+fn with_crlf_endings(bytes: &[u8]) -> Vec<u8> {
+    let mut out = Vec::with_capacity(bytes.len());
+    let mut previous: Option<&u8> = None;
+    for byte in bytes {
+        if *byte == b'\n' && previous != Some(&b'\r') {
+            out.push(b'\r');
+        }
+        out.push(*byte);
+        previous = Some(byte);
+    }
+    out
+}
+
+/// Text with every CRLF folded back to LF.
+///
+/// A golden file is a reviewed *text*; whether the checkout that read it stored its lines with LF or with
+/// CRLF is a fact about the platform that cloned the repository, not about the delta under test. The bytes
+/// on disk are pinned either way (`.gitattributes`), and this is only about what a comparison means.
+fn with_lf_endings(text: &str) -> String {
+    text.replace("\r\n", "\n")
 }
 
 /// Read one side of a case into `(path, bytes)`, in path order.
@@ -75,6 +130,31 @@ struct Case {
 }
 
 impl Case {
+    /// The same case as it would sit in a checkout that stores its line endings this way — what one commit
+    /// looks like on Windows and on Unix (`reco-d3p9`). Applied to what is on disk rather than assumed of it,
+    /// so the comparison means the same thing whichever way this checkout happens to have been cloned.
+    fn with_line_endings(&self, crlf: bool) -> Case {
+        let side = |files: &[(String, Vec<u8>)]| {
+            files
+                .iter()
+                .map(|(path, bytes)| {
+                    (
+                        path.clone(),
+                        if crlf {
+                            with_crlf_endings(bytes)
+                        } else {
+                            with_unix_endings(bytes)
+                        },
+                    )
+                })
+                .collect()
+        };
+        Case {
+            before: side(&self.before),
+            after: side(&self.after),
+        }
+    }
+
     fn load(name: &str) -> Case {
         let root = golden_root().join(name);
         Case {
@@ -232,12 +312,7 @@ fn run_warm(case: &str) -> DependencyEpisode {
 
 #[test]
 fn every_case_matches_its_expected_projection() {
-    let mut cases: Vec<PathBuf> = std::fs::read_dir(golden_root())
-        .expect("the golden directory exists")
-        .filter_map(|entry| entry.ok().map(|entry| entry.path()))
-        .filter(|path| path.is_dir())
-        .collect();
-    cases.sort();
+    let cases = golden_cases();
     assert!(!cases.is_empty(), "no dependency-delta fixtures found");
     for case in cases {
         let episode = run(case.file_name().unwrap().to_str().unwrap());
@@ -251,8 +326,10 @@ fn every_case_matches_its_expected_projection() {
                 std::fs::write(&text_path, rendered).expect("the case directory is writable");
             } else {
                 assert_eq!(
-                    rendered,
-                    std::fs::read_to_string(&text_path).expect("the expected text exists"),
+                    with_lf_endings(&rendered),
+                    with_lf_endings(
+                        &std::fs::read_to_string(&text_path).expect("the expected text exists")
+                    ),
                     "the rendered table for `{}` changed",
                     case.file_name().unwrap().to_str().unwrap()
                 );
@@ -284,6 +361,48 @@ fn every_case_matches_its_expected_projection() {
             "the delta for `{}` changed\n{}",
             case.file_name().unwrap().to_str().unwrap(),
             episode.model.headline
+        );
+    }
+}
+
+/// One commit read on Windows is the same commit (`reco-d3p9`).
+///
+/// The Windows runner was red here while Linux and macOS were green, because a Git for Windows checkout with
+/// `core.autocrlf` on rewrites every fixture and every golden to CRLF. `.gitattributes` is what stops the
+/// checkout doing that; this is what makes the answer not depend on it. The claim is the product's, not the
+/// test harness's: a repository under review is allowed to keep its lockfiles with CRLF — it is written on
+/// Windows — and the delta and the rendered table it projects have to be the same ones a Unix checkout of
+/// the same bytes projects.
+#[test]
+fn a_checkout_with_windows_line_endings_reads_the_same_as_a_unix_one() {
+    for case in golden_cases() {
+        let name = case.file_name().unwrap().to_str().unwrap().to_owned();
+        let stored = Case::load(&name);
+        let unix = stored.with_line_endings(false);
+        let windows = stored.with_line_endings(true);
+        let newlines = |side: &[(String, Vec<u8>)]| -> usize {
+            side.iter()
+                .flat_map(|(_, bytes)| bytes.iter())
+                .filter(|&&byte| byte == b'\n')
+                .count()
+        };
+        assert!(
+            newlines(&unix.before) + newlines(&unix.after) > 0,
+            "nothing in `{name}` has a line ending, so this case proves nothing"
+        );
+        let unix_episode = dependency_episode(unix.changes(), &DependencyOptions::default());
+        let windows_episode = dependency_episode(windows.changes(), &DependencyOptions::default());
+        assert_eq!(
+            project(&windows_episode.model),
+            project(&unix_episode.model),
+            "`{name}` projects a different delta once the checkout has CRLF:\n{}",
+            unix_episode.model.headline
+        );
+        assert_eq!(
+            render_case(&windows_episode),
+            render_case(&unix_episode),
+            "`{name}` renders a different table once the checkout has CRLF:\n{}",
+            unix_episode.model.headline
         );
     }
 }
@@ -721,15 +840,25 @@ fn every_proof_that_claims_a_hunk_actually_mentions_its_package() {
     }
 }
 
+/// A case whose files are all readable, plus one that is not: the model says what it lost.
 #[test]
 fn an_unreadable_side_is_reported_rather_than_invented() {
     let mut case = Case::load("js-direct-add");
-    // Corrupt the after side of the lockfile: the model still runs, and says what it lost.
-    for (_, bytes) in &mut case.after {
-        if bytes.ends_with(b"}\n") && bytes.starts_with(b"{") && bytes.len() > 200 {
+    // Truncate the after side's lockfile in the middle of an object: a dependency file that is present and
+    // cannot be read. It is picked by name, not sniffed out of the bytes — the previous predicate looked for
+    // a file ending `}\n`, which a CRLF checkout does not have, so the test asserted a corruption it had
+    // never made (`reco-d3p9`).
+    let mut corrupted = 0;
+    for (path, bytes) in &mut case.after {
+        if path.ends_with("package-lock.json") {
             *bytes = b"{ \"packages\":".to_vec();
+            corrupted += 1;
         }
     }
+    assert_eq!(
+        corrupted, 1,
+        "the after side of `js-direct-add` has to hold exactly one lockfile to corrupt"
+    );
     let episode = dependency_episode(case.changes(), &DependencyOptions::default());
     assert!(!episode.model.complete);
     assert!(

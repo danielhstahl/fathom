@@ -14,12 +14,12 @@ what a machine reads.
 | Verb | What it answers | `--json` schema |
 |---|---|---|
 | `fathom index [ROOT] [--rebuild] [--watch] [--refresh] [--stats] [--committed-only]` | turn git history into the index, and say what the run did | [`index.schema.json`](../../schemas/index.schema.json) |
-| `fathom show <episode\|rev> [--root R] [--json]` | one episode: identity, authorship, message, trailers, and the file rows with their taxonomy decisions | [`show.schema.json`](../../schemas/show.schema.json) |
-| `fathom episodes [--root R] [--json] [--limit N] [--offset N] [--author N] [--kind K] [--state S] [--path P] [--since W] [--until W] [--include-dead]` | the **episode list** — the rail's rows: id, time, author kind, `+add`/`−del`, path count, review state, session/turn, plus the three counts (index, selection, page) and a breakdown by review state | [`episodes.schema.json`](../../schemas/episodes.schema.json) |
+| `fathom show <episode\|rev> [--root R] [--json]` | one episode: identity, attribution, message, trailers, and the file rows with their taxonomy decisions | [`show.schema.json`](../../schemas/show.schema.json) |
+| `fathom episodes [--root R] [--json] [--limit N] [--offset N] [--author N] [--kind K] [--state S] [--path P] [--since W] [--until W] [--include-dead]` | the **episode list** — the rail's rows: id, time, `+add`/`−del`, path count, review state, session/turn, plus the three counts (index, selection, page) and a breakdown by review state. `--kind` still filters, and `--json` still carries `author_kind`; neither the column nor the word is printed (`e10.4`) | [`episodes.schema.json`](../../schemas/episodes.schema.json) |
 | `fathom analyze <episode\|rev\|id> [--root R] [--json] [--schema [--check\|--write]]` | the episode's **delta document** — the seven-section model the TUI card, the export and an agent all read; `--schema` prints its JSON Schema | [`episode-delta.schema.json`](../../schemas/episode-delta.schema.json) |
 | `fathom narrative <episode\|rev\|id> [--root R] [--json] [--markdown] [--explain] [--top N] [--attribution]` | one episode's **narrative** — the prose a human skims, with a citation on every claim, the self-check verdict printed with it, and (with `--attribution`) whether a model was ever in the path | `fathom-narrative/1`, documented in [the episode narrative](episode-narrative.md) |
 | `fathom drift [--root R] [--session S] [--all] [--window N] [--min-overlap F] [--max N] [--dismiss KEY] [--off KIND] [--json] [--fail-on-findings]` | **plan versus execution** across a session: the six contradictions between what the recorded intent said and what the episodes did, each with both sides linked | `fathom-drift/1`, documented in [plan versus execution](plan-drift.md) |
-| `fathom why [EPISODE\|rev\|id] [--root R] [--json] [--weight NAME=VALUE] [--tau N] [--calibrate [SET]] [--weights]` | one episode's **risk score and its arithmetic** — every feature, its weight, its contribution, the reasons in order, and what the model could not see; `--calibrate` prints precision/recall of the top decile before and after a retune | `fathom.cli.why/1`, documented in [risk scoring](risk-scoring.md) §4 |
+| `fathom why [EPISODE\|rev\|id] [--root R] [--json] [--weight NAME=VALUE] [--tau N] [--calibrate [SET]] [--weights]` | one episode's **risk score and its arithmetic** — every feature, its weight, its contribution, the reasons in order, and what the model could not see; `--calibrate` prints precision/recall of the top decile before and after a retune | `fathom.cli.why/1`, documented in [the risk page](risk.md) |
 | `fathom stats [ROOT] [--json]` | repo scale, index state, cache hit rate | [`stats.schema.json`](../../schemas/stats.schema.json) |
 | `fathom doctor [--root R] [--privacy] [--deep] [--strict] [--json]` | the build, the environment, the repository and the index — each finding with a remedy | [`doctor.schema.json`](../../schemas/doctor.schema.json) |
 | `fathom export [--format md\|html\|json] [--out STEM] [--episodes RANGE] [--root R] [--stdout] [--strict] [--json]` | the **review artefact** — one record (summary card, narrative, dependency and architecture deltas, findings with evidence, the operator-action checklist, the sign-off block and the gap list) written as markdown, HTML or JSON, byte-identical when re-exported | [`export.schema.json`](../../schemas/export.schema.json), documented in [the review artefact](export-artefact.md) |
@@ -28,7 +28,7 @@ what a machine reads.
 | `fathom hooks [ROOT] [--check] [--replay] [--tail] [--max N] [--trailer S:T] [--strict] [--json]` | the harness event stream: lag, durable offset, counts by type, why each refused line was refused, and a deterministic replay | [`hooks.schema.json`](../../schemas/hooks.schema.json) |
 
 `fathom analyze` takes an episode id or anything
-[`fathom_ingest::revspec`](../../crates/fathom-ingest/src/revspec.rs) resolves, and prints the same document in two forms: rendered sections for a human, one JSON line for a machine ([the delta model](delta-model.md) is the contract, and `schemas/episode-delta.schema.json` is generated by this verb and diffed in CI). Without `--json` it prints the model's own rendering, which is the same text the card's rows come from — one set of words, three surfaces.
+[`fathom_ingest::revspec`](../../crates/fathom-ingest/src/revspec.rs) resolves, and prints the same document in two forms: rendered sections for a human, one JSON line for a machine ([the delta](delta.md) is the contract, and `schemas/episode-delta.schema.json` is generated by this verb and diffed in CI). Without `--json` it prints the model's own rendering, which is the same text the card's rows come from — one set of words, three surfaces.
 
 `fathom show` takes a revision or an object id — anything
 [`fathom_ingest::revspec`](../../crates/fathom-ingest/src/revspec.rs) resolves: `HEAD`, `HEAD~3`, `HEAD^2`,
@@ -156,13 +156,23 @@ remedy, because three near-identical sentences drift, and one of them will be th
 ### The findings that are untidy rather than degraded
 
 `fathom stats` exits 12 for everything above because in each case an answer is missing or wrong. There are
-two findings that are not like that, and printing them with code 12 anyway would make a healthy repository look
-broken:
+three findings that are not like that, and printing them with code 12 anyway would make a healthy repository
+look broken:
 
 | Finding code | State | `stats` | `doctor` | `doctor --strict` | Remedy printed |
 |---|---|---|---|---|---|
 | `index_dead_rows` | commit rows for commits that no longer exist: a `rebase`, a `commit --amend` or a force-push replaced them, and `git gc --prune=now` has usually deleted the objects | 0 | reported, exit 0 | **12** | `fathom index --prune` |
+| `index_complexity_partial` | the `git_commit_file` complexity column is filled on some but not all of the rows that could carry a figure (ADR-007 §9.6) | 0 | reported, exit 0 | **12** | `fathom index` |
 | `config_ignored_key` | a key `fathom.toml` sets that this build cannot use: a `[risk.weights]` name that is not one of the twelve, a weight that is not a number, a value that had to be clamped | 0 | reported, exit 0 | **5** | rename the key or delete the line; `fathom why --weights` prints the twelve |
+
+`index_complexity_partial` is the one of the three whose absence would be the bug. A complexity column nobody
+has filled is honest — every figure prints `?` with `column_not_filled`, and the coverage line says so — while
+a column filled on two thirds of the index puts a confident number beside a `?` and invites a reader to add
+them, which is the quiet lie ADR-007 §9.6 names. So the fraction is printed on every `fathom stats` and
+`fathom doctor` (`complexity 3128 of 4000 file row(s) measured (78 %) …`, with the reason codes and the basis
+token(s) after it), and the *finding* fires only in the half-filled state whose threshold is this verb's own:
+below 100 % of the rows that could carry a figure, and stated in the line rather than in a config key, per
+ADR-007 §8.3.
 
 The index is not wrong in this state — HEAD is indexed, the queue is segmented over the history the refs
 still reach, and every episode answer is the answer. What is wrong is that the store *counts* as the
@@ -204,15 +214,15 @@ worktree pointing at a git directory that is gone. `fathom stats` prints them un
 code.
 
 An index that is empty because the *repository* has no commits is not degraded. That is ADR-006 §10.3's
-empty state, printed with its fixed copy: `no index here yet — run \`fathom index\` here, then reopen
-fathom`. The shell prints the same sentence from the same read (the empty state the MVP walkthrough
+empty state, printed with its fixed copy: ``no index here yet — run `fathom index` here, then reopen
+fathom``. The shell prints the same sentence from the same read (the empty state the MVP walkthrough
 filed): `fathom stats` says the
 index is missing, and the TUI says it too rather than guessing.
 
 The second untidy row is not about the index at all, and it earns the same class for the same reason: nothing
 the binary answers is wrong, and what the finding asks for is a line edited. `[risk.weights]` is an open map
 in the key spec (`risk.weights.<weight>`), so the config layer resolves *any* name under it and only
-`features-1` knows what a real one is — which is how `new_dependency = 0.2` sat in this repository's own
+`features-3` knows what a real one is — which is how `new_dependency = 0.2` sat in this repository's own
 `fathom.toml` alongside a vector that has never carried that name, configuring nothing while looking like a
 decision, noticed only in the last three lines of a score nobody re-reads (**reco-gna**). `fathom doctor`
 says the sentence on its own now: the key, that it is not a feature, the twelve that are, and the remedy — and

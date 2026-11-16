@@ -40,23 +40,23 @@ precedence chain, so a rename that breaks a published sequence breaks the build
 ([ADR-006 §9](../adr/0006-tui.md)).
 
 <!-- BEGIN GENERATED: tasks -->
-#### T1 — Triage the top of the queue and sign it off
+#### T1 — Triage the top of the rail and sign it off
 
 *The question that brings the reviewer here:* What is the next thing I have to look at, and am I happy with it?
 
 ```
-q   j   <Enter>   d   x
+t   j   <Enter>   d   x
 ```
 
 | # | Key | Resolves in mode | Action | What it does |
 |---|---|---|---|---|
-| 1 | `q` | `global` | `view.queue` | Home. Focus lands on the worklist, ranked by risk (pane 1). |
-| 2 | `j` | `list` | `list.down` | Move down the worklist. `H`/`M`/`L` and `<C-d>`/`<C-u>` too. |
+| 1 | `t` | `global` | `view.timeline` | The rail — the chronology `e10.1` made home — newest first, focused (pane 1). No filter on entry: the strip's unread count is the signal. |
+| 2 | `j` | `list` | `list.down` | Move down the rail. `H`/`M`/`L` and `<C-d>`/`<C-u>` too. |
 | 3 | `<Enter>` | `list` | `drill.in` | Drill into the episode card (pane 2): what changed, where, blast radius, every figure a button. |
 | 4 | `d` | `global` | `view.diff` | Same scope, diff view: file tree first, `j` then `<Enter>` to read a file's hunks. |
-| 5 | `x` | `global` | `review.accept` | Mark reviewed: disposition `accepted` + identity + time to the ledger; the queue advances. |
+| 5 | `x` | `global` | `review.accept` | Mark reviewed: disposition `accepted` + identity + time are written first, and only then does the row's glyph go `⚑`→`✔` and the strip's count drop — same frame, cursor where it was. |
 
-`f` flags instead, `-` dismisses with a reason from the closed vocabulary, `z` snoozes, `w` prints the ranking the way `fathom why` does.
+`f` flags instead, `-` dismisses with a reason from the closed vocabulary, `z` snoozes, `w` prints the ranking the way `fathom why` does, `r` lists what was skipped and why. A run of rows is `F` → `state=unread`, then `j`.
 
 #### T2 — Read what the newest turn did, and whether the shape moved
 
@@ -68,7 +68,7 @@ a   <Enter>   s   g   <Esc>
 
 | # | Key | Resolves in mode | Action | What it does |
 |---|---|---|---|---|
-| 1 | `a` | `global` | `view.ambient` | Glance mode: latest episode, its risk, queue count, index state. |
+| 1 | `a` | `global` | `view.ambient` | Glance mode: latest episode, its risk, the unread count, index state. |
 | 2 | `<Enter>` | `body` | `drill.in` | Drill into that episode's card: one keypress, per ADR-001 §4.1. |
 | 3 | `s` | `global` | `view.structure` | Where it landed: treemap with churn heat; `[`/`]` move the aggregation level. |
 | 4 | `g` | `global` | `view.graph` | Module graph with this episode's delta overlay; `!` shows only the delta, `[`/`]` aggregate, `<`/`>` set the hop limit. |
@@ -104,7 +104,6 @@ up here first.
 <!-- BEGIN GENERATED: views -->
 | View | Mode | Go with | The question it answers |
 |---|---|---|---|
-| **Queue** | `queue` | `q` | What is the next thing I have to look at, and why that one? |
 | **Timeline** | `timeline` | `t` | What happened, in what order, and which of it have I not read? |
 | **Diff** | `diff` | `d` | What exactly changed in this file, and is it what the card claims? |
 | **Structure** | `structure` | `s` | Where did it land, and is the tree hottest where it already was? |
@@ -150,13 +149,12 @@ mode has to be live (§4).
 | **Move around** | `<C-w>7` | Go to tab 7 | global |
 | **Move around** | `<C-w>8` | Go to tab 8 | global |
 | **Move around** | `<C-w>9` | Go to tab 9 | global |
-| **Review the episode** | `i` | Show captured intent and its source | global |
-| **Review the episode** | `r` | Queue: what you skipped, and why | `queue` |
 | **Review the episode** | `x` | Mark reviewed (accept) | global |
 | **Review the episode** | `-` | Dismiss with a reason | global |
 | **Review the episode** | `f` | Flag for attention, with a note | global |
+| **Review the episode** | `r` | Rail: what you skipped, and why | global |
 | **Review the episode** | `z` | Snooze until a condition | global |
-| **Review the episode** | `w` | Why this score / this rank (`fathom why`) | global |
+| **Review the episode** | `w` | Why this score: every reason and the whole ceiling | global |
 | **Change what you are looking at** | `m` | Mark this endpoint for comparison | global |
 | **Change what you are looking at** | `c` | Compare the live scope with the mark | global |
 | **Change what you are looking at** | `F` | Edit filters (author, area, state, date) | global |
@@ -202,6 +200,7 @@ mode has to be live (§4).
 | **View-local** | `[` | Diff: previous hunk | `diff` |
 | **View-local** | `b` | Diff: show suppressed noise (the rule is printed) | `diff` |
 | **View-local** | `E` | Diff: open file at line in $EDITOR | `diff` |
+| **View-local** | `<` | Diff: sort the file tree by path / complexity delta | `diff` |
 | **View-local** | `\` | Diff: split / unified | `diff` |
 | **View-local** | `W` | Diff: word-diff on / off | `diff` |
 | **View-local** | `=` | Diff: ignore whitespace | `diff` |
@@ -220,7 +219,6 @@ mode has to be live (§4).
 | **View-local** | `p` | Go to: Deps | global |
 | **View-local** | `d` | Go to: Diff | global |
 | **View-local** | `g` | Go to: Graph | global |
-| **View-local** | `q` | Go to: Queue | global |
 | **View-local** | `s` | Go to: Structure | global |
 | **View-local** | `t` | Go to: Timeline | global |
 <!-- END GENERATED: keys -->
@@ -232,8 +230,8 @@ findings) and `?` (this table, from inside the program).
 ## 4 Modes: why one key can be four different things
 
 Exactly one *interaction* mode and one *view* mode are live over the always-live `global` layer.
-`prompt` and `pick` are **exclusive**: while a text field or a chooser owns the keyboard, `q` is the
-letter q and not "go to the queue" — which is the reason the palette can be typed into at all.
+`prompt` and `pick` are **exclusive**: while a text field or a chooser owns the keyboard, `t` is the
+letter t and not "go to the timeline" — which is the reason the palette can be typed into at all.
 Precedence is first-binder-wins down this list (ADR-006 §7.1):
 
 <!-- BEGIN GENERATED: modes -->
@@ -241,9 +239,8 @@ Precedence is first-binder-wins down this list (ADR-006 §7.1):
 |---|---|---|---|
 | `prompt` | interaction | yes | A one-line text field owns the keyboard (search query, palette filter, reason text, path). Everything typed is text. |
 | `pick` | interaction | yes | A single-key chooser is open (dismiss reason, snooze window, format). One keystroke chooses; there is no text entry. |
-| `list` | interaction | no | A list pane has focus: queue worklist, episode rail, file tree, dependency table, search results, treemap rows. |
+| `list` | interaction | no | A list pane has focus: episode rail, file tree, dependency table, search results, treemap rows. |
 | `body` | interaction | no | A content surface has focus: hunk view, episode card, graph canvas, artefact preview. |
-| `queue` | view | no | The attention queue is the live view. |
 | `timeline` | view | no | The timeline (episode rail + card) is the live view. |
 | `diff` | view | no | The diff view is the live view. |
 | `structure` | view | no | The structure treemap view is the live view. |
@@ -320,8 +317,8 @@ Every default binding, in precedence order. This is the table the help overlay d
 | `body` | `j` | `list.scroll_down` | Scroll one line down |
 | `body` | `k` | `list.scroll_up` | Scroll one line up |
 | `body` | `l` | `drill.in` | Drill in (follow selection / evidence) |
-| `queue` | `r` | `queue.retrospect` | Queue: what you skipped, and why |
 | `timeline` | — | — | inherits the shared motion set: no view-local bindings |
+| `diff` | `<` | `diff.sort_cycle` | Diff: sort the file tree by path / complexity delta |
 | `diff` | `=` | `diff.ws_toggle` | Diff: ignore whitespace |
 | `diff` | `E` | `diff.open_editor` | Diff: open file at line in $EDITOR |
 | `diff` | `W` | `diff.word_toggle` | Diff: word-diff on / off |
@@ -382,15 +379,14 @@ Every default binding, in precedence order. This is the table the help overlay d
 | `global` | `d` | `view.diff` | Go to: Diff |
 | `global` | `f` | `review.flag` | Flag for attention, with a note |
 | `global` | `g` | `view.graph` | Go to: Graph |
-| `global` | `i` | `intent.show` | Show captured intent and its source |
 | `global` | `m` | `compare.mark` | Mark this endpoint for comparison |
 | `global` | `n` | `list.next_match` | Next match |
 | `global` | `o` | `view.artefact` | Go to: Artefact |
 | `global` | `p` | `view.deps` | Go to: Deps |
-| `global` | `q` | `view.queue` | Go to: Queue |
+| `global` | `r` | `review.retrospect` | Rail: what you skipped, and why |
 | `global` | `s` | `view.structure` | Go to: Structure |
 | `global` | `t` | `view.timeline` | Go to: Timeline |
-| `global` | `w` | `risk.explain` | Why this score / this rank (`fathom why`) |
+| `global` | `w` | `risk.explain` | Why this score: every reason and the whole ceiling |
 | `global` | `x` | `review.accept` | Mark reviewed (accept) |
 | `global` | `z` | `review.snooze` | Snooze until a condition |
 <!-- END GENERATED: keymap -->
@@ -421,6 +417,7 @@ makes "unbound" different from "unreachable".
 | `diff.hunk_prev` | Diff: previous hunk | view | `[` | yes | `diff` | `e1.7` |
 | `diff.noise_toggle` | Diff: show suppressed noise (the rule is printed) | view | `b` | yes | `diff` | `e2.2` |
 | `diff.open_editor` | Diff: open file at line in $EDITOR | view | `E` | yes | `diff` | `e5.8` |
+| `diff.sort_cycle` | Diff: sort the file tree by path / complexity delta | view | `<` | yes | `diff` | `e8.6` |
 | `diff.split_toggle` | Diff: split / unified | view | `\` | yes | `diff` | `e1.7` |
 | `diff.word_toggle` | Diff: word-diff on / off | view | `W` | yes | `diff` | `e1.7` |
 | `diff.ws_toggle` | Diff: ignore whitespace | view | `=` | yes | `diff` | `e1.7` |
@@ -442,7 +439,6 @@ makes "unbound" different from "unreachable".
 | `help.open` | Help: this keymap as the merged table | overlay | `?` | yes | `global` | `e1.5` |
 | `history.back` | Back to the previous place (drill history) | frame | `<C-o>` | yes | `global` | `e1.5` |
 | `index.reindex` | Re-index this repository | index | `<C-r>` | yes | `global` | `e1.4` |
-| `intent.show` | Show captured intent and its source | review | `i` | yes | `global` | `e4.2` |
 | `list.bot_visible` | Last visible row | motion | `L` | yes | `list` | `e5.4` |
 | `list.down` | Move down one row | motion | `<Down>` `j` | yes | `list`, `body`, `pick` | `e1.5` |
 | `list.expand` | Expand / collapse node | motion | `<Space>` | yes | `list` | `e1.7` |
@@ -472,12 +468,12 @@ makes "unbound" different from "unreachable".
 | `prompt.result_down` | Next result | overlay | `<C-n>` `<Down>` `<Tab>` | no | `prompt` | `e5.2` |
 | `prompt.result_up` | Previous result | overlay | `<C-p>` `<Up>` | no | `prompt` | `e5.2` |
 | `prompt.submit` | Submit | overlay | `<Enter>` | no | `prompt` | `e5.2` |
-| `queue.retrospect` | Queue: what you skipped, and why | review | `r` | yes | `queue` | `e4.5` |
 | `review.accept` | Mark reviewed (accept) | review | `x` | yes | `global` | `e4.5` |
 | `review.dismiss` | Dismiss with a reason | review | `-` | yes | `global` | `e4.5` |
 | `review.flag` | Flag for attention, with a note | review | `f` | yes | `global` | `e4.5` |
+| `review.retrospect` | Rail: what you skipped, and why | review | `r` | yes | `global` | `e4.5` |
 | `review.snooze` | Snooze until a condition | review | `z` | yes | `global` | `e4.5` |
-| `risk.explain` | Why this score / this rank (`fathom why`) | review | `w` | yes | `global` | `e4.4` |
+| `risk.explain` | Why this score: every reason and the whole ceiling | review | `w` | yes | `global` | `e4.4` |
 | `screen.redraw` | Repaint the screen | frame | `<C-l>` | yes | `global` | `e1.5` |
 | `search.open` | Search: fuzzy over episodes, paths, symbols, deps, findings | overlay | `/` | yes | `global` | `e5.2` |
 | `structure.level_down` | Structure: drill one level down | view | `]` | yes | `structure` | `e2.3` |
@@ -501,7 +497,6 @@ makes "unbound" different from "unreachable".
 | `view.deps` | Go to: Deps | view | `p` | yes | `global` | `e2.6` |
 | `view.diff` | Go to: Diff | view | `d` | yes | `global` | `e1.7` |
 | `view.graph` | Go to: Graph | view | `g` | yes | `global` | `e3.4` |
-| `view.queue` | Go to: Queue | view | `q` | yes | `global` | `e4.5` |
 | `view.structure` | Go to: Structure | view | `s` | yes | `global` | `e2.3` |
 | `view.timeline` | Go to: Timeline | view | `t` | yes | `global` | `e1.6` |
 <!-- END GENERATED: actions -->
@@ -546,6 +541,8 @@ and [ADR-006 §7.2](../adr/0006-tui.md).
 | **reserved for user override** | <C-x> | a byte, simply unbound | all modes | one of the most-requested personal chords in vim keymap threads; free |
 | **reserved for user override** | <C-6> | a byte, simply unbound | all modes | vim's alternate-file |
 | **reserved for user override** | <S-F1> | a byte, simply unbound | all modes | function keys are otherwise unbound in v1: their encodings vary more across terminals than any other group |
+| **reserved for user override** | i | a byte, simply unbound | all modes | the intent pane's letter. `e9.3` retired the pane (ADR-006 §5.1.1): the card's `intent` row is the one line, and `fathom show` prints the plan and the declared scope behind it. Free for a chord of your own; bringing it back into the default table is §7.6's route, not a quiet rebind. |
+| **reserved for user override** | q | a byte, simply unbound | all modes | the Queue view's letter. `e10.3` retired the view (ADR-006 §5.1.2 §1): the timeline is home and `t` stays the home letter, because a key belongs to the view it opens and not to the pane that happened to be deleted. The acts moved to the rail and `r` came with them, so nothing this build needs is spelled `q`. Free for a chord of your own; §11 carries the bar for binding it in the default table again. |
 <!-- END GENERATED: reserved -->
 
 ## 8 Making a key yours
@@ -585,13 +582,12 @@ key the build does not bind ([ADR-006 §5](../adr/0006-tui.md), `keymap.HINT_ACT
 <!-- BEGIN GENERATED: hint -->
 | Action | Label | Key |
 |---|---|---|
-| `view.queue` | Go to: Queue | `q` |
 | `view.timeline` | Go to: Timeline | `t` |
 | `view.diff` | Go to: Diff | `d` |
 | `search.open` | Search: fuzzy over episodes, paths, symbols, deps, findings | `/` |
 | `palette.open` | Command palette | `,` |
 | `review.accept` | Mark reviewed (accept) | `x` |
-| `risk.explain` | Why this score / this rank (`fathom why`) | `w` |
+| `risk.explain` | Why this score: every reason and the whole ceiling | `w` |
 | `help.open` | Help: this keymap as the merged table | `?` |
 <!-- END GENERATED: hint -->
 

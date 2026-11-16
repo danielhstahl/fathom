@@ -57,6 +57,15 @@ const GIT_COMMIT_FILE_COLUMNS: &[&str] = &[
     "path_class",
     "taxonomy_version",
     "noise_class",
+    // Appended by the probe list, in `ADDED_COLUMNS` order: the complexity figure for each side of the row
+    // (ADR-007 §9.1, `e8.3`). Appendix A does not know them, which is the point of a probe list — the
+    // reference schema is what the store *means*, these are what a later build added to it.
+    "complexity_before_reason",
+    "complexity_after_reason",
+    "complexity_basis",
+    "complexity_max",
+    "complexity_before",
+    "complexity_after",
 ];
 
 fn columns(store: &Store, table: &str) -> Vec<String> {

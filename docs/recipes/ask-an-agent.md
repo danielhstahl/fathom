@@ -126,4 +126,4 @@ outbound features compiled in: none — no HTTP client and no listener in this b
 ```
 
 **Next**: [connect a harness](connect-a-harness.md) so the documents contain intent rather than its absence ·
-[the delta model](../concepts/delta-model.md) for the version policy an agent's parser has to respect.
+[the delta](../concepts/delta.md) for the version policy an agent's parser has to respect.

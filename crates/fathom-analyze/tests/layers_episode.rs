@@ -22,8 +22,8 @@ use fathom_analyze::graph::layers::Layers;
 use fathom_analyze::graph::{self, GraphPolicy, Lane, ModuleInput};
 use fathom_analyze::layering::{self, Debt, Locate, Rules};
 use fathom_analyze::structure::{
-    Complexity, Edge, EdgeKind, FileLevel, FileStructure, Granularity, Import, Language,
-    Resolution, Span, Structure, Symbol, SymbolKind, Visibility,
+    Edge, EdgeKind, FileLevel, FileStructure, Granularity, Import, Language, Resolution, Span,
+    Structure, StructureProxies, Symbol, SymbolKind, Visibility,
 };
 use fathom_core::time::Timestamp;
 use fathom_store::spine::Store;
@@ -79,7 +79,7 @@ fn structure_of(file: &Fixture) -> FileStructure {
         span,
         visibility: Visibility::Public,
         exported: true,
-        complexity: Complexity {
+        complexity: StructureProxies {
             body_lines: 1,
             branches: 0,
             loops: 0,

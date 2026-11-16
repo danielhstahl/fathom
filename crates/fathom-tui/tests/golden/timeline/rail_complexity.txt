@@ -1,0 +1,40 @@
+# rail_complexity
+# the rail's sixth column, at its ideal width: `~+6 (2/5)` is a floor - three of the five files this episode touched could not be counted - and the tilde, the sign and the denominator are glyphs and digits, so a monochrome rail loses no fact (`e8.6`, ADR-007 §5.3, §10.1). The card row below is the same figure with the word on it.
+
+▸ e8f1a2 0:12 +412 −90 ●●●●●● ~+6 62 ⚑    
+  9c4d10 0:41 +58 −12 ●●●●○○ ? ⚑          
+  2be77f 1:07 +8 −3 ●●●○○○ ? ✓            
+ Mon 13 Oct ── 3 episodes                 
+  77aa0c 1d1h +1 204 −90 ●●●●●● ? ✔       
+  40c9b3 1d4h +96 −0 ●●●●○○ ? ⚑           
+  c1f5e2 1d8h +22 −22 ●●●●○○ ? ⚑          
+ Thu 18 Sep · session 2 (pi) ── 1 episode 
+  08d4b1 26d0h +3 −1 ●●○○○○ ? ✔           
+ Sun 14 Sep · session 1 (pi) ── 1 episode 
+  5f2c99 30d0h +61 −61 ●●●●●○ ? ×         
+ Sat 13 Sep ── 1 episode                  
+
+## rail strip
+order: newest first · 4 unread · 1 snoozed · filter: area=any state=any group=day (F edits) · 10 of 10 · risk spine-3
+
+## card (35 columns × 14 rows)
+e8f1a2 — make the store epoch-safe 
+4 commits · 0:12 ago · ⚑ unread    
+~ what   +412 −90 · +7 more        
+noise    1 of 11 file(s) discounte…
+complexity ~+6 (2 of 5 measured…   
+~ where  src/store 9f +3… · +3 more
+x dependencies 1 added (… · +1 more
+~ surface source 9f +338… · +1 more
+x tests  1 file(s)… · +3 more      
+x blast  2 direct, 1 one… · +1 more
+~ attention spine-3 62 = surfaces  
+            50 + size 12 · +2 more 
+surfaces ci-config                 
+… 7 more rows · j · G              
+
+## card strip
+
+
+## cursor
+e8f1a2

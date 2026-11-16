@@ -23,6 +23,7 @@ from . import json_schema as JS
 from . import layer as L
 from . import schema as S
 from . import sources as SRC
+from .command import command
 from .errors import ConfigError, EXIT_CODES
 
 
@@ -200,13 +201,13 @@ def _dispatch(args) -> int:
             # those has its own provenance, so printing "the winner" here would be a lie.
             print(L.render_value(args.key, table))
             print("(a table: every entry has its own winning layer — "
-                  "`fathom config explain --key %s`)" % args.key, file=sys.stderr)
+                  "`%s`)" % command("explain", "--key", args.key), file=sys.stderr)
             return 0
         if decision is None:
             suggestions = S.nearest(args.key)
             raise ConfigError("no config key %r" % args.key,
                               hint="did you mean %s?" % ", ".join(repr(s) for s in suggestions)
-                              if suggestions else "see `fathom config keys`")
+                              if suggestions else "see `%s`" % command("keys"))
         if args.json:
             print(json.dumps(decision.as_dict(), indent=2, sort_keys=True))
         else:

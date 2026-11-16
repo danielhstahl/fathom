@@ -32,7 +32,7 @@ fathom export --format md --stdout --episodes 'origin/main..HEAD'
 
 - **Scope** — `HEAD` · resolved `70b94d6` · 1 commit(s) · 1 episode(s)
 - **Verdict** — 0 of 1 episode(s) carry an accepted sign-off · 1 undecided · 1 action(s) open
-- **Built from** — delta `fathom-delta/1/v1` · ledger `fathom-review/1` · narrative `fathom-narrative/1/v1`
+- **Built from** — delta `fathom-delta/2/v2` · ledger `fathom-review/1` · narrative `fathom-narrative/1/v1`
 - **Produced by** — `fathom 0.1.0-alpha.1` from `.fathom/index.sqlite3`
 ```
 
@@ -65,7 +65,7 @@ legitimate thing to say out loud and a poor thing to merge on:
 
 ```bash
 fathom review status                        # what a reviewer has to see before the artefact means anything
-fathom review sync                          # turn the acts the queue recorded into ledger entries
+fathom review sync                          # turn the acts the shell recorded into ledger entries
 fathom export --format md --stdout --strict > pr-418.md    # exit 7 while a checklist item is open
 ```
 

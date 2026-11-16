@@ -131,6 +131,7 @@ impl Sink for StoreSink<'_> {
                 phase: crate::index::Phase::Walking,
                 done: self.walked,
                 of: None,
+                note: None,
             });
         }
         Ok(written)

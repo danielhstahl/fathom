@@ -11,7 +11,7 @@ needed to happen. Every recipe below was run against the miniature that ships in
 
 | Recipe | You get | Roughly |
 |---|---|---|
-| [Review a session](review-a-session.md) | 43 commits from an agent turned into signed-off reviews, with the queue explaining its own order | 10 min |
+| [Review a session](review-a-session.md) | 43 commits from an agent turned into signed-off reviews, with every score on the rail explaining where it came from | 10 min |
 | [Run Fathom beside the agent](run-beside-the-agent.md) | a second terminal that keeps itself current while the harness drives | 5 min |
 | [Connect a harness](connect-a-harness.md) | hook events arriving, so *intent* stops being a guess, and how to prove they arrived | 10 min |
 | [Gate a pipeline](gate-a-pipeline.md) | the exit codes a CI job can branch on today, and the one verb they are waiting for | 15 min |

@@ -322,7 +322,7 @@ fn a_frame_full_of_the_fixture_set_is_still_exactly_the_frame() {
     for (name, fixture) in FIXTURES.iter().chain(HOSTILE.iter()) {
         for size in [(40, 10), (80, 24), (100, 30), (160, 50)] {
             let app = app_with(fixture, size);
-            for view in [ViewId::Queue, ViewId::Timeline, ViewId::Search] {
+            for view in [ViewId::Timeline, ViewId::Search, ViewId::Diff] {
                 let lines = view_lines(&app, view, usize::from(size.0), usize::from(size.1));
                 assert_eq!(
                     lines.len(),

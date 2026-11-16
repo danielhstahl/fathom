@@ -99,6 +99,19 @@ fn escape(text: &str, out: &mut String) {
     }
 }
 
+/// The stored form of a path, read back: the exact inverse of [`RepoPath::quoted`], for a caller that has
+/// the string and not the type.
+///
+/// `git_commit_file.new_path` is stored in this form, so anything reading a path out of the spine — the
+/// index-time complexity fill, which asks a path what language it is — wants the bytes back rather than
+/// a string that still has git's escapes in it.
+#[must_use]
+pub fn from_quoted(text: &str) -> RepoPath {
+    RepoPath {
+        bytes: unquote(text),
+    }
+}
+
 /// The exact inverse of [`quote`].
 #[must_use]
 fn unquote(text: &str) -> Vec<u8> {

@@ -17,6 +17,12 @@
 //! the status strip while the run goes, the row goes when the run lands, and no answer the key gives
 //! points a reviewer at work that is already finished.
 //!
+//! The third defect was the quiet one: the branch in the tab bar's right-hand corner never changed
+//! (`reco-nup`). It is read once, before the first frame, from a repository the shell may not open — and
+//! nothing ever read it again, so a `git switch` in the first terminal left the second one naming a branch
+//! nobody had checked out for hours. The frame's half of that is asserted below: a producer that hands over
+//! a new label gets it drawn, and one that hands over the same label again gets nothing said.
+//!
 //! No git, no store and no pty: the producer is scripted, which is the point — the shell's half of the
 //! contract is "do the right thing with what you are handed", and the composition root's half is tested
 //! where the store is (`crates/fathom-cli/tests`, and `tools/mvp_acceptance.py`'s pty measurement).
@@ -38,6 +44,8 @@ use fathom_tui::watch::{Source, Update, Watcher, Work};
 /// The instant the frames are drawn for; a fixture that read a clock would be a fixture with a flake.
 const NOW: Timestamp = Timestamp::from_unix_micros(1_700_000_000_000_000);
 const SIZE: (u16, u16) = (100, 30);
+/// The label the shell opens with, spelled the way `fathom-cli` spells it: `{repository} · {branch}`.
+const REPO: &str = "fathom/pilot · main";
 /// One day, for ages that make two rows distinguishable.
 const DAY: i64 = 86_400_000_000;
 
@@ -98,6 +106,7 @@ impl Watcher for Scripted {
             )),
             search: None,
             new_commits: Some(1),
+            repo_label: None,
             note: None,
             work: None,
         })
@@ -117,14 +126,52 @@ impl Watcher for Scripted {
             )),
             search: None,
             new_commits: Some(1),
+            repo_label: None,
             note: None,
             work: None,
         })
     }
 }
 
+/// A producer whose only news is the branch: `HEAD` now names a different ref and the commit did not move
+/// — the `git switch` to a sibling at the same tip (`reco-nup`).
+///
+/// Everything else in the frame is what it was, which is the whole difficulty of this defect: the update
+/// that must draw a frame is the one that changes a single line of chrome.
+struct Switched {
+    /// The label the producer read from git, in the tab bar's own spelling.
+    label: String,
+    /// The poll the switch is noticed on.
+    after: usize,
+    asked: AtomicUsize,
+}
+
+impl Switched {
+    fn new(label: &str, after: usize) -> Self {
+        Switched {
+            label: label.to_owned(),
+            after,
+            asked: AtomicUsize::new(0),
+        }
+    }
+}
+
+impl Watcher for Switched {
+    fn poll(&self) -> Option<Update> {
+        let seen = self.asked.fetch_add(1, Ordering::Relaxed) + 1;
+        (seen == self.after).then(|| Update {
+            repo_label: Some(self.label.clone()),
+            ..Update::default()
+        })
+    }
+
+    fn refresh(&self) -> Option<Update> {
+        self.poll()
+    }
+}
+
 fn shell(watch: Option<Source>) -> App {
-    let mut app = App::new(Keymap::defaults(), Model::from_facade(), SIZE, "repo");
+    let mut app = App::new(Keymap::defaults(), Model::from_facade(), SIZE, REPO);
     app.timeline.set_now(NOW);
     app.load_episodes(batch(&["ep-old"]));
     app.watch = watch;
@@ -218,6 +265,7 @@ fn the_watchers_update_names_itself_rather_than_arriving_silently() {
             )),
             search: None,
             new_commits: Some(1),
+            repo_label: None,
             note: None,
             work: None,
         },
@@ -294,6 +342,122 @@ impl Watcher for ScriptedRef {
     fn refresh(&self) -> Option<Update> {
         self.0.refresh()
     }
+}
+
+// ---------------------------------------------------------------------------------------------
+// the branch: the frame names the ref the repository is on now (`reco-nup`)
+// ---------------------------------------------------------------------------------------------
+
+#[test]
+fn a_branch_switched_next_door_shows_up_in_the_tab_bar() {
+    let mut app = shell(Some(Source::live(Switched::new(
+        "fathom/pilot · feature/x",
+        2,
+    ))));
+    let bus = Bus::new();
+    // Same arrangement as the commit test: one no-op message so the loop's own "the script has gone
+    // quiet" rule does not end the run before the iteration under test arrives.
+    bus.send(Message::Repaint);
+    let mut sink = HeadlessSink {
+        frames: Vec::new(),
+        size: Some(SIZE),
+    };
+    run_loop(&mut app, &bus, &mut sink, None, Some(2))
+        .expect("the loop runs with one repaint and a producer on the bus");
+    assert_eq!(sink.frames.len(), 2, "the second frame is the switch's");
+    let first = sink.frames[0].join("\n");
+    let second = sink.frames[1].join("\n");
+    assert!(
+        first.contains(REPO),
+        "the frame opens on the branch it was handed:\n{first}"
+    );
+    assert!(
+        !first.contains("feature/x"),
+        "and it did not know about the switch yet:\n{first}"
+    );
+    // The assertion is about the line the ticket names — the tab bar's right-hand column — not about
+    // `app.repo_label`, which could be right while nothing drew it.
+    assert!(
+        second.contains("fathom/pilot · feature/x"),
+        "the tab bar names the branch the repository is on now:\n{second}"
+    );
+    assert!(
+        !second.contains(REPO),
+        "and stops naming the one it left:\n{second}"
+    );
+}
+
+#[test]
+fn a_branch_that_changed_says_so_instead_of_changing_quietly() {
+    // The reviewer is reading the rail, not the chrome. A label that changed in silence is a label the
+    // reviewer reads as still true, which is the failure this ticket was filed against.
+    let mut app = shell(None);
+    fathom_tui::frame::apply_update(
+        &mut app,
+        Update {
+            repo_label: Some("fathom/pilot · feature/x".to_owned()),
+            ..Update::default()
+        },
+    );
+    assert_eq!(app.repo_label, "fathom/pilot · feature/x");
+    let said = app.toast.clone().unwrap_or_default();
+    assert!(
+        said.contains("feature/x"),
+        "the hint row says which branch now, in the tab bar's own spelling: {said}"
+    );
+}
+
+#[test]
+fn the_same_branch_read_twice_is_not_an_announcement() {
+    // A producer that re-reads the world says the branch every time it re-reads it. Nothing changed, so
+    // the frame may redraw and may not talk.
+    let mut app = shell(None);
+    let before = app.toast.clone();
+    fathom_tui::frame::apply_update(
+        &mut app,
+        Update {
+            repo_label: Some(REPO.to_owned()),
+            ..Update::default()
+        },
+    );
+    assert_eq!(app.repo_label, REPO);
+    assert_eq!(
+        app.toast, before,
+        "the frame announced a switch that did not happen"
+    );
+}
+
+#[test]
+fn a_head_that_is_not_a_branch_is_printed_as_the_producer_spelled_it() {
+    // `detached`, `head unknown (…)` — the composition root owns that vocabulary (ADR-001 §7.7: unknown is
+    // a value) and the shell repeats it rather than inventing its own guess about a commit it cannot read.
+    let mut app = shell(None);
+    fathom_tui::frame::apply_update(
+        &mut app,
+        Update {
+            repo_label: Some("fathom/pilot · detached".to_owned()),
+            ..Update::default()
+        },
+    );
+    let frame = fathom_tui::frame::frame_of(&app).join("\n");
+    assert!(
+        frame.contains("fathom/pilot · detached"),
+        "the tab bar prints what it was handed:\n{frame}"
+    );
+}
+
+#[test]
+fn an_update_whose_only_news_is_the_branch_is_not_an_empty_one() {
+    // The loop draws nothing for an update that says nothing. A switch between two refs at one commit says
+    // one thing, and that one thing is worth a frame — otherwise the fix is invisible by construction.
+    let label_only = Update {
+        repo_label: Some("fathom/pilot · feature/x".to_owned()),
+        ..Update::default()
+    };
+    assert!(
+        !label_only.is_empty(),
+        "a new branch alone still counts as news"
+    );
 }
 
 // ---------------------------------------------------------------------------------------------

@@ -319,7 +319,8 @@ possible reminder that the diff was written by something that was not going to c
 
 **Why tier B needs a shape (`reco-pfb`).** A report generator is a file whose entire product is the text it
 prints, and there is one in every repository: this project's own `tools/*.py`, ruff's
-`python/py-fuzzer/fuzz.py` — which the published G3 corpus hand-dismisses twice — and every `gen_*.py` and
+`python/py-fuzzer/fuzz.py` — which the published G3 corpus has now hand-dismissed three times — and every
+`gen_*.py` and
 `check_*.py` you have ever written. Firing on those is firing on the house's own style, and output that gets
 skimmed and then ignored costs the true findings more than silence would. So a print must now look like a
 leftover rather than merely be a print. What that refuses to do is worth saying out loud: the detector is not
@@ -594,7 +595,7 @@ different experts' judgement, and one reviewer's fifteen minutes is not that.
 
 **Tune or silence.** `detectors.shotgun.min_clusters`. Treat its findings as a question about episode size
 rather than a defect report — the usual remedy is a narrower episode boundary, which
-[the segmentation model](../concepts/episode-segmentation.md) is the place to argue about.
+[the segmentation model](../concepts/episode-derivation.md#how-a-boundary-is-found--spike-s2) is the place to argue about.
 
 <!-- BEGIN GENERATED: example.shotgun_edit -->
 *The input* (`fixtures/shotgun_edit.json`):
@@ -679,9 +680,9 @@ M src/billing/ledger.rs  +24 −0
 ## Where a finding shows up
 
 The same `Finding` value, four doors: the attention section of
-[the episode card](../concepts/summary-card.md); the ranked queue, whose risk model consumes severities
-([risk score](../concepts/risk-score.md)); the delta document's `findings` section, evidence pointers and
-all ([the delta model](../concepts/delta-model.md)); and the export, where a finding travels with its
+[the episode card](../concepts/summary-card.md); the rail's risk column, whose model consumes
+severities ([risk score](../concepts/risk.md)); the delta document's `findings` section, evidence pointers and
+all ([the delta](../concepts/delta.md)); and the export, where a finding travels with its
 suppression key so the person reading a PR can act on it. A finding that arrives in a pane also carries a
 jump target, which is the mechanism behind "every figure is a button".
 
@@ -698,13 +699,13 @@ Four edits, and the module's own documentation
 4. silence on the clean corpus in the same directory.
 
 No registry call at runtime, no `main` to touch, no surface to teach: the delta document, the card's
-attention section and the queue pick up a new row because they iterate over the table. This catalogue
+attention section and the rail pick up a new row because they iterate over the table. This catalogue
 page, `catalogue.json` and the Rust `CATALOGUE` are then checked against each other
 (`tests/test_pathology_contract.py`), so a new detector without a documentation entry is a red build rather
 than a documentation debt.
 
 ---
 
-**Next**: [risk score](../concepts/risk-score.md) for how severities become a ranking ·
+**Next**: [risk score](../concepts/risk.md) for how severities become a ranking ·
 [false-positive calibration](../concepts/false-positive-calibration.md) for what a detector's cost means ·
 [the recipe for silencing a finding](../recipes/silence-a-finding.md).

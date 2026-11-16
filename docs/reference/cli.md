@@ -15,13 +15,11 @@ One binary, eighteen verbs, one exit-code contract. `fathom` with no verb opens 
 `tui` feature was compiled in ([the cheatsheet](cheatsheet.md) is its keyboard reference); every verb
 has a headless form, because ADR-006 §6.7 refuses a fact that only exists on a screen.
 
-```text
 <!-- BEGIN GENERATED: usage -->
 ```text
 fathom [OPTIONS] [COMMAND]
 ```
 <!-- END GENERATED: usage -->
-```
 
 ## The verbs
 
@@ -38,17 +36,17 @@ not a wall, and the reason it appears here rather than being quietly hidden unti
 | **[`episodes`](#fathom-episodes)** | List the episodes — the rail's rows, headless (reco-11b) | shipped | [*cli*](../concepts/cli.md) · [*timeline*](../concepts/timeline.md) |
 | **[`attribution`](#fathom-attribution)** | Report or correct who Fathom thinks wrote a commit (e4.1) | shipped | [*episode*](../concepts/episode.md) · [*cli*](../concepts/cli.md) |
 | **[`review`](#fathom-review)** | The review ledger: sign-offs that outlive the history they were written about (e4.6) | shipped | [*review-ledger*](../concepts/review-ledger.md) · [*cli*](../concepts/cli.md) |
-| **[`analyze`](#fathom-analyze)** | Print one episode's delta document — the model the TUI, the export and an agent all read | shipped | [*delta*](../concepts/delta.md) · [*delta-model*](../concepts/delta-model.md) |
+| **[`analyze`](#fathom-analyze)** | Print one episode's delta document — the model the TUI, the export and an agent all read | shipped | [*delta*](../concepts/delta.md) |
 | **[`narrative`](#fathom-narrative)** | Read one episode: the narrative every claim in it cites its evidence from (e4.7) | shipped | [*episode-narrative*](../concepts/episode-narrative.md) · [*episode*](../concepts/episode.md) |
 | **[`drift`](#fathom-drift)** | What the plan said against what the session did — the contradictions, both sides linked (e4.8) | shipped | [*plan-drift*](../concepts/plan-drift.md) · [*session-state*](../concepts/session-state.md) |
-| **[`why`](#fathom-why)** | Print one episode's risk score with every feature, its weight and its contribution (e4.4) | shipped | [*risk-score*](../concepts/risk-score.md) · [*risk-scoring*](../concepts/risk-scoring.md) |
+| **[`why`](#fathom-why)** | Print one episode's risk score with every feature, its weight and its contribution (e4.4) | shipped | [*risk*](../concepts/risk.md) · [*cli*](cli.md) |
 | **[`stats`](#fathom-stats)** | Report repo scale, index state and cache hit rate | shipped | [*cli*](../concepts/cli.md) · [*0004-storage*](../adr/0004-storage.md) |
 | **[`check`](#fathom-check)** | Run the checks CI cares about; findings above the threshold exit 7 | shipped | [*ci-gate*](../concepts/ci-gate.md) · [*gate-a-pipeline*](../recipes/gate-a-pipeline.md) |
 | **[`doctor`](#fathom-doctor)** | Describe this build, its environment and its index, with a remedy per finding | shipped | [*troubleshooting*](../troubleshooting.md) · [*cli*](../concepts/cli.md) |
 | **[`export`](#fathom-export)** | Write a review artefact for a pull request or an audit | shipped | [*export-artefact*](../concepts/export-artefact.md) · [*export-for-a-pr*](../recipes/export-for-a-pr.md) |
 | **[`mcp`](#fathom-mcp)** | Speak MCP to a coding agent | shipped | [*0005-harness-contract*](../adr/0005-harness-contract.md) · [*ask-an-agent*](../recipes/ask-an-agent.md) |
 | **[`watch`](#fathom-watch)** | Watch the repository and index as it changes | shipped | [*run-beside-the-agent*](../recipes/run-beside-the-agent.md) · [*session-state*](../concepts/session-state.md) |
-| **[`ambient`](#fathom-ambient)** | The glance pane for the terminal beside the agent: latest episode, queue, index, one reason (reco-8bx) | shipped | [*ambient-mode*](../concepts/ambient-mode.md) · [*0006-tui*](../adr/0006-tui.md) |
+| **[`ambient`](#fathom-ambient)** | The glance pane for the terminal beside the agent: latest episode, open work, index, one reason (reco-8bx) | shipped | [*ambient-mode*](../concepts/ambient-mode.md) · [*0006-tui*](../adr/0006-tui.md) |
 | **[`hooks`](#fathom-hooks)** | Report on the harness event stream: lag, offset, rejections, replay (e6.1) | shipped | [*README*](../harness/README.md) · [*0005-harness-contract*](../adr/0005-harness-contract.md) |
 | **[`daemon`](#fathom-daemon)** | The one process per repository that watches, tails the harness stream and indexes (e6.3) | shipped | [*watch-daemon*](../concepts/watch-daemon.md) · [*cli*](../concepts/cli.md) |
 | **[`status`](#fathom-status)** | Who is keeping this index current, what it costs, and what is left (e6.3) | shipped | [*watch-daemon*](../concepts/watch-daemon.md) · [*cli*](../concepts/cli.md) |
@@ -59,8 +57,8 @@ not a wall, and the reason it appears here rather than being quietly hidden unti
 | **[`search`](#fathom-search)** | Search the whole index from one box, in the shell's own ranking (e5.2) | shipped | [*0006-tui*](../adr/0006-tui.md) · [*timeline*](../concepts/timeline.md) |
 | **[`architecture`](#fathom-architecture)** | The architecture scorecard: five dimensions, one number, and the drift since your last review (e3.9) | shipped | [*scorecard*](../concepts/scorecard.md) · [*cli*](cli.md) |
 | **[`ratchet`](#fathom-ratchet)** | The ratchet: the committed allowance ledger, which tightens on its own and widens only when told to (e3.10) | shipped | [*ratchet*](../concepts/ratchet.md) · [*cycle-detection*](../concepts/cycle-detection.md) |
-| **[`context`](#fathom-context)** | What this repository knows about a path or an episode: the recorded decisions and the open questions (e6.5) | shipped | [*review-memory*](../concepts/review-memory.md) · [*review-ledger*](../concepts/review-ledger.md) |
-| **[`note`](#fathom-note)** | The review memory: notes, decisions, questions and follow-ups, committed under .fathom/reviews/ (e6.5) | shipped | [*review-memory*](../concepts/review-memory.md) · [*cli*](../concepts/cli.md) |
+| **[`context`](#fathom-context)** | What this repository knows about a path or an episode: the recorded decisions and the open questions (e6.5) | shipped | [*review-ledger*](../concepts/review-ledger.md) |
+| **[`note`](#fathom-note)** | The review memory: notes, decisions, questions and follow-ups, committed under .fathom/reviews/ (e6.5) | shipped | [*review-ledger*](../concepts/review-ledger.md) · [*cli*](../concepts/cli.md) |
 | **[`completions`](#fathom-completions)** | Print the shell's own copy of this grammar: completion scripts and man pages (e7.4) | shipped | [*release*](../concepts/release.md) · [*cli*](../concepts/cli.md) |
 | **[`events`](#fathom-events)** | Read the analysis event stream a run wrote: what happened, in order (e6.7) | shipped | [*extensibility*](../concepts/extensibility.md) · [*pathology-detectors*](../concepts/pathology-detectors.md) |
 <!-- END GENERATED: verbs -->
@@ -189,7 +187,7 @@ Two rules hold across all of them, and both are ADR-001 §7's "no unknown printe
 * a figure that could not be computed is **absent or `null`, with a gap line naming who owns it** —
   never `0`, never empty-string;
 * a document that self-checks says so: `fathom analyze --json` resolves every evidence pointer in
-  itself and prints the verdict ([the delta model](../concepts/delta-model.md)).
+  itself and prints the verdict ([the delta](../concepts/delta.md)).
 
 ---
 
@@ -240,7 +238,7 @@ Options:
 
 ## `fathom show`
 
-One episode: identity, authorship, message, trailers, and the file rows with their taxonomy decisions.
+One episode: identity, attribution, message, trailers, and the file rows with their taxonomy decisions.
 The handle grammar — episode id, `HEAD~3`, `main`, `v1.2^{}`, an oid prefix — is shared by `show`,
 `analyze`, `narrative` and `why`, because a reviewer who has an episode should not have to learn which
 verb wants which spelling of it.
@@ -277,8 +275,11 @@ Options:
 
 ## `fathom episodes`
 
-The reviewer's main list, without a screen: one row per episode — id, time, author kind, `+add`/`−del`,
+The reviewer's main list, without a screen: one row per episode — id, time, `+add`/`−del`,
 path count, review state, session/turn — as text or as `--json` ([`fathom.cli.episodes/1`](../../schemas/episodes.schema.json)).
+`--kind` filters on the author kind and `--json` carries `author_kind`, but the text rows print no
+`human`/`agent` word: that verdict left the human-facing surfaces with `e10.4`
+([ADR-006 §5.1.2 §6](../adr/0006-tui.md)).
 `fathom show` answers a question about one episode; this answers the question the rail asks about the whole
 index, which is what ADR-006 §6.7 means by "every view has a headless equivalent" (`reco-11b`).
 
@@ -657,7 +658,7 @@ Options:
 One episode's [delta document](../concepts/delta.md) — the seven-section, evidence-carrying model the
 TUI card, the export and an agent all read, unchanged. `--schema` prints the contract itself, and
 `--schema --check` is how CI keeps the checked-in schema from drifting from the types
-([the version policy](../concepts/delta-model.md)).
+([the version policy](../concepts/delta.md)).
 
 <!-- BEGIN GENERATED: help.analyze -->
 ```text
@@ -778,7 +779,7 @@ Options:
 ## `fathom why`
 
 The risk score as an auditable sum: every feature, its weight, its contribution, the reason behind
-each, and the axes the model could not measure ([risk score](../concepts/risk-score.md)).
+each, and the axes the model could not measure ([risk score](../concepts/risk.md)).
 `--weight NAME=VALUE` is a what-if, `--calibrate` is the corpus that turns retuning from a feeling into
 a number.
 
@@ -1387,7 +1388,7 @@ no terminal taken.
 
 <!-- BEGIN GENERATED: help.ambient -->
 ```text
-The glance pane for the terminal beside the agent: latest episode, queue, index, one reason (`reco-8bx`)
+The glance pane for the terminal beside the agent: latest episode, open work, index, one reason (`reco-8bx`)
 
 Usage: fathom ambient [OPTIONS]
 
@@ -1825,7 +1826,7 @@ Options:
 Answer *"what does this repository already know about this?"* for a path or an episode: the recorded
 decisions with their reasons, the questions and follow-ups still open, and the ledger's dispositions over
 the same episodes — each with its author, its date and the evidence it cites. See
-[the review memory](../concepts/review-memory.md).
+[the review ledger and the review memory](../concepts/review-ledger.md).
 
 <!-- BEGIN GENERATED: help.context -->
 ```text

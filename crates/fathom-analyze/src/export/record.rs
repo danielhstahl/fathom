@@ -43,7 +43,7 @@ use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 
-use crate::insight::{self, EpisodeDelta, Gap, STATE_MEASURED};
+use crate::insight::{self, EpisodeDelta, Gap, RiskView, STATE_MEASURED};
 use crate::narrative;
 
 /// The contract id of the artefact's structure.
@@ -397,16 +397,12 @@ impl EpisodeView {
     /// The episode's risk line, or the honest absence.
     #[must_use]
     pub fn risk_line(&self) -> String {
-        self.delta.risk.as_ref().map_or_else(
-            || "unranked".to_owned(),
-            |risk| {
-                if risk.rank.is_some() {
-                    format!("{} · {}", risk.headline(), risk.place())
-                } else {
-                    risk.headline()
-                }
-            },
-        )
+        // No place in a ranking since `e10.3`: the export prints the score and its arithmetic, which is
+        // the part a reader can check (`fathom-delta/2` dropped `risk.rank` with the queue).
+        self.delta
+            .risk
+            .as_ref()
+            .map_or_else(|| "unranked".to_owned(), RiskView::headline)
     }
 
     /// The lines the summary card's row prints for this episode.
@@ -661,7 +657,7 @@ pub struct Summary {
     pub high_findings: usize,
     /// Checklist items still open.
     pub open_actions: usize,
-    /// The highest-risk episode, as `ep-… · spine-1 88 = …`, when anything was ranked.
+    /// The highest-risk episode, as `ep-… · spine-2 88 = …`, when anything was ranked.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub top_risk: Option<String>,
     /// The one-line verdict a reader acts on.

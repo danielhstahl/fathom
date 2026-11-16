@@ -55,6 +55,16 @@ def lockfile_seeds() -> dict[str, bytes]:
         b"<project><modelVersion>4.0.0</modelVersion></project>")
     put("Fathom.csproj", "deep-items",
         b'<Project>' + b'<ItemGroup>' * 900 + b'</ItemGroup>' * 900 + b'</Project>')
+    # --- text between the tags that is not one byte wide ---------------------------------------------
+    # The shape that crashed the smoke job (**reco-eyo**): the XML scanner indexes by byte and steps one byte
+    # at a time across the text between two elements, so a character wider than a byte stopped the cursor
+    # *inside* the character and the next slice panicked. Every other XML seed here is pure ASCII, which is
+    # how a shape this ordinary went unnoticed until a fuzzer typed `é` for us.
+    put("pom.xml", "wide-text",
+        b"<project><groupId>caf\xc3\xa9</groupId><description>Z\xc3\xbcrich</description></project>")
+    put("Fathom.csproj", "wide-text",
+        b"<Project><ItemGroup>" + b"\xbe" * 3 + b'<PackageReference Include="n\xc3\xa9w" Version="1.0"/>'
+        + b"</ItemGroup></Project>")
     put("package-lock.json", "deep-array",
         b"[" * 8_000 + b"x" + b"]" * 8_000)
     put("package-lock.json", "deep-object",

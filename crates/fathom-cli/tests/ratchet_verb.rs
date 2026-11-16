@@ -14,6 +14,12 @@
 //! Graphs are seeded through `fathom_analyze::graph::Lane::record` against the store the indexer just wrote,
 //! keyed by the repository's own tree oids — the shape `e3.2`'s writer produces and the shape this verb reads.
 #![allow(clippy::unwrap_used, clippy::expect_used)]
+// Every test in this file is store-backed, in the same three ways `tests/architecture_verb.rs` is: the
+// fixture indexes with `fathom index`, records its graphs through `fathom_analyze::graph::Lane` (ADR-002
+// §6.2 compiles the lane only with a SQLite backend), and drives `fathom ratchet`, which a binary built
+// without a store refuses with `FEATURE_ABSENT` (9). Gated in the spelling `tests/check_verb.rs` and
+// `tests/show_trailers.rs` use.
+#![cfg(feature = "sqlite-bundled")]
 
 /// The checked-in schema validator, shared with the other verb contracts (`e1.10`).
 #[path = "validator.rs"]
@@ -88,8 +94,8 @@ fn git(root: &Path, args: &[&str], date: &str) -> String {
 /// One module's structural record: exports and dependency edges, nothing else.
 fn module(path: &str, exports: &[&str], deps: &[&str]) -> fathom_analyze::structure::FileStructure {
     use fathom_analyze::structure::{
-        Complexity, Edge, EdgeKind, FileLevel, FileStructure, Granularity, Language, Resolution,
-        Span, Structure, Symbol, SymbolKind, Visibility,
+        Edge, EdgeKind, FileLevel, FileStructure, Granularity, Language, Resolution, Span,
+        Structure, StructureProxies, Symbol, SymbolKind, Visibility,
     };
     let span = Span {
         start_byte: 0,
@@ -107,7 +113,7 @@ fn module(path: &str, exports: &[&str], deps: &[&str]) -> fathom_analyze::struct
                 span,
                 visibility: Visibility::Public,
                 exported: true,
-                complexity: Complexity {
+                complexity: StructureProxies {
                     body_lines: 1,
                     branches: 0,
                     loops: 0,

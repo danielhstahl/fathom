@@ -437,8 +437,15 @@ fn a_view_that_is_already_live_says_so() {
         toast.contains("already the live view"),
         "the second `t` said: {toast:?}"
     );
-    press(&mut app, "q");
-    assert_eq!(app.view, ViewId::Queue, "`q` still switches");
+    // `q` was the Queue view's letter and `e10.3` retired the view (ADR-006 §5.1.2 §1, §7.6): the
+    // keystroke stays a stated absence — the refusal, not a silent no-op and not a new binding.
+    let (changed, toast) = chord(&mut app, "q");
+    assert!(!changed, "a retired letter must not move the frame");
+    assert_eq!(app.view, ViewId::Timeline, "`t` is the home letter");
+    assert!(
+        toast.contains("Queue view is retired") && toast.contains("`t`"),
+        "`q` said: {toast:?}"
+    );
 }
 
 #[test]
@@ -526,7 +533,10 @@ fn with_episodes() -> App {
 fn the_acts_over_an_empty_rail_name_the_motion_that_would_fill_it() {
     let mut app = shell();
     app.set_view(ViewId::Timeline);
-    for key in ["x", "f", "-", "z", "i", "m"] {
+    // `i` is not in this list any more: it is an unbound chord now that the intent pane is gone, and it
+    // refuses with where the answer went rather than with the motion that would fill the rail
+    // (`reco-5js3.3`; `tests/intent_card.rs` pins what it says).
+    for key in ["x", "f", "-", "z", "m"] {
         let (changed, toast) = chord(&mut app, key);
         assert!(
             !changed && has_a_way_out(&toast) && toast.contains("j"),

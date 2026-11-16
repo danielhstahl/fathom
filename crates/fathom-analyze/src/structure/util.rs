@@ -180,3 +180,38 @@ pub fn error_share(root: &Node, budget: usize) -> (usize, usize) {
     }
     (error_bytes, visited)
 }
+
+/// How many `ERROR` / `MISSING` nodes a parse produced, bounded by `budget`.
+///
+/// Lives here rather than in the engine because two passes over the same tree have to agree on what
+/// "the parse went wrong" counts: the structural extractor, which withholds the structure, and the
+/// complexity pass, which must not hand back a figure for a file the extractor refused
+/// (ADR-007 §7.1's `parse_failed`).
+pub fn error_nodes(root: &Node, budget: usize) -> usize {
+    let mut count = 0usize;
+    let mut visited = 0usize;
+    let mut stack = vec![*root];
+    while let Some(current) = stack.pop() {
+        if visited >= budget {
+            break;
+        }
+        visited += 1;
+        if current.is_error() || current.is_missing() {
+            count += 1;
+        }
+        let mut cursor = current.walk();
+        for child in current.children(&mut cursor) {
+            stack.push(child);
+        }
+    }
+    count
+}
+
+/// Whether a parse is unusable: more error bytes than code bytes.
+///
+/// One rule, two callers, so a file never has a complexity figure and no structure. The threshold is
+/// the extractor's, unchanged — `e3.1` shipped it and `e8.2` inherits it.
+pub fn parse_is_unusable(root: &Node, len: usize, budget: usize) -> bool {
+    let (error_bytes, _) = error_share(root, budget.max(4096));
+    error_bytes * 2 > len
+}

@@ -1,4 +1,5 @@
-//! The `i` pane and the card's intent line (`e4.2`, `reco-c54`).
+//! The card's intent row, and the keystroke that used to own it (`e4.2`, `reco-c54`,
+//! `reco-5js3.2`, `reco-5js3.3`).
 //!
 //! `fathom-analyze/tests/intent.rs` proves the store column and the delta document agree; `fathom-cli`'s
 //! `intent.rs` proves `fathom show` prints them. What only the TUI can prove is the third surface — the one
@@ -6,6 +7,12 @@
 //! drawn**. A card that shows nothing when there is no intent is indistinguishable from a card whose intent
 //! was never read, and those are the difference between "this agent worked unbriefed" and "this build is
 //! old".
+//!
+//! `e9.1` spent that rule on a row instead of a mode, `e9.2` moved the assertions onto the row, and `e9.3`
+//! deleted the mode: the `i` pane is gone, `intent.show` is out of the registry, and the letter is in
+//! ADR-006 §8.2's reserved-for-user set. So this file asserts the same three states on the same frame, and
+//! adds the half the pane used to answer badly — what `i` says now, which is where the answer went rather
+//! than a shrug (ADR-006 §7.6, `reco-xf8`'s shape).
 //!
 //! Every assertion goes through the real renderer and the real keystroke, as in `timeline_behaviour.rs`.
 #![allow(clippy::unwrap_used, clippy::expect_used)]
@@ -138,237 +145,305 @@ fn keystroke(app: &mut App, chord: &str) {
     app.feed_key(chord, Instant::now());
 }
 
-/// The card pane as the app is drawing it — through `App`, so the pane's own size maths is under test too.
+/// The card as the app is drawing it — through `App`, so the pane's own size maths is under test too.
 fn pane(app: &mut App) -> String {
     let width = app.pane_cols("card").max(40);
     let rows = app.pane_body_rows();
-    text(&timeline::intent_lines(
+    text(&app.timeline.preview_lines(width, rows, app.card_window()))
+        .iter()
+        .map(|line| line.split_whitespace().collect::<Vec<_>>().join(" "))
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+/// The card at a width, padded to the pane's own width and trimmed of that padding.
+fn card(app: &App, width: usize) -> Vec<String> {
+    timeline::card_lines(
         app.timeline.selected(),
+        NOW,
+        "fixture index",
         width,
-        rows,
-    ))
+        40,
+        timeline::CardWindow::BRIEF,
+    )
     .iter()
-    .map(|line| line.split_whitespace().collect::<Vec<_>>().join(" "))
-    .collect::<Vec<_>>()
-    .join(" ")
+    .map(|line| line.text().trim_end().to_owned())
+    .collect()
+}
+
+/// The one row the card spends on intent, with its value.
+fn intent_row(lines: &[String]) -> Option<&str> {
+    lines
+        .iter()
+        .find(|line| line.starts_with("intent"))
+        .map(String::as_str)
+}
+
+/// The rows whose label is `label`, with the value beside it.
+fn rows_labelled<'a>(lines: &'a [String], label: &str) -> Vec<&'a str> {
+    lines
+        .iter()
+        .filter(|line| {
+            line.split_whitespace()
+                .next()
+                .is_some_and(|first| first == label)
+        })
+        .map(String::as_str)
+        .collect()
 }
 
 // ---------------------------------------------------------------------------
-// The keystroke
+// The keystroke: `i` is unbound, and says where the answer went
 // ---------------------------------------------------------------------------
 
 #[test]
-fn i_raises_the_intent_pane_and_esc_puts_the_card_back() {
+fn i_is_unbound_and_says_where_the_intent_went() {
+    // A retired key has to answer, not shrug (ADR-006 §7.6): the absence, then the surface that holds
+    // the answer now, in the same shape every other refusal in this shell takes.
     let mut app = app_with(Some(recorded()));
-    assert!(!app.showing_intent(app.timeline.selected()));
+    let before = pane(&mut app);
     keystroke(&mut app, "i");
-    assert!(
-        app.showing_intent(app.timeline.selected()),
-        "`i` (`intent.show`) is registered and raises the pane"
+    assert_eq!(
+        pane(&mut app),
+        before,
+        "`i` swaps nothing any more: the card is the one episode surface"
     );
+    let said = app.toast.clone().unwrap_or_default();
+    assert!(
+        said.contains("`i` is unbound"),
+        "the key says it is unbound: {said:?}"
+    );
+    assert!(
+        said.contains("intent pane is retired"),
+        "and why, rather than pretending it was never a key: {said:?}"
+    );
+    assert!(
+        said.contains("fathom show"),
+        "and names the verb that prints the plan and the scope: {said:?}"
+    );
+    assert!(
+        said.contains(" — "),
+        "in the house shape: the absence, then the way out: {said:?}"
+    );
+}
+
+#[test]
+fn the_card_is_the_same_card_whatever_is_pressed() {
+    // The assertion `e9.3` owes in its own file: no keystroke swaps the card's content any more. `i` is
+    // unbound; `w` grows one band in place, which is a different thing from a pane being replaced.
+    let mut app = app_with(Some(recorded()));
+    let before = card(&app, 78);
+    keystroke(&mut app, "i");
+    assert_eq!(card(&app, 78), before, "`i` changes nothing");
     keystroke(&mut app, "<Esc>");
-    assert!(
-        !app.showing_intent(app.timeline.selected()),
-        "and `<Esc>` closes the topmost transient thing it owns"
+    assert_eq!(
+        card(&app, 78),
+        before,
+        "`<Esc>` has no mode to pop, so the card is byte-identical"
     );
 }
 
-#[test]
-fn i_toggles_on_the_same_episode() {
-    let mut app = app_with(Some(recorded()));
-    keystroke(&mut app, "i");
-    keystroke(&mut app, "i");
-    assert!(
-        !app.showing_intent(app.timeline.selected()),
-        "the same key that opened it closes it, rather than stacking a second pane"
-    );
-}
+// ---------------------------------------------------------------------------
+// The row: what it prints, and what it refuses to
+// ---------------------------------------------------------------------------
 
 #[test]
-fn the_pane_prints_the_request_the_plan_and_the_declared_scope() {
-    let mut app = app_with(Some(recorded()));
-    keystroke(&mut app, "i");
-    let body = pane(&mut app);
+fn the_row_prints_the_request_and_names_the_verb_for_the_rest() {
+    // What the retired pane added over the row was the plan and the declared scope, and both are evidence
+    // for a finding rather than a finding (ADR-006 §5.1.1): the row prints the sentence and names
+    // `fathom show`, which prints the brief whole.
+    let app = app_with(Some(recorded()));
+    // Wide enough for every part the row has: the point of this test is what the row *carries*, and a
+    // width where the sentence and its provenance compete is the next test's business.
+    let lines = card(&app, 132);
+    let row = intent_row(&lines).unwrap_or_else(|| panic!("intent is a row:\n{lines:?}"));
     assert!(
-        body.contains("make the card pane scroll without dropping the selection"),
-        "the request in the asker's words:\n{body}"
+        row.contains("make the card pane scroll without dropping the selection"),
+        "the request in the asker's words: {row}"
+    );
+    assert!(row.contains("hook-prompt"), "and which rung decided: {row}");
+    assert!(
+        row.contains("`fathom show"),
+        "and where the plan and the declared scope live: {row}"
     );
     assert!(
-        body.contains("hook-prompt"),
-        "and which rung decided:\n{body}"
+        !row.contains("pin the cursor") && !row.contains("crates/fathom-tui/**"),
+        "but the plan items and the declared glob are not rows: {row}"
     );
     assert!(
-        body.contains("pin the cursor") && body.contains("golden-test it"),
-        "the whole plan, in the harness's order:\n{body}"
-    );
-    assert!(
-        body.contains("crates/fathom-tui/**"),
-        "the scope that was declared, as a glob:\n{body}"
-    );
-    assert!(
-        body.contains("declared"),
-        "and the word that says this is a declaration, not a measurement:\n{body}"
+        !row.contains("`i`"),
+        "and the row does not point a reviewer at a key that is gone: {row}"
     );
 }
 
 #[test]
 fn the_card_carries_the_intent_line_and_the_session_it_arrived_on() {
-    // The card, not the `i` pane: the session and the turn are the rail's columns and the card's own field,
-    // while the pane is the plan and the scope. Both have to be right, and they are filled from the same row
-    // (`episodes::to_row`'s fallback to the stream's session id).
+    // The session and the turn are the rail's columns and the card's own field, while the brief lives in
+    // the document. Both have to be right, and they are filled from the same row (`episodes::to_row`'s
+    // fallback to the stream's session id).
     let app = app_with(Some(recorded()));
-    let body = text(&timeline::card_lines(
-        app.timeline.selected(),
-        NOW,
-        "fixture index",
-        72,
-        40,
-    ))
-    .iter()
-    .map(|line| line.split_whitespace().collect::<Vec<_>>().join(" "))
-    .collect::<Vec<_>>()
-    .join(" ");
+    let lines = card(&app, 72);
+    let body = lines
+        .iter()
+        .map(|line| line.split_whitespace().collect::<Vec<_>>().join(" "))
+        .collect::<Vec<_>>()
+        .join(" ");
     assert!(
         body.contains("make the card pane scroll"),
-        "the card prints the intent without anyone pressing `i`:\n{body}"
+        "the card prints the intent without anyone pressing anything:\n{body}"
     );
     assert!(body.contains("s1"), "and the session:\n{body}");
     assert!(body.contains("s1:1"), "and the turn:\n{body}");
-}
-
-#[test]
-fn the_pane_names_what_it_did_not_find() {
-    // Three absences, three different sentences, because they mean three different things to the reviewer.
-    let mut digest = app_with(Some(digest_only()));
-    keystroke(&mut digest, "i");
-    let body = pane(&mut digest);
     assert!(
-        body.contains("no text captured"),
-        "a digest is not a blank:\n{body}"
+        body.contains("via hook-prompt"),
+        "and who said it, because a quotation without a source is a guess:\n{body}"
     );
     assert!(
-        body.contains("812 chars"),
-        "and the reason is the harness's own:\n{body}"
+        !body.contains("for the plan and scope"),
+        "and the row no longer points at a keystroke for what the pane printed:\n{body}"
     );
-
-    let mut silent = app_with(Some(none_recorded()));
-    keystroke(&mut silent, "i");
-    let body = pane(&mut silent);
-    assert!(
-        body.contains("no recorded intent"),
-        "an absence is printed as an absence:\n{body}"
-    );
-    assert!(
-        body.contains("no harness events"),
-        "with what was looked for:\n{body}"
-    );
-
-    let mut legacy = app_with(None);
-    keystroke(&mut legacy, "i");
-    let body = pane(&mut legacy);
-    assert!(
-        body.contains("never looked"),
-        "and a row this build wrote no intent for is a third fact, said as one:\n{body}"
-    );
-    assert!(
-        !body.contains("no recorded intent"),
-        "which must not borrow the second one's sentence:\n{body}"
+    let drawn = lines
+        .iter()
+        .filter(|line| line.starts_with("intent"))
+        .count();
+    assert_eq!(
+        drawn,
+        1,
+        "intent is one row of the card, not the three it used to be:\n{}",
+        lines.join("\n")
     );
 }
 
+/// The four states, on the row, in the frame the shell draws.
 #[test]
-fn the_toast_says_which_state_it_found() {
-    // `i` is also the cheap question — "did this agent have a brief?" — answered before the pane is read.
-    let mut app = app_with(Some(recorded()));
-    keystroke(&mut app, "i");
-    assert!(
-        app.toast
-            .clone()
-            .unwrap_or_default()
-            .starts_with("intent recorded"),
-        "{:?}",
-        app.toast
-    );
-
-    let mut digest = app_with(Some(digest_only()));
-    keystroke(&mut digest, "i");
-    assert!(
-        digest
-            .toast
-            .clone()
-            .unwrap_or_default()
-            .contains("digest only"),
-        "{:?}",
-        digest.toast
-    );
-
-    let mut silent = app_with(Some(none_recorded()));
-    keystroke(&mut silent, "i");
-    assert!(
-        silent
-            .toast
-            .clone()
-            .unwrap_or_default()
-            .contains("no recorded intent"),
-        "{:?}",
-        silent.toast
-    );
-
-    let mut legacy = app_with(None);
-    keystroke(&mut legacy, "i");
-    assert!(
-        legacy
-            .toast
-            .clone()
-            .unwrap_or_default()
-            .contains("no intent document"),
-        "the third state, in the toast too: {:?}",
-        legacy.toast
-    );
+fn the_card_row_draws_every_intent_state_as_itself() {
+    let states: Vec<(&str, Option<serde_json::Value>, &str)> = vec![
+        ("recorded", Some(recorded()), "make the card pane scroll"),
+        ("digest-only", Some(digest_only()), "no text captured"),
+        ("none", Some(none_recorded()), "no recorded intent"),
+        ("no document", None, "not on this row"),
+    ];
+    let mut seen: Vec<String> = Vec::new();
+    for (name, intent, expect) in states {
+        let app = app_with(intent);
+        for width in [35usize, 72] {
+            let lines = card(&app, width);
+            let drawn: Vec<&String> = lines
+                .iter()
+                .filter(|line| line.starts_with("intent"))
+                .collect();
+            assert_eq!(
+                drawn.len(),
+                1,
+                "`{name}` at {width} columns prints exactly one intent row:\n{}",
+                lines.join("\n")
+            );
+            let row = drawn[0].trim_end();
+            assert!(
+                row.contains(expect),
+                "`{name}` at {width} columns is drawn as what it is, not as a blank: {row:?}"
+            );
+            assert!(
+                !seen.contains(&row.to_owned()),
+                "and no two states share a row: {seen:?} vs {row:?}"
+            );
+            seen.push(row.to_owned());
+        }
+    }
 }
 
 #[test]
-fn the_pane_does_not_follow_the_cursor() {
-    // The pane is keyed to an episode, not to a position. Moving the cursor must not leave the previous
-    // episode's intent on screen: the card would then be describing a row the reviewer is not looking at.
-    let mut app = app_with(Some(recorded()));
-    keystroke(&mut app, "i");
-    assert!(app.showing_intent(app.timeline.selected()));
-    keystroke(&mut app, "j");
+fn the_row_names_what_it_did_not_find() {
+    // Three absences, three different sentences, because they mean three different things to the
+    // reviewer — and every one of them is now the row's alone, with no pane to say it differently.
+    let digest = card(&app_with(Some(digest_only())), 96);
+    let row = intent_row(&digest).unwrap_or_default().to_owned();
     assert!(
-        !app.showing_intent(app.timeline.selected()),
-        "the cursor moved to a row with no intent document, and the pane knows it"
+        row.contains("no text captured"),
+        "a digest is not a blank: {row}"
+    );
+    assert!(
+        row.contains("prompt-digest"),
+        "and the row says where the digest came from: {row}"
+    );
+
+    let silent = card(&app_with(Some(none_recorded())), 96);
+    let row = intent_row(&silent).unwrap_or_default().to_owned();
+    assert!(
+        row.contains("no recorded intent"),
+        "an absence is printed as an absence: {row}"
+    );
+    assert!(
+        row.contains("no harness events"),
+        "with what was looked for: {row}"
+    );
+
+    let legacy = card(&app_with(None), 96);
+    let row = intent_row(&legacy).unwrap_or_default().to_owned();
+    assert!(
+        row.contains("not on this row"),
+        "and a row this build wrote no intent for is a third fact, said as one: {row}"
+    );
+    assert!(
+        !row.contains("no recorded intent"),
+        "which must not borrow the second one's sentence: {row}"
     );
 }
 
 #[test]
-fn a_narrow_pane_still_shows_the_state_and_wraps_the_request() {
-    // The responsive contract (`e1.6`'s rule): content is wrapped or clipped, never dropped. The state is
-    // the one thing that must survive a narrow terminal, because it is the answer to the question.
-    let mut app = app_with(Some(recorded()));
-    keystroke(&mut app, "i");
-    let lines = text(&timeline::intent_lines(app.timeline.selected(), 24, 20))
-        .into_iter()
-        .map(|line| line.trim_end().to_owned())
-        .collect::<Vec<_>>();
+fn a_narrow_card_still_shows_the_state_and_wraps_the_request() {
+    // The responsive contract (`e1.6`'s rule): content is wrapped or clipped, never dropped. The state
+    // is the one thing that must survive a narrow terminal, because it is the answer to the question.
+    let app = app_with(Some(recorded()));
+    let lines: Vec<String> = timeline::card_lines(
+        app.timeline.selected(),
+        NOW,
+        "fixture index",
+        24,
+        40,
+        timeline::CardWindow::BRIEF,
+    )
+    .iter()
+    .map(|line| line.text().trim_end().to_owned())
+    .collect();
     assert!(
         lines.iter().all(|line| line.chars().count() <= 24),
         "nothing overflows the pane: {lines:?}"
     );
     let body = lines.join("\n");
     assert!(body.contains("intent"), "the label survives: {body}");
+    let labelled = rows_labelled(&lines, "intent");
+    let row = labelled
+        .first()
+        .unwrap_or_else(|| panic!("intent is still one row:\n{body}"));
+    let value = row.trim_start_matches("intent").trim();
     assert!(
-        body.contains("scroll"),
-        "the request is wrapped, not dropped:\n{body}"
+        !value.is_empty() && (value.contains('…') || value.contains("·")),
+        "at 24 columns the row is cut, and says so — an empty value is the drop this rule forbids: {row}"
     );
     assert!(
-        body.contains("hook-prompt"),
-        "and so is the tail of the line, not just its start:\n{body}"
+        rows_labelled(&lines, "intent").len() == 1,
+        "and it is still one row:\n{body}"
     );
 }
 
 #[test]
 fn an_empty_selection_says_so() {
-    let lines = text(&timeline::intent_lines(None, 60, 6)).join("\n");
-    assert!(lines.contains("no episode selected"), "{lines}");
+    let lines = timeline::card_lines(
+        None,
+        NOW,
+        "fixture index",
+        60,
+        6,
+        timeline::CardWindow::BRIEF,
+    )
+    .iter()
+    .map(|line| line.text().trim_end().to_owned())
+    .collect::<Vec<_>>();
+    let body = lines.join("\n");
+    assert!(body.contains("no episode selected"), "{body}");
+    assert!(
+        !body.contains("intent"),
+        "no row under the cursor is not an intent state:\n{body}"
+    );
 }

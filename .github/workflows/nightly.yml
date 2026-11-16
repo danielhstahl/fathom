@@ -1,0 +1,426 @@
+# The long tail: the checks that reproduce a committed measurement, re-measure a calibration, build a
+# second workspace, or run a fourth toolchain. Daily, on the default branch, plus `workflow_dispatch`.
+#
+# # Why this file exists (`e11.2`, `reco-374v.2`)
+#
+# Every job here used to run on every pull request. None of them is *wrong*; each one is a gate that was
+# worth writing and is still worth running. What they are not is a gate a pull request can inform. They
+# compare the tree against a committed report, a pinned corpus or a published crate, and the pull request
+# under them usually has nothing to do with any of it. The thirty-day census behind this cut
+# (`.plan/ci-triage-reco-374v.md`, `e11.1`) is the argument in numbers:
+#
+#   * **the drift family is the biggest class of red there is** — 33 of 83 red runs were a gate whose own
+#     inputs moved, against 32 that were the commit's own fault. Four of the recurring ones are here: the
+#     G3 calibration report (4 reds, byte-exact by construction, so any scoring change re-moves a number
+#     and the harness refuses the committed report), the rename and config tables in `contracts.yml`, and
+#     the perf budgets (red on 17 of 19 runs, green twice, the greenest run two runs before going red
+#     again on a commit whose only changed file was `ci.yml`).
+#   * **the six-grammar builds are the expensive part of the matrix** — `structure-spike` and
+#     `structure-core` each compile six tree-sitter grammars plus bundled SQLite to re-measure a report
+#     that only changes when `fathom-analyze`'s structure code changes (2.1 and 4.3 mean minutes, and
+#     four `cargo build --features langs-all` legs that were red for a fortnight while the workspace
+#     wiring itself was being rebuilt and had nothing to do with the diffs under them).
+#   * **`beta` could not say no, and had nothing to say instead.** 778.0 observed minutes, of which 720.5 is
+#     two hangs, under `continue-on-error: true` — a lane that cannot fail a build cannot gate a merge, so
+#     buying it on every push was pure cost, and a failure it allowed was never read by anyone. `e11.4`
+#     removed the flag: the lane still cannot fail a merge (ADR-002 §2 does not ship on beta), but a break is
+#     now written into the nightly's job summary, and the timeout that stops a 12-hour hang is the other half
+#     of why those 720 minutes happened at all.
+#
+# What stays on the pull request is the short list in `.github/workflows/ci.yml`'s header: `fmt`, `clippy`,
+# `build+test` on stable and on the MSRV, the headless `minimal` configuration, the changelog gate, the
+# workspace and contract lints, the docs generation checks, `cargo-deny`, the gate run over this
+# repository, and the `.deb`/`.rpm` packaging job that caught six real defects in five days.
+#
+# # Where the model of "what runs when" lives
+#
+# `tools/workspace_model.py::CI_REQUIRED_STEPS` is the list, and `tools/check_workspace.py check` rule
+# `C01` is what enforces it: a required invocation that disappears from `.github/workflows/*.yml` is a
+# red build, and so is one that survives only at the wrong cadence — a `pull_request` step that quietly
+# becomes nightly-only, or a scheduled step that stops being scheduled. The table ADR-002 §8.1 prints is
+# generated from the same list, so the ADR, the lint and the YAML cannot disagree.
+#
+# # When "scheduled" runs, honestly
+#
+# GitHub runs `schedule` triggers on the **default branch only**, and `e11.1` §5.2 measured that the
+# default branch here (`master`) has not moved since 2026-10-26 while the work is on a branch that is not
+# on the remote at all. That is the first problem the epic has to fix and it is not this file's to fix:
+# until the work reaches the default branch, every schedule — this one, `fuzz.yml`'s, `perf.yml`'s,
+# `complexity.yml`'s and `dogfood.yml`'s — measures a frozen commit. `workflow_dispatch` is the escape
+# hatch and the way to test a change to this file: it runs the same jobs at the commit you dispatched from.
+#
+# Permissions: `contents: read` everywhere except the one job that dispatches the release workflow, which
+# declares `actions: write` for itself and nothing more.
+
+name: nightly (the long tail)
+
+on:
+  schedule:
+    # 02:37 UTC daily. A prime-ish minute so the run does not collide with the hour's traffic, and early
+    # enough that the results are in before the working day starts.
+    - cron: "37 2 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  # Shared between the vendored C builds (bundled SQLite, six tree-sitter grammars) and the cache;
+  # incremental state is not worth its disk cost on a runner that builds once.
+  CARGO_INCREMENTAL: "0"
+  # The one hand-written cache lever in this file, and the only one `R04` lets anyone pull. It is the
+  # *prefix* of `Swatinem/rust-cache`'s derived key — the action derives the rest from the lock files, the
+  # toolchain in `rustc -Vv`, the cargo env, the workflow and the job, which together are every input a
+  # cargo build reads — so moving it starts a fresh cache family rather than shuffling one job's objects
+  # into a drawer that does not describe them.
+  #
+  # The rule, in one sentence: **bust the prefix when the bytes already in the cache would be wrong, not
+  # merely stale.** Stale is cargo's own job — a source change re-checks its fingerprints and rebuilds what
+  # moved. Wrong is a registry that no longer holds what the lock file names, a cache written under a
+  # toolchain the key does not name, or an upgrade of the action that changes what it stores. And a bump
+  # only stops new runs *writing* the old family: evicting the old bytes is the second half, and the only
+  # eviction that does not wait out the retention period. Date it and name the bead that moved it;
+  # *Cache discipline* in docs/concepts/ci-gate.md is the prose and `R04` is the gate.
+  CACHE_BUST: "2026-11"
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # The spike and calibration reports CI re-measures. Each one is a promise of the form "the committed
+  # report is what this tree and this corpus produce", and each one is byte-exact by construction — which
+  # is why the honest way to keep it is to re-measure on a schedule and let a number move without a
+  # stranger's pull request being blamed for it.
+  # ---------------------------------------------------------------------------
+  structure-spike:
+    name: spike s1 reproduces (six grammars)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      RUSTUP_TOOLCHAIN: stable
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Swatinem/rust-cache@v2
+        with:
+          # The lever and the save. `prefix-key` is the one hand-written half of the derived key and it comes
+          # from `env.CACHE_BUST` below, not from a string written here; `cache-on-failure` is the census:
+          # 102 of `ci.yml`'s 233 cargo-cache saves never happened because the job was red when the cache
+          # would have been written, and a red job's compiled objects are still correct objects. `R04`.
+          prefix-key: ${{ env.CACHE_BUST }}
+          cache-on-failure: "true"
+      - name: "spike s1: the committed accuracy report reproduces"
+        # Spike `s1` (`reco-alj`) decided which tree-sitter grammars ship (ADR-002 §6.5) and what
+        # each language's fallback is (docs/concepts/structure-extraction.md). The report is a
+        # measurement, so CI re-measures it: relation counts and verdicts must match the committed
+        # report exactly. Throughput is excluded on purpose — a busy runner is not a regression —
+        # and the debug profile is allowed because `--check` never writes the file it audits.
+        run: >
+          cargo run --locked -p fathom-analyze --features langs-all --example s1_spike --
+          --repo . --report benchmarks/reports/s1-tree-sitter-accuracy.json --check
+      - name: "spike s1: the harness itself builds with every grammar"
+        # `sqlite-bundled` is here because `--all-targets` means *every* target, and `tests/graph_index.rs`
+        # drives the graph pass through `fathom_store`'s SQLite backend (`spine::Store`, `graph::…`,
+        # `Availability::probe`), which §6.2 gates behind a store feature. A build of the library alone has
+        # no opinion about it; a build of the test suite without one fails to compile, and the honest fix is
+        # to say which features the targets need rather than to drop the target from the claim.
+        run: cargo build --locked -p fathom-analyze --features langs-all,sqlite-bundled --all-targets
+
+  structure-core:
+    name: structural extractor core and tail reproduce (six languages)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      RUSTUP_TOOLCHAIN: stable
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Swatinem/rust-cache@v2
+        with:
+          # The lever and the save. `prefix-key` is the one hand-written half of the derived key and it comes
+          # from `env.CACHE_BUST` below, not from a string written here; `cache-on-failure` is the census:
+          # 102 of `ci.yml`'s 233 cargo-cache saves never happened because the job was red when the cache
+          # would have been written, and a red job's compiled objects are still correct objects. `R04`.
+          prefix-key: ${{ env.CACHE_BUST }}
+          cache-on-failure: "true"
+      - name: "e3.1: the committed accuracy-and-mechanism report reproduces"
+        # `e3.1` (`reco-zoz`) is the extractor spike `s1` decided the shape of. `--check` compares
+        # every relation count, the four mechanism checks (synthetic scopes, wildcard edges, the
+        # resolution bound including the forced-one-pass demonstration, and the fallback battery)
+        # and the verdicts, and never throughput: a busy runner is not a regression, and a debug
+        # build measures the borrow checker rather than the grammar.
+        # `e3.1b` (`reco-dlp.1`) added Go, Ruby and Java to the same harness and the same report, so
+        # `--check` now needs all six grammars: a report with six languages cannot be reproduced by a
+        # build that speaks three, and the answer to that is not to compare three of them.
+        run: >
+          cargo run --locked -p fathom-analyze --features langs-all
+          --example structure_harness -- --repo .
+          --report benchmarks/reports/e3-1-structure-core.json --check
+      - name: "e3.1: the byte contract and the corpus properties"
+        # The golden canonical-JSON file (AC 6) and the model properties. Gated behind the three
+        # grammars in `Cargo.toml`, so this step names them; a default `cargo test` does not pay for
+        # three C builds it was never asked to exercise (ADR-002 §6.5).
+        run: >
+          cargo test --locked -p fathom-analyze
+          --features lang-rust,lang-python,lang-typescript --test structure_core
+      - name: "e3.1b: the tail contract — go granularity, the ruby scan budget, the java same-package budget"
+        # The three things `e3.1b` added, each asserted against the report and against `thresholds.json`
+        # rather than against a paragraph: package-granular Go edges, the Ruby per-run scan budget and the
+        # Java same-package false-positive budget.
+        run: >
+          cargo test --locked -p fathom-analyze
+          --features langs-all --test structure_tail
+      - name: "e3.1b: the harness builds with every grammar, including the three corpora generators"
+        # Same `sqlite-bundled` as the `spike s1` leg above: `--all-targets` compiles `tests/graph_index.rs`,
+        # and that target needs a store backend to compile at all.
+        run: cargo build --locked -p fathom-analyze --features langs-all,sqlite-bundled --all-targets
+
+  g3-calibration:
+    name: Guardrail 3 calibration reproduces (three real repositories)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      RUSTUP_TOOLCHAIN: stable
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Swatinem/rust-cache@v2
+        with:
+          # The lever and the save. `prefix-key` is the one hand-written half of the derived key and it comes
+          # from `env.CACHE_BUST` below, not from a string written here; `cache-on-failure` is the census:
+          # 102 of `ci.yml`'s 233 cargo-cache saves never happened because the job was red when the cache
+          # would have been written, and a red job's compiled objects are still correct objects. `R04`.
+          prefix-key: ${{ env.CACHE_BUST }}
+          cache-on-failure: "true"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: fetch the pinned corpus
+        # The clones are not checked in — they are other people's history, and the repository is not
+        # allowed to be the place their commits are warehoused. `corpus/*/pin.json` is the artifact and
+        # the fetcher re-materialises it, refusing a remote that returns anything but the pinned oid.
+        # `--check` separately fails loudly when a pin can no longer be fetched at all, which is the
+        # difference between a corpus that expired and a measurement that quietly stopped existing.
+        run: |
+          python3 tools/fetch_g3_corpus.py
+          python3 tools/fetch_g3_corpus.py --check
+      - name: "G3, the miss rate and every gate reproduce from the corpus and the shipped code"
+        # Spike `e4.9` (`reco-mkl.1`) is what `e4.3` and `m1` defer to for "the threshold agreed in
+        # `e0.12`" (ADR-001 §5.4), so the number is only a gate if CI can re-measure it: the score and
+        # the findings come from the shipped code, the dispositions from the hand-authored truth files,
+        # and `--check` refuses a byte of difference in the committed report or a gate that came out
+        # other than its declared `expected`. See docs/concepts/false-positive-calibration.md.
+        run: >
+          cargo run --locked -p fathom-analyze --features sqlite-bundled,langs-all --example g3_calibration --
+          --root . --check
+
+  spike-reports:
+    name: spike s2 and s6 reproduces (segmentation, relink)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      RUSTUP_TOOLCHAIN: stable
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Swatinem/rust-cache@v2
+        with:
+          # The lever and the save. `prefix-key` is the one hand-written half of the derived key and it comes
+          # from `env.CACHE_BUST` below, not from a string written here; `cache-on-failure` is the census:
+          # 102 of `ci.yml`'s 233 cargo-cache saves never happened because the job was red when the cache
+          # would have been written, and a red job's compiled objects are still correct objects. `R04`.
+          prefix-key: ${{ env.CACHE_BUST }}
+          cache-on-failure: "true"
+      # Spike `s2`'s report is the artifact ADR-003 §18 quotes and `tests/test_segmentation_spike_contract.py`
+      # asserts against; the harness scores its `shipped` strategy with `fathom_ingest::segment` itself and
+      # then refuses to write a report that differs from the corpus byte-for-byte. It ran as a step of
+      # `build+test (… · stable)` until `e11.2` moved it, because that leg already had the workspace built;
+      # here it pays for its own build, which is the cheaper of the two by the whole width of a pull request.
+      - name: "spike s2: the committed segmentation report reproduces"
+        run: cargo run -q -p fathom-analyze --example s2_spike -- --check
+      # Spike `s6` (`reco-f5a`) is the same claim about rewrites instead of boundaries: the committed report
+      # in `benchmarks/reports/s6-relink-accuracy.json` must be what the relink corpus and the shipped
+      # relink pass produce, and its gates must come out as declared. It needs the bundled SQLite because
+      # the harness pins its own copy of §6.2's ladder against `fathom_store`'s on every event.
+      - name: "spike s6: the committed relink report reproduces"
+        run: cargo run -q -p fathom-analyze --features sqlite-bundled --example s6_spike -- --check
+
+  # -------------------------------------------------------------------------
+  # The extensibility criterion, as a build (`e6.7`, `reco-raw`): the example plugin is a *second
+  # workspace*, excluded from the root one, that depends on `fathom-analyze` the way a third party's
+  # manifest does. Nothing else in this repository catches a plugin API that only works from inside the
+  # workspace it lives in — a `pub(crate)` that leaked, a type a plugin cannot name, a helper that is
+  # actually a private path dependency. Here it fails as a stranger fails.
+  #
+  # It is its own job rather than a step in a build because the criterion is about the *boundary*. It was
+  # on every pull request until `e11.2`: the plugin's own manifest pins its own lockfile, so the job's
+  # answer changes when the *published crate* changes, which is a thing that happens on a schedule and not
+  # a thing a stranger's diff to the TUI does.
+  # -------------------------------------------------------------------------
+  out-of-tree-plugin:
+    name: out-of-tree-plugin (the example plugin builds and runs against the published crate)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      RUSTUP_TOOLCHAIN: stable
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Swatinem/rust-cache@v2
+        with:
+          # The root workspace, for the `fathom-cli` build at the end of the job.
+          workspaces: .
+          prefix-key: ${{ env.CACHE_BUST }}
+          cache-on-failure: "true"
+      - uses: Swatinem/rust-cache@v2
+        with:
+          # And its own: its own lock file, its own target directory, its own cache. The point of the job is
+          # that this is not the root workspace.
+          workspaces: plugins/acme-detectors
+          prefix-key: ${{ env.CACHE_BUST }}
+          cache-on-failure: "true"
+      - name: and lint it under its own lint set
+        # Its own `#![warn]` list, not the workspace's — see `plugins/acme-detectors/Cargo.toml`. A third
+        # party's code style is its own business; what the job checks is that it is not silently broken.
+        run: cargo clippy --manifest-path plugins/acme-detectors/Cargo.toml --all-targets -- -D warnings
+      - name: build and test the plugin in its own workspace
+        run: cargo test --manifest-path plugins/acme-detectors/Cargo.toml
+      - name: run it the way a reviewer does — a delta document in, findings out
+        run: |
+          cargo run --quiet --manifest-path plugins/acme-detectors/Cargo.toml -- --list
+          cargo run --quiet --manifest-path plugins/acme-detectors/Cargo.toml --             --delta plugins/acme-detectors/fixtures/miniature.json             --check plugins/acme-detectors/fixtures/miniature.expected.jsonl
+      - name: and refuse a document that is not a delta document, with a sentence that says so
+        # The pipeline's failure mode: `fathom analyze` printed an error instead of a document, and the
+        # plugin's stderr is the only thing the reviewer will read.
+        run: |
+          if echo 'not a delta document' | cargo run --quiet --manifest-path plugins/acme-detectors/Cargo.toml --; then
+            echo "the plugin accepted a document that is not one" >&2; exit 1
+          fi
+      - name: and against a delta document the freshly built binary printed, byte for byte
+        # The fixture above is a checked-in document, which is the right thing for a unit test and the wrong
+        # thing for the acceptance criterion. This is the criterion: the *product's own* published document,
+        # printed by the binary built from this checkout, put on the plugin's stdin in a shell pipeline,
+        # yields the findings the plugin is blessed to yield. `--demo` is the miniature repository embedded
+        # in the binary (`assets/fathom-demo.pack`), so this needs no network and no fixture repository.
+        run: |
+          cargo build --locked -p fathom-cli
+          cargo run --quiet -p fathom-cli -- --demo analyze ep-7090b6693637812919bd --json 2>/dev/null \
+            | cargo run --quiet --manifest-path plugins/acme-detectors/Cargo.toml -- --json \
+                --check plugins/acme-detectors/fixtures/miniature.expected.jsonl
+
+  # ---------------------------------------------------------------------------
+  # §2's third channel: known before it ships, rather than in the week after.
+  #
+  # This job used to be `continue-on-error: true`, which is how it spent 778 minutes of the census window
+  # (720.5 of them two hangs) without ever being the reason a run was red, and without anyone ever reading a
+  # failure it allowed: an allowed failure that is not written down somewhere a human looks is not an
+  # advisory signal, it is a dark room (`e11.1` §2.7). The flag is gone. What replaces it is two steps that
+  # each name the one thing they let pass — a build or a test break on a toolchain ADR-002 §2 does not ship
+  # on — and write it, with the log lines that say why, into the nightly's job summary. A red beta is still
+  # not a red build, because a channel outside the supported window is not a defect anyone owes a fix for; it
+  # is now also a red that is *published*, which is the difference between an early warning and a rumour.
+  #
+  # It is not on a pull request either, for the reason `e11.2` gave: a fourth toolchain that cannot fail a
+  # merge is cost without a verdict, paid on every push.
+  # ---------------------------------------------------------------------------
+  beta:
+    name: beta (advisory — a break is published, not gated)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      RUSTUP_TOOLCHAIN: beta
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Swatinem/rust-cache@v2
+        with:
+          # The lever and the save. `prefix-key` is the one hand-written half of the derived key and it comes
+          # from `env.CACHE_BUST` below, not from a string written here; `cache-on-failure` is the census:
+          # 102 of `ci.yml`'s 233 cargo-cache saves never happened because the job was red when the cache
+          # would have been written, and a red job's compiled objects are still correct objects. `R04`.
+          prefix-key: ${{ env.CACHE_BUST }}
+          cache-on-failure: "true"
+      - name: install beta
+        run: rustup toolchain install beta --profile minimal
+      - name: build (everything, on beta); a break here is a report, not a gate
+        # What this step tolerates, in its own words: `cargo build --workspace --all-features` failing on the
+        # beta toolchain. Nothing else. The exit code and the tail of the log go to the job summary, and the
+        # step ends green because beta is not a channel this repository ships on (ADR-002 §2's window is
+        # `stable` and the MSRV), and because a nightly that is red over a beta regression is a nightly nobody
+        # can merge their way out of.
+        run: |
+          set -uo pipefail
+          if cargo build --workspace --all-features 2>&1 | tee /tmp/beta-build.log; then
+            echo "BETA_VERDICT_BUILD=green" >> "$GITHUB_ENV"
+            echo "beta build: green" | tee -a "$GITHUB_STEP_SUMMARY"
+          else
+            echo "BETA_VERDICT_BUILD=red" >> "$GITHUB_ENV"
+            {
+              echo "### beta build: **red**"
+              echo "beta is outside the supported window (ADR-002 §2), so this is published rather than gated."
+              echo "The last lines of the build:"
+              echo '```text'
+              tail -n 30 /tmp/beta-build.log
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: test (everything, on beta); same tolerance, same treatment
+        run: |
+          set -uo pipefail
+          if cargo test --workspace --all-features 2>&1 | tee /tmp/beta-test.log; then
+            echo "BETA_VERDICT_TEST=green" >> "$GITHUB_ENV"
+            echo "beta test: green" | tee -a "$GITHUB_STEP_SUMMARY"
+          else
+            echo "BETA_VERDICT_TEST=red" >> "$GITHUB_ENV"
+            {
+              echo "### beta test: **red**"
+              echo "beta is outside the supported window (ADR-002 §2), so this is published rather than gated."
+              echo "The failing figures, and the tail:"
+              grep -E '^(test .* FAILED|failures:|error\[|error:)' /tmp/beta-test.log | head -30 || true
+              echo '```text'
+              tail -n 30 /tmp/beta-test.log
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: what beta said about this commit
+        # One step whose only job is to put the two verdicts where the run page shows them, so the answer to
+        # "did beta break?" is a line at the top of the summary rather than a search through two logs.
+        env:
+          BUILD_VERDICT: ${{ env.BETA_VERDICT_BUILD }}
+          TEST_VERDICT: ${{ env.BETA_VERDICT_TEST }}
+        run: |
+          {
+            echo "## beta lane: build ${BUILD_VERDICT:-?}, test ${TEST_VERDICT:-?}"
+            echo
+            echo "Advisory. ADR-002 §2 supports \`stable\` and the MSRV; this lane exists to see a beta"
+            echo "regression a week before it ships, not to block a merge for one — which is why the two steps"
+            echo "above publish their verdict instead of failing the job, and why the failure is written down"
+            echo "rather than allowed."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # ---------------------------------------------------------------------------
+  # The packaging matrix, once a day, without duplicating it.
+  #
+  # `.github/workflows/release.yml` is generated by `cargo-dist` from `dist-workspace.toml`, so this file
+  # cannot add a `schedule:` to it and `dist generate --check` would say so if it tried. What it can do is
+  # what `publish.yml` already does: `workflow_dispatch` the workflow itself, in cargo-dist's `dry-run`
+  # mode — plan the release, build every target, publish nothing. So the six-target matrix (three
+  # operating systems, both Apple silicon and Intel, the msi, the formula, the source tarball) runs daily
+  # against the default branch and on demand, and the pull request keeps the packaging job it can actually
+  # finish (`ci.yml`'s `.deb`/`.rpm`/installer rehearsal, which is where six real packaging defects were
+  # caught in five days).
+  #
+  # This job dispatches and returns; it does not wait for the dispatched run, and it does not fail when
+  # the matrix does. The matrix's own red is on `release.yml`'s own page, where the release lives.
+  # ---------------------------------------------------------------------------
+  release-matrix:
+    name: the six-target matrix, dispatched against the default branch
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: write
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Dispatch release.yml in dry-run mode (plan and build everything, publish nothing)
+        run: |
+          set -euo pipefail
+          gh workflow run release.yml --repo "$GITHUB_REPOSITORY" --ref "${{ github.ref }}" -f tag=dry-run
+          echo "Dispatched release.yml at ${{ github.ref }} with tag=dry-run."
+          echo "It builds every target and publishes nothing; watch it on the workflow's own page."
+          echo "[release.yml runs](${{ github.server_url }}/${{ github.repository }}/actions/workflows/release.yml)" \
+            >> "$GITHUB_STEP_SUMMARY"

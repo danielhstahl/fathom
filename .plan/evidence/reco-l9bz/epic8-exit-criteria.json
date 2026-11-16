@@ -1,0 +1,507 @@
+{
+  "producer": "tools/epic8_acceptance.py",
+  "ticket": "reco-l9bz",
+  "plan_key": "e8",
+  "binary": "/tmp/ctarget/debug/fathom",
+  "binary_features": "fathom 0.1.0-alpha.1 features: tui mcp watch sqlite-bundled langs-all deps-all",
+  "binary_commit": "957730a",
+  "head": "957730ad9a68ac0108077d2a2ecd1237dd48d078",
+  "elapsed_s": 8.8,
+  "verdict": "pass",
+  "clauses_passed": 6,
+  "checks_total": 50,
+  "skip_tui": false,
+  "corpus": {
+    "languages": [
+      "go",
+      "java",
+      "python",
+      "ruby",
+      "rust",
+      "typescript"
+    ],
+    "figures": 12,
+    "episodes": [
+      "author the six-language corpus",
+      "branch one.py three ways",
+      "prune the branch out of two.rs",
+      "reword the notes"
+    ]
+  },
+  "clauses": [
+    {
+      "clause": "measure",
+      "text": "measured per file and per episode from the six shipped grammars",
+      "verdict": "pass",
+      "checks": [
+        {
+          "check": "the index-time pass filled every row it was owed",
+          "ok": true,
+          "detail": "rows 12, written 12, missing 0, 801 bytes of content read in 2 ms"
+        },
+        {
+          "check": "all 12 hand-counted figures are met exactly, both sides and the max",
+          "ok": true,
+          "detail": "12 (commit, path) figures matched cell for cell"
+        },
+        {
+          "check": "all six grammars produced a figure from the same run",
+          "ok": true,
+          "detail": "measured at least one file in bin, go, java, py, rb, rs, ts, txt"
+        },
+        {
+          "check": "a file the parser could not read has no figure, and its reason is one of ADR-007 \u00a77.1's codes",
+          "ok": true,
+          "detail": "refused with ['binary', 'language_unknown', 'parse_failed']; never a zero, never a private code"
+        },
+        {
+          "check": "the committed corpus report's own totals re-derive from the corpus on disk",
+          "ok": true,
+          "detail": "report {'corpus_files': 18, 'expected': 69, 'languages': 6, 'matched': 69, 'units': 69}; re-derived 18 files, 69 units"
+        },
+        {
+          "check": "the report's four accuracy bars are at zero violations, C-KIND included",
+          "ok": true,
+          "detail": "ckind: violations 0, measured None against required 0; definitions_the_extractor_can_see: violations None, measured 1.0 against required 1.0; every_miss_a_named_blind_spot: violations 0, measured None against required True; unknown_is_never_zero: violations 0, measured None against required True"
+        },
+        {
+          "check": "the corpus and this build agree about which rule set produced the figures",
+          "ok": true,
+          "detail": "report basis 'mccabe-1', this build writes 'mccabe-1'"
+        }
+      ],
+      "notes": [
+        "the report is `cargo run -p fathom-analyze --features langs-all --example complexity_harness -- --check`'s output and CI re-runs it in `.github/workflows/complexity.yml`; this gate re-derives its totals and bars from the corpus on disk rather than re-running the scorer, because a second scorer in Python is how a measurement goes quiet."
+      ],
+      "data": {
+        "fill": {
+          "base_reused": 1,
+          "bytes_read": 801,
+          "ceilings": {
+            "max_file_bytes": 2000000,
+            "max_run_bytes": 128000000,
+            "max_run_ms": 60000
+          },
+          "declined": null,
+          "measured": 11,
+          "missing": 0,
+          "ms": 2,
+          "refused": [
+            {
+              "code": "binary",
+              "rows": 1
+            },
+            {
+              "code": "language_unknown",
+              "rows": 3
+            },
+            {
+              "code": "parse_failed",
+              "rows": 1
+            }
+          ],
+          "rows": 12,
+          "written": 12
+        },
+        "rows": 12,
+        "reasons": [
+          "binary",
+          "language_unknown",
+          "parse_failed"
+        ]
+      }
+    },
+    {
+      "clause": "store",
+      "text": "stored beside the code deltas, with the invalidation cost named",
+      "verdict": "pass",
+      "checks": [
+        {
+          "check": "the six columns live beside the line counts they qualify",
+          "ok": true,
+          "detail": "git_commit_file carries 22 columns; the six are all present"
+        },
+        {
+          "check": "a figure without a reason, or a reason without a basis, cannot be written",
+          "ok": true,
+          "detail": "2 of 2 ADR-007 \u00a79.1 CHECK constraints are in the table's own DDL"
+        },
+        {
+          "check": "a run that adds complexity columns evicts zero derived rows (ADR-007 \u00a79.3)",
+          "ok": true,
+          "detail": "derived rows moved {'cache': 2, 'blob': 4, 'blob_ref': 2}; file rows with a figure 8 \u2192 9; warm hit rate 80.0 %"
+        },
+        {
+          "check": "the warm run read its cached derived rows instead of recomputing them",
+          "ok": true,
+          "detail": "ingest.normalize 4 hits; structure.delta 1 hits"
+        },
+        {
+          "check": "a spent byte ceiling prints `too_large` and leaves the row without a figure",
+          "ok": true,
+          "detail": "9 row(s) refused; 7 of them keep no figure; the reason is on 7 rows"
+        },
+        {
+          "check": "a refusal by a ceiling is a `?` with its reason in the delta, never a zero",
+          "ok": true,
+          "detail": "{\"state\": \"unavailable\", \"measured\": false, \"delta\": null, \"reasons\": {\"binary\": 1, \"language_unknown\": 1, \"parse_failed\": 1, \"too_large\": 6}}"
+        },
+        {
+          "check": "raise the key and the next row for that path is counted again \u2014 a budget is not a memo",
+          "ok": true,
+          "detail": "the run after raising it: 1 measured, [[5, 2, 2, \"\", \"\", \"mccabe-1\"]]"
+        },
+        {
+          "check": "`max_run_ms = 0` declines the whole pass and the run says which key spent itself",
+          "ok": true,
+          "detail": "declined=extract.complexity.max_run_ms, refused=[{\"code\": \"binary\", \"rows\": 1}, {\"code\": \"language_unknown\", \"rows\": 3}, {\"code\": \"scan_budget\", \"rows\": 11}]"
+        },
+        {
+          "check": "`fathom doctor` carries the durable half: coverage, the pass line, and a remedy naming the key",
+          "ok": true,
+          "detail": "complexity  11 of 11 file row(s) measured (100 %), figure on 0; basis mccabe-1; reasons: scan_budget 9, language_unknown 2 / complexity  pass has read 0 MiB of file content in 0 ms over the store's life; extract.complexity.max_run_ms spent on 1 run(s) \u2014 those rows are owed, not finished / index: 9 f"
+        },
+        {
+          "check": "the committed cost report e8-4-index-time-complexity.json still describes itself",
+          "ok": true,
+          "detail": "workspace: 217 commits, +18.0 % index time, +4.0 MiB peak RSS \u2014 the report's own numbers agree with it"
+        },
+        {
+          "check": "the committed cost report e8-4-index-time-complexity-monorepo.json still describes itself",
+          "ok": true,
+          "detail": "aws-sdk-go: 5,501 commits, +11.8 % index time, +1.6 MiB peak RSS \u2014 the report's own numbers agree with it"
+        }
+      ],
+      "notes": [],
+      "data": {
+        "columns": 22,
+        "counts_before": {
+          "git_commit": 4,
+          "git_commit_file": 12,
+          "cache": 15,
+          "blob": 23,
+          "blob_ref": 15,
+          "with_figure": 8
+        },
+        "counts_after": {
+          "git_commit": 5,
+          "git_commit_file": 13,
+          "cache": 17,
+          "blob": 27,
+          "blob_ref": 17,
+          "with_figure": 9
+        },
+        "byte_ceiling": {
+          "binary": 1,
+          "language_unknown": 3,
+          "parse_failed": 1,
+          "too_large": 9
+        },
+        "declined": "extract.complexity.max_run_ms"
+      }
+    },
+    {
+      "clause": "delta",
+      "text": "carried in EpisodeDelta, additive at the document's own version",
+      "verdict": "pass",
+      "checks": [
+        {
+          "check": "the figure travels inside the delta document, at the document's unchanged version",
+          "ok": true,
+          "detail": "contract fathom-delta/1, schema_version 1"
+        },
+        {
+          "check": "all four episodes' figures re-derive from the store rows, both by hand and by this file's literals",
+          "ok": true,
+          "detail": "author 13 (\u0394 over 6/9 paths); branch 2 (\u0394 over 1/1 paths); prune -1 (\u0394 over 1/1 paths); reword None (\u0394 over 0/1 paths)"
+        },
+        {
+          "check": "the episode max is the max over the paths' head figures, never a sum of maxima (\u00a75.1)",
+          "ok": true,
+          "detail": "max 3, absolute 13 \u2014 the sum of the six measured paths"
+        },
+        {
+          "check": "an episode nothing was counted for prints `?` with a gap line the card can hold, never `\u00b10`",
+          "ok": true,
+          "detail": "gap line 'complexity: no grammar' is 22 columns against the card's 35; delta key present: False"
+        },
+        {
+          "check": "the published delta schema is the one this build generates",
+          "ok": true,
+          "detail": "schemas/episode-delta.schema.json is what this build generates (fathom-delta/1 v1)"
+        },
+        {
+          "check": "the delta document is additive at the version it is on",
+          "ok": true,
+          "detail": "delta-compat: episode-delta.schema.json is still v1: 58 additive shape change(s) since the baseline, nothing a reader of the old documents would reject"
+        },
+        {
+          "check": "the export writes the same block, not a second opinion of it",
+          "ok": true,
+          "detail": "1 episode(s) exported; the analyze block is in the artefact"
+        },
+        {
+          "check": "the artefact names the model that produced the figure (ADR-001 \u00a77.9)",
+          "ok": true,
+          "detail": "the artefact's `provenance.models.complexity` reads ['structure::complexity (mccabe-1)']"
+        }
+      ],
+      "notes": [],
+      "data": {
+        "derived": {
+          "author the six-language corpus": {
+            "touched": 9,
+            "measured_paths": 6,
+            "unmeasurable_paths": 3,
+            "delta": 13,
+            "absolute": 13,
+            "max": 3,
+            "reasons": {
+              "parse_failed": 1,
+              "language_unknown": 1,
+              "binary": 1
+            }
+          },
+          "branch one.py three ways": {
+            "touched": 1,
+            "measured_paths": 1,
+            "unmeasurable_paths": 0,
+            "delta": 2,
+            "absolute": 5,
+            "max": 5,
+            "reasons": {}
+          },
+          "prune the branch out of two.rs": {
+            "touched": 1,
+            "measured_paths": 1,
+            "unmeasurable_paths": 0,
+            "delta": -1,
+            "absolute": 1,
+            "max": 1,
+            "reasons": {}
+          },
+          "reword the notes": {
+            "touched": 1,
+            "measured_paths": 0,
+            "unmeasurable_paths": 1,
+            "delta": null,
+            "absolute": null,
+            "max": null,
+            "reasons": {
+              "language_unknown": 1
+            }
+          }
+        },
+        "printed": {
+          "author the six-language corpus": {
+            "state": "partial",
+            "delta": 13,
+            "absolute": 13,
+            "max": 3,
+            "coverage": 0.6666666666666666
+          },
+          "branch one.py three ways": {
+            "state": "measured",
+            "delta": 2,
+            "absolute": 5,
+            "max": 5,
+            "coverage": 1.0
+          },
+          "prune the branch out of two.rs": {
+            "state": "measured",
+            "delta": -1,
+            "absolute": 1,
+            "max": 1,
+            "coverage": 1.0
+          },
+          "reword the notes": {
+            "state": "unavailable",
+            "delta": null,
+            "absolute": null,
+            "max": null,
+            "coverage": 0.0
+          }
+        }
+      }
+    },
+    {
+      "clause": "glance",
+      "text": "printed at a glance in the timeline rail, the episode card and the diff tree",
+      "verdict": "pass",
+      "checks": [
+        {
+          "check": "every rail row prints its delta: signed, floored with its denominator, or `?`",
+          "ok": true,
+          "detail": "ep-e40 ~+13 (6/9) \u00b7 ep-78f +2 \u00b7 ep-fdb \u22121 \u00b7 ep-7a2 ?"
+        },
+        {
+          "check": "the row that could not be counted prints `?` there, and no zero stands in for it",
+          "ok": true,
+          "detail": "'\u25b8 ep-7a2 8mo +2 \u22120 \u25cf\u25cf\u25cb\u25cb\u25cb\u25cb ? 9 \u2691 \u25021 commit \u00b7 8mo ago \u00b7 \u2691 unread' \u2014 the cells after the sparkline carry a `?` and no signed figure"
+        },
+        {
+          "check": "the card row prints the figure with its absolutes and its coverage, in words",
+          "ok": true,
+          "detail": "\u2502                                                                                  \u2502complexity +2 \u00b7 5 at head \u00b7 1 of 1 file        \u2502"
+        },
+        {
+          "check": "the diff tree prints the figure per file and states its legend and coverage on the counts row",
+          "ok": true,
+          "detail": "1 files \u00b7 +4 \u22120 \u00b7 complexity +2 \u00b7 worst 4                                      \u2502pkg/one.py  ~ +4 \u22120  python"
+        },
+        {
+          "check": "`<` cycles the tree sort to the figure and says so in the strip",
+          "ok": true,
+          "detail": "pkg/one.py \u00b7 sort: complexity \u00b7 unified \u00b7 plain \u00b7 ws-shown                      \u2502hunk 1 of 1 \u00b7 @@ -1,5 +1,9 @@ \u00b7 unified \u00b7 as wri\u2026"
+        },
+        {
+          "check": "sorting by the figure reorders the tree without dissolving the taxonomy groups",
+          "ok": true,
+          "detail": "first rows: 1 files \u00b7 +4 \u22120 \u00b7 complexity +2 \u00b7 worst  | pkg/  +4 \u22120 +2                           | pkg/one.py \u00b7 sort: complexity \u00b7 unified "
+        },
+        {
+          "check": "a rail too narrow for the column says the column is gone rather than leaving it out quietly",
+          "ok": true,
+          "detail": "at 64 columns the row is 'ep-78f 8mo +4 \u22120 \u25cf\u25cf\u25cf\u25cb\u25cb\u25cb 13 \u2691 \u2502complexity ? \u2014 1 of 1 pat\u2026' \u2014 five cells, the size column intact"
+        },
+        {
+          "check": "the column ladder has a rung for the width at which the \u0394 cannot be paid for",
+          "ok": true,
+          "detail": "the regenerated ladder golden names the `no complexity \u0394` rung (34\u201336 columns); the strip sentences are owned by `tests/timeline_behaviour.rs`"
+        }
+      ],
+      "notes": [],
+      "data": {
+        "cells": {
+          "author the six-language corpus": "~+13 (6/9)",
+          "branch one.py three ways": "+2",
+          "prune the branch out of two.rs": "\u22121",
+          "reword the notes": "?"
+        },
+        "episode_ids": {
+          "author the six-language corpus": "ep-e40",
+          "branch one.py three ways": "ep-78f",
+          "prune the branch out of two.rs": "ep-fdb",
+          "reword the notes": "ep-7a2"
+        }
+      }
+    },
+    {
+      "clause": "ranking",
+      "text": "the risk ranking counts the decision points it added, and G3 was re-measured",
+      "verdict": "pass",
+      "checks": [
+        {
+          "check": "`spine-2` grew the sixth component and scores it from the delta document's own figure",
+          "ok": true,
+          "detail": "spine-2 13 = surfaces 10 + size 2 + complexity 1; added 2 of a 20-point ceiling \u2192 1 points (re-computed 1)"
+        },
+        {
+          "check": "`features-2` grew the thirteenth axis, and it reads the same roll-up",
+          "ok": true,
+          "detail": "features-2: raw 2.0 against the document's 2, basis 'episode complexity roll-up (`mccabe-1`)', weight 0.07"
+        },
+        {
+          "check": "the vector's weights still sum to 1.00 with the new axis in the denominator",
+          "ok": true,
+          "detail": "13 weights summing to 1.0000"
+        },
+        {
+          "check": "the ranking says what the axis cannot see, in the same breath as the number (ADR-007 \u00a78.3)",
+          "ok": true,
+          "detail": "\u00b7 whether the complexity this score counted is the complexity that matters: the axis adds up decision points, so it cannot see a change that is hard to follow without adding any \u2014 a lock order, a lifetime, a cache that is now stale \u2014 and it"
+        },
+        {
+          "check": "the corpus was re-measured with the grammars in, so the axis was present to measure",
+          "ok": true,
+          "detail": "cli: 60/180 episodes counted, pass wrote 2707/2707 rows; flask: 59/180 episodes counted, pass wrote 1387/1387 rows; ruff: 137/180 episodes counted, pass wrote 4806/4806 rows"
+        },
+        {
+          "check": "the re-measured G3 in the committed report is the number the calibration page prints",
+          "ok": true,
+          "detail": "G3 at the published \u03c4 is 0.608, at the corpus cut 0.642; the page quotes both"
+        },
+        {
+          "check": "the gates report the measured value instead of hiding behind an unmeasurable one",
+          "ok": true,
+          "detail": "g3-alpha-at-published-tau fail measured 0.608; g3-alpha-at-corpus-cut fail measured 0.642; g3-1-0-at-corpus-cut fail measured 0.642"
+        }
+      ],
+      "notes": [
+        "the axis prints `worst single unit at head is V(G) 5`, but the largest single V(G) this episode's files hold is 4: the figure is ADR-007 \u00a75.1's max over *path* figures, so the number is right and the noun is not. Owned by the sentence's owner (`e8.7`, `risk::score`'s component detail); renaming it moves a golden, so it is a ticket, not a close-out edit.",
+        "`g3_calibration --check` byte-checks this report and CI runs it with `--features sqlite-bundled,langs-all` (the axis is silently absent without the grammars, which is the one thing a byte-exact check must not be able to miss); this gate reads the committed artefact and re-checks its internal promises instead of fetching three repositories per run."
+      ],
+      "data": {
+        "model": "spine-2",
+        "vector": "spine-2 13 = surfaces 10 + size 2 + complexity 1",
+        "axis_weight": 0.07,
+        "ceiling": 20
+      }
+    },
+    {
+      "clause": "reality",
+      "text": "one figure everywhere: `?` where nothing was counted, every number naming its pass",
+      "verdict": "pass",
+      "checks": [
+        {
+          "check": "one figure across 7 surfaces of one store",
+          "ok": true,
+          "detail": "store re-added=2 \u00b7 analyze --json=2 \u00b7 show --plain=+2 \u00b7 show --json=2 \u00b7 why --json=2.0 \u00b7 export --format json=2 \u00b7 the rail, read off a screen=+2"
+        },
+        {
+          "check": "an uncountable episode prints `?` on every surface, and no surface prints it as zero",
+          "ok": true,
+          "detail": "document {\"state\": \"unavailable\", \"measured\": false, \"reasons\": {\"language_unknown\": 1}}; `fathom show` prints 'complexity  ? \u2014 1 of 1 path(s) in this episode had no figure'; the rail prints '?'"
+        },
+        {
+          "check": "every printed figure names the basis that produced it (ADR-001 \u00a77.9)",
+          "ok": true,
+          "detail": "'mccabe-1' named by 5 of 5 surfaces; the doctor line reads complexity  11 of 11 file row(s) measured (100 %), figure on 8; basis mccabe-1; reasons: language_unknown 2, parse_faile"
+        },
+        {
+          "check": "the arithmetic lives in `fathom-analyze` and the TUI renders what it is handed (lint M02)",
+          "ok": true,
+          "detail": "check: check_workspace check OK: 8 crates, 40 features, 11 teams, 77 tickets mapped, 9 generated blocks in sync \u00b7 lint: workspace boundary lint (/workspace) OK"
+        },
+        {
+          "check": "every change this epic made to a protected golden names itself",
+          "ok": true,
+          "detail": "21 golden file(s) changed across 7 epic commit(s), all of them explained by the commit message or by the primitive's own vocabulary"
+        },
+        {
+          "check": "every child registered its plan key against its bead",
+          "ok": true,
+          "detail": "e8\u2026e8.7 map to the seven beads in `.plan/keymap.json`"
+        },
+        {
+          "check": "the board says all seven children closed before the epic could",
+          "ok": true,
+          "detail": "7/7 closed (the epic itself is closed by this run)"
+        },
+        {
+          "check": "the release notes carry an entry per child, and the audit that gates them is green (C03)",
+          "ok": true,
+          "detail": "5561 lines under [Unreleased]; all seven children named \u00b7 audit: ok  the rung claim in `[Unreleased]` is true for the range it names: 79 commit(s) in `0f7495f3b5f3..c05860b6c6dd`, 88 behind HEAD \u2014 header 1, bead 72, key 5, subject 1"
+        },
+        {
+          "check": "the documents the primitive rewrote agree with the code (plan keys, bead ids, links)",
+          "ok": true,
+          "detail": "docs OK: 99 glossary terms, 90 documents checked"
+        }
+      ],
+      "notes": [],
+      "data": {
+        "surfaces": {
+          "store re-added": 2,
+          "analyze --json": 2,
+          "show --plain": "+2",
+          "show --json": 2,
+          "why --json": 2.0,
+          "export --format json": 2,
+          "the rail, read off a screen": "+2"
+        },
+        "unexplained_golden_lines": []
+      }
+    }
+  ]
+}

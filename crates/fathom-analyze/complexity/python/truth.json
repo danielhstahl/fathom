@@ -1,0 +1,39 @@
+{
+  "language": "python",
+  "basis": "mccabe-1",
+  "notes": "Hand-authored against ADR-007 §4.2. `worked.py` is §4.7's example verbatim: `if`, `and`, a comprehension's `for` and its filter, `elif`, `or`, one `except`, a ternary, plus one — 9, the number the ADR argues for in prose. `awkward.py` carries the four things Python gets wrong in a naive counter: a `@dataclass` class body (the extractor unwraps `decorated_definition`, so `Box.area` and `Box.scale` are units, and the mark makes their figures floors), a `def` inside a `def` (not a unit — its `if` and its comprehension belong to `outer`, which is why `outer` is 6 and there is no `outer.inner` row), a `lambda` at module scope (a ternary inside it is no unit's business: it is not nameable, not keyable, not diffable), and a `class` body with a `for` and a ternary in it (a container, not a body of control flow, §3.1). Comprehension filters count as the loop they replace; `try`, `finally`, `with`, `assert` and `yield` count 0; `case [a, b] if guard` is two tests, and the grammar spells that guard with the same `if_clause` node it uses for a comprehension filter — one node kind, one point, whichever role it is playing. `spooled` exists for C-KIND's sake as much as Python's: `while_statement` was declared and nothing in the corpus produced one, and a `while … else` is the pair worth having anyway, because the `else` of a loop that ran to exhaustion is worth nothing and a counter that counts it is wrong by one on every Python file that uses the spelling.",
+  "files": {
+    "worked.py": {
+      "state": "measured",
+      "sum": 9,
+      "max": 9,
+      "reason": "",
+      "functions": [
+        { "n": "f", "kind": "fn", "v": 9, "points": 8 }
+      ]
+    },
+    "awkward.py": {
+      "state": "partial",
+      "sum": 25,
+      "max": 6,
+      "reason": "",
+      "marks": ["decorated", "synthesised_accessors"],
+      "functions": [
+        { "n": "Box.area", "kind": "method", "v": 1, "points": 0 },
+        { "n": "Box.scale", "kind": "method", "v": 5, "points": 4 },
+        { "n": "outer", "kind": "fn", "v": 6, "points": 5 },
+        { "n": "Registry.lookup", "kind": "method", "v": 3, "points": 2 },
+        { "n": "Registry.matched", "kind": "method", "v": 5, "points": 4 },
+        { "n": "Registry.each", "kind": "method", "v": 2, "points": 1 },
+        { "n": "spooled", "kind": "fn", "v": 3, "points": 2 }
+      ]
+    },
+    "notes.txt": {
+      "state": "unavailable",
+      "sum": null,
+      "max": null,
+      "reason": "language_unknown",
+      "functions": []
+    }
+  }
+}

@@ -1424,13 +1424,23 @@ fn a_python_module_named_test_is_published_api() {
     );
 }
 
+/// One row of the table below: a language, the files that make up the crate it is looking at, and the
+/// path that is that language's "this is a test, not a public surface" convention.
+type TestConventionCase = (
+    &'static str,
+    [(&'static str, &'static str); 2],
+    &'static str,
+);
+
 /// The other languages' conventions, in one place: cargo's `tests/`, Go's `_test.go`, Java's
 /// `src/test/java`, Node's `__tests__`. Each is a fact about what a consumer can import, and each
 /// leaves the library's own removals reported.
 #[test]
 fn every_language_owns_its_own_test_convention() {
     let policy = ApiPolicy::default_policy();
-    let cases: [(&str, [(&str, &str); 2], &str); 4] = [
+    // A named type rather than the literal: clippy 1.99's `type_complexity` is right that a nested tuple
+    // of tuples is hard to read inline, and wrong that the fix is to flatten the table.
+    let cases: [TestConventionCase; 4] = [
         (
             "rust",
             [

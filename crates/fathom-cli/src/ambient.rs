@@ -41,7 +41,7 @@ use std::time::{Duration, Instant};
 use fathom_core::exit::ExitCode;
 use fathom_core::time::{Clock as _, Timestamp};
 use fathom_tui::ambient::{
-    self, End, Glance, IndexState, Latest, Need, QueueState, Reason, WatchState,
+    self, End, Glance, IndexState, Latest, Need, OpenWork, Reason, WatchState,
 };
 
 use crate::output;
@@ -58,7 +58,13 @@ const STALE_AFTER_SECS: i64 = 600;
 const HEARTBEAT_LIVE_SECS: i64 = 60;
 
 /// The machine contract `--json` promises, spelled the way `fathom watch --json` spells its own.
-const CONTRACT: &str = "fathom.cli.ambient/1";
+///
+/// `/2` is `e10.3` (`reco-ydek.3`), and two removals are why: the `queue` object is `open_work` now with
+/// its `open_queue` attention kind spelled `open_work`, and `latest.risk` no longer carries `rank` /
+/// `ranked` — the place in a ranked set left with the ranked set (ADR-006 §5.1.2 §5). Both are breaking
+/// for a consumer that switches on the shape it got rather than the one it hoped for, which is exactly
+/// what the version number is for.
+const CONTRACT: &str = "fathom.cli.ambient/2";
 
 /// Run `fathom ambient`.
 pub fn run(args: &AmbientArgs, globals: &Globals) -> eyre::Result<ExitCode> {
@@ -257,13 +263,11 @@ fn glance_json(glance: &Glance, args: &AmbientArgs) -> serde_json::Value {
             "risk": latest.risk.as_ref().map(|risk| serde_json::json!({
                 "score": risk.score,
                 "model": risk.model,
-                "rank": risk.rank,
-                "ranked": risk.ranked,
                 "surfaces": risk.surfaces,
             })),
         })
     });
-    let counts = glance.queue.counts;
+    let counts = glance.open_work.counts;
     serde_json::json!({
         "contract": CONTRACT,
         "stamp_utc": glance.now.as_unix_micros() / 1_000,
@@ -275,9 +279,9 @@ fn glance_json(glance: &Glance, args: &AmbientArgs) -> serde_json::Value {
             .map(|reason| serde_json::json!({ "kind": reason.kind.as_str(), "text": reason.text })),
         "drill": glance.drill,
         "latest": latest,
-        "queue": {
-            "known": glance.queue.known,
-            "over_day": glance.queue.over_day,
+        "open_work": {
+            "known": glance.open_work.known,
+            "over_day": glance.open_work.over_day,
             "counts": counts
                 .map(|counts| serde_json::to_value(counts).unwrap_or(serde_json::Value::Null)),
         },
@@ -319,8 +323,8 @@ type Job = crate::watch::IndexJob;
 struct Facts {
     index: IndexState,
     latest: Option<Latest>,
-    queue: QueueState,
-    /// The queue's top-ranked open episode: what the reason line prints and what `<Enter>` opens.
+    open_work: OpenWork,
+    /// The open row the pane points at: what the reason line prints and what `<Enter>` opens.
     top: Option<Top>,
     notes: Vec<String>,
 }
@@ -336,7 +340,10 @@ impl Facts {
     }
 }
 
-/// The queue's first open row, in the three things the pane needs from it.
+/// The row the pane points at, in the three things it needs from it.
+///
+/// It was "the queue's first open row" while something ranked the set; now it is the newest open row, and
+/// the pane says what the row's own score is rather than what place it took.
 struct Top {
     kind: Need,
     text: String,
@@ -369,7 +376,7 @@ pub(crate) fn stamp(path: &Path) -> Stamp {
     }
 }
 
-/// The cheap probe's answer: sizes, mtimes and `HEAD`, and nothing parsed.
+/// The cheap probe's answer: sizes, mtimes, `HEAD` and what `HEAD` names, and nothing parsed.
 ///
 /// `pub(crate)` for the same reason [`stamp`] is: the shell's watcher and the glance pane's reader are one
 /// probe with two callers.
@@ -379,6 +386,13 @@ pub(crate) struct Signature {
     heartbeat: Stamp,
     git_dir: Stamp,
     head: String,
+    /// What `HEAD` names: the branch, `detached`, or empty when there was no repository to ask.
+    ///
+    /// The oid is not enough. Two branches sit on one commit as often as not — a fresh `git switch -c`, a
+    /// `git switch` back to a sibling that has not been committed to yet — and the frame prints the *name*
+    /// (`reco-nup`), so the name is one of the facts a cheap probe has to carry or the label goes stale on
+    /// the exact keystroke that changes it.
+    head_ref: String,
 }
 
 impl Signature {
@@ -394,8 +408,23 @@ impl Signature {
         self.head != before.head
     }
 
-    /// Is there anything a re-read could put on screen that was not there? `HEAD` moved, or somebody
-    /// wrote the store.
+    /// Did the *name* move while the commit stayed put — `git switch` between two refs at one commit?
+    ///
+    /// This is the only change a frame can show without a re-read: the rows, the index's numbers and the
+    /// working tree are all exactly as they were, and one line of the chrome is not (`reco-nup`).
+    #[must_use]
+    pub(crate) fn branch_moved(&self, before: &Signature) -> bool {
+        self.head_ref != before.head_ref
+    }
+
+    /// Did somebody write the store — this process's own run, or a `fathom index` in another terminal?
+    #[must_use]
+    pub(crate) fn store_moved(&self, before: &Signature) -> bool {
+        self.store != before.store
+    }
+
+    /// Is there anything a re-read could put on screen that was not there? `HEAD` moved, `HEAD`'s name
+    /// moved, or somebody wrote the store.
     ///
     /// Deliberately *not* a whole-struct compare: `.git` moves for reasons that change nothing a frame
     /// draws — `git status` refreshing the index, a stash, a fetch of a branch nobody is looking at — and
@@ -403,32 +432,43 @@ impl Signature {
     /// was never asked to be the interesting kind.
     #[must_use]
     pub(crate) fn worth_reading(&self, before: &Signature) -> bool {
-        self.head != before.head || self.store != before.store
+        self.head != before.head || self.head_ref != before.head_ref || self.store != before.store
     }
 }
 
-/// The cheap probe, run against one repository: four `stat`s and one ref read, and nothing parsed.
+/// The cheap probe, run against one repository: four `stat`s and one `HEAD` read, and nothing parsed.
 ///
 /// Shared by the glance pane and by `fathom tui`'s watcher (`reco-bpc`) because both need the same answer
 /// at the same price, and because the price is the whole reason either is allowed to ask.
 pub(crate) fn probe(root: &Path, store_path: &Path, heartbeat: &Path) -> Signature {
+    use fathom_ingest::repo::Head;
     let repository = fathom_ingest::repo::Repository::discover(root).ok();
-    let (head, git_dir) = match &repository {
-        Some(repo) => (
-            repo.head_oid()
-                .ok()
-                .flatten()
-                .map(|oid| oid.to_string())
-                .unwrap_or_default(),
-            stamp(repo.git_dir()),
-        ),
-        None => (String::new(), Stamp::default()),
+    let (head, head_ref, git_dir) = match &repository {
+        // One `HEAD` read, two facts off it: the commit, and what the commit is called. Reading them
+        // separately is how the two get to disagree about which commit the name points at.
+        Some(repo) => {
+            let head = repo.head().ok();
+            (
+                head.as_ref()
+                    .and_then(Head::oid)
+                    .map(|oid| oid.to_string())
+                    .unwrap_or_default(),
+                match head.as_ref() {
+                    Some(Head::Branch { name, .. }) | Some(Head::Unborn { name }) => name.clone(),
+                    Some(Head::Detached { .. }) => "detached".to_owned(),
+                    None => String::new(),
+                },
+                stamp(repo.git_dir()),
+            )
+        }
+        None => (String::new(), String::new(), Stamp::default()),
     };
     Signature {
         store: stamp(store_path),
         heartbeat: stamp(heartbeat),
         git_dir,
         head,
+        head_ref,
     }
 }
 
@@ -600,7 +640,6 @@ impl Reader {
     fn read(&self, now: &Timestamp) -> Facts {
         use fathom_store::episode::{EpisodeQuery, ReviewState};
         use fathom_store::spine::Store;
-        use fathom_tui::timeline::Episode;
 
         let mut out = Facts::default();
         let facts = crate::tui::index_facts(&self.root);
@@ -628,7 +667,7 @@ impl Reader {
                 .ok()
                 .map(|known| known.contains(&self.head))
         };
-        out.queue.over_day = store
+        out.open_work.over_day = store
             .count_episodes(&EpisodeQuery {
                 state: Some(ReviewState::Unread),
                 until_utc: Some(now.as_unix_micros() / 1_000 - 86_400_000),
@@ -636,25 +675,41 @@ impl Reader {
             })
             .ok()
             .and_then(|count| usize::try_from(count).ok());
-        // The rows, the ranking and the counts, from the read the shell already makes: the pane may not
-        // have its own idea of what is riskiest, and this is the only ordering in the product that can
-        // explain itself (`reco-wsj`).
+        // The rows and the counts, from the read the shell already makes. There is no ranking here any
+        // more (`e10.3`, ADR-006 §5.1.2 §5): the pane counts open work and names the one row it points
+        // at, and neither claim needs an order over the rest (`reco-wsj`'s "the only ordering that can
+        // explain itself" is now the rail's chronology, which this pane does not draw).
         let Some(batch) = crate::episodes::load(&self.root, &facts) else {
-            out.queue.known = true;
+            out.open_work.known = true;
             return out;
         };
-        let setup = crate::queue::setup(
+        let setup = crate::triage::setup(
             &self.root,
-            &crate::queue::actor(&self.root),
+            &crate::triage::actor(&self.root),
             &crate::tui::dismiss_reasons(&self.root).0,
             usize::try_from(facts.episodes.unwrap_or(0)).unwrap_or(usize::MAX),
         );
         let state = setup.state();
-        let rows: Vec<&Episode> = batch.episodes.iter().collect();
-        let ranking = fathom_tui::queue::ranking(&rows, &state, *now, facts.epoch.unwrap_or(0));
+        let counts = fathom_analyze::insight::count_rows(
+            &batch
+                .episodes
+                .iter()
+                .map(|episode| fathom_analyze::insight::ReviewRow {
+                    episode: episode.id.clone(),
+                    risk: episode
+                        .risk()
+                        .and_then(|risk| u8::try_from(risk.score.max(0)).ok()),
+                    risk_model: episode
+                        .risk()
+                        .map_or_else(String::new, |risk| risk.model.clone()),
+                    disposition: state.disposition(episode),
+                })
+                .collect::<Vec<_>>(),
+            |_| false,
+        );
         out.notes = setup.notices;
-        out.queue.known = true;
-        out.queue.counts = Some(ranking.counts);
+        out.open_work.known = true;
+        out.open_work.counts = Some(counts);
         let newest_id = batch.episodes.first().map(|episode| episode.id.clone());
         out.latest = batch.episodes.first().map(|episode| Latest {
             id: episode.id.clone(),
@@ -672,15 +727,16 @@ impl Reader {
                 .is_some_and(|row| row.kind == "provisional"),
             risk: episode.risk().cloned(),
         });
-        if let Some(top) = ranking.order.iter().find(|placement| placement.open) {
-            let episode = batch
-                .episodes
-                .iter()
-                .find(|row| row.id == top.episode)
-                .or(batch.episodes.first());
-            if let Some(episode) = episode {
-                out.top = Some(Top::of(top, episode));
-            }
+        // The row the pane points at, chosen without ranking anything: the newest episode that is still
+        // open, which is the same row the rail's cursor would be on and the one the reader can get back to
+        // with `g t`. Its *score* is printed as a figure, not as a place — see [`Top::of`].
+        if let Some(episode) = batch
+            .episodes
+            .iter()
+            .find(|row| state.disposition(row).open(false))
+            .or(batch.episodes.first())
+        {
+            out.top = Some(Top::of(episode));
         }
         out
     }
@@ -747,7 +803,7 @@ impl Reader {
             root: self.root_display(),
             branch: branch(&self.root),
             latest: facts.latest.clone(),
-            queue: facts.queue.clone(),
+            open_work: facts.open_work.clone(),
             index: facts.index.clone(),
             watch: self.watch.clone(),
             reasons,
@@ -777,24 +833,27 @@ impl fathom_tui::ambient::Feed for Reader {
 }
 
 impl Top {
-    /// The reason sentence, from the placement that ranked the row and the row itself.
+    /// The reason sentence, from the row itself.
     ///
-    /// Every figure in it comes from the queue's own placement, so the pane's headline and the queue's row
-    /// are the same claim in two fonts (ADR-001 §7.10).
+    /// It used to be built from a queue placement, and printed `risk 88 (1 of 7)`. There is no ranked set
+    /// to take a place out of (`e10.3`), so the sentence carries the score and the band the score falls
+    /// in — the same two figures the rail's row and the card print, which is the point: the pane's headline
+    /// and the row are one claim in two fonts (ADR-001 §7.10), and a place in a list nobody ranks was a
+    /// third claim nobody could check.
     #[cfg(feature = "sqlite-bundled")]
-    fn of(
-        top: &fathom_analyze::insight::QueuePlacement,
-        episode: &fathom_tui::timeline::Episode,
-    ) -> Top {
+    fn of(episode: &fathom_tui::timeline::Episode) -> Top {
         use fathom_analyze::insight::Severity;
-        let kind = match top.severity {
+        let score = episode
+            .risk()
+            .and_then(|risk| u8::try_from(risk.score.max(0)).ok());
+        let kind = match score.map(Severity::of) {
             Some(Severity::High) => Need::HighRisk,
-            Some(Severity::Medium) | Some(Severity::Low) => Need::OpenQueue,
+            Some(Severity::Medium) | Some(Severity::Low) => Need::OpenWork,
             None => Need::Unranked,
         };
-        let risk = top.risk.map_or_else(
+        let risk = score.map_or_else(
             || "unscored".to_owned(),
-            |score| format!("risk {score} {}", top.place()),
+            |score| format!("risk {score} · {}", Severity::of(score).label()),
         );
         Top {
             kind,
@@ -904,5 +963,145 @@ fn process_cpu() -> Option<Duration> {
     #[cfg(not(target_os = "linux"))]
     {
         None
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    //! The probe's own claims, against a real repository made in a temporary directory.
+    //!
+    //! These are the assertions behind `reco-nup`: the frame's tab bar prints what `HEAD` *names*, so the
+    //! cheap probe has to carry the name as well as the commit — and a `git switch` between two refs that
+    //! sit on one commit is a change the probe must notice even though it changes nothing else.
+    #![allow(clippy::unwrap_used, clippy::expect_used)]
+
+    use super::*;
+
+    /// A temporary repository, removed on the way in rather than on the way out: a leftover directory is
+    /// noise, a half-written one is a flake.
+    fn repository(name: &str) -> PathBuf {
+        static COUNTER: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+        let dir = std::env::temp_dir().join(format!(
+            "fathom-cli-probe-{}-{name}-{}",
+            std::process::id(),
+            COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+        ));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).expect("make the fixture directory");
+        git(&dir, &["init", "-q", "--initial-branch=main", "."]);
+        git(&dir, &["commit", "-q", "--allow-empty", "-m", "first"]);
+        dir
+    }
+
+    /// `git`, with every part of the identity and the clock pinned, so a fixture commits the same way on a
+    /// machine with no `~/.gitconfig` as on one with a opinionated one.
+    fn git(dir: &Path, args: &[&str]) {
+        let out = std::process::Command::new("git")
+            .args(args)
+            .current_dir(dir)
+            .env("GIT_AUTHOR_NAME", "Fixture")
+            .env("GIT_AUTHOR_EMAIL", "fixture@example.invalid")
+            .env("GIT_COMMITTER_NAME", "Fixture")
+            .env("GIT_COMMITTER_EMAIL", "fixture@example.invalid")
+            .env("GIT_AUTHOR_DATE", "1700000000 +0000")
+            .env("GIT_COMMITTER_DATE", "1700000000 +0000")
+            .output()
+            .expect("git is on PATH, as it is for every ingest test");
+        assert!(
+            out.status.success(),
+            "git {args:?}: {}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+    }
+
+    /// The probe against a repository with no index and no watcher, which is all these tests need.
+    fn look(dir: &Path) -> Signature {
+        let fathom = dir.join(".fathom");
+        probe(
+            dir,
+            &fathom.join("index.sqlite3"),
+            &fathom.join("watch/status.json"),
+        )
+    }
+
+    #[test]
+    fn the_probe_reads_the_branch_the_tab_bar_prints() {
+        let dir = repository("name");
+        let seen = look(&dir);
+        assert_eq!(seen.head_ref, "main", "the name, not the oid");
+        assert!(!seen.head.is_empty(), "and the commit it names");
+    }
+
+    #[test]
+    fn a_quiet_repository_is_not_worth_reading_twice() {
+        let dir = repository("quiet");
+        assert!(
+            !look(&dir).worth_reading(&look(&dir)),
+            "nothing moved between two looks, so the frame draws nothing"
+        );
+    }
+
+    #[test]
+    fn a_branch_switch_onto_the_same_commit_is_a_move() {
+        // The defect `reco-nup` was: `HEAD`'s commit did not change, so nothing looked at the name, and the
+        // tab bar went on printing `main` after the reviewer had left it.
+        let dir = repository("switch");
+        let before = look(&dir);
+        git(&dir, &["switch", "-c", "feature/x"]);
+        let now = look(&dir);
+        assert_eq!(now.head_ref, "feature/x");
+        assert!(now.branch_moved(&before), "the name moved");
+        assert!(
+            !now.head_moved(&before),
+            "and the commit under it did not, which is exactly why the name is the fact to probe"
+        );
+        assert!(
+            now.worth_reading(&before),
+            "so the frame knows the picture has a line left to change"
+        );
+    }
+
+    #[test]
+    fn a_new_commit_on_one_branch_is_not_read_as_a_branch_switch() {
+        // The mirror-image case: a commit moves the commit and leaves the name alone. The re-read is
+        // wanted, but as new rows, not as a label — and a label sent every time the reviewer commits is a
+        // frame that re-opens git it already opened.
+        let dir = repository("commit");
+        let before = look(&dir);
+        git(&dir, &["commit", "-q", "--allow-empty", "-m", "second"]);
+        let now = look(&dir);
+        assert_eq!(now.head_ref, "main", "the same branch");
+        assert!(now.head_moved(&before), "a new commit");
+        assert!(!now.branch_moved(&before));
+        assert!(now.worth_reading(&before));
+    }
+
+    #[test]
+    fn a_detached_head_says_so_rather_than_naming_nothing() {
+        // `detached` is the tab bar's own word for this state (`crate::tui::repo_label`), and the probe has
+        // to use it: an empty name here would read as "no repository" to anything comparing signatures.
+        let dir = repository("detached");
+        let before = look(&dir);
+        git(&dir, &["checkout", "-q", "--detach"]);
+        let now = look(&dir);
+        assert_eq!(now.head_ref, "detached");
+        assert!(now.branch_moved(&before));
+        assert!(!now.head_moved(&before));
+    }
+
+    #[test]
+    fn a_directory_that_is_not_a_repository_names_nothing() {
+        // Unknown is a value (ADR-001 §7.7): the probe says it and the label says it, and neither invents a
+        // branch for a directory that has no `.git`.
+        static COUNTER: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+        let dir = std::env::temp_dir().join(format!(
+            "fathom-cli-probe-{}-plain-{}",
+            std::process::id(),
+            COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+        ));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).expect("make the fixture directory");
+        let seen = look(&dir);
+        assert!(seen.head_ref.is_empty() && seen.head.is_empty());
     }
 }

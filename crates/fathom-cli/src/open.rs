@@ -962,6 +962,9 @@ mod tests {
         );
     }
 
+    // `sqlite-bundled`-gated with the function it calls: `best` ranks the targets a store-backed `fathom
+    // open` read out of the index, and §6.2 compiles none of that path into the headless binary.
+    #[cfg(feature = "sqlite-bundled")]
     #[test]
     fn the_best_file_is_the_biggest_real_one_not_the_first_in_the_list() {
         let make = |path: &str, kind: &str, add: i64, surface: &'static str| Target {

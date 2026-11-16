@@ -26,10 +26,10 @@ first; each links down to the deeper reference page that owns the detail.
 
 | Concept | In one line | Deeper |
 |---|---|---|
-| [**Episode**](concepts/episode.md) | the change one agent turn produced — the unit everything is keyed to, and the reason a sign-off survives a rebase | [segmentation](concepts/episode-segmentation.md), [ADR-003](adr/0003-episodes.md) |
-| [**Delta**](concepts/delta.md) | a claim with citations: seven sections, evidence behind every figure, and a gap that names its owner instead of printing zero | [the delta model](concepts/delta-model.md) |
-| [**Risk score**](concepts/risk-score.md) | `0..=100` as an auditable sum of twelve axes, with the axes it could not measure printed beside it | [risk scoring](concepts/risk-scoring.md), [ranking](concepts/risk-ranking.md) |
-| [**Review ledger**](concepts/review-ledger.md) | sign-offs as committed markdown with four digests, so "a human reviewed this" outlives the history it was written about | [ADR-004](adr/0004-storage.md), [the recipe](recipes/gate-a-pipeline.md) |
+| [**Episode**](concepts/episode.md) | the change one agent turn produced — the unit everything is keyed to, and the reason a sign-off survives a rebase | [episode derivation](concepts/episode-derivation.md), [ADR-003](adr/0003-episodes.md) |
+| [**Delta**](concepts/delta.md) | a claim with citations: seven sections, evidence behind every figure, and a gap that names its owner instead of printing zero | [the episode](concepts/episode.md), [the summary card](concepts/summary-card.md) |
+| [**Risk score**](concepts/risk.md) | `0..=100` as an auditable sum of twelve axes, with the axes it could not measure printed beside it — and the spine-only `spine-3` figure the rail prints, in the same page | [the scorecard](concepts/scorecard.md), [false-positive calibration](concepts/false-positive-calibration.md) |
+| [**Review ledger**](concepts/review-ledger.md) | sign-offs as committed markdown with four digests, so "a human reviewed this" outlives the history it was written about — and the decisions, questions and follow-ups written beside them, in the same page | [ADR-004](adr/0004-storage.md), [the recipe](recipes/gate-a-pipeline.md) |
 | [**Ratchet**](concepts/ratchet.md) | the committed baseline of what the codebase already owed, so only *new* violations alarm — and it only tightens | [config](concepts/config.md), [perf budgets](../benchmarks/BUDGETS.md) |
 | [**CI gate**](concepts/ci-gate.md) | `fathom check`: six checks over a range, one threshold that exits 7, and the one sentence that says why the run is red | [the recipe](recipes/gate-a-pipeline.md), [ratchet](concepts/ratchet.md), [config](concepts/config.md) |
 | [**Ambient mode**](concepts/ambient-mode.md) | the second-terminal display: same model, no chrome, fits 80×12, goes quiet when you are caught up | [ADR-006 §5.7](adr/0006-tui.md), [the recipe](recipes/run-beside-the-agent.md) |
@@ -43,6 +43,8 @@ first; each links down to the deeper reference page that owns the detail.
 | [Keyboard cheatsheet](reference/cheatsheet.md) | the shipped keymap in four shapes, **generated** from the same table the help overlay renders |
 | [Detector catalogue](detectors/index.md) | all twelve detectors: what they look at, why they matter for agent-written code, a worked example from the fixtures, and how to tune or silence each |
 | [Troubleshooting](troubleshooting.md) | symptoms, exit codes, what is not a bug, and how to file something worth reading |
+| [Publishing the docs as HTML](reference/site.md) | how this tree becomes the GitHub Pages site, what the builder refuses to guess, and what the gate holds against the render |
+| [The documentation merge map](reference/doc-map.md) | every page in `docs/concepts/` and `docs/adr/`, the noun it is about, the page that should own that noun, what each merge must keep, which tool owns each generated block, and the order the merges go in |
 
 ## Recipes
 
@@ -64,27 +66,28 @@ Everything under [docs/concepts/](concepts/), grouped by what you are trying to 
 [the headless verbs](concepts/cli.md) · [config and its five layers](concepts/config.md) ·
 [path taxonomy and noise policy](concepts/paths.md) · [the fixture corpus](concepts/fixtures.md) ·
 [privacy: no network by default](concepts/privacy.md) · [memory ceilings and bounded caches](concepts/memory.md) ·
+[complexity at index time: three ceilings and an honest refusal](concepts/complexity-ceilings.md) ·
 [the watch daemon](concepts/watch-daemon.md) ·
 [the beta feedback loop: one channel, one weekly triage](concepts/feedback.md) ·
 [release and adoption](concepts/release.md)
 
 **What a change is** — [change classification](concepts/change-classification.md) ·
 [noise suppression](concepts/noise-suppression.md) · [folder structure](concepts/folder-structure.md) ·
-[dependency surface](concepts/dependency-surface.md) · [dependency delta](concepts/dependency-delta.md) ·
-[dependency risk](concepts/dependency-risk.md) · [non-code surfaces](concepts/noncode-surfaces.md) ·
-[test surface](concepts/test-surface.md) · [rename detection](concepts/rename-detection.md) ·
-[rename pairing](concepts/rename-pairing.md) · [structure extraction](concepts/structure-extraction.md) ·
+[dependencies: surface, delta and risk](concepts/dependencies.md) ·
+[non-code surfaces](concepts/noncode-surfaces.md) ·
+[test surface](concepts/test-surface.md) ·
+[rename: did this file become that file](concepts/rename.md) ·
+[structure extraction](concepts/structure-extraction.md) ·
 [the public API surface and its breaking changes](concepts/api-surface.md) ·
 [the architecture graph, per revision](concepts/architecture-graph.md) ·
 [graph storage](concepts/graph-storage.md) · [cycles and cycle debt](concepts/cycle-detection.md) ·
 [layering rules and the violation delta](concepts/layering.md)
 
-**Reviewing it** — [episode segmentation](concepts/episode-segmentation.md) ·
-[the delta model](concepts/delta-model.md) · [episode narrative](concepts/episode-narrative.md) ·
+**Reviewing it** — [episode derivation](concepts/episode-derivation.md) ·
+[episode narrative](concepts/episode-narrative.md) ·
 [why the LLM polish was refused](concepts/narrative-polish.md) · [plan versus execution](concepts/plan-drift.md) ·
 [session state](concepts/session-state.md) · [the summary card](concepts/summary-card.md) ·
-[the review artefact](concepts/export-artefact.md) · [risk ranking](concepts/risk-ranking.md) ·
-[risk scoring](concepts/risk-scoring.md) ·
+[the review artefact](concepts/export-artefact.md) · [risk: the two numbers](concepts/risk.md) ·
 [hotspots and dead-code candidates](concepts/hotspots.md) ·
 [the architecture scorecard](concepts/scorecard.md)
 
@@ -96,11 +99,36 @@ Everything under [docs/concepts/](concepts/), grouped by what you are trying to 
 [the exits out of the reader](concepts/handoff.md) · [background materialisation](concepts/materialization.md) ·
 [theming](concepts/theming.md)
 
+## Retired page names
+
+Pages whose prose moved into one page. Each is a pointer: it maps its old sections to where they went and
+restates nothing, so an old bookmark, a `CHANGELOG.md` line or a four-month-old ticket still lands
+somewhere instead of on a 404. `tools/check_docs_site.py`'s `check_relocations` rule is what keeps them
+pointers, and every other link in this tree was rewritten to the page that owns the claim now.
+
+- [risk score](concepts/risk-score.md) · [risk scoring](concepts/risk-scoring.md) ·
+  [risk ranking](concepts/risk-ranking.md) →
+  [Risk: two numbers, and what each one is a claim about](concepts/risk.md) (`reco-msv1.2`)
+- [the delta model](concepts/delta-model.md) → [Delta: a claim with citations](concepts/delta.md)
+  (`reco-msv1.3`)
+- [episode segmentation](concepts/episode-segmentation.md) ·
+  [episode re-linking](concepts/episode-relink.md) →
+  [Episode derivation](concepts/episode-derivation.md) (`reco-msv1.3`)
+- [rename detection](concepts/rename-detection.md) · [rename pairing](concepts/rename-pairing.md) →
+  [Rename and copy: did this file become that file](concepts/rename.md) (`reco-msv1.3`)
+- [the dependency surface](concepts/dependency-surface.md) ·
+  [the dependency delta](concepts/dependency-delta.md) ·
+  [dependency risk](concepts/dependency-risk.md) →
+  [Dependencies: what a revision declares, what an episode changed, and whether to be worried](concepts/dependencies.md)
+  (`reco-48qd`)
+- [the review memory](concepts/review-memory.md) →
+  [The review ledger and the review memory](concepts/review-ledger.md) (`reco-lpuj`)
+
 ## Decisions, and how it attaches to an agent
 
 | Where | What |
 |---|---|
-| [docs/adr/](adr/) | six accepted ADRs: [product thesis](adr/0001-product-thesis.md), [workspace](adr/0002-workspace.md), [episodes](adr/0003-episodes.md), [storage](adr/0004-storage.md), [harness contract](adr/0005-harness-contract.md), [TUI, views and keymap](adr/0006-tui.md) |
+| [docs/adr/](adr/) | seven accepted ADRs: [product thesis](adr/0001-product-thesis.md), [workspace](adr/0002-workspace.md), [episodes](adr/0003-episodes.md), [storage](adr/0004-storage.md), [harness contract](adr/0005-harness-contract.md), [TUI, views and keymap](adr/0006-tui.md), [complexity, per language](adr/0007-complexity.md) |
 | [docs/harness/](harness/) | the adapter contract, and the three shipped adapters: [pi](harness/pi.md), [generic stdin hooks](harness/generic-hooks.md), [the git post-commit fallback](harness/git-hook.md), with [what was actually verified](harness/verification.md) |
 | [docs/security/](security/threat-model.md) | the [threat model](security/threat-model.md): what a clone is allowed to try against this binary, the control that answers each finding, and which ones are accepted with a written rationale |
 | [docs/demo/](demo/) | the miniature repository that ships in the binary: how it is generated, and what it is for; and [the scripted five-minute demo](demo/five-minute.md) — the tour, the [published demo repository](demo/five-minute.md#the-demo-repository) with its five seeded pathologies, the [recording](demo/five-minute.md#the-recording), and a budget it fails if it misses |
@@ -111,13 +139,14 @@ Everything under [docs/concepts/](concepts/), grouped by what you are trying to 
 | Mechanism | What it guarantees |
 |---|---|
 | `python3 tools/gen_docs.py write\|check` | the CLI, cheatsheet, features and detector pages are **generated**: from `fathom --help` off the binary, from the keymap module, from `features.rs`, and from the detector fixtures. CI runs `check`, so a change that forgot to regenerate the docs is a red build |
-| `python3 tools/gen_shell_artifacts.py write\|check`, `tools/package_release.py --self-test`, `tools/rehearse_installer.py` | the same argument one directory over, for what a release *ships*: the completion scripts and man pages in `packaging/` are printed by `fathom completions` and re-diffed in CI, the `.deb`/`.rpm` packager asserts nine claims about its own output, and the curl installer is rehearsed against a local mirror with four deliberate corruptions ([release and adoption](concepts/release.md)) |
+| `python3 tools/gen_shell_artifacts.py write\|check`, `tools/package_release.py --self-test`, `tools/rehearse_installer.py` | the same argument one directory over, for what a release *ships*: the completion scripts and man pages in `packaging/` are printed by `fathom completions` and re-diffed in CI, the `.deb`/`.rpm` packager asserts thirteen claims about its own output, and the curl installer is rehearsed against a local mirror with four deliberate corruptions ([release and adoption](concepts/release.md)) |
 | `python3 tools/check_docs.py` | every glossary term resolves once, every plan and beads reference exists in `.plan/keymap.json`, and every relative link resolves to a file |
-| `python3 tools/check_docs_site.py` | the site's own rules: no orphan pages, no dangling anchors, every shipped verb / view / detector / build feature has a doc entry, and the generated pages are in the nav |
+| `python3 tools/check_docs_site.py` | the site's own rules: no orphan pages, no dangling anchors, every shipped verb / view / detector / build feature has a doc entry, the generated pages are in the nav, and every retired path is a pointer page that nothing but the front door links (`--self-test` breaks a copy of the docs four ways to prove that last rule can fail) — plus the GitHub Pages build itself, in memory (`tools/build_docs_site.py write` writes it, `.github/workflows/docs.yml` publishes it) ([publishing](reference/site.md)) |
 | `python3 tools/five_minute_demo.py check`, `tools/publish_demo_repo.py check`, `tools/demo_acceptance.py check`, `tools/record_demo.py check` | the five-minute tour is **run**, not described: every step's exit code and output is asserted, the whole tour is inside its 300 s budget, the page carries the numbers this run measured, and the demo repository still assembles from the pack the binary ships. The clone half is run too: a `git clone` plus one `fathom` command has to reproduce every documented finding *and* leave every documented gap a gap, and the committed recording has to stay under budget, silent, current with the demo's tag, and full of the exhibits ([the scripted demo](demo/five-minute.md)) |
-| `python3 tools/check_ci_gate.py` | the shipped CI story is one coherent object: `ci/install-fathom.sh` refuses a binary that cannot run the six checks, the reusable `fathom-check` workflow and the dogfood workflow name verbs that exist, and the recipe that tells people to run the installer is not lying about a file that is not there ([the gate](concepts/ci-gate.md)) |
+| `python3 tools/check_ci_gate.py` | the shipped CI story is one coherent object: `ci/install-fathom.sh` refuses a binary that cannot run the six checks, the reusable `fathom-check` workflow and the dogfood workflow name verbs that exist, and the recipe that tells people to run the installer is not lying about a file that is not there. It runs on the docs-only job too, where nothing is compiled: the two rules whose source is a built binary print that they skipped rather than raising about the missing `target/debug/fathom` ([the gate](concepts/ci-gate.md)) |
+| `python3 tools/check_workflows.py` | the files in `.github/workflows/` are checked against *this repository*, offline: every action reference is on an inventory (and `--network` proves each one resolves), every `steps.` / `needs.` / `inputs.` context path is declared by the file that reads it, every path, `working-directory`, crate, feature, test, example and tool subcommand a step names exists here, every `dist build --artifacts=local` names the `--target` it means (a bare one asks `dist` for all six triples on one runner, and it will not make macOS on Linux), and job wiring adds up — `needs:`, `permissions:`, artefact names uploaded once and downloaded by a pattern that matches. `self-test` breaks it on purpose, because a gate that has never said no cannot say yes |
 | `python3 tools/check_beta_loop.py`, `tools/beta_intake.py`, `tools/gen_changelog.py` | the beta loop is one object too: both issue forms still require `fathom doctor --json`, the seven dispositions are the same seven words in the code, the labels and the manual, the weekly register in `.plan/intake/` is well formed and counted, and every commit since the last release is accounted for in the changelog that becomes the release body ([the channel](concepts/feedback.md), [the runbook](concepts/release.md)) |
-| `python3 tools/epic6_acceptance.py`, `tools/epic7_acceptance.py` | an epic's exit criteria are a **run**, not a close reason: each tool measures its epic's clauses, writes a JSON report, and goes red — rather than crashing — when pointed at something that is not a binary. Epic 7's adds the rule that a perf budget over its ceiling is legal only with a relaxation that is written, owned, bounded, dated and still about a breach that bites ([ADR-004 §11.10](adr/0004-storage.md), [the runbook](concepts/release.md)) |
+| `python3 tools/epic6_acceptance.py`, `tools/epic7_acceptance.py`, `tools/epic8_acceptance.py` | an epic's exit criteria are a **run**, not a close reason: each tool measures its epic's clauses, writes a JSON report, and goes red — rather than crashing — when pointed at something that is not a binary. Epic 7's adds the rule that a perf budget over its ceiling is legal only with a relaxation that is written, owned, bounded, dated and still about a breach that bites ([ADR-004 §11.10](adr/0004-storage.md), [the runbook](concepts/release.md)). Epic 8's authors its own six-language corpus, whose figures are literals in the file, drives the rail, the card and the diff tree over a pty to check that all of them print one number, and carries `--self-test`, which doctors the store four ways — a zero standing in for an unknown, a private reason code, a renamed basis, a figure that moved — and fails unless each one is noticed ([ADR-007 §14](adr/0007-complexity.md), [complexity ceilings](concepts/complexity-ceilings.md)) |
 | `python3 tools/check_privacy.py check\|offline` | the privacy posture: the default closure, the consent table, the source scan, this page, and a run of the shipped binary with no network egress available ([privacy](concepts/privacy.md)) |
 | `python3 -m recommender.tui doc --check`, `tools/tui_tables.py check` | ADR-006's tables and the Rust TUI's test tables are the Python keymap's, generated |
 

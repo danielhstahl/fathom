@@ -567,8 +567,8 @@ SOURCE_RULES: tuple[SourceRule, ...] = (
     # `fathom-analyze` is IO-free by ADR-002 §3, and three shipped surfaces of it are the documented
     # exception: the review ledger, the notes, and the ratchet baseline. Each is class M — a committed
     # markdown file that is the authoritative copy (ADR-004 D12) — and `e4.6`, `e6.5` and `e3.10` put
-    # the reader and writer of each one in this crate, which `docs/concepts/review-ledger.md`,
-    # `docs/concepts/review-memory.md` and `docs/concepts/ratchet.md` all describe as this module's
+    # the reader and writer of each one in this crate, which `docs/concepts/review-ledger.md` — one page
+    # for both records since `reco-lpuj` — and `docs/concepts/ratchet.md` both describe as this module's
     # job. Everything else in the crate is still a pure function of (input, config), which is
     # what the rule is for: a *fact* arriving by `std::fs` in an analysis module is the accident the
     # rule catches, and a golden file's reader is not.
@@ -664,15 +664,107 @@ INLINE_NAMESPACE_MODULES: dict[str, tuple[str, ...]] = {
 # §8 CI contract
 # ---------------------------------------------------------------------------
 
+#: The cadences a required step can be required *at*. A cadence is a property of the workflow the step
+#: lives in, read off its `on:` block: `pull_request` means GitHub runs it on every pull request,
+#: `scheduled` means the workflow has a `schedule:` trigger (the daily long tail: `nightly.yml`,
+#: `perf.yml`, `fuzz.yml`).
+CI_CADENCES: tuple[str, ...] = ("pull_request", "scheduled")
+
+#: The trigger each cadence needs, as read from a workflow's `on:` block.
+CI_CADENCE_TRIGGER: dict[str, str] = {"pull_request": "pull_request", "scheduled": "schedule"}
+
 #: Strings the boundary lint requires to find in `.github/workflows/*.yml` — this is what makes
 #: "the lint is in CI" a checked fact rather than an intention.
-CI_REQUIRED_STEPS: tuple[tuple[str, str], ...] = (
-    ("workspace-boundary-lint", "tools/check_workspace.py lint"),
-    ("workspace-boundary-check", "tools/check_workspace.py check"),
-    ("cargo-deny", "cargo deny check"),
-    ("cargo-msrv-build", "cargo +$MSRV"),
-    ("clippy-strict", "clippy::unwrap_used"),
-    ("fmt", "cargo fmt"),
+#:
+#: Four fields: the step, the text that has to appear, the cadence it has to appear at, and the one
+#: workflow that is allowed to run it — `""` when any workflow of the right cadence may run it.
+#:
+#: *The text is matched inside the steps that execute* — a step's `uses:`, `run:` or `with:` value — and
+#: not anywhere in the file. `e11.1` §3 measured why: the rule used to be a substring test over the
+#: concatenated YAML, so `cargo deny check` satisfied it from a header **comment** while the real
+#: advisories/licence check was `EmbarkStudios/cargo-deny-action` in another file. Prose satisfied the one
+#: rule whose whole job is refusing a missing gate, and the needle for cargo-deny below is the action that
+#: actually runs, not a sentence about it.
+#:
+#: *The cadence is the half `e11.2` (`reco-374v.2`) added.* That ticket moved the reproductions, the G3
+#: calibration, the package matrix, the plugin build, fuzz and perf off every pull request and onto the
+#: daily schedule. A list that only asked "does this string appear in some workflow?" would have been
+#: satisfied either way, which is the exact accident to prevent: a per-PR gate that quietly becomes a
+#: nightly gate is a gate that stops guarding merges without anybody deciding. So the list now says which
+#: cadence each step owes its answer to, and `C01` fails a step that survives only at the wrong one.
+#:
+#: *The home workflow is the half `e11.3` (`reco-374v.3`) added*, and it exists because of one row. The
+#: changelog audit ran in two jobs, and `e11.1` §4 counted what that costs: three consecutive commits
+#: where both jobs went red on the same `C03` finding, and a ticket filed per job per mistake —
+#: `reco-s6ge` is that ticket. A cadence-only list could not refuse it: `tools/gen_changelog.py audit` in
+#: a second `pull_request` workflow keeps `C01` green, because the needle appears where it is required to
+#: appear *and* somewhere else. So a step whose duplication is the defect names the one workflow that runs
+#: it, and `C01` refuses both halves of the accident — the needle missing from its home, and the needle
+#: running anywhere else. The needle stays unpinned (`""`) where two copies are the point: the boundary
+#: lint runs in `ci.yml`'s `deny` job and in `contracts.yml` on purpose, and the release matrix is
+#: dispatched from two files. Pin a row when one report is the requirement, not when it happens to be
+#: true today.
+CI_REQUIRED_STEPS: tuple[tuple[str, str, str, str], ...] = (
+    # The per-pull-request set. This is the list `.github/workflows/ci.yml`'s header writes down in prose
+    # and ADR-002 §8.1 prints as a table; the three must agree, and `C01` is what makes them.
+    #
+    # The homes below name where a contributor looks when the check is red, which is the second half of why
+    # `e11.1` §4 wrote the list down at all: a gate whose reporter is a rumour gets looked for in the wrong
+    # run. `tools/check_workspace.py lint` is the one `pull_request` row left unpinned, because it runs in
+    # two workflows deliberately — `contracts.yml` as the boundary lint, `ci.yml`'s `deny` job as the
+    # `deny.toml` discipline that shares it.
+    ("workspace-boundary-lint", "tools/check_workspace.py lint", "pull_request", ""),
+    ("workspace-boundary-check", "tools/check_workspace.py check", "pull_request", "contracts.yml"),
+    ("cargo-deny", "EmbarkStudios/cargo-deny-action", "pull_request", "ci.yml"),
+    ("cargo-msrv-build", "cargo +$MSRV", "pull_request", "ci.yml"),
+    ("clippy-strict", "clippy::unwrap_used", "pull_request", "ci.yml"),
+    ("fmt", "cargo fmt", "pull_request", "ci.yml"),
+    ("headless-minimal-tests", "cargo test -p fathom-cli --no-default-features --features minimal",
+     "pull_request", "ci.yml"),
+    # The one job the release-note gate reports from: `contracts.yml`'s `docs + workspace contracts`, which
+    # builds no Rust, already fetches the whole history the audit reads, and is the job `AGENTS.md` points a
+    # contributor at. `e11.3` (`reco-374v.3`) took it out of `ci.yml`'s `e7.7` beta-loop step for the reason
+    # in the paragraph above: one missing `[Unreleased]` entry is one red, in one place.
+    ("changelog-audit", "tools/gen_changelog.py audit", "pull_request", "contracts.yml"),
+    ("cli-reference-page", "gen_docs.py check --page cli", "pull_request", "ci.yml"),
+    # The four rows the epic close added after `e11.1` §3's duplicate table had been worked through one
+    # command at a time. Each is a gate that ran in two places, where the surviving place is the one that
+    # can actually answer — and pinning the survivor is what stops the second copy growing back, which is
+    # the half of `C01` that `e11.3` built for the changelog gate and that these rows reuse:
+    #
+    #   * `cargo tree -p fathom-cli --no-default-features --features minimal` ran in `ci.yml`'s build and in
+    #     `privacy.yml`'s offline job, byte for byte; the privacy job is the workflow whose name says what it
+    #     protects, and it proves the closure on a runner with no network.
+    #   * `publish_demo_repo.py check` is `git` over the committed demo pack and needs no build, so the
+    #     `ci.yml` copy was answered three times per push (here, and twice inside `contracts.yml`'s mirror).
+    #   * `gen_docs.py check --page cheatsheet …` ran in `contracts.yml` *above* the `check_docs_site.py`
+    #     that calls the same check internally, and again in `docs.yml` — the docs workflow keeps the named
+    #     step because the site is its subject.
+    #   * `package_release.py --self-test` ran twice inside `ci.yml` — in `release-skeleton`, which needs no
+    #     toolchain, and again in `packaging`, four minutes of archive build later. `C01`'s home is a
+    #     workflow, not a job, so this row is the cadence-and-file half of the rule; the *job* the claim
+    #     belongs to is `release-skeleton`, and `tests/test_workspace_contract.py` is what refuses a second
+    #     copy of it in the same file.
+    ("egress-closure-query", "cargo tree -p fathom-cli", "pull_request", "privacy.yml"),
+    ("demo-repo-assembly", "tools/publish_demo_repo.py check", "pull_request", "contracts.yml"),
+    ("generated-docs-pages", "gen_docs.py check --page cheatsheet", "pull_request", "docs.yml"),
+    ("packager-negative-controls", "tools/package_release.py --self-test", "pull_request", "ci.yml"),
+    # The scheduled set: the checks that reproduce a committed measurement, re-measure a calibration, build
+    # a second workspace, fuzz, measure, or build the whole package matrix. Daily, on the default branch,
+    # plus `workflow_dispatch` — see the header of `.github/workflows/nightly.yml` for the measurement
+    # behind each line.
+    # The one unpinned scheduled row has two honest homes: `release.yml` is dispatched both by
+    # `nightly.yml`'s dry-run and by `publish.yml` after a green default branch.
+    ("spike-s1-report", "--example s1_spike", "scheduled", "nightly.yml"),
+    ("spike-s2-report", "--example s2_spike", "scheduled", "nightly.yml"),
+    ("spike-s6-report", "--example s6_spike", "scheduled", "nightly.yml"),
+    ("structure-core-report", "--example structure_harness", "scheduled", "nightly.yml"),
+    ("g3-calibration-check", "--example g3_calibration", "scheduled", "nightly.yml"),
+    ("out-of-tree-plugin", "plugins/acme-detectors/Cargo.toml", "scheduled", "nightly.yml"),
+    ("beta-channel-build", "rustup toolchain install beta", "scheduled", "nightly.yml"),
+    ("perf-measurement", "tools/perf_gate.py --check", "scheduled", "perf.yml"),
+    ("fuzz-campaign", "cargo +nightly fuzz run", "scheduled", "fuzz.yml"),
+    ("release-artifact-matrix", "workflow run release.yml", "scheduled", ""),
 )
 
 # ---------------------------------------------------------------------------
@@ -696,12 +788,12 @@ TEAMS: tuple[tuple[str, str, str, str], ...] = (
                                          "src/noncode/, src/testsurface/", "epic 2"),
     ("analyze-arch", "fathom-analyze", "src/graph/, src/cycles/, src/layers/, src/api/, src/hotspots/",
      "epic 3"),
-    ("analyze-agents", "fathom-analyze", "src/attrib/, src/intent/, src/detect/, src/risk/, src/queue/, "
+    ("analyze-agents", "fathom-analyze", "src/attrib/, src/intent/, src/detect/, src/risk/, src/review/, "
                                          "src/narrate/, src/export/", "epic 4 + `e5.7`"),
     ("analyze-insight", "fathom-analyze", "src/insight/", "the facade: `e2.11`; owns the schema version "
                                                           "and the budget of every view"),
     ("tui-shell", "fathom-tui", "src/app/, src/keymap/, src/layout/, src/ambient/", "epic 5 shell"),
-    ("tui-views", "fathom-tui", "src/views/", "queue, timeline, diff, structure, deps, search, compare"),
+    ("tui-views", "fathom-tui", "src/views/", "timeline, diff, structure, deps, search, compare"),
     ("mcp", "fathom-mcp", "everything", "ADR-005 §4 surface, shared review memory"),
 )
 

@@ -15,6 +15,12 @@
 //! Everything here runs the built binary in a temporary git repository, the way `tests/cli.rs` does: the
 //! artefact is the product, so it is tested as a user gets it.
 #![allow(clippy::unwrap_used, clippy::expect_used)]
+// Every test in this file is store-backed: the fixture builds its index with `fathom index`, and `fathom export`
+// reads that index back — both halves of that are compiled only when a SQLite backend is on (ADR-002
+// §6.1, §6.2), so on the headless `minimal` build the fixture cannot be built at all and the verb answers
+// `FEATURE_ABSENT` (9) instead of answering. Gated in the spelling `tests/check_verb.rs` and
+// `tests/show_trailers.rs` use; on every store-backed build the whole suite still runs.
+#![cfg(feature = "sqlite-bundled")]
 
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};

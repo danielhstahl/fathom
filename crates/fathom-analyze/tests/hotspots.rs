@@ -35,8 +35,8 @@ use fathom_analyze::hotspots::{
     facts_of, policy_from_config_text, rank, render, render_dead, render_row, report,
 };
 use fathom_analyze::structure::{
-    Complexity, Edge, EdgeKind, FileLevel, FileStructure, Granularity, Language, Resolution, Span,
-    Structure, Symbol, SymbolKind, SyntheticScope, Visibility,
+    Edge, EdgeKind, FileLevel, FileStructure, Granularity, Language, Resolution, Span, Structure,
+    StructureProxies, Symbol, SymbolKind, SyntheticScope, Visibility,
 };
 
 // --------------------------------------------------------------------------------------------
@@ -119,7 +119,7 @@ impl File {
                 span,
                 visibility: Visibility::Public,
                 exported: true,
-                complexity: Complexity {
+                complexity: StructureProxies {
                     body_lines: *body,
                     branches: *branches,
                     loops: *loops,

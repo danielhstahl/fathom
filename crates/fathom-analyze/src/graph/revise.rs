@@ -306,6 +306,7 @@ pub fn run(
                 phase: crate::index::Phase::Graph,
                 done: u64::try_from(report.revisions).unwrap_or(u64::MAX),
                 of: Some(u64::try_from(work.len()).unwrap_or(u64::MAX)),
+                note: None,
             });
         }
         let corpus = corpus_of(repo, &policy, &extract, target)?;

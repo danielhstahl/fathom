@@ -73,6 +73,11 @@ A path inside the session directory is made relative; a path outside it is left 
 by the *reader* as `path_escape`, because a writer that quietly dropped it would hide the counter
 that tells an operator something reached the stream from outside (ADR-005 §6 rule 1).
 
+Whichever way the writer spelled it, the reader stores the path with `/` — the spelling git uses, and
+the one a commit's paths arrive with, which is the comparison that attributes a commit to the turn that
+made it. On Windows that means the writer's `\` is folded; on POSIX a `\` is an ordinary character in a
+file's name and survives untouched.
+
 ## 3. Replay a recorded capture
 
 Any file of one-envelope-per-line records — a vendor capture, or a debug session's saved stdin — runs

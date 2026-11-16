@@ -370,7 +370,7 @@ fn sqlite_lines() -> Vec<String> {
 
 /// The remedy for a key that was read and could not be honoured (`reco-gna`).
 ///
-/// It names the verb that prints the vocabulary, because the twelve features are the vector's, not this
+/// It names the verb that prints the vocabulary, because the thirteen features are the vector's, not this
 /// file's, and a remedy that pasted them here would be a second copy of a list that already has a home.
 const REMEDY_IGNORED_CONFIG_KEY: &str = "rename the key to one this build reads, or delete the line \
      (`fathom why --weights` prints every key `[risk.weights]` may name, with its default); the run that \
@@ -638,7 +638,7 @@ mod tests {
             notices[0]
         );
         assert!(notices[0].contains("not a feature"), "{}", notices[0]);
-        for feature in ["findings", "dependency", "authorship"] {
+        for feature in ["findings", "dependency", "attribution"] {
             assert!(notices[0].contains(feature), "{}", notices[0]);
         }
     }

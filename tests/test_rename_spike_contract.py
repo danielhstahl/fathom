@@ -24,7 +24,7 @@ import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
 REPORT = ROOT / "benchmarks" / "reports" / "s4-rename-detection.json"
-CONCEPT = ROOT / "docs" / "concepts" / "rename-detection.md"
+CONCEPT = ROOT / "docs" / "concepts" / "rename.md"
 TRUTH = ROOT / "src" / "recommender" / "rename" / "truth"
 
 
@@ -225,7 +225,7 @@ def test_the_window_findings_are_all_present(report: dict) -> None:
 # ---------------------------------------------------------------------------
 
 def test_rename_spike_tables_are_in_sync_with_the_report() -> None:
-    """Every number in concepts/rename-detection.md is rendered from the report, so none of them can
+    """Every number in the measurement half of concepts/rename.md is rendered from the report, so none of them can
     drift from it."""
     proc = subprocess.run([sys.executable, "tools/gen_rename_tables.py", "check"], cwd=ROOT,
                           capture_output=True, text=True)
@@ -241,7 +241,7 @@ def test_concept_doc_keeps_the_claims_the_recommendation_rests_on(report: dict) 
         f"{fact['algorithm']}` at bar" in text, "the doc must name the chosen fact configuration"
     for phrase in ("named decoy", "0.75", "path similarity", "representation problem",
                    "not measured", "floor"):
-        assert phrase.lower() in text.lower(), f"rename-detection.md must keep saying: {phrase}"
+        assert phrase.lower() in text.lower(), f"rename.md must keep saying: {phrase}"
     assert "90%" in text, "the bar this spike exists to replace has to stay named in the doc"
 
 
@@ -253,6 +253,70 @@ def test_the_recorded_fact_bar_is_the_number_e24_will_be_handed(report: dict) ->
         "the fact tier's score has to be one a reviewer can reproduce with git, or it is a guess"
     assert fact["bar"] > 0.50, "stricter than the shipped default, which is what the measurement earned"
     assert fact["bar"] <= 0.85, "a stricter fact bar than this buys no precision and loses rewrites"
+
+
+def test_the_reproducibility_check_blames_the_measurement_and_never_the_runner(report: dict) -> None:
+    """`--check` is the CI step, and it has to fail for a moved claim and never for the machine that ran
+    it.
+
+    `reco-v1z` was this step red on every push: the committed report was written on an aarch64 box under
+    CPython 3.14 and `contracts.yml` re-measures on an x86_64 runner under 3.12, so the four runner
+    facts in `environment` could never match and the diff printed "the measured report differs" about
+    an interpreter version. The other half of the test is the half that keeps this test worth having: a
+    loosened comparison has to still refuse a real drift, including a drift in the two `environment`
+    fields that *are* the measurement's configuration.
+    """
+    sys.path.insert(0, str(ROOT / "src"))
+    from recommender.rename import spike
+
+    def stripped(mutate=lambda doc: None):
+        doc = json.loads(json.dumps(report))
+        mutate(doc)
+        return spike.strip_volatile(doc)
+
+    measured = stripped()
+    assert set(spike.RUNNER_FACTS) <= set(report["environment"]), \
+        "RUNNER_FACTS names a key the report no longer records: the exclusion is a no-op"
+
+    def on_another_machine(doc):
+        doc["environment"].update({"python": "3.12.7", "platform": "Linux x86_64",
+                                   "cpu_count": 2, "git": "git version 2.50.1"})
+
+    def on_a_loadier_runner(doc):
+        doc["algorithms"][0]["cost"].update({"ms_mean": 9e5, "ms_p95": 9e6, "ms_max": 9e7})
+        doc["corpus"]["build_seconds"] = 9e5
+        doc["meta"]["measured_in_seconds"] = 9e5
+
+    for runner_only in (on_another_machine, on_a_loadier_runner):
+        assert stripped(runner_only) == measured, f"{runner_only.__name__} must not be a drift"
+    assert spike.diff_paths(measured, stripped(on_another_machine)) == []
+    assert spike.environment_note(report, report) == ""
+    quieter = json.loads(json.dumps(report))
+    quieter["environment"]["python"] = "3.12.7"
+    note = spike.environment_note(quieter, report)
+    assert note and "3.12.7" in note, "a different machine is excluded from the diff, not hidden"
+
+    # The comparison must still bite. Each of these is a claim the report makes about the measurement.
+    def drift_probe(doc):
+        doc["probes"]["clean_moves@50"]["found"] += 1
+
+    def drift_pair_count(doc):
+        doc["corpus"]["true_pairs"] -= 1
+
+    def drift_scenario_count(doc):
+        doc["corpus"]["scenarios"] -= 1
+
+    def drift_permutations(doc):
+        doc["environment"]["minhash_permutations"] = 64
+
+    def drift_gate(doc):
+        doc["gates"][0]["expected"] = -1
+
+    for drift in (drift_probe, drift_pair_count, drift_scenario_count,
+                  drift_permutations, drift_gate):
+        assert stripped(drift) != measured, f"{drift.__name__} drifted and --check would not notice"
+        assert spike.diff_paths(measured, stripped(drift)), \
+            f"{drift.__name__} drifted and the failure output would say nothing"
 
 
 def test_spike_modules_import() -> None:

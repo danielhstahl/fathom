@@ -18,14 +18,44 @@ name: privacy
 on:
   pull_request:
   push:
-    branches: [master]
+    # Every branch, not only the default one: `master` sat frozen for three weeks while the work was on a
+    # branch no trigger could reach, and nothing in CI could see it (`e11.1` §5.2, `reco-kwg6`). `R07` of
+    # `tools/check_workflows.py` refuses a list of names here, and *Which branch a gate runs on* in
+    # docs/concepts/ci-gate.md is the prose.
+    branches: ["**"]
 
 permissions:
   contents: read
 
+# A push to a branch that already has a run in flight must not pay for it again: `e11.1` §2.4 counted 7
+# red runs in thirty days whose only fault was being superseded, and every one of them ran to the end
+# anyway. Per workflow, so two workflows never share a queue; per ref, so two pull requests never cancel
+# each other. Rule `R02` of `tools/check_workflows.py` asks every `pull_request` workflow for this block.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  # The one hand-written cache lever in this file, and the only one `R04` lets anyone pull. It is the
+  # *prefix* of `Swatinem/rust-cache`'s derived key — the action derives the rest from the lock files, the
+  # toolchain in `rustc -Vv`, the cargo env, the workflow and the job, which together are every input a
+  # cargo build reads — so moving it starts a fresh cache family rather than shuffling one job's objects
+  # into a drawer that does not describe them.
+  #
+  # The rule, in one sentence: **bust the prefix when the bytes already in the cache would be wrong, not
+  # merely stale.** Stale is cargo's own job — a source change re-checks its fingerprints and rebuilds what
+  # moved. Wrong is a registry that no longer holds what the lock file names, a cache written under a
+  # toolchain the key does not name, or an upgrade of the action that changes what it stores. And a bump
+  # only stops new runs *writing* the old family: evicting the old bytes is the second half, and the only
+  # eviction that does not wait out the retention period. Date it and name the bead that moved it;
+  # *Cache discipline* in docs/concepts/ci-gate.md is the prose and `R04` is the gate.
+  CACHE_BUST: "2026-11"
+
 jobs:
   posture:
     name: posture (closure, consent table, sources, docs)
+    # four python gates over the manifests, the source and the docs, plus a `cargo metadata`; measured 0.5 minutes
+    timeout-minutes: 15
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -38,6 +68,8 @@ jobs:
   offline:
     name: default binary, egress refused
     needs: [posture]
+    # one release build of the default binary and the probe that runs it; 2.4 minutes warm, and the cold cache is the rest
+    timeout-minutes: 20
     runs-on: ubuntu-latest
     env:
       RUSTUP_TOOLCHAIN: stable
@@ -45,6 +77,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: Swatinem/rust-cache@v2
+        with:
+          # The lever and the save. `prefix-key` is the one hand-written half of the derived key and it comes
+          # from `env.CACHE_BUST` below, not from a string written here; `cache-on-failure` is the census:
+          # 102 of `ci.yml`'s 233 cargo-cache saves never happened because the job was red when the cache
+          # would have been written, and a red job's compiled objects are still correct objects. `R04`.
+          prefix-key: ${{ env.CACHE_BUST }}
+          cache-on-failure: "true"
       - name: the binary users get (default features)
         run: cargo build --locked -p fathom-cli
 
@@ -76,9 +115,32 @@ jobs:
           --binary target/debug/fathom
           --json artifacts/privacy-offline.json
 
+      - name: the artefact budget (privacy-offline)
+        if: always()
+        # An artefact that grows past its budget fails the run here, instead of quietly costing the fleet its
+        # storage. The limit, the retention and the paths are this artefact's row in `ARTEFACT_BUDGET` in
+        # `tools/check_workflows.py`; rule `R05` refuses this step and that row to disagree, and refuses an
+        # upload that no row describes. The bytes are printed to the job summary whether the guard passes or
+        # not, because a budget nobody sees being spent is a rumour.
+        env:
+          ARTEFACT_NAME: privacy-offline
+          ARTEFACT_PATH: artifacts/privacy-offline.json
+          ARTEFACT_MAX_KB: "2048"
+          ARTEFACT_PRODUCER: "the egress probe, one step above, under a `network: none` job"
+        run: |
+          set -eu
+          kb=$(du -cks $ARTEFACT_PATH 2>/dev/null | awk '$1 == "total" {print $1}' || true)
+          kb=${kb:-0}
+          printf 'artefact budget · %s: %s KB of %s KB — %s\n' \
+            "$ARTEFACT_NAME" "$kb" "$ARTEFACT_MAX_KB" "$ARTEFACT_PRODUCER" | tee -a "$GITHUB_STEP_SUMMARY"
+          if [ "$kb" -gt "$ARTEFACT_MAX_KB" ]; then
+            echo "::error::$ARTEFACT_NAME is $((kb / 1024)) MB, over its $((ARTEFACT_MAX_KB / 1024)) MB budget. Either it has grown past what it is, or the budget moved: change `ARTEFACT_BUDGET` in `tools/check_workflows.py`, this step and the budget table in docs/concepts/ci-gate.md in one commit."
+            exit 1
+          fi
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: privacy-offline
           path: artifacts/privacy-offline.json
           if-no-files-found: warn
+          retention-days: 14

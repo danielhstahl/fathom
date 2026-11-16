@@ -587,7 +587,7 @@ fn scan_one(source: &SourceFile, policy: &ExtractPolicy) -> ScannedOrRefused {
         return refused(&file_level, UnavailableReason::Parser);
     };
     let root = tree.root_node();
-    file_level.parse_errors = error_nodes(&root, policy.max_complexity_nodes);
+    file_level.parse_errors = util::error_nodes(&root, policy.max_complexity_nodes);
     let (error_bytes, _) = util::error_share(&root, policy.max_complexity_nodes.max(4096));
     if error_bytes * 2 > source.text.len() {
         // More error than code: a truncated file, a binary file, or the wrong extension. The
@@ -627,27 +627,6 @@ pub(crate) fn grammar_compiled(language: Language) -> bool {
         Language::Java => cfg!(feature = "lang-java"),
         Language::Unknown => false,
     }
-}
-
-/// Count ERROR/MISSING nodes, bounded.
-fn error_nodes(root: &Node, budget: usize) -> usize {
-    let mut count = 0usize;
-    let mut visited = 0usize;
-    let mut stack = vec![*root];
-    while let Some(current) = stack.pop() {
-        if visited >= budget {
-            break;
-        }
-        visited += 1;
-        if current.is_error() || current.is_missing() {
-            count += 1;
-        }
-        let mut cursor = current.walk();
-        for child in current.children(&mut cursor) {
-            stack.push(child);
-        }
-    }
-    count
 }
 
 /// Turn a draft plus its resolved edges into the stored half of a file's record. Everything is

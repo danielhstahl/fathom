@@ -1,0 +1,576 @@
+{
+ "schema": "fathom.ci-prwall.v1",
+ "spike": "reco-374v.2",
+ "generated": "2026-11-15T14:59:22+00:00",
+ "window": {
+  "start": "2026-10-16",
+  "end": "2026-11-15",
+  "days": 30,
+  "requested": "2026-10-16"
+ },
+ "before_ref": "HEAD",
+ "method": [
+  "one push is the unit: every workflow it starts runs at once, so the wall a developer waits for is the slowest run of the push, and the acceptance figure is the median over pushes",
+  "before is the workflow tree at `before_ref`, measured; after is the same runs with the moved work removed from them \u2014 a workflow that left the pull-request set drops out of the maximum, a job that moved ends the run where the last kept job ended (the job's own measured clock), and a step that moved out of a surviving job is subtracted from that job's span",
+  "green runs whose job payload the unauthenticated API did not give are counted at their measured wall and listed per push under `unpriced`; they are the cheap workflows, and none of them gained work",
+  "wall time is `run_started_at` to the last kept job's `completed_at`, so time spent queued for a runner is included on both sides, exactly as `e11.1` measured it"
+ ],
+ "cut": {
+  "moved": {
+   "ci.yml": {
+    "jobs": [
+     "spike s1 reproduces (six grammars)",
+     "structural extractor core and tail reproduce (six languages)",
+     "Guardrail 3 calibration reproduces (three real repositories)",
+     "out-of-tree-plugin (the example plugin builds and runs against the published crate)",
+     "beta (allowed to fail)"
+    ],
+    "steps": [
+     "spike s2: the committed segmentation report reproduces",
+     "spike s6: the committed relink report reproduces"
+    ]
+   }
+  },
+  "left_the_pr_set": [
+   "perf.yml",
+   "fuzz.yml",
+   "release.yml"
+  ]
+ },
+ "summary": {
+  "pushes": 19,
+  "wall_min_median_before": 13.417,
+  "wall_min_median_after": 11.917,
+  "wall_min_median_before_without_timeouts": 12.883,
+  "wall_min_median_after_without_timeouts": 11.55,
+  "pushes_without_timeouts": 17,
+  "wall_min_mean_before": 50.027,
+  "wall_min_mean_after": 47.024,
+  "wall_min_p95_before": 362.824,
+  "wall_min_p95_after": 362.0,
+  "wall_min_total_before": 950.518,
+  "wall_min_total_after": 893.452,
+  "runner_min_median_before": 126.881,
+  "runner_min_median_after": 110.281,
+  "runner_min_total_before": 3355.735,
+  "runner_min_total_after": 2352.099
+ },
+ "pushes": [
+  {
+   "event": "push",
+   "sha": "e194a63d9d",
+   "created": "2026-10-26T23:01:48Z",
+   "workflows": [
+    "ci.yml",
+    "contracts.yml",
+    "fuzz.yml",
+    "perf.yml",
+    "privacy.yml",
+    "sbom.yml"
+   ],
+   "left_pr_set": [
+    "fuzz.yml",
+    "perf.yml"
+   ],
+   "wall_before": 5.267,
+   "wall_after": 2.0,
+   "runner_before": 13.949,
+   "runner_after": 4.483,
+   "unpriced": [
+    "privacy.yml",
+    "sbom.yml"
+   ]
+  },
+  {
+   "event": "pull_request",
+   "sha": "56c215e659",
+   "created": "2026-10-31T17:18:51Z",
+   "workflows": [
+    "ci.yml",
+    "contracts.yml",
+    "docs.yml",
+    "fuzz.yml",
+    "perf.yml",
+    "privacy.yml",
+    "release.yml",
+    "sbom.yml"
+   ],
+   "left_pr_set": [
+    "fuzz.yml",
+    "perf.yml",
+    "release.yml"
+   ],
+   "wall_before": 4.75,
+   "wall_after": 2.1,
+   "runner_before": 17.714,
+   "runner_after": 7.114,
+   "unpriced": [
+    "docs.yml",
+    "privacy.yml",
+    "sbom.yml"
+   ]
+  },
+  {
+   "event": "pull_request",
+   "sha": "4a14c7cfcc",
+   "created": "2026-11-02T20:11:56Z",
+   "workflows": [
+    "ci.yml",
+    "contracts.yml",
+    "docs.yml",
+    "fuzz.yml",
+    "perf.yml",
+    "privacy.yml",
+    "release.yml",
+    "sbom.yml"
+   ],
+   "left_pr_set": [
+    "fuzz.yml",
+    "perf.yml",
+    "release.yml"
+   ],
+   "wall_before": 17.9,
+   "wall_after": 1.95,
+   "runner_before": 67.867,
+   "runner_after": 55.967,
+   "unpriced": [
+    "docs.yml",
+    "privacy.yml",
+    "sbom.yml"
+   ]
+  },
+  {
+   "event": "pull_request",
+   "sha": "2c351ae776",
+   "created": "2026-11-02T23:48:30Z",
+   "workflows": [
+    "ci.yml",
+    "contracts.yml",
+    "docs.yml",
+    "fuzz.yml",
+    "perf.yml",
+    "privacy.yml",
+    "release.yml",
+    "sbom.yml"
+   ],
+   "left_pr_set": [
+    "fuzz.yml",
+    "perf.yml",
+    "release.yml"
+   ],
+   "wall_before": 8.467,
+   "wall_after": 1.117,
+   "runner_before": 47.166,
+   "runner_after": 35.783,
+   "unpriced": [
+    "docs.yml",
+    "privacy.yml",
+    "sbom.yml"
+   ]
+  },
+  {
+   "event": "pull_request",
+   "sha": "54bf439f38",
+   "created": "2026-11-03T11:43:39Z",
+   "workflows": [
+    "ci.yml",
+    "contracts.yml",
+    "docs.yml",
+    "fuzz.yml",
+    "perf.yml",
+    "privacy.yml",
+    "release.yml",
+    "sbom.yml"
+   ],
+   "left_pr_set": [
+    "fuzz.yml",
+    "perf.yml",
+    "release.yml"
+   ],
+   "wall_before": 14.183,
+   "wall_after": 1.25,
+   "runner_before": 50.233,
+   "runner_after": 40.833,
+   "unpriced": [
+    "docs.yml",
+    "fuzz.yml",
+    "privacy.yml",
+    "sbom.yml"
+   ]
+  },
+  {
+   "event": "pull_request",
+   "sha": "8063516de9",
+   "created": "2026-11-03T11:50:24Z",
+   "workflows": [
+    "ci.yml",
+    "contracts.yml",
+    "docs.yml",
+    "fuzz.yml",
+    "perf.yml",
+    "privacy.yml",
+    "release.yml",
+    "sbom.yml"
+   ],
+   "left_pr_set": [
+    "fuzz.yml",
+    "perf.yml",
+    "release.yml"
+   ],
+   "wall_before": 12.083,
+   "wall_after": 1.867,
+   "runner_before": 47.514,
+   "runner_after": 37.565,
+   "unpriced": [
+    "docs.yml",
+    "fuzz.yml",
+    "privacy.yml",
+    "sbom.yml"
+   ]
+  },
+  {
+   "event": "pull_request",
+   "sha": "5acd99ade2",
+   "created": "2026-11-03T12:07:20Z",
+   "workflows": [
+    "ci.yml",
+    "contracts.yml",
+    "docs.yml",
+    "fuzz.yml",
+    "perf.yml",
+    "privacy.yml",
+    "release.yml",
+    "sbom.yml"
+   ],
+   "left_pr_set": [
+    "fuzz.yml",
+    "perf.yml",
+    "release.yml"
+   ],
+   "wall_before": 18.917,
+   "wall_after": 18.9,
+   "runner_before": 138.232,
+   "runner_after": 120.365,
+   "unpriced": [
+    "docs.yml",
+    "privacy.yml",
+    "sbom.yml"
+   ]
+  },
+  {
+   "event": "pull_request",
+   "sha": "dbaeeda4dc",
+   "created": "2026-11-04T00:08:25Z",
+   "workflows": [
+    "ci.yml",
+    "contracts.yml",
+    "docs.yml",
+    "fuzz.yml",
+    "perf.yml",
+    "privacy.yml",
+    "release.yml",
+    "sbom.yml"
+   ],
+   "left_pr_set": [
+    "fuzz.yml",
+    "perf.yml",
+    "release.yml"
+   ],
+   "wall_before": 18.717,
+   "wall_after": 18.7,
+   "runner_before": 130.316,
+   "runner_after": 113.533,
+   "unpriced": [
+    "docs.yml",
+    "privacy.yml",
+    "sbom.yml"
+   ]
+  },
+  {
+   "event": "pull_request",
+   "sha": "a7907a68fe",
+   "created": "2026-11-04T19:10:34Z",
+   "workflows": [
+    "ci.yml",
+    "contracts.yml",
+    "docs.yml",
+    "fuzz.yml",
+    "perf.yml",
+    "privacy.yml",
+    "release.yml",
+    "sbom.yml"
+   ],
+   "left_pr_set": [
+    "fuzz.yml",
+    "perf.yml",
+    "release.yml"
+   ],
+   "wall_before": 16.267,
+   "wall_after": 16.25,
+   "runner_before": 145.599,
+   "runner_after": 127.515,
+   "unpriced": [
+    "docs.yml",
+    "privacy.yml",
+    "sbom.yml"
+   ]
+  },
+  {
+   "event": "pull_request",
+   "sha": "03000cebf5",
+   "created": "2026-11-07T12:04:12Z",
+   "workflows": [
+    "ci.yml",
+    "contracts.yml",
+    "docs.yml",
+    "fuzz.yml",
+    "perf.yml",
+    "privacy.yml",
+    "release.yml",
+    "sbom.yml"
+   ],
+   "left_pr_set": [
+    "fuzz.yml",
+    "perf.yml",
+    "release.yml"
+   ],
+   "wall_before": 12.083,
+   "wall_after": 11.167,
+   "runner_before": 84.783,
+   "runner_after": 67.35,
+   "unpriced": [
+    "docs.yml",
+    "fuzz.yml",
+    "privacy.yml",
+    "sbom.yml"
+   ]
+  },
+  {
+   "event": "pull_request",
+   "sha": "09858ce79a",
+   "created": "2026-11-07T13:11:08Z",
+   "workflows": [
+    "ci.yml",
+    "contracts.yml",
+    "docs.yml",
+    "fuzz.yml",
+    "perf.yml",
+    "privacy.yml",
+    "release.yml",
+    "sbom.yml"
+   ],
+   "left_pr_set": [
+    "fuzz.yml",
+    "perf.yml",
+    "release.yml"
+   ],
+   "wall_before": 12.517,
+   "wall_after": 11.55,
+   "runner_before": 121.538,
+   "runner_after": 105.553,
+   "unpriced": [
+    "sbom.yml"
+   ]
+  },
+  {
+   "event": "pull_request",
+   "sha": "274c3e1643",
+   "created": "2026-11-07T13:32:48Z",
+   "workflows": [
+    "ci.yml",
+    "contracts.yml",
+    "docs.yml",
+    "fuzz.yml",
+    "perf.yml",
+    "privacy.yml",
+    "release.yml",
+    "sbom.yml"
+   ],
+   "left_pr_set": [
+    "fuzz.yml",
+    "perf.yml",
+    "release.yml"
+   ],
+   "wall_before": 12.883,
+   "wall_after": 12.867,
+   "runner_before": 126.881,
+   "runner_after": 110.281,
+   "unpriced": []
+  },
+  {
+   "event": "pull_request",
+   "sha": "b94569091d",
+   "created": "2026-11-07T14:43:49Z",
+   "workflows": [
+    "ci.yml",
+    "contracts.yml",
+    "docs.yml",
+    "fuzz.yml",
+    "perf.yml",
+    "privacy.yml",
+    "release.yml",
+    "sbom.yml"
+   ],
+   "left_pr_set": [
+    "fuzz.yml",
+    "perf.yml",
+    "release.yml"
+   ],
+   "wall_before": 12.0,
+   "wall_after": 11.283,
+   "runner_before": 127.564,
+   "runner_after": 111.847,
+   "unpriced": []
+  },
+  {
+   "event": "pull_request",
+   "sha": "7d5197d77f",
+   "created": "2026-11-07T17:20:27Z",
+   "workflows": [
+    "ci.yml",
+    "contracts.yml",
+    "docs.yml",
+    "fuzz.yml",
+    "perf.yml",
+    "privacy.yml",
+    "release.yml",
+    "sbom.yml"
+   ],
+   "left_pr_set": [
+    "fuzz.yml",
+    "perf.yml",
+    "release.yml"
+   ],
+   "wall_before": 362.767,
+   "wall_after": 362.75,
+   "runner_before": 842.366,
+   "runner_after": 471.566,
+   "unpriced": []
+  },
+  {
+   "event": "pull_request",
+   "sha": "fa2e99f5a5",
+   "created": "2026-11-07T20:54:56Z",
+   "workflows": [
+    "ci.yml",
+    "contracts.yml",
+    "docs.yml",
+    "fuzz.yml",
+    "perf.yml",
+    "privacy.yml",
+    "release.yml",
+    "sbom.yml"
+   ],
+   "left_pr_set": [
+    "fuzz.yml",
+    "perf.yml",
+    "release.yml"
+   ],
+   "wall_before": 363.333,
+   "wall_after": 361.917,
+   "runner_before": 849.485,
+   "runner_after": 477.651,
+   "unpriced": []
+  },
+  {
+   "event": "pull_request",
+   "sha": "d6a9aa5954",
+   "created": "2026-11-08T12:08:10Z",
+   "workflows": [
+    "ci.yml",
+    "contracts.yml",
+    "docs.yml",
+    "fuzz.yml",
+    "perf.yml",
+    "privacy.yml",
+    "release.yml",
+    "sbom.yml"
+   ],
+   "left_pr_set": [
+    "fuzz.yml",
+    "perf.yml",
+    "release.yml"
+   ],
+   "wall_before": 17.467,
+   "wall_after": 17.467,
+   "runner_before": 135.949,
+   "runner_after": 116.298,
+   "unpriced": []
+  },
+  {
+   "event": "pull_request",
+   "sha": "a3ac95637a",
+   "created": "2026-11-08T18:49:47Z",
+   "workflows": [
+    "ci.yml",
+    "contracts.yml",
+    "docs.yml",
+    "fuzz.yml",
+    "perf.yml",
+    "privacy.yml",
+    "release.yml",
+    "sbom.yml"
+   ],
+   "left_pr_set": [
+    "fuzz.yml",
+    "perf.yml",
+    "release.yml"
+   ],
+   "wall_before": 15.017,
+   "wall_after": 15.0,
+   "runner_before": 146.948,
+   "runner_after": 126.831,
+   "unpriced": []
+  },
+  {
+   "event": "pull_request",
+   "sha": "c8010923da",
+   "created": "2026-11-08T20:09:11Z",
+   "workflows": [
+    "ci.yml",
+    "contracts.yml",
+    "docs.yml",
+    "fuzz.yml",
+    "perf.yml",
+    "privacy.yml",
+    "release.yml",
+    "sbom.yml"
+   ],
+   "left_pr_set": [
+    "fuzz.yml",
+    "perf.yml",
+    "release.yml"
+   ],
+   "wall_before": 13.417,
+   "wall_after": 13.4,
+   "runner_before": 146.28,
+   "runner_after": 125.064,
+   "unpriced": []
+  },
+  {
+   "event": "pull_request",
+   "sha": "59a0079c60",
+   "created": "2026-11-08T20:45:39Z",
+   "workflows": [
+    "ci.yml",
+    "contracts.yml",
+    "docs.yml",
+    "fuzz.yml",
+    "perf.yml",
+    "privacy.yml",
+    "release.yml",
+    "sbom.yml"
+   ],
+   "left_pr_set": [
+    "fuzz.yml",
+    "perf.yml",
+    "release.yml"
+   ],
+   "wall_before": 12.483,
+   "wall_after": 11.917,
+   "runner_before": 115.351,
+   "runner_after": 96.5,
+   "unpriced": []
+  }
+ ]
+}

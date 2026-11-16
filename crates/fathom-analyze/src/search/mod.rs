@@ -634,25 +634,26 @@ impl Corpus {
 /// scorer returned is the byte offset the snippet was cut at.
 #[derive(Debug, Clone)]
 struct Row {
+    // Everything the mask test answers from is declared first, and the order is not cosmetic: Rust keeps
+    // declaration order in memory, so the rows a token's letters refuse — which is most of a corpus for
+    // most tokens — are answered from the first cache line of this struct and never touch the text below
+    // it. A keystroke walks twenty thousand of these, and `reco-p6zw` measured this reordering against the
+    // order it replaced.
+    /// What kind of thing this is, which the report groups by and a `kind:` filter answers from.
     kind: Kind,
-    id: String,
-    label: String,
-    detail: String,
-    detail_lc: String,
-    episode: Option<String>,
-    /// The file a hit deep-links into, in the corpus's own spelling. See [`Entry::file`].
-    file: Option<String>,
-    /// Lower-cased: it is matched and filtered, never printed.
-    author: Option<String>,
+    /// This row's place in the tie-break order, assigned once when the index is built.
+    ///
+    /// Two hits that score alike are separated by kind, then label, then id — a total order over the whole
+    /// corpus — and a total order can be compiled into one integer and compared as one integer. Sorting by
+    /// the keys themselves instead costs a random dive into a 700-byte row per comparison, which measured
+    /// as the larger half of a keystroke: `tests/search_scoring.rs` asserts the budget at 10 000 episodes
+    /// and the sort of the result set was what broke it.
+    rank: u32,
+    /// The caller's prior, which is the whole score of a filter-only browse.
+    prior: i64,
+    /// The date and the risk score: what `since:`, `until:` and `risk>` answer from.
     utc: Option<Timestamp>,
     risk: Option<i64>,
-    name: String,
-    body: String,
-    paths: String,
-    deps: String,
-    name_starts: Vec<usize>,
-    body_starts: Vec<usize>,
-    prior: i64,
     /// Which ASCII letters each scannable field of this row contains, indexed by [`Field::index`].
     ///
     /// A token whose letters are not in a field cannot match it as a substring or as a subsequence, so the
@@ -662,14 +663,31 @@ struct Row {
     /// The union of [`Row::letters`]: the same question asked of the row as a whole, answered in one test
     /// before any field is looked at.
     anywhere: score::Letters,
-    /// This row's place in the tie-break order, assigned once when the index is built.
+    /// The union of the [`SECONDARY`] fields' entries in [`Row::letters`].
     ///
-    /// Two hits that score alike are separated by kind, then label, then id — a total order over the whole
-    /// corpus — and a total order can be compiled into one integer and compared as one integer. Sorting by
-    /// the keys themselves instead costs a random dive into a 700-byte row per comparison, which measured
-    /// as the larger half of a keystroke: `tests/search_scoring.rs` asserts the budget at 10 000 episodes
-    /// and the sort of the result set was what broke it.
-    rank: u32,
+    /// The same question again, one level down: a token whose letters are not anywhere in the four
+    /// secondary fields has no rung on any of them — not the exact one, not the substring one, not the
+    /// subsequence one — so the whole four-field loop of rungs 2, 4 and 5 is answered by one mask test
+    /// instead of four. A row's paths, dependencies, detail and author refuse most tokens, and the loop
+    /// to discover that was four field lookups per token per rung.
+    secondary: score::Letters,
+    /// Where the words of [`Row::name`] begin, and where the words of [`Row::body`] begin.
+    name_starts: score::WordStarts,
+    body_starts: score::WordStarts,
+    // The text, which is what the walk under the mask reads.
+    id: String,
+    label: String,
+    detail: String,
+    detail_lc: String,
+    episode: Option<String>,
+    /// The file a hit deep-links into, in the corpus's own spelling. See [`Entry::file`].
+    file: Option<String>,
+    /// Lower-cased: it is matched and filtered, never printed.
+    author: Option<String>,
+    name: String,
+    body: String,
+    paths: String,
+    deps: String,
 }
 
 impl Row {
@@ -678,10 +696,181 @@ impl Row {
     /// A necessary condition for a match, never a sufficient one — it answers "can this row be skipped" and
     /// nothing else. A token with a letter outside ASCII in it is answered yes, because the letter set
     /// covers ASCII only and guessing about a letter it cannot represent is how a search loses results.
-    fn holds_all(&self, tokens: &[String]) -> bool {
-        tokens.iter().all(|token| self.anywhere.holds(token))
+    fn holds_all(&self, tokens: &[score::Token]) -> bool {
+        for token in tokens {
+            if !token.could_match(self.anywhere) {
+                return false;
+            }
+        }
+        true
+    }
+
+    /// The field's text and its word starts, as the index pre-computed them.
+    ///
+    /// A field the row does not have comes back as the empty string rather than an `Option`: an absent field
+    /// is scored the same way in every walk, and the `Option` would be a branch in the inner loop to say
+    /// "nothing" that `""` already says.
+    fn field(&self, field: Field) -> (&str, &score::WordStarts) {
+        match field {
+            Field::Name => (self.name.as_str(), &self.name_starts),
+            Field::Body => (self.body.as_str(), &self.body_starts),
+            Field::Detail => (self.detail_lc.as_str(), &NO_STARTS),
+            Field::Path => (self.paths.as_str(), &NO_STARTS),
+            Field::Dep => (self.deps.as_str(), &NO_STARTS),
+            Field::Author => (self.author.as_deref().unwrap_or(""), &NO_STARTS),
+        }
+    }
+
+    /// The letters this row shows a token for one field.
+    fn letters_for(&self, field: Field) -> score::Letters {
+        self.letters[field.index()]
+    }
+
+    /// The best one token can earn in this row, and where it earned it.
+    ///
+    /// The fields are walked in the order [`WALK`] puts them — by the most a field can pay, richest first —
+    /// and the walk stops as soon as the match in hand is worth at least what every field not yet read
+    /// could pay. That is what keeps a keystroke inside its budget on a corpus the size of the one the
+    /// budget names: the body is by far the longest field and by far the least often the answer, and under
+    /// the old order (name, body, then the short fields) it was read before a single one of them, for
+    /// every token, in every row.
+    ///
+    /// The order cannot change the answer. A tie between two fields of the same class (`detail`, `path`,
+    /// `dependency`, `author` all pay the same on every rung) is settled by whichever of them comes first,
+    /// and [`WALK`] keeps their relative order exactly as [`Index::hit`] still prints them; the body never
+    /// ties with any of them, because `160`/`120`/`20` are not `450`/`90`/`40`; and the name is first in
+    /// both. So the field this reports is the field the whole-ladder walk would have picked.
+    fn best_match(&self, token: &score::Token) -> Option<score::Match> {
+        let mut best: Option<score::Match> = None;
+        // Rung 1 — the name, ladder and all. It is the smallest field and the only one that can beat a
+        // secondary field that *is* the token, so it is read whole and once.
+        if token.could_match(self.letters_for(Field::Name)) {
+            best = token.ladder(self.name.as_str(), Field::Name, &self.name_starts);
+        }
+        // Rung 2 — a secondary field that *is* the token: `W_SECONDARY_EXACT`, which is more than the body
+        // can pay and more than any later rung can. A length test and a compare, which is why it runs
+        // before anything is walked at all — and the length is compared first for the same reason in
+        // miniature: deciding two `String`s equal reads both heaps, and a row's detail, paths, deps and
+        // author are not the token almost everywhere in the symbol section (`reco-p6zw`, where this one
+        // line was measured as a sixth of a keystroke over that corpus).
+        if worth_walking(best, score::W_SECONDARY_EXACT) && token.could_match(self.secondary) {
+            for field in SECONDARY {
+                if token.is_the_word(self.field(field).0) {
+                    best = Some(score::Match {
+                        score: score::W_SECONDARY_EXACT,
+                        field,
+                        offset: Some(0),
+                    });
+                    break;
+                }
+            }
+        }
+        // Rung 3 — the body, as a substring. Everything after this pays at most `W_SECONDARY_SUB`, which is
+        // why a body hit ends the walk here rather than going on to read the paths, the dependencies and
+        // the author of a row that has already answered.
+        if worth_walking(best, score::W_BODY_WORD)
+            && token.could_match(self.letters_for(Field::Body))
+            && let Some(found) = token.substring(self.body.as_str(), Field::Body, &self.body_starts)
+        {
+            best = Some(found);
+        }
+        // Rung 4 — a secondary field that contains the token. They all pay `W_SECONDARY_SUB`, so the first
+        // one in [`SECONDARY`] settles it.
+        if worth_walking(best, score::W_SECONDARY_SUB) && token.could_match(self.secondary) {
+            for field in SECONDARY {
+                if !token.could_match(self.letters_for(field)) {
+                    continue;
+                }
+                if let Some(found) = token.substring(self.field(field).0, field, &NO_STARTS) {
+                    best = Some(found);
+                    break;
+                }
+            }
+        }
+        // Rung 5 — the letters in order with gaps, which is the rung a typo lands on: a secondary field
+        // first (`W_SECONDARY_SUBSEQ`), then the body (`W_BODY_SUBSEQ`, the cheapest score in the system).
+        // The name's subsequence was already paid for in rung 1.
+        if worth_walking(best, score::W_SECONDARY_SUBSEQ) && token.could_match(self.secondary) {
+            for field in SECONDARY {
+                if !token.could_match(self.letters_for(field)) {
+                    continue;
+                }
+                if let Some(found) = token.subsequence(self.field(field).0, field) {
+                    best = Some(found);
+                    break;
+                }
+            }
+        }
+        if worth_walking(best, score::W_BODY_SUBSEQ)
+            && token.could_match(self.letters_for(Field::Body))
+            && let Some(found) = token.subsequence(self.body.as_str(), Field::Body)
+        {
+            best = Some(found);
+        }
+        best
     }
 }
+
+/// Whether the walk has to keep reading: a field it has not reached can still pay `ceiling`, and only a
+/// strict win changes the answer, because a tie belongs to the field already walked.
+fn worth_walking(best: Option<score::Match>, ceiling: score::Score) -> bool {
+    match best {
+        None => true,
+        Some(found) => found.score < ceiling,
+    }
+}
+
+/// The order the report returns hits in: score descending, then the rank.
+///
+/// The rank *is* kind, label and id ([`assign_ranks`]), so this is [`score::compare_hits`] with the
+/// comparison keys compiled ahead of time, and it is a total order — two rows never tie, which is what
+/// makes it legal to seat the best `limit` of them with a partial sort instead of sorting the whole set.
+fn by_score_then_rank(left: &(i64, u32, u32), right: &(i64, u32, u32)) -> std::cmp::Ordering {
+    right.0.cmp(&left.0).then_with(|| left.2.cmp(&right.2))
+}
+
+/// Phase one: the score of one row, or `None` when it is not a hit.
+///
+/// Sum the per-token best field ([`Row::best_match`]); `None` when a token matches nothing anywhere — AND
+/// across tokens, the same rule `fathom-store`'s FTS path uses for a multi-word query, because "epoch"
+/// *and* "store" is what a reviewer means by `epoch store`. Nothing is allocated here, because this runs
+/// over every row in the corpus and the corpus is what the latency budget is stated against.
+fn score_row(tokens: &[score::Token], row: &Row) -> Option<i64> {
+    if tokens.is_empty() {
+        // A filter-only query is a browse: the prior is the whole order, and the report says so.
+        return Some(row.prior);
+    }
+    if !row.holds_all(tokens) {
+        // Every letter of every token has to appear somewhere in the row for any of them to match it,
+        // substring or subsequence. Checking that against a bit per letter costs a few instructions and
+        // is what keeps a two-token query from walking the body text of a 10 000-episode history.
+        return None;
+    }
+    let mut total = 0i64;
+    for token in tokens {
+        total += row.best_match(token)?.score;
+    }
+    Some(total + row.prior)
+}
+
+/// The fields a token is scored against, in the order the walk reads them: by the most a field can pay
+/// (the name up to `W_NAME_EXACT`, a secondary field up to `W_SECONDARY_EXACT`, the body only up to
+/// `W_BODY_WORD`), richest first, with the body last because it is the only field long enough for the
+/// order to be about.
+///
+/// [`Index::hit`] walks this same list, so the field a hit explains is the field that paid its score.
+const WALK: [Field; score::FIELD_COUNT] = [
+    Field::Name,
+    Field::Detail,
+    Field::Path,
+    Field::Dep,
+    Field::Author,
+    Field::Body,
+];
+
+/// The members of [`WALK`] that pay the `W_SECONDARY_*` weights — the ones that can tie with each other,
+/// and so the ones whose relative order the ranking depends on.
+const SECONDARY: [Field; 4] = [Field::Detail, Field::Path, Field::Dep, Field::Author];
 
 /// Give every row its place in the tie-break order.
 ///
@@ -753,6 +942,7 @@ impl Index {
             let author_lc = entry.author.as_ref().map(|author| author.to_lowercase());
             let mut letters = [score::Letters::NONE; score::FIELD_COUNT];
             let mut anywhere = score::Letters::NONE;
+            let mut secondary = score::Letters::NONE;
             mark(&mut letters, &mut anywhere, Field::Name, &name);
             mark(&mut letters, &mut anywhere, Field::Body, &body);
             mark(&mut letters, &mut anywhere, Field::Detail, &detail_lc);
@@ -764,8 +954,21 @@ impl Index {
                 Field::Author,
                 author_lc.as_deref().unwrap_or(""),
             );
+            for field in SECONDARY {
+                secondary.join(letters[field.index()]);
+            }
             rows.push(Row {
                 kind: entry.kind,
+                // Replaced straight away by [`assign_ranks`]; there is no honest value to put here.
+                rank: 0,
+                prior: entry.prior,
+                utc: entry.utc,
+                risk: entry.risk,
+                letters,
+                anywhere,
+                secondary,
+                name_starts: score::WordStarts::of(&name),
+                body_starts: score::WordStarts::of(&body),
                 id: entry.id.clone(),
                 label: entry.name.clone(),
                 detail: entry.detail.clone(),
@@ -773,19 +976,10 @@ impl Index {
                 episode: entry.episode.clone(),
                 file: entry.file.clone(),
                 author: author_lc,
-                utc: entry.utc,
-                risk: entry.risk,
-                name_starts: score::word_starts_of(&name),
                 name,
-                body_starts: score::word_starts_of(&body),
                 body,
                 paths: paths_lc,
                 deps: deps_lc,
-                prior: entry.prior,
-                letters,
-                anywhere,
-                // Replaced straight away by [`assign_ranks`]; there is no honest value to put here.
-                rank: 0,
             });
         }
         assign_ranks(&mut rows);
@@ -895,28 +1089,32 @@ impl Index {
                 _ => None,
             })
             .collect();
-        let matched_and_candidates = self.judge_all(query, &kinds);
-        let mut matched: Vec<(i64, u32, u32)> = Vec::with_capacity(matched_and_candidates.len());
-        let mut candidates = 0usize;
-        for (candidate, scored) in matched_and_candidates {
-            if candidate {
-                candidates += 1;
-            }
-            if let Some(hit) = scored {
-                matched.push(hit);
-            }
-        }
+        // The typed tokens, compiled once for the whole scan. Every question a row asks about a token — is
+        // each of its letters in this field, is it long enough to mean something as a subsequence — is
+        // asked of six fields in fourteen thousand rows, and answering it by re-walking the token is the
+        // most expensive thing a keystroke used to do that was not a search.
+        let tokens: Vec<score::Token> = query
+            .tokens
+            .iter()
+            .map(|token| score::Token::new(token))
+            .collect();
+        let (candidates, mut matched) = self.judge_all(query, &kinds, &tokens);
         let scored = matched.len();
-        // Score descending, then the rank: which *is* kind, label and id, so this is
-        // [`score::compare_hits`] with the comparison keys compiled ahead of time.
-        matched.sort_unstable_by(|left, right| {
-            right.0.cmp(&left.0).then_with(|| left.2.cmp(&right.2))
-        });
+        // The order, bought at the cheapest price that still gets it. The report shows `limit` rows, and a
+        // full sort of every scored row pays for ordering thousands of rows nobody will see: a broad query
+        // over the ten-thousand-episode corpus scores ten thousand of them and shows five, and sorting all
+        // of them measured as a tenth of the keystroke. `select_nth_unstable_by` seats the best `limit`
+        // for a fraction of the comparisons, and only those are sorted — which is the only ordering the
+        // report is entitled to assume anyway.
         let truncated = matched.len() > limit;
-        matched.truncate(limit);
+        if truncated {
+            matched.select_nth_unstable_by(limit - 1, by_score_then_rank);
+            matched.truncate(limit);
+        }
+        matched.sort_unstable_by(by_score_then_rank);
         let hits: Vec<Hit> = matched
             .iter()
-            .map(|(total, index, _)| self.hit(*total, &self.rows[*index as usize], query))
+            .map(|(total, index, _)| self.hit(*total, &self.rows[*index as usize], &tokens))
             .collect();
         let mut groups: Vec<(Kind, usize)> = Vec::new();
         for kind in Kind::ALL {
@@ -973,39 +1171,66 @@ impl Index {
         }
     }
 
-    /// Phase one, over every row: is it a candidate, and what is its score.
+    /// Phase one, over every row: the rows that are hits, each as `(score, row, rank)`, and how many rows
+    /// the query's kind and filters let through (which is what the report prints as the width of the
+    /// question the score then answers).
     ///
     /// The scan is data-parallel above [`PARALLEL_SCAN`] rows, because the latency budget is a wall-clock
     /// statement and a 10 000-episode corpus is a memory-bound walk of several hundred kilobytes of text.
     /// Parallelism is available here and nowhere else in a keystroke only because a row's score depends on
     /// the row and the query and on nothing else: the order the results come back in is not part of the
     /// answer, since [`score::compare_hits`] is a total order.
-    fn judge_all(&self, query: &Query, kinds: &[Kind]) -> Vec<Judgement> {
-        let judge = |(index, row): (usize, &Row)| {
+    ///
+    /// A row that is not a hit contributes *nothing* to the returned set. The intermediate collection used
+    /// to carry one `(bool, Option<…>)` per row of the corpus — half a megabyte of scratch per keystroke
+    /// over twenty thousand rows, allocated, faulted in, and thrown away again sixty times a minute by a
+    /// reviewer who is typing — so the no's are dropped here instead, and the candidate count is tallied
+    /// into the same walk rather than asked for by a second one.
+    fn judge_all(
+        &self,
+        query: &Query,
+        kinds: &[Kind],
+        tokens: &[score::Token],
+    ) -> (usize, Vec<Judgement>) {
+        // With no kind and no filter in play every row is a candidate, which the answer already knows; the
+        // counter is only paid for on the queries that need one.
+        let counting = !kinds.is_empty() || !query.filters.is_empty();
+        let candidates = std::sync::atomic::AtomicUsize::new(0);
+        let judge = |(index, row): (usize, &Row)| -> Option<Judgement> {
             if !kinds.is_empty() && !kinds.contains(&row.kind) {
-                return (false, None);
+                return None;
             }
             if !self.passes_filters(query, row) {
-                return (false, None);
+                return None;
+            }
+            if counting {
+                candidates.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
             }
             let Ok(number) = u32::try_from(index) else {
-                return (true, None);
+                return None;
             };
-            (
-                true,
-                self.score_row(query, row)
-                    .map(|total| (total, number, row.rank)),
-            )
+            score_row(tokens, row).map(|total| (total, number, row.rank))
         };
-        if self.rows.len() < PARALLEL_SCAN {
-            return self.rows.iter().enumerate().map(judge).collect::<Vec<_>>();
-        }
-        use rayon::prelude::*;
-        self.rows
-            .par_iter()
-            .enumerate()
-            .map(judge)
-            .collect::<Vec<_>>()
+        let matched = if self.rows.len() < PARALLEL_SCAN {
+            self.rows
+                .iter()
+                .enumerate()
+                .filter_map(judge)
+                .collect::<Vec<_>>()
+        } else {
+            use rayon::prelude::*;
+            self.rows
+                .par_iter()
+                .enumerate()
+                .filter_map(judge)
+                .collect::<Vec<_>>()
+        };
+        let candidates = if counting {
+            candidates.load(std::sync::atomic::Ordering::Relaxed)
+        } else {
+            self.rows.len()
+        };
+        (candidates, matched)
     }
 
     fn passes_filters(&self, query: &Query, row: &Row) -> bool {
@@ -1034,90 +1259,29 @@ impl Index {
         true
     }
 
-    /// Phase one: the score of one row, or `None` when it is not a hit.
-    ///
-    /// Sum the per-token best field; `None` when a token matches nothing anywhere — AND across tokens, the
-    /// same rule `fathom-store`'s FTS path uses for a multi-word query, because "epoch" *and* "store" is
-    /// what a reviewer means by `epoch store`. Nothing is allocated here, because this runs over every row
-    /// in the corpus and the corpus is what the latency budget is stated against.
-    fn score_row(&self, query: &Query, row: &Row) -> Option<i64> {
-        if query.tokens.is_empty() {
-            // A filter-only query is a browse: the prior is the whole order, and the report says so.
-            return Some(row.prior);
-        }
-        if !row.holds_all(&query.tokens) {
-            // Every letter of every token has to appear somewhere in the row for any of them to match it,
-            // substring or subsequence. Checking that against a bit per letter costs a few instructions and
-            // is what keeps a two-token query from walking the body text of a 10 000-episode history.
-            return None;
-        }
-        let mut total = 0i64;
-        for token in &query.tokens {
-            let mut best: Option<score::Match> = None;
-            for (field, text, starts) in [
-                (Field::Name, row.name.as_str(), row.name_starts.as_slice()),
-                (Field::Body, row.body.as_str(), row.body_starts.as_slice()),
-                // No precomputed word starts: these fields are one short token each (`cargo`, `high`,
-                // an author name), so offset 0 is the only word start that can matter and the empty
-                // list is the honest answer.
-                (Field::Detail, row.detail_lc.as_str(), NO_STARTS),
-                (Field::Path, row.paths.as_str(), NO_STARTS),
-                (Field::Dep, row.deps.as_str(), NO_STARTS),
-                (
-                    Field::Author,
-                    row.author.as_deref().unwrap_or(""),
-                    NO_STARTS,
-                ),
-            ] {
-                if !row.letters[field.index()].holds(token) {
-                    // Not one field-scoring walk for this field: a token with a letter this field does not
-                    // contain cannot be a substring of it and cannot be a subsequence of it either.
-                    continue;
-                }
-                if let Some(found) = score::field_score(token, text, field, starts)
-                    && best.is_none_or(|current| found.score > current.score)
-                {
-                    best = Some(found);
-                    if found.score >= score::W_NAME_PREFIX {
-                        // Nothing else can beat a token that starts the row's name, so stop looking. The
-                        // weights are ordered on purpose (see `score`), and this is where that ordering
-                        // pays for itself.
-                        break;
-                    }
-                }
-            }
-            total += best?.score;
-        }
-        Some(total + row.prior)
-    }
-
     /// Phase two: the row as the reviewer sees it — the label, the second line, why it matched, and the
     /// bounded excerpt. Only the rows that survived the cut get here.
-    fn hit(&self, total: i64, row: &Row, query: &Query) -> Hit {
+    ///
+    /// The walk is the whole ladder over every field, in [`WALK`] order, because this one needs the *offset*
+    /// the winner matched at (it is where the snippet is cut from) and so reads every field anyway. It
+    /// settles on the same field [`Row::best_match`] paid the score from: both take the highest score, and
+    /// a tie between fields that pay alike is settled by the order [`WALK`] gives them.
+    fn hit(&self, total: i64, row: &Row, tokens: &[score::Token]) -> Hit {
         let mut matched: Vec<String> = Vec::new();
         let mut why: Vec<String> = Vec::new();
         let mut snippet = String::new();
-        for token in &query.tokens {
-            let mut best: Option<(score::Match, Field, &str)> = None;
-            for (field, text, starts) in [
-                (Field::Name, row.name.as_str(), row.name_starts.as_slice()),
-                (Field::Body, row.body.as_str(), row.body_starts.as_slice()),
-                (Field::Detail, row.detail_lc.as_str(), NO_STARTS),
-                (Field::Path, row.paths.as_str(), NO_STARTS),
-                (Field::Dep, row.deps.as_str(), NO_STARTS),
-                (
-                    Field::Author,
-                    row.author.as_deref().unwrap_or(""),
-                    NO_STARTS,
-                ),
-            ] {
-                if let Some(found) = score::field_score(token, text, field, starts)
-                    && best.is_none_or(|(current, _, _)| found.score > current.score)
+        for token in tokens {
+            let typed = token.text();
+            let mut best: Option<(score::Match, &str)> = None;
+            for field in WALK {
+                let (hay, starts) = row.field(field);
+                if let Some(found) = token.ladder(hay, field, starts)
+                    && best.is_none_or(|(current, _)| found.score > current.score)
                 {
-                    best = Some((found, field, text));
+                    best = Some((found, hay));
                 }
             }
-            let Some((found, _field, text)) = best else {
+            let Some((found, text)) = best else {
                 continue;
             };
             if !matched.iter().any(|seen| seen == found.field.as_str()) {
@@ -1130,7 +1294,7 @@ impl Index {
             }
             if why.len() < 4 {
                 why.push(format!(
-                    "{token} {} {}",
+                    "{typed} {} {}",
                     if found.offset.is_some() { "=" } else { "~" },
                     found.field.as_str()
                 ));
@@ -1153,11 +1317,11 @@ impl Index {
     }
 }
 
-/// What one row answers to: was it a candidate at all, and if it was, what did it score.
+/// What one row answers to: its score, its place in the corpus, and its place in the tie-break order.
 ///
-/// Named because the tuple inside is four decisions wide and a function signature is not where a reader
+/// Named because the tuple inside is three decisions wide and a function signature is not where a reader
 /// should be asked to hold them.
-type Judgement = (bool, Option<(i64, u32, u32)>);
+type Judgement = (i64, u32, u32);
 
 /// The row count at which the corpus scan is handed to `rayon`.
 ///
@@ -1167,8 +1331,8 @@ type Judgement = (bool, Option<(i64, u32, u32)>);
 /// 10 000-episode corpus the budget is stated against, and it is the reason the number exists.
 const PARALLEL_SCAN: usize = 2_000;
 
-/// The word starts of a field too short to need them (see [`Index::score_row`]).
-const NO_STARTS: &[usize] = &[];
+/// The word starts of a field with no words but the first one (see [`score::WordStarts::NONE`]).
+const NO_STARTS: score::WordStarts = score::WordStarts::NONE;
 
 /// Lower-case a field for matching, keeping it a single searchable run.
 fn lower_with(text: &str) -> String {
@@ -1492,5 +1656,125 @@ mod tests {
                 path: "crates/fathom-store/src/epoch.rs".to_owned()
             }
         );
+    }
+
+    /// Walk every row of `index` with every token, and return the scores the rung walk paid.
+    ///
+    /// The assertion is the point: for every row and every token, the rung walk that phase one scores with
+    /// ([`Row::best_match`]) must land on the same field, at the same offset, for the same score, as the
+    /// whole-ladder walk that phase two explains with ([`Index::hit`]). If the two ever disagree, the
+    /// ranking and the "why this matched" pane are telling different stories — and the disagreement shows
+    /// up as a ranking change rather than as a wrong explanation, which is the quiet way for that bug to go
+    /// wrong. The returned set of what was paid is the caller's check that the corpus was worth walking.
+    fn every_row_agrees_both_ways(index: &Index, typed: &[&str]) -> Rungs {
+        let mut seen = Rungs::new();
+        for text in typed {
+            let token = score::Token::new(text);
+            for row in &index.rows {
+                let walked = row.best_match(&token);
+                let mut whole: Option<score::Match> = None;
+                for field in WALK {
+                    let (hay, starts) = row.field(field);
+                    if let Some(found) = token.ladder(hay, field, starts)
+                        && whole.is_none_or(|current| found.score > current.score)
+                    {
+                        whole = Some(found);
+                    }
+                }
+                assert_eq!(
+                    walked.map(|found| (found.score, found.field, found.offset)),
+                    whole.map(|found| (found.score, found.field, found.offset)),
+                    "`{text}` on row `{}`: the rung walk and the whole ladder disagree",
+                    row.id
+                );
+                if let Some(found) = walked {
+                    seen.insert((found.score, found.field));
+                }
+            }
+        }
+        seen
+    }
+
+    /// What a walk reached: the distinct `(score, field)` pairs it paid, which is how the test below knows it
+    /// looked at every rung and not only the easy ones.
+    type Rungs = std::collections::BTreeSet<(score::Score, Field)>;
+
+    #[test]
+    fn the_rung_walk_and_the_whole_ladder_pick_the_same_field() {
+        let typed = [
+            "e",
+            "ep",
+            "epoch",
+            "store",
+            "fathstor",
+            "epoch.rs",
+            "serde",
+            "todo",
+            "core",
+            "delta model",
+            "xyzzy",
+            "risk",
+        ];
+        let mut seen = every_row_agrees_both_ways(&corpus().index(), &typed);
+
+        // Two more rows, built for the two rungs the fixture above never reaches. The first is a secondary
+        // field that *is* the token — `W_SECONDARY_EXACT`, the only rung that is a comparison rather than a
+        // walk — and here the name has nothing to do with it, so the rung is the whole answer. The second is
+        // a secondary field that merely *contains* the token, which pays `W_SECONDARY_SUB`; the token is
+        // scattered nowhere else in the row, so nothing higher can fire.
+        let mut exact = Corpus::new();
+        let mut named = Entry::episode(
+            "secondary-exact",
+            "a subject the token is not hiding in",
+            "nothing here either",
+            None,
+            None,
+            None,
+        );
+        named.deps = vec!["serde".to_owned()];
+        exact.push(named);
+        let mut inside = Entry::episode(
+            "secondary-substring",
+            "a subject with none of the noun in it",
+            "and a body with none either",
+            None,
+            None,
+            None,
+        );
+        inside.paths = vec!["vendor/widgetry/vendor.c".to_owned()];
+        exact.push(inside);
+        // And the third of them: a secondary field whose letters contain the token *in order*, which is the
+        // rung a mistyped path lands on and pays `W_SECONDARY_SUBSEQ`.
+        let mut scattered = Entry::episode(
+            "secondary-subsequence",
+            "a subject",
+            "a body",
+            None,
+            None,
+            None,
+        );
+        scattered.paths = vec!["crates/fathom-store/src/epoch.rs".to_owned()];
+        exact.push(scattered);
+        seen.extend(every_row_agrees_both_ways(
+            &exact.index(),
+            &["serde", "widget", "fathstor"],
+        ));
+
+        for rung in [
+            score::W_NAME_EXACT,
+            score::W_NAME_PREFIX,
+            score::W_SECONDARY_EXACT,
+            score::W_NAME_WORD,
+            score::W_BODY_WORD,
+            score::W_SECONDARY_SUB,
+            score::W_NAME_SUBSEQ,
+            score::W_SECONDARY_SUBSEQ,
+            score::W_BODY_SUBSEQ,
+        ] {
+            assert!(
+                seen.iter().any(|(paid, _)| *paid == rung),
+                "nothing in either corpus scored {rung}, so this test never looked at that rung"
+            );
+        }
     }
 }

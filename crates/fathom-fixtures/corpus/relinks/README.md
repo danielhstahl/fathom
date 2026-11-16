@@ -15,7 +15,7 @@ So this directory is not a corpus of commits. It is a corpus of **rewrites**: ea
 hand-annotated history, perform this named rewrite, and here is the truth about which dead episode's
 decision belongs to which live one afterwards". The measuring harness is
 `crates/fathom-analyze/examples/s6_spike.rs`; the written answer is
-[`docs/concepts/episode-relink.md`](../../../../docs/concepts/episode-relink.md).
+[`docs/concepts/episode-derivation.md`](../../../../docs/concepts/episode-derivation.md).
 
 > **The same boundary `../turns/` draws, unchanged.** Nothing here is computed by the relink pass under
 > test. An entry names a rewrite and states, by hand, what the reviewer's decision should do afterwards;

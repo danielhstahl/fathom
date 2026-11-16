@@ -127,8 +127,6 @@ pub fn refusal(view: ViewId, pane: &Pane, facts: &Facts, reason: &Reason) -> Str
 #[must_use]
 fn purpose(view: ViewId, pane: &Pane) -> Option<&'static str> {
     Some(match (view, pane.name) {
-        (ViewId::Queue, "worklist") => "the queue is the ranked worklist, riskiest first",
-        (ViewId::Queue, "card") => "the card is one episode, every figure cited",
         (ViewId::Timeline, "rail") => "the rail is every episode, newest first",
         (ViewId::Diff, "tree") => "the tree is the selected episode's files, riskiest first",
         (ViewId::Diff, "hunks") => "the hunks pane is one file's diff at a time",
@@ -190,17 +188,12 @@ fn action(view: ViewId, pane: &Pane, facts: &Facts, reason: &Reason) -> String {
     // second is copy that gets cut, and the whole point of these lines is that the half a reviewer can
     // act on survives being read.
     match (view, pane.name) {
-        (ViewId::Queue, "worklist") => {
-            "`t` lists them in time order; `fathom analyze` prints one delta".to_owned()
-        }
-        (ViewId::Queue, "card") | (ViewId::Timeline, "card") => {
-            "`j`/`k` choose one, `<Enter>` opens its card".to_owned()
-        }
+        (ViewId::Timeline, "card") => "`j`/`k` choose one, `<Enter>` opens its card".to_owned(),
         (ViewId::Timeline, "rail") => {
             "`F` edits the filter that hid them; `fathom stats` counts the index".to_owned()
         }
         (ViewId::Diff, "tree") | (ViewId::Diff, "hunks") => {
-            "`q` then `j`/`k` picks an episode, then `d` opens its diff".to_owned()
+            "`t` then `j`/`k` picks an episode, then `d` opens its diff".to_owned()
         }
         (ViewId::Structure, "treemap") | (ViewId::Structure, "detail") => {
             "`q` then `j`/`k` picks an episode, then `s` again".to_owned()

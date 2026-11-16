@@ -124,17 +124,24 @@ fn a_clean_machine_goes_from_nothing_to_a_frame_in_under_a_minute() {
         text.contains("21 episodes from index epoch 1 (ready)"),
         "the frame should say what was indexed:\n{text}"
     );
-    // A ranked row with figures on it — `risk`, `+`, `−` — rather than a list of subjects. The queue *is*
-    // the product's answer, so the demo has to show an answer and not a placeholder for one.
+    // A row with its figures on it — the risk gauge, `+`, `−` — rather than a list of subjects. The rail
+    // *is* the product's answer, so the demo has to show an answer and not a placeholder for one. The rail
+    // has never spelled the word `risk` on a row: it draws the gauge and the number beside it (`e5.6`'s
+    // ladder), and the model's name sits in the strip, which an 80-column frame trims.
     assert!(
-        text.contains("risk") && text.contains('+') && text.contains('−'),
-        "the queue pane is showing no ranked episode:\n{text}"
+        text.contains('●') && text.contains('+') && text.contains('−'),
+        "the rail is showing no scored episode:\n{text}"
     );
-    assert!(
-        text.contains("agent") && text.contains("human"),
-        "the miniature is supposed to be mixed agent and human work, so the queue can rank them \
-         against each other:\n{text}"
-    );
+    // …and the attribution verdict is *not* on it. The miniature is still mixed agent and human work —
+    // the guide line on stderr below says so in prose, and `fathom episodes --json` still ships the kind
+    // with its confidence for anything that can weigh one — but `e10.4` (`reco-ydek.4`, ADR-006 §5.1.2 §6)
+    // retired the printed label, and the first frame a stranger sees is where that shows.
+    for word in ["agent", "human"] {
+        assert!(
+            !text.contains(word),
+            "the first frame printed the retired verdict {word:?}:\n{text}"
+        );
+    }
 
     let advice = stderr(&out);
     for line in [
@@ -253,7 +260,7 @@ fn a_verb_run_under_the_demo_reports_the_miniature() {
     assert_eq!(
         parsed["index"]["scale"]["authors"].as_u64(),
         Some(2),
-        "two people wrote it, which is what makes the queue's ranking legible: {parsed}"
+        "two people wrote it, which is what makes the rail's risk column legible: {parsed}"
     );
 }
 

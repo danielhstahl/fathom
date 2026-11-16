@@ -51,12 +51,11 @@ MODES: tuple[Mode, ...] = (
          "A single-key chooser is open (dismiss reason, snooze window, format). One "
          "keystroke chooses; there is no text entry.", exclusive=True),
     Mode("list", "interaction",
-         "A list pane has focus: queue worklist, episode rail, file tree, dependency "
+         "A list pane has focus: episode rail, file tree, dependency "
          "table, search results, treemap rows."),
     Mode("body", "interaction",
          "A content surface has focus: hunk view, episode card, graph canvas, "
          "artefact preview."),
-    Mode("queue", "view", "The attention queue is the live view."),
     Mode("timeline", "view", "The timeline (episode rail + card) is the live view."),
     Mode("diff", "view", "The diff view is the live view."),
     Mode("structure", "view", "The structure treemap view is the live view."),
@@ -73,7 +72,7 @@ MODES: tuple[Mode, ...] = (
 #: narrower mode always beats a broader one (ADR-006 §7.1).
 PRECEDENCE: tuple[str, ...] = (
     "prompt", "pick", "list", "body",
-    "queue", "timeline", "diff", "structure", "graph", "deps", "artefact", "ambient",
+    "timeline", "diff", "structure", "graph", "deps", "artefact", "ambient",
     "global",
 )
 
@@ -82,7 +81,7 @@ PRECEDENCE: tuple[str, ...] = (
 #: `p` inside the graph canvas and get the dependency view. `<Esc>` is deliberately not
 #: in this list: drill-out is bound per mode, and `prompt`/`pick` own it outright.
 GLOBAL_NEVER_SHADOWED: tuple[str, ...] = (
-    "q", "t", "d", "s", "g", "p", "a", "o", "/", ",", "?",
+    "t", "d", "s", "g", "p", "a", "o", "/", ",", "?",
 )
 
 #: Chords Fathom promises never to bind in v1, so a user may claim them through
@@ -110,6 +109,30 @@ RESERVED_FOR_USER: tuple[tuple[str, str, str], ...] = (
     ("<C-6>", "vim's alternate-file", "all modes"),
     ("<S-F1>", "function keys are otherwise unbound in v1: their encodings vary more "
                "across terminals than any other group", "all modes"),
+    ("i", "the intent pane's letter. `e9.3` retired the pane (ADR-006 §5.1.1): the card's "
+          "`intent` row is the one line, and `fathom show` prints the plan and the declared "
+          "scope behind it. Free for a chord of your own; bringing it back into the default "
+          "table is §7.6's route, not a quiet rebind.", "all modes"),
+    ("q", "the Queue view's letter. `e10.3` retired the view (ADR-006 §5.1.2 §1): the "
+          "timeline is home and `t` stays the home letter, because a key belongs to the view "
+          "it opens and not to the pane that happened to be deleted. The acts moved to the "
+          "rail and `r` came with them, so nothing this build needs is spelled `q`. Free for a "
+          "chord of your own; §11 carries the bar for binding it in the default table again.",
+     "all modes"),
+)
+
+#: A chord whose action this build **retired**: the letter is free (§8.2), the action is gone
+#: from the registry, and the shell still has to answer the reviewer who presses it. The row is
+#: kept here rather than deleted so a retired action is recorded — `tests/tables/mod.rs` pins
+#: it, so the letter cannot be reused by whoever wants a free key next without this table
+#: saying it happened (ADR-006 §7.6, `reco-5js3.3`).
+RETIRED_ACTIONS: tuple[tuple[str, str, str], ...] = (
+    ("i", "intent.show",
+     "the intent pane is retired — the card's `intent` row is the one line, and `fathom show "
+     "<episode>` prints the plan and the declared scope behind it"),
+    ("q", "view.queue",
+     "the Queue view is retired — the timeline (`t`) is home; accept, flag, dismiss and snooze "
+     "act on the rail's row and `r` lists the ledger's acts in the same pane"),
 )
 
 #: Chords that **cannot** be used as distinct bindings, with the measured reason. The
@@ -172,10 +195,9 @@ def _a(id_, title, scope, ticket, modes=("global",), palette=True, doc=""):
 
 ACTIONS: dict[str, Action] = {a.id: a for a in (
     # --- view switching: one letter each (the ticket's fixed list) -------------
-    _a("view.queue", "Go to: Queue", "view", "e4.5",
-       doc="The home view: the ranked attention worklist (ADR-001 §4.1)."),
     _a("view.timeline", "Go to: Timeline", "view", "e1.6",
-       doc="Chronological episode rail plus episode card."),
+       doc="Chronological episode rail plus episode card. The home view since `e10.3` "
+           "(ADR-006 §5.1.2 §1): `fathom tui` opens here, rail focused, no filter applied."),
     _a("view.diff", "Go to: Diff", "view", "e1.7",
        doc="File tree plus hunk view for the live scope."),
     _a("view.structure", "Go to: Structure", "view", "e2.3",
@@ -231,18 +253,23 @@ ACTIONS: dict[str, Action] = {a.id: a for a in (
     _a("tab.close", "Close the current tab", "frame", "e1.5"),
     # --- review actions: act on the live scope (ADR-001 §4.5 dispositions) ----
     _a("review.accept", "Mark reviewed (accept)", "review", "e4.5",
-       doc="Disposition `accepted` + identity + time to the ledger (`e4.6`)."),
+       doc="Disposition `accepted` + identity + time to the ledger (`e4.6`), taken on the frame's "
+           "selected episode — the rail's cursor row since `e10.2`. The write happens before the "
+           "row changes, so a row that reads `✔` is a decision the ledger holds."),
     _a("review.flag", "Flag for attention, with a note", "review", "e4.5"),
     _a("review.dismiss", "Dismiss with a reason", "review", "e4.5",
        doc="Opens the closed dismiss-vocabulary chooser (`pick`)."),
     _a("review.snooze", "Snooze until a condition", "review", "e4.5",
        doc="Opens the snooze-window chooser (`pick`)."),
-    _a("risk.explain", "Why this score / this rank (`fathom why`)", "review", "e4.4"),
-    _a("queue.retrospect", "Queue: what you skipped, and why", "review", "e4.5",
-       modes=("queue",),
-       doc="Toggles the worklist pane between the ranked queue and the dismissed-with-reason "
-           "rollup, so systematic dismissing is a number on a screen."),
-    _a("intent.show", "Show captured intent and its source", "review", "e4.2"),
+    _a("risk.explain", "Why this score: every reason and the whole ceiling", "review", "e4.4",
+       doc="The score, its components and its ceiling, in the shape `fathom why` prints. The "
+           "word is *score*, not *rank*: `e10.3` retired the ranked set that `rank N of M` was "
+           "a place in (ADR-006 §5.1.2 §5)."),
+    _a("review.retrospect", "Rail: what you skipped, and why", "review", "e4.5",
+       doc="Puts the timeline on screen with the rail listing *acts* instead of episodes: the "
+           "dismissed-with-reason rollup, so systematic dismissing is a number on a screen. `r` "
+           "again lists episodes, `<Esc>` pops the drill (ADR-006 §5.1.2 §4; the rollup left the "
+           "queue's worklist in `e10.2` and the ledger did not change at all)."),
     _a("pick.choose", "Choose this entry", "overlay", "e4.5", modes=("pick",),
        palette=False),
     _a("prompt.submit", "Submit", "overlay", "e5.2", modes=("prompt",), palette=False),
@@ -272,6 +299,8 @@ ACTIONS: dict[str, Action] = {a.id: a for a in (
     _a("diff.ws_toggle", "Diff: ignore whitespace", "view", "e1.7", modes=("diff",)),
     _a("diff.noise_toggle", "Diff: show suppressed noise (the rule is printed)",
        "view", "e2.2", modes=("diff",)),
+    _a("diff.sort_cycle", "Diff: sort the file tree by path / complexity delta",
+       "view", "e8.6", modes=("diff",)),
     _a("diff.hunk_next", "Diff: next hunk", "view", "e1.7", modes=("diff",)),
     _a("diff.hunk_prev", "Diff: previous hunk", "view", "e1.7", modes=("diff",)),
     _a("diff.copy_path", "Diff: copy path", "view", "e5.8", modes=("diff",)),
@@ -336,7 +365,6 @@ PREFIX_C_W: tuple[str, ...] = ("h", "l", "n", "p", "o", "c", "1", "2", "3", "4",
 DEFAULTS: dict[str, dict[str, str]] = {
     # --- the root layer: reachable from everywhere except prompt/pick ---------
     "global": {
-        "q": "view.queue",
         "t": "view.timeline",
         "d": "view.diff",
         "s": "view.structure",
@@ -351,8 +379,8 @@ DEFAULTS: dict[str, dict[str, str]] = {
         "f": "review.flag",
         "-": "review.dismiss",
         "z": "review.snooze",
+        "r": "review.retrospect",
         "w": "risk.explain",
-        "i": "intent.show",
         "m": "compare.mark",
         "c": "compare.with_mark",
         "F": "filter.edit",
@@ -458,6 +486,7 @@ DEFAULTS: dict[str, dict[str, str]] = {
         "W": "diff.word_toggle",
         "=": "diff.ws_toggle",
         "b": "diff.noise_toggle",
+        "<": "diff.sort_cycle",
         "[": "diff.hunk_prev",
         "]": "diff.hunk_next",
         "y": "diff.copy_path",
@@ -491,10 +520,9 @@ DEFAULTS: dict[str, dict[str, str]] = {
     },
     # Views whose whole job is a list plus a card add nothing of their own: the
     # shared motion set *is* the whole keymap, which is what "identical motion
-    # behaviour across timeline, queue, file tree and search results" (e5.4) demands.
-    "queue": {
-        "r": "queue.retrospect",
-    },
+    # behaviour across timeline, file tree and search results" (e5.4) demands.
+    # `queue` used to hold `r`; `e10.2` moved the rollup onto the rail and the key with it
+    # (ADR-006 §5.1.2 §4), and `e10.3` deleted the view, the mode and the letter along with it.
     "timeline": {},
     "ambient": {},
 }
@@ -546,15 +574,16 @@ class Task:
 TASKS: tuple[Task, ...] = (
     Task(
         id="T1",
-        name="Triage the top of the queue and sign it off",
+        name="Triage the top of the rail and sign it off",
         asks="What is the next thing I have to look at, and am I happy with it?",
         ticket="e4.5",
         steps=(
-            TaskStep("q", "view.queue",
-                     "Home. Focus lands on the worklist, ranked by risk (pane 1).",
+            TaskStep("t", "view.timeline",
+                     "The rail — the chronology `e10.1` made home — newest first, focused "
+                     "(pane 1). No filter on entry: the strip's unread count is the signal.",
                      "global"),
             TaskStep("j", "list.down",
-                     "Move down the worklist. `H`/`M`/`L` and `<C-d>`/`<C-u>` too.",
+                     "Move down the rail. `H`/`M`/`L` and `<C-d>`/`<C-u>` too.",
                      "list"),
             TaskStep("<Enter>", "drill.in",
                      "Drill into the episode card (pane 2): what changed, where, blast "
@@ -563,11 +592,13 @@ TASKS: tuple[Task, ...] = (
                      "Same scope, diff view: file tree first, `j` then `<Enter>` to "
                      "read a file's hunks.", "global"),
             TaskStep("x", "review.accept",
-                     "Mark reviewed: disposition `accepted` + identity + time to the "
-                     "ledger; the queue advances.", "global"),
+                     "Mark reviewed: disposition `accepted` + identity + time are written "
+                     "first, and only then does the row's glyph go `⚑`→`✔` and the strip's "
+                     "count drop — same frame, cursor where it was.", "global"),
         ),
         note="`f` flags instead, `-` dismisses with a reason from the closed vocabulary, "
-             "`z` snoozes, `w` prints the ranking the way `fathom why` does.",
+             "`z` snoozes, `w` prints the ranking the way `fathom why` does, `r` lists what "
+             "was skipped and why. A run of rows is `F` → `state=unread`, then `j`.",
     ),
     Task(
         id="T2",
@@ -576,7 +607,7 @@ TASKS: tuple[Task, ...] = (
         ticket="e2.10",
         steps=(
             TaskStep("a", "view.ambient",
-                     "Glance mode: latest episode, its risk, queue count, index state.",
+                     "Glance mode: latest episode, its risk, the unread count, index state.",
                      "global"),
             TaskStep("<Enter>", "drill.in",
                      "Drill into that episode's card: one keypress, per ADR-001 §4.1.",
@@ -619,7 +650,7 @@ TASKS: tuple[Task, ...] = (
 
 #: The hint line (`e5.4`) may advertise only these, in this order.
 HINT_ACTIONS: tuple[str, ...] = (
-    "view.queue", "view.timeline", "view.diff", "search.open", "palette.open",
+    "view.timeline", "view.diff", "search.open", "palette.open",
     "review.accept", "risk.explain", "help.open",
 )
 
@@ -631,7 +662,7 @@ def mode_chain(view: str, interaction: str) -> tuple[str, ...]:
     """The live modes for (view, interaction), in precedence order.
 
     An exclusive mode (`prompt`, `pick`) replaces the whole chain: while a text field
-    has the keyboard, `q` is the letter q. This is what makes `queue` typeable in the
+    has the keyboard, `q` is the letter q. This is what makes `timeline` typeable in the
     palette and is the reason `prompt` sits at the head of :data:`PRECEDENCE`.
     """
     modes = {m.name: m for m in MODES}
@@ -711,7 +742,7 @@ def split_chords(text: str) -> list[str]:
     return out
 
 
-def press(sequence: str, view: str = "queue", interaction: str = "list") -> list[dict]:
+def press(sequence: str, view: str = "timeline", interaction: str = "list") -> list[dict]:
     """Resolve a published sequence against the real table.
 
     Returns one record per chord: the chord, the mode that answered, the action, and

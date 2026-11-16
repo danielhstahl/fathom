@@ -13,7 +13,20 @@
 //! Every test starts its own daemon on its own socket in its own repository, and every daemon is waited for:
 //! a leaked foreground daemon holds a writer lease, and the next test in the same repository would report a
 //! live lease for reasons that have nothing to do with what it is testing.
+//!
+//! Why the whole file is `cfg(unix)`: its subject is a daemon a *client can talk to*, and off Unix there
+//! is no local transport to talk over — [`socket::bind`] answers `Unsupported` because a named pipe needs
+//! the FFI this workspace forbids (`fathom-ingest`'s socket header names the gap). The SIGTERM criterion
+//! is POSIX for a second reason: it sends the signal with `sh` and `kill`. Gating the file is the honest
+//! shape of "not testable here", and it is what `reco-wgcj` found when the binary stopped building on
+//! Windows.
 #![allow(clippy::unwrap_used, clippy::expect_used)]
+#![cfg(unix)]
+// And gated on the feature that builds the subject: `fathom-ingest`'s `daemon` module — the socket the tests
+// speak and the loop they watch — is compiled only with `watch` (ADR-002 §6.2), and a binary built without it
+// answers every verb in this file with `FEATURE_ABSENT` (9), including the one whose whole point is that the
+// verbs exist. Same spelling as the store-gated suites in this directory.
+#![cfg(feature = "watch")]
 
 use std::io::{BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};

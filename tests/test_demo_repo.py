@@ -19,9 +19,10 @@ returning nothing against its parent, and the churn loop by the exact line one c
 one adds back. A fixture that only *says* it planted a pathology is a comment with a filename.
 
 The same rules run in CI as `python3 tools/demo_acceptance.py check`, `tools/record_demo.py check`,
-`tools/demo_exhibits.py check` and `tools/publish_demo_repo.py check`
-(`.github/workflows/ci.yml`, `contracts.yml`); this file is their pytest mirror, with the failure messages
-a contributor sees.
+`tools/demo_exhibits.py check` and `tools/publish_demo_repo.py check` — the last of those in
+`.github/workflows/contracts.yml` alone since `e11` closed, because the check needs `git` and the committed
+pack rather than the build `ci.yml` was running it beside; this file is their pytest mirror, with the failure
+messages a contributor sees.
 
 Run: python3 -m pytest tests/test_demo_repo.py -q
 """

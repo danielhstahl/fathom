@@ -9,8 +9,9 @@
 - **Decided by**: [the architecture graph](architecture-graph.md) (fan-in, fan-out, instability and the
   wildcard and synthetic-scope caveats all come from `e3.2`'s queries),
   [structure extraction](structure-extraction.md) (`e3.1`'s spans are the complexity proxy — a proxy, and
-  labelled one), [the graph delta](dependency-delta.md) (`e3.3`'s `ChurnReport` is the velocity term),
-  [risk scoring](risk-scoring.md) (`e4.4`'s definition of "explainable": hundredths that sum, a printed
+  labelled one), [the graph delta](dependencies.md#the-delta-what-the-episode-did-to-the-graph-and-what-proves-it)
+  (`e3.3`'s `ChurnReport` is the velocity term),
+  [risk scoring](risk.md) (`e4.4`'s definition of "explainable": hundredths that sum, a printed
   denominator, a published knee, monotonicity), [config](config.md) (every knob below is a
   `fathom.toml` key with a schema entry and a budget row),
   [ADR-002](../adr/0002-workspace.md) §6.1 (a `--no-default-features` build still ranks hotspots).
@@ -222,7 +223,8 @@ going on the values it actually used. `[hotspots]` is documented with the rest o
 
 ## See also
 
-[the architecture graph](architecture-graph.md) · [the graph delta and churn](dependency-delta.md) ·
+[the architecture graph](architecture-graph.md) ·
+[the graph delta and churn](dependencies.md#the-delta-what-the-episode-did-to-the-graph-and-what-proves-it) ·
 [layering rules](layering.md) · [cycles and cycle debt](cycle-detection.md) ·
-[risk scoring — the same explainable arithmetic](risk-scoring.md) · [config](config.md) ·
+[risk scoring — the same explainable arithmetic](risk.md) · [config](config.md) ·
 [the public API surface](api-surface.md)

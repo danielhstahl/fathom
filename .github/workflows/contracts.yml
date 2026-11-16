@@ -1,34 +1,96 @@
 # Contract gates: the documents and the architecture decisions, as executable checks.
 #
 # ADR-002 §8 says the boundary lint must be *in CI*, and `tools/check_workspace.py check` fails (rule
-# C01) if the required invocations disappear from `.github/workflows/*.yml` — that is what makes "the
-# lint is wired up" a checked fact. `e0.7` (reco-e77) took the option this file offered: the placeholder
-# `rust` job that used to live here is now `ci.yml`'s three-OS matrix, and no step was dropped — the
-# remaining half of §8.1's list (`cargo fmt`, the two `clippy` invocations, `cargo deny check`,
-# `cargo +$MSRV`) is in `ci.yml`, this half is here.
+# C01) if the required invocations disappear from `.github/workflows/*.yml` — or survive only at the wrong
+# cadence, or turn up in a second workflow when the model pins them to one — that is what makes "the lint is
+# wired up" a checked fact. `e0.7` (reco-e77) took the option
+# this file offered: the placeholder `rust` job that used to live here is now `ci.yml`'s matrix, and no step
+# was dropped — the Rust half of §8.1's list (`cargo fmt`, the two `clippy` invocations,
+# `EmbarkStudios/cargo-deny-action`, `cargo +$MSRV`) is in `ci.yml`, this half is here.
+#
+# Since `e11.2` (`reco-374v.2`) this file is also where the *cheap proofs about expensive gates* live. The
+# perf gate and the fuzzers moved to the daily schedule, and the part of them a pull request can be blamed
+# for — "the gate can still fail", "the budgets and the ADR table are one generator's output", "the seed
+# corpus is the generated one" — runs here in about a second, with no build in front of it. See the
+# `perf and fuzz proofs` step.
 #
 # The `contracts` job deliberately needs no Rust toolchain: a gate that only runs after a 4-minute
 # dependency build is a gate that people skip.
+#
+# Since `e11.3` (`reco-374v.3`) it is also the **one** job the changelog gate reports from — `gen_changelog.py
+# audit`, `lint` and the draft smoke, moved out of `ci.yml`'s `e7.7` beta-loop step, which had been running
+# them a second time behind a workspace build. `AGENTS.md`'s rule is that every commit carries its
+# `[Unreleased]` entry; a rule is worth one red check per mistake, and `C01` now pins this gate's needle to
+# this file so a second copy is a rule violation rather than a reasonable-looking addition. The epic close
+# moved one more gate's home here for the same reason — `publish_demo_repo.py check` is `git` over the
+# committed demo pack, so the copy `ci.yml` ran beside a binary it never consulted was cost without a
+# verdict — and took this file's own duplicated generator line out (`check_docs_site.py` asks the generator
+# the same question inside the same step, and `docs.yml` asks it as a named step).
 
 name: contracts
 
 on:
   pull_request:
   push:
-    branches: [master]
+    # Every branch, not only the default one: `master` sat frozen for three weeks while the work was on a
+    # branch no trigger could reach, and nothing in CI could see it (`e11.1` §5.2, `reco-kwg6`). `R07` of
+    # `tools/check_workflows.py` refuses a list of names here, and *Which branch a gate runs on* in
+    # docs/concepts/ci-gate.md is the prose.
+    branches: ["**"]
 
 permissions:
   contents: read
 
+# A push to a branch that already has a run in flight must not pay for it again: `e11.1` §2.4 counted 7
+# red runs in thirty days whose only fault was being superseded, and every one of them ran to the end
+# anyway. Per workflow, so two workflows never share a queue; per ref, so two pull requests never cancel
+# each other. Rule `R02` of `tools/check_workflows.py` asks every `pull_request` workflow for this block.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   contracts:
     name: docs + workspace contracts
+    # the document gates and the whole contract suite, with the python install in front of them; measured 5.9 minutes, and it compiles no Rust at all
+    timeout-minutes: 30
     runs-on: ubuntu-latest
     steps:
+      # Full history, not a depth-1 clone, for two consumers in this job. The `e7.7 changelog gate` step below
+      # asks `tools/gen_changelog.py audit` whether every commit since the last release is accounted for in
+      # `CHANGELOG.md`, and a claim about a range of commits cannot be checked against a clone that was cut
+      # short. And this job ends in `python3 -m pytest -q`, whose suite contains gates that read the *history*
+      # rather than the tree. On a default checkout the audit died inside `git log` with `Invalid revision
+      # range`, which reached pytest as a `SystemExit` and hid every real finding behind it (**reco-ghao**);
+      # the audit now refuses a shallow clone by name (`C06`).
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: "e7.7 changelog gate: every commit since the last release has its [Unreleased] entry"
+        # `AGENTS.md`'s rule, and the job that reports it. `audit` (`C03`) reads the history and nothing
+        # else, so it belongs in the job that compiles no Rust and is already standing on a full checkout:
+        # a missing release note should be named in seconds, at the top of the log, in the audit's own words
+        # — not eight minutes after a workspace build that had nothing to do with the missing paragraph.
+        # It used to run in both places, and `e11.1` §4 counted what that cost: three consecutive commits
+        # with the same `C03` finding red in `ci.yml` *and* here, and `reco-s6ge` filed because one mistake
+        # buys one ticket per job. `e11.3` (`reco-374v.3`) deleted the second copy and pinned the first:
+        # `C01` now refuses this needle in any other workflow.
+        #
+        # `tests/test_beta_loop_contract.py` calls the same `audit()` in the pytest step at the end of this
+        # job. That is a mirror, not a second gate: one job, one check, one red — the half that was deleted
+        # was the other *job*.
+        #
+        # `lint` is advisory on purpose — this repository's commit style is a sentence, and a tool that
+        # demanded `fix(area):` before it could describe one would be a tool that gets bypassed — so it runs
+        # without `--strict`, prints `::warning::` annotations and exits 0, and the `draft` is a smoke test
+        # that the generator still runs.
+        run: |
+          python3 tools/gen_changelog.py audit
+          python3 tools/gen_changelog.py lint
+          python3 tools/gen_changelog.py draft --version Unreleased | head -3
       - name: glossary, plan references and link consistency
         run: python3 tools/check_docs.py
       - name: "e7.5 docs site: no orphan page, no dangling anchor, no undocumented shipped feature"
@@ -43,9 +105,36 @@ jobs:
         # have a program as their source: the `cli` page is clap's `--help`, and every command a page tells
         # the reader to type is parsed by clap itself (`tools/check_docs_commands.py`, reached through
         # `check_docs_site.py`). Here they skip themselves with a printed note rather than passing silently.
-        run: |
-          python3 tools/gen_docs.py check --page cheatsheet --page detectors --page features
-          python3 tools/check_docs_site.py
+        #
+        # One line used to sit above this one — `gen_docs.py check --page cheatsheet --page detectors
+        # --page features` — and it asked a question the line below asks again inside the same step:
+        # `check_docs_site.py` imports the generator and calls exactly that check as its "generated pages
+        # are fresh" rule (`check_generated_fresh`), so the step ran the same diff twice per push, and
+        # `docs.yml` runs the identical command a third time as its own named step. `e11.1` §3 counted
+        # that row; the epic close deleted the copy, and the model pins the needle to `docs.yml` now, so
+        # the surviving pair is one named step in the workflow whose subject is the docs site and one
+        # rule inside the gate that cannot be deleted without deleting the gate.
+        run: python3 tools/check_docs_site.py
+      - name: "e12.2 and reco-u962 gate self-test: break copies of the docs and require each rule to name its own break"
+        # `docs/reference/doc-map.md` §4.0 asked for this in the same commit as the rule it tests: a gate
+        # nobody has seen fail is a gate nobody can trust, and `check_docs_site.py` had no self-test until
+        # the relocation rule needed one. It now runs two rules against scratch copies of the real tree.
+        # `check_relocations`: four deliberate breaks — a retired path deleted, a pointer that has grown into
+        # a second copy, a pointer the front door stopped linking, and a real page leaning on the redirect
+        # instead of the new page. `check_fenced_tables` (`reco-u962`): a generated table pasted into an
+        # untagged fence and into a `text` fence, with two controls that must stay quiet — the same table
+        # inside a `bash` fence, and a single pipe-leading line. The clean copy is required to pass between
+        # them, and a case that expects silence fails as loudly as one that expects a name.
+        run: python3 tools/check_docs_site.py --self-test
+      - name: "e12.2 the risk page's twelve-axis table is `risk::feature::SPECS`, generated"
+        # The page used to *say* its axis table was generated while carrying no generated block, which is
+        # the worst of the three states a table can be in: a claim of freshness with nothing behind it.
+        # `reco-msv1.2` made the sentence true rather than deleting it. The source is a Rust source file
+        # read as text — the same way `features.rs` and `exit.rs` are read for `features.md` — so the
+        # check belongs in the job that compiles no Rust, because a documentation-only branch has to be
+        # able to run its own gate. A `SPECS` array this tool cannot parse fails loudly here instead of
+        # quietly dropping an axis row out of the page.
+        run: python3 tools/gen_risk_tables.py check
       - name: "reco-j1o no shipped sentence claims a closed ticket is unbuilt"
         # `fathom why` used to print, as its own scope statement, that the module graph was `e3.1`'s and
         # the graph delta was `e3.2`'s — both beads closed, both features in the index the reader was
@@ -63,10 +152,16 @@ jobs:
         # the miniature and not noise from a different machine.
         run: python3 tools/gen_demo_repo.py check
       - name: "m2 CI gate: the installer, the workflows and the documented paths are one story"
-        # The same step `ci.yml` runs, run here too on purpose: the half of it that reads documents needs
-        # no binary, and a documentation change that deletes a script it names should be caught by the
-        # job that is already running on documentation alone.
+        # The half of `m2` that reads documents, run beside the half `ci.yml` runs on the leg that builds a
+        # binary: the two are not the same question — `check_ci_gate.py`'s verb and flag rules need a
+        # compiled `fathom` and print that they skipped when there is none (`reco-p40`), so a docs-only
+        # change is caught here and a flag that stopped existing is caught there. The self-test comes first
+        # for the reason `docs.yml` gives: it needs nothing, and it proves the gate below can fail. The
+        # demo-repository half below is this job's alone since the epic close: it needs `git` and the
+        # committed pack, not a build, so the copy `ci.yml` ran beside a binary it did not consult went
+        # away and `tools/workspace_model.py` pinned the needle to this file.
         run: |
+          python3 tools/check_ci_gate.py self-test
           python3 tools/check_ci_gate.py
           python3 tools/publish_demo_repo.py check
       - name: "e7.6 demo: the answer key matches the catalogue, and the film is still honest"
@@ -82,6 +177,25 @@ jobs:
         run: python3 tools/check_workspace.py check
       - name: module-boundary lint (fails a crate importing uphill)
         run: python3 tools/check_workspace.py lint
+      - name: "perf and fuzz proofs: the gate can still fail, and the corpus is the generated one"
+        # `e11.2` (`reco-374v.2`) moved the *measurements* off the pull request — the perf budget gate
+        # (`perf.yml`, red on 17 of 19 PR runs because a shared runner is not a stopwatch) and the fuzz smoke
+        # (403 runner-minutes a fortnight of nightly toolchains, `fuzz.yml`). What stays here is the part a
+        # pull request can be blamed for, which needs no build, no nightly toolchain and about a second:
+        #
+        #   * `perf_gate.py --self-test` — the perf gate's own negative controls. A gate that has been
+        #     neutered should be found out here, in the cheap job, and not on a nightly three days later.
+        #   * `gen_budgets.py check` / `gen_adr_tables.py check` — `budgets.json`, `BUDGETS.md` and the
+        #     ADR-004 table are one generator's output (ADR-002 §8.4: a generated file is checked by
+        #     regenerating it).
+        #   * `gen_fuzz_corpus.py check` — the committed seed corpus is what the generator writes, which is
+        #     the claim that makes the nightly run mean something. `check_workflows.py`'s `P03`/`P04` cover
+        #     the other half of "the fuzzing setup is real" in the same job.
+        run: |
+          python3 tools/perf_gate.py --self-test
+          python3 tools/gen_budgets.py check
+          python3 tools/gen_adr_tables.py check
+          python3 tools/gen_fuzz_corpus.py check
       - name: "e2.11 delta model: the version policy refuses a breaking change with no version bump"
         # `reco-tt4`'s acceptance criterion 4, as a step. `schemas/episode-delta.schema.json` is the one
         # document the TUI, the CLI, the export and an MCP tool result all read, so "additive keeps the
@@ -98,6 +212,12 @@ jobs:
         # worse than none: the editor becomes the confident party and it is wrong.
         run: PYTHONPATH=src python3 -m recommender.config schema --check
       - name: "e0.8 config: the config reference tables match the key spec"
+        # The tables are generated out of `src/recommender/config/schema.py`, and the generator escapes
+        # the `|` in a cell — `non_code.env.secret_name_pattern`'s default is a regex alternation, and an
+        # unescaped bar cuts that row out of the rendered table. `reco-c81` was this step failing forever
+        # because the escape had been typed by hand into the generated block instead of into the
+        # generator, and a hand edit inside a `BEGIN GENERATED` block is drift by definition. The remedy
+        # this step prints is the command that actually runs: `fathom` has no `config` verb.
         run: PYTHONPATH=src python3 -m recommender.config doc --check
       - name: "e0.8 config: a checked-in example repo config validates and explains"
         run: |
@@ -219,7 +339,7 @@ jobs:
           printf 'DATABASE_URL = os.environ["DATABASE_URL"]\nSEARCH_INDEX_HOST = os.environ["SEARCH_INDEX_HOST"]\n' > /tmp/nc/before/src/settings.py
           printf 'PG_DATABASE_URL = os.environ["PG_DATABASE_URL"]\nSEARCH_INDEX_HOST = os.environ["SEARCH_INDEX_HOST"]\n' > /tmp/nc/after/src/settings.py
           printf 'name: release\non:\n  release:\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo hi\n' > /tmp/nc/before/.github/workflows/release.yml
-          # `$` is split out so GitHub's expression parser never sees `${{ … }}` in *this*
+          # `$` is split out so GitHub's expression parser never sees variable interpolation in *this*
           # workflow and tries to resolve a secret of ours; the fixture file gets the literal.
           DOLLAR='$'
           printf "name: release\non:\n  release:\njobs:\n  build:\n    runs-on: ubuntu-latest\n    environment: production\n    steps:\n      - run: sign ${DOLLAR}{{ secrets.SIGNING_KEY }}\n" > /tmp/nc/after/.github/workflows/release.yml
@@ -363,8 +483,9 @@ jobs:
         # report/gate invariants.
         run: python3 tools/author_turn_corpus.py --validate-only
       - name: "spike s2: the segmentation tables in ADR-003 §18 and the concept document are generated"
-        # Every number in `docs/concepts/episode-segmentation.md` and ADR-003 §18 comes out of
-        # `benchmarks/reports/s2-segmentation-accuracy.json`, which is what closed ADR-003 §4.4 and §13.7.
+        # Every number in `docs/concepts/episode-derivation.md`'s *How a boundary is found* and in ADR-003 §18
+        # comes out of `benchmarks/reports/s2-segmentation-accuracy.json`, which is what closed ADR-003 §4.4
+        # and §13.7.
         # A hand-copied table there is a table that keeps its old numbers the day the corpus changes.
         run: python3 tools/gen_segment_tables.py check
       - name: "spike s4: rename and copy detection re-measures to the committed report"
@@ -374,9 +495,9 @@ jobs:
         # and config input, so this re-runs the whole measurement (~40 s) and fails if any count, gate,
         # threshold or chosen fact bar moved. A spike that cannot be re-measured is an anecdote.
         run: PYTHONPATH=src python3 -m recommender.rename.spike --report benchmarks/reports/s4-rename-detection.json --check
-      - name: "spike s4: the rename-detection document's numbers are the report's, generated"
-        # Every number in `docs/concepts/rename-detection.md` — the fact/guess recommendation `e2.4` will
-        # be written from — is rendered from the report by the same generator the doc cites.
+      - name: "spike s4: the rename document's measurement half is the report's, generated"
+        # Every number in `docs/concepts/rename.md`'s *The measurement* — the fact/guess recommendation
+        # `e2.4` was written from — is rendered from the report by the same generator the doc cites.
         run: python3 tools/gen_rename_tables.py check
       - name: "e2.4 rename pairing: the shipped detector re-measures to the committed report"
         # `benchmarks/reports/e2-4-rename-pairing.json` is the acceptance criteria of `reco-a0v` turned
@@ -385,7 +506,9 @@ jobs:
         # the cost curve flat against repository size while the refused O(repo) mode is not. Built from
         # real `git` histories on the runner (~10 min), and a gate that drifted is a claim that changed.
         run: PYTHONPATH=src python3 -m recommender.rename score --check
-      - name: "e2.4 rename pairing: the concept document's numbers are the report's, generated"
+      - name: "e2.4 rename pairing: the rename document's shipped half is the report's, generated"
+        # The other half of `docs/concepts/rename.md`: same rule, different report — nothing in either
+        # page is typed by hand.
         run: python3 tools/gen_rename_pairing_tables.py check
       - name: "e2.4 rename pairing: the card audits itself, and the verbs work on a real repository"
         # The auditor is only worth having if something runs it: this renders a real card from a real
@@ -417,6 +540,23 @@ jobs:
           PYTHONPATH=src python3 -m recommender.tui palette | tail -2
           PYTHONPATH=src python3 -m recommender.tui press "q j <Enter> d x"
           PYTHONPATH=src python3 -m recommender.tui keys --cheatsheet | head -3
+      - name: "reco-yuk: the workflows are checked against this repository"
+        # Not a YAML linter. Six of the eleven files in `.github/workflows/` were red when this step
+        # landed, and four of them were red for a reason a linter cannot see: an action path that
+        # `axodotdev/cargo-dist` has never contained (the job died in *Set up job*, before step 1, with
+        # nothing in the log), `cargo fuzz` run from inside `fuzz/`, `steps.minutes.value` instead of
+        # `steps.minutes.outputs.value`, and a `--all-targets` build of a crate whose tests need a store
+        # backend. Every one of those is a claim about *this repository* — a path, a package, a feature,
+        # a step id — so the gate reads the workflows against the tree, offline, and refuses the whole
+        # class. Since `e11.4` (`reco-374v.4`) it is also where the runner hygiene is enforced — a timeout on
+        # every job, a per-ref queue on every `pull_request` workflow, no `continue-on-error` without a written
+        # reason, one cargo cache with one dated lever, an artefact budget with a size guard in front of every
+        # upload, and scheduled work kept off the merge path — because a lint that runs in one file's job is a
+        # lint that file's edits cannot silently skip. `self-test` writes twenty-one workflows designed to break
+        # one rule each and requires every rule to fire.
+        run: |
+          python3 tools/check_workflows.py --verbose
+          python3 tools/check_workflows.py self-test
       - name: ADR-002 / ADR-004 / ADR-005 / e0.6 / e0.8 / e0.9 / e2.1 contract suites
         run: |
           python -m pip install --disable-pip-version-check pytest

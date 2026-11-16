@@ -13,10 +13,10 @@
 //!    Lint `M02` enforces the path, and `E01` refuses the `fathom-store` edge the layering would allow.
 //!    What the search exception may not become is a licence: the shell may *score* a corpus it was handed
 //!    and may not build one, and `M03` is the lint that keeps the difference real.
-//!    The risk numbers the rail and the queue print arrived the same way `reco-c05` found everything
+//!    The risk numbers the rail prints arrived the same way `reco-c05` found everything
 //!    else: `fathom-cli` reads the spine, asks `fathom_analyze::risk` for the ranking, and hands the
 //!    shell the value and its reasons in the row. Nothing here sorts or scores an episode from its own
-//!    reading of the fields — the queue's order is a sort of a number it was given.
+//!    reading of the fields — the rail prints a number it was given, in a chronology it was given.
 //! 2. **No terminal-size or clock reads outside the frame loop.** Rendering takes a [`FrameContext`]
 //!    carrying the size and the instant, so a view is testable headlessly at a fixed 80×24 (`e5.5`)
 //!    and a golden render does not depend on the window it was captured in.
@@ -49,8 +49,10 @@ pub mod layout;
 pub mod materialize;
 /// The progress row: a percentage and a time estimate that converges (`e5.9`, ADR-006 §10.3).
 pub mod progress;
-pub mod queue;
 pub mod render;
+/// The review ledger's shell side (`e4.5` `reco-wsj`, renamed by `e10.3` `reco-ydek.3`): the acts, the
+/// write that makes them real, and the retrospective. The ordering the queue needed is gone, not renamed.
+pub mod review;
 /// The `/` box: the corpus it scores against, how its rows read, and where `<Enter>` goes (`e5.2`,
 /// `reco-mkc`). The scoring itself belongs to `fathom_analyze::search`; this module is the overlay.
 pub mod search;
@@ -64,5 +66,3 @@ pub mod views;
 /// How an open frame learns the repository moved (`reco-bpc`): the watcher the composition root installs,
 /// the update it hands over, and the two states the frame is allowed to claim about its own freshness.
 pub mod watch;
-/// The Queue view's ranked worklist (`reco-c05`): a list, not a scorer.
-pub mod worklist;

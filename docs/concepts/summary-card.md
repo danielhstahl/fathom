@@ -12,12 +12,17 @@
   `compose.py`, `render.py`, `verify.py`, `explain.py`, `eval.py`, `corpus.py`, `cli.py`), built out
   of the analyses it summarizes — [noise](noise-suppression.md) (`e2.2`),
   [paths](change-classification.md) (`e2.1`), [folder structure](folder-structure.md) (`e2.3`),
-  [the dependency delta](dependency-delta.md) (`e2.6`),
+  [the dependency delta](dependencies.md#the-delta-what-the-episode-did-to-the-graph-and-what-proves-it) (`e2.6`),
   [non-code surfaces](noncode-surfaces.md) (`e2.8`), [the test surface](test-surface.md) (`e2.9`)
-  and [risk ranking](risk-ranking.md) (`e4.4`) — plus `fathom_graph::blast` (`e3.2`) for the reach
+  and [the risk page](risk.md) (`e4.4`) — plus `fathom_graph::blast` (`e3.2`) for the reach
   figure, whose Rust home is planned at `crates/fathom-analyze/src/card/` and whose Python package
   is the contract surface. Measured by `tests/test_summary_card_contract.py` and by
   `python3 -m recommender.card score`.
+- **Surface split, decided separately**: `reco-5js3.1` (`e9.1`) settled which question each episode
+  surface answers, in [ADR-006 §5.1.1](../adr/0006-tui.md). The seven questions below belong to the
+  card *model* and are unchanged; what one episode pane may print, in what order and in whose words
+  is that section's, and this page points at it instead of restating it — for the reason this
+  document gives every figure: two copies of a list is two chances for the copies to disagree.
 
 ---
 
@@ -65,6 +70,56 @@ The row carries a mark and a state (`measured`, `partial`, `unavailable`, or `sw
 <key>`); the block carries the figures. A card printed from an episode with only a path list — an
 indexed spine with no bytes, which is the common case in Epic 1 — has all seven rows and says of six
 of them that bytes are what is missing ([§6](#6-the-degradation-contract)).
+
+### 2.1 Seven questions, one surface, and the one line that ends a pane
+
+Seven questions is the model's answer, and it is the answer `fathom card` prints with every pointer
+and every block. The shell has less room than that: at 80×24 the episode pane is twenty-nine columns
+wide in the queue and thirty-five in the timeline, and eighteen content rows deep in both, and a pane
+that spends its rows is a pane a reviewer reads half of. `reco-5js3.1` (`e9.1`) decided what that
+pane is allowed to print, [ADR-006 §5.1.1](../adr/0006-tui.md) is the page that owns the decision, and
+`e9.2`/`e9.3` are the commits that carry it. The short form, from here:
+
+* **One episode surface.** The card pane of `q` and `t` is the only place in the shell that
+  summarises an episode. The ranking pane `w` swapped the card out for is retired — `w` expands one
+  band of the card instead — and the intent pane does not survive; what did survive of its rule is in
+  the ADR.
+* **Five bands, in the delta document's order.** *What changed* (the code delta first), *where it
+  landed*, *what it touches and could break* (four rows: `dependencies`, `surface`, `tests`,
+  `blast`), *why it ranks here*, and *what the agent said it was doing* — one line, last. That is
+  `SectionId::ALL`'s order with intent appended, so the pane, `fathom analyze`, the export and an
+  agent's tool result read a reviewer's question in one sequence, and no second vocabulary is
+  needed for "where did it land".
+* **The pane renders; it does not author.** Every figure on it is one of these seven sections'
+  first figure, a `RiskView` accessor's line, or the intent document's own first line — which is
+  the same rule as §3's, seen from the other side: §3 forbids a figure with no evidence, §5.1.1
+  forbids a figure with two phrasings. The two rows the pane wrote for itself — its own count of
+  path prefixes, and the churn it re-spelled out of the spine's columns — are deleted with it,
+  because a pane rolling up its own version of a section this model already renders is
+  [ADR-001 §7.10](../adr/0001-product-thesis.md)'s bug with a screenshot.
+* **Intent is one line.** Three states, one line, no keystroke: the recorded text with its source
+  and confidence, the digest-only state that is what this project's own streams carry, and the named
+  absence. The plan items and the declared scope are evidence, and evidence lives in the delta
+  document — printed whole by `fathom show <episode>`, from the same document this card summarizes.
+  A row that says *what the agent claimed* is a summary; the whole brief is not a row.
+* **The row budget spends the bands first.** Two rows of header (identity, then the facts row — commit
+  count, age, review state — with the author-kind verdict struck from it by `e10.4`), one row for every
+  warning that says this row cannot be trusted at all,
+  then the five bands in order, and only after them the provenance — `members`, `boundary`, `session`,
+  the model stamp, the read line — cut first when the card does not fit. Intent's share of that budget
+  is the one row above, and what it gave back went to the code delta: the noise fold on a row of its own
+  instead of inside a `+N more`, the top-paths list long enough to answer "where" instead of naming four
+  directories, and the row in band 1 labelled `complexity`, which draws the figure
+  [ADR-007 §5](../adr/0007-complexity.md) gives it — the figure has been in the document since `e8.5`
+  (`reco-l9bz.5`), and an episode whose read made no complexity roll-up has no row rather than a row of
+  `0`, because a row that reads "not measured" under every episode is a row that prints nothing.
+  What the budget cannot fit is cut in the same order and never silently: every figure takes exactly
+  one row (cut at the row's end, keeping the document's own `· +3 more` as the tail), and the row that
+  says how many fell off names the key that brings them back. The card takes no scroll offset until
+  `e9.3` gives it sections to walk — see [ADR-006 §5.1.1](../adr/0006-tui.md), which owns the split.
+
+The mapping is a projection, not a new model: seven sections in, five bands out, nothing added and
+nothing invented, and every band names the function that renders its strings.
 
 ## 3. The one rule about where a figure comes from
 
@@ -207,9 +262,12 @@ does not notice — which is what makes the auditor a check rather than a habit.
 
 "Warm" means what `query.card.ms.small` means: the analyses are already in hand, which is what the TUI
 measures when a row is selected. Composing from cold analyses is printed separately and not gated —
-it is what an index run pays, against `analyse.episode.ms.p95`. Both timings are reported with their
-environment (CPU count, machine width, interpreter version) because a budget without a machine is a
-vibe.
+it is what an index run pays, against `analyse.episode.ms.p95`. The cold number is the warm path's own
+work plus the analysis, sampled as the warm path is sampled and after one untimed pass over the corpus,
+so "cold is the bigger number" is arithmetic about the two paths rather than a race between two
+differently-shaped distributions — it was a race, and a loaded runner once won it (**reco-d2bo**). Both
+timings are reported with their environment (CPU count, machine width, interpreter version) because a
+budget without a machine is a vibe.
 
 The corpus is 16 fixtures covering: a small code-plus-test change; an episode with only a path list
 (no bytes — the Epic 1 build); no repository inventory on either side; a module graph supplied,

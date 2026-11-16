@@ -26,6 +26,26 @@ publish = false
 license = "MIT OR Apache-2.0"
 description = "Cargo-fuzz targets for the readers that take repository content: lockfiles, hook events and path names."
 
+# The marker cargo-fuzz reads to decide that *this* manifest is the fuzz workspace's, and not an ordinary
+# crate that happens to be called `fuzz` (`reco-com`). Without it every `cargo fuzz` invocation dies before
+# it compiles anything:
+#
+#     Error: manifest fuzz/Cargo.toml does not look like a cargo-fuzz manifest. Add following lines to
+#     override:
+#     [package.metadata]
+#     cargo-fuzz = true
+#
+# The check is what makes cargo-fuzz's directory discovery work at all. `find_package()` walks up from the
+# working directory and returns the first manifest that is **not** a fuzz manifest; the fuzz directory is
+# then `<that>/fuzz`. From the repository root that is `<root>/fuzz`, which is this directory. And because
+# this manifest is now recognisable, standing inside `fuzz/` walks past it to the root and lands in the same
+# place instead of looking for `fuzz/fuzz/`.
+#
+# `fuzz/Cargo.toml` is the only place this goes. Putting it in the root manifest would tell cargo-fuzz the
+# product crate is a fuzz workspace, which is a lie and would move `fuzz_dir` somewhere else entirely.
+[package.metadata]
+cargo-fuzz = true
+
 [dependencies]
 # The ecosystems behind the lockfile target are the point of it, so they are all on.
 fathom-analyze = { path = "../crates/fathom-analyze", features = ["deps-all"] }

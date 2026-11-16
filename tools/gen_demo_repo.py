@@ -9,7 +9,8 @@ objects, so this tool builds one and packs it.
 What the miniature contains is not arbitrary. It is the shortest history that puts a row in every view the
 shell has: an episode each for a test deleted, a reformat, a rename, a dependency bump in two ecosystems,
 a cycle introduced, a CI job added, a merge, and a large rewrite, authored by two people and one agent so
-the queue ranks agent work against human work instead of showing one label. The whole story is the
+the attribution ladder and the identity questions have a mixed history to answer, at the confidence the
+evidence actually supports rather than at a label. The whole story is the
 `history()` list below: the pack contains nothing that is not named there, and each entry says which view
 it exists to fill.
 

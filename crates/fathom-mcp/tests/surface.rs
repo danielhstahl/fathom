@@ -41,7 +41,7 @@ impl Stub {
         Batch::new()
             .items(items)
             .total(70)
-            .field("model_version", "spine-1")
+            .field("model_version", "spine-3")
     }
 
     fn audited(&self) -> Vec<String> {

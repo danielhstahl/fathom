@@ -22,6 +22,8 @@
 //! X-Fathom-State: read | unread | dirty | clean
 //! X-Fathom-Evidence: ev-1 epoch.rs:1-10
 //! X-Fathom-Skip: oversize bytes=… cap=… | unavailable reason=… hint=… | notext
+//! X-Fathom-Complexity: +7 | −3 | ±0 | ? reason-code   what this file did to its own complexity
+//! X-Fathom-Complexity-Max: 12                the largest single V(G) on the head side
 //! ```
 //!
 //! Unknown `X-Fathom-*` lines are ignored and noted, never fatal: the store may grow more of them and
@@ -717,6 +719,43 @@ impl<'b> Builder<'b> {
                     annotation.evidence.push(id.to_owned());
                 }
             }
+            // What the file did to its own complexity (`e8.6`, ADR-007 §5.1 at file grain). The signed
+            // spellings are the printed ones — `+7`, `−3`, `±0`, and the pretty minus is accepted
+            // alongside ASCII `-` because a patch is a text file a person may hand-edit — and the
+            // `?` form carries the §7.1 code that says why there is no figure, because a `?` that
+            // travels alone is the thing §7.4 refuses to let the store represent.
+            "Complexity" => {
+                let value = value.replace('\u{2212}', "-").replace("\u{00b1}", "");
+                let value = value.trim();
+                let annotation = self.annotation_mut();
+                if let Some(code) = value.strip_prefix('?') {
+                    let code = code.trim();
+                    annotation.complexity.reason = Some(if code.is_empty() {
+                        "unknown".to_owned()
+                    } else {
+                        code.to_owned()
+                    });
+                    annotation.complexity.delta = None;
+                } else if value.is_empty() {
+                    notes.push("ignored `X-Fathom-Complexity`: no figure or reason".to_owned());
+                } else {
+                    match value.parse::<i64>() {
+                        Ok(delta) => {
+                            annotation.complexity.delta = Some(delta);
+                            annotation.complexity.reason = None;
+                        }
+                        Err(_) => notes.push(format!(
+                            "ignored `X-Fathom-Complexity: {value}`: not a signed figure"
+                        )),
+                    }
+                }
+            }
+            "Complexity-Max" => match value.replace('\u{2212}', "-").trim().parse::<i64>() {
+                Ok(max) => self.annotation_mut().complexity.max = Some(max),
+                Err(_) => notes.push(format!(
+                    "ignored `X-Fathom-Complexity-Max: {value}`: not a figure"
+                )),
+            },
             "Binary-Size" => match value.parse::<u64>() {
                 Ok(bytes) => self.set(|file| file.bytes = Some(bytes)),
                 Err(_) => notes.push(format!(

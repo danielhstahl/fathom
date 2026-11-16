@@ -295,6 +295,20 @@ impl Feed {
             return None;
         }
         let head_moved = now.head_moved(&seen);
+        let branch_moved = now.branch_moved(&seen);
+        // A branch switch that did not move the commit: `git switch` to a sibling at the same tip, a fresh
+        // `git switch -c`, a `git checkout --detach` of the commit already checked out. Exactly one line of
+        // the frame describes which branch this is, and that line has just changed; the rows, the index's
+        // numbers and the working tree are all still what they were (`reco-nup`). So this is the one ask
+        // allowed to skip the re-read — and the one the *rule* about reading only what moved would otherwise
+        // make expensive for nothing.
+        if branch_moved && !force && !mid_run && !head_moved && !now.store_moved(&seen) {
+            state.seen = Some(now);
+            return Some(Update {
+                repo_label: Some(crate::tui::repo_label(&self.root)),
+                ..Update::default()
+            });
+        }
         let mut update = Update::default();
         let mut note = None;
         // `<C-r>` asks for a re-index, not for a re-probe, so a forced ask puts the question to the index
@@ -332,6 +346,14 @@ impl Feed {
         // Re-probe after the work: indexing moved the store, and storing the *old* stamp here would make
         // the next ask see a change it had already accounted for and re-read the whole page again.
         let after = crate::ambient::probe(&self.root, &self.store_path, &self.heartbeat);
+        // ...and the tab bar's name for `HEAD`, on the ask whose probe says the name moved (`reco-nup`).
+        // Read here because the shell may not open git (ADR-002 §5.2, lint `E01`), and through the same
+        // function that spelled the label the frame opened with, so a detached head cannot be called one
+        // thing at startup and another thing afterwards. `<C-r>` always re-reads it: the reviewer asked for
+        // the present tense.
+        if branch_moved || force {
+            update.repo_label = Some(crate::tui::repo_label(&self.root));
+        }
         // While the frame's own run is still going, that row *is* the update. Re-reading the store's
         // numbers and the rail's page on every one of those asks would charge a repository read to the
         // reviewer four times a second for rows that cannot be complete before the run says so; the

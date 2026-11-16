@@ -24,9 +24,10 @@
 //! [`UnavailableReason::ScanBudget`](crate::structure::UnavailableReason::ScanBudget) and their
 //! file-level numbers, which is a refusal somebody configured rather than a truncation nobody chose.
 
+use crate::structure::complexity;
 use crate::structure::engine::{CorpusView, Draft, Index, Lang, RawImport};
 use crate::structure::model::{
-    Complexity, Edge, EdgeKind, Granularity, Language, Supertype, SupertypeKind, Symbol,
+    Edge, EdgeKind, Granularity, Language, StructureProxies, Supertype, SupertypeKind, Symbol,
     SymbolKind, Visibility, synthetic,
 };
 use crate::structure::policy::ExtractPolicy;
@@ -507,7 +508,7 @@ fn call(
     }
 }
 
-fn complexity(node: &Node, policy: &ExtractPolicy) -> Complexity {
+fn complexity(node: &Node, policy: &ExtractPolicy) -> StructureProxies {
     let span = span_of(node);
     let (branches, _) = util::count_kinds(
         node,
@@ -540,7 +541,7 @@ fn complexity(node: &Node, policy: &ExtractPolicy) -> Complexity {
         .map(|parameters| kids(&parameters).len())
         .unwrap_or(0);
     let members = 0usize;
-    Complexity {
+    StructureProxies {
         body_lines: span.lines(),
         branches,
         loops,
@@ -627,3 +628,51 @@ pub fn export_names(file: &str, view: &CorpusView) -> BTreeSet<String> {
 /// The note every Ruby file with an export carries, so a surface cannot print the list without
 /// carrying the caveat with it.
 pub const DEGENERATE_SURFACE_NOTE: &str = "export_surface_is_the_file";
+
+/// ADR-007 §4.5 — **Ruby's decision-point list.** Basis `mccabe-1`.
+///
+/// Ruby spells a test in the most shapes of the six, so the list is the longest: the keyword, the
+/// modifier form of it, the `case`/`in` guard, the ternary, and the safe-navigation call, which is a
+/// "did it succeed?" test that an exit-shaped operator hides. `&.` is an anonymous token in this
+/// grammar, so it is a token rule, not a kind rule.
+///
+/// A literal `define_method(:perimeter)` is a unit because `e3.1` already emits it as a symbol, and
+/// the extractor gives it the `call` node's span, so its block's branches are inside its figure.
+/// `define_method(n)` over a collection is not: it marks the scope `dynamic_method`, and §7.3 makes
+/// that a floor rather than a missing row.
+pub(crate) const COMPLEXITY: complexity::Rules = complexity::Rules {
+    language: Language::Ruby,
+    units: &["method", "singleton_method"],
+    bodyless: &[],
+    no_body: |_| false,
+    kinds: &[
+        ("if", "if"),
+        ("elsif", "elsif"),
+        ("unless", "unless"),
+        ("if_modifier", "`x if y` — a modifier is still a test"),
+        ("unless_modifier", "`x unless y`"),
+        ("when", "each `when`, one per clause, not per value"),
+        ("in_clause", "each `case`/`in` arm"),
+        ("if_guard", "an `in` guard"),
+        ("unless_guard", "an `unless` guard on an `in`"),
+        ("conditional", "ternary"),
+        ("while", "while"),
+        ("until", "until"),
+        ("for", "for"),
+        ("while_modifier", "`x while y`"),
+        ("until_modifier", "`x unless y` form of the same test"),
+        ("rescue", "each rescue clause"),
+        ("rescue_modifier", "`x rescue y`"),
+    ],
+    conditions: &[],
+    operators: &[(
+        "binary",
+        &[
+            ("&&", "short-circuit &&"),
+            ("||", "short-circuit ||"),
+            ("and", "low-precedence and"),
+            ("or", "low-precedence or"),
+        ],
+    )],
+    tokens: &[("&.", "safe navigation `&.` — a test wearing a call")],
+};

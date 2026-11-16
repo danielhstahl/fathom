@@ -12,6 +12,10 @@
 //! * **the gate** — `--fail-on-findings` is exit 7 and nothing else is, and `--dismiss` survives the round
 //!   trip from one run's output into the next run's flag.
 #![allow(clippy::unwrap_used, clippy::expect_used)]
+// Six of these seven tests build an index, and the seventh (`drift_help_is_part_of_the_documented_surface`)
+// is the headless build's own claim, so the gating is per test: without a SQLite backend `fathom drift`
+// answers `FEATURE_ABSENT` (9) instead of the index's own refusal, and there is no answer left to assert
+// (ADR-002 §6.1). Same for the fixture below, which only exists to be indexed.
 
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
@@ -38,10 +42,12 @@ fn code(out: &Output) -> i32 {
         .expect("fathom exits with a code, not a signal")
 }
 
+#[cfg(feature = "sqlite-bundled")]
 struct Repo {
     dir: PathBuf,
 }
 
+#[cfg(feature = "sqlite-bundled")]
 impl Repo {
     /// One agent turn that stayed inside its declared scope, then a turn that wandered: `src/pool/**` was
     /// what the intent bounded, and the last commit touched `docs/runbook.md` and a manifest.
@@ -121,6 +127,7 @@ impl Repo {
     }
 }
 
+#[cfg(feature = "sqlite-bundled")]
 fn git(dir: &Path, args: &[&str], extra_env: &[(&str, &str)]) {
     let minute: i64 = extra_env
         .iter()
@@ -143,6 +150,7 @@ fn git(dir: &Path, args: &[&str], extra_env: &[(&str, &str)]) {
     );
 }
 
+#[cfg(feature = "sqlite-bundled")]
 #[test]
 fn drift_without_an_index_refuses_with_the_remedy() {
     let dir = std::env::temp_dir().join(format!("fathom-drift-cli-noindex-{}", std::process::id()));
@@ -157,6 +165,7 @@ fn drift_without_an_index_refuses_with_the_remedy() {
     );
 }
 
+#[cfg(feature = "sqlite-bundled")]
 #[test]
 fn the_report_prints_both_sides_of_what_went_outside_the_plan() {
     let repo = Repo::new("print");
@@ -183,6 +192,7 @@ fn the_report_prints_both_sides_of_what_went_outside_the_plan() {
     );
 }
 
+#[cfg(feature = "sqlite-bundled")]
 #[test]
 fn the_json_is_one_value_carrying_the_contract_the_policy_and_the_six_kinds() {
     let repo = Repo::new("json");
@@ -246,6 +256,7 @@ fn the_json_is_one_value_carrying_the_contract_the_policy_and_the_six_kinds() {
     );
 }
 
+#[cfg(feature = "sqlite-bundled")]
 #[test]
 fn the_gate_is_one_bit_and_everything_else_is_zero() {
     let repo = Repo::new("gate");
@@ -268,6 +279,7 @@ fn the_gate_is_one_bit_and_everything_else_is_zero() {
     assert_eq!(code(&out), 0, "{}\n{}", stdout(&out), stderr(&out));
 }
 
+#[cfg(feature = "sqlite-bundled")]
 #[test]
 fn a_dismissal_carries_from_one_run_to_the_next() {
     let repo = Repo::new("dismiss");
@@ -304,6 +316,7 @@ fn a_dismissal_carries_from_one_run_to_the_next() {
     );
 }
 
+#[cfg(feature = "sqlite-bundled")]
 #[test]
 fn the_window_and_the_cap_are_flags_and_the_report_shows_which_ones_ran() {
     let repo = Repo::new("flags");

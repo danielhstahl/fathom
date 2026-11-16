@@ -29,8 +29,8 @@ use fathom_analyze::graph::{
     self, ArchitectureDelta, Builder, GraphPolicy, Interner, ModuleInput, Naming, ops_between,
 };
 use fathom_analyze::structure::{
-    Complexity, Edge, EdgeKind, FileLevel, FileStructure, Granularity, Language, Resolution, Span,
-    Structure, Symbol, SymbolKind, Visibility,
+    Edge, EdgeKind, FileLevel, FileStructure, Granularity, Language, Resolution, Span, Structure,
+    StructureProxies, Symbol, SymbolKind, Visibility,
 };
 use proptest::prelude::*;
 
@@ -90,7 +90,7 @@ fn structure_of(entry: &(String, Vec<String>, Vec<(String, String)>)) -> FileStr
                     span,
                     visibility: Visibility::Public,
                     exported: true,
-                    complexity: Complexity {
+                    complexity: StructureProxies {
                         body_lines: 1,
                         branches: 0,
                         loops: 0,
@@ -316,9 +316,18 @@ proptest! {
         let view = view_of(&outcomes);
         // A strategy that generated identical revisions would prove the property about nothing, so
         // the strategy is checked to be doing something before the property is.
+        //
+        // The check *rejects*; it does not fail. Whether a given draw happens to move anything is a fact
+        // about the generator, not a counterexample to the property: roughly one draw in a few thousand
+        // the seeds land so that every revision of a one-module history carries the same exports and the
+        // same edges, and then every span in it is empty at every cut and the equality holds vacuously.
+        // That is the input saying "this one does not exercise me", which is `assume`'s whole job; as an
+        // `assert` it was a red run one unlucky seed away, on every machine that runs this more than a
+        // couple of times. And the guard is not lost: a strategy that stopped moving *altogether* trips
+        // `max_rejects`, which fails the test and blames the generator, which is what to blame.
         let moved = (1..outcomes.len())
             .any(|index| !ops_between(&outcomes[index - 1].graph, &outcomes[index].graph, &view).is_empty());
-        prop_assert!(
+        prop_assume!(
             moved,
             "the generated history changed nothing at all, so the composition was never exercised"
         );

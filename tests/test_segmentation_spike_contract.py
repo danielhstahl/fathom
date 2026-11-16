@@ -32,7 +32,7 @@ THRESHOLDS = ROOT / "crates" / "fathom-analyze" / "spike" / "s2" / "thresholds.j
 CORPUS = ROOT / "crates" / "fathom-fixtures" / "corpus" / "turns"
 CORPUS_README = CORPUS / "README.md"
 ADR = ROOT / "docs" / "adr" / "0003-episodes.md"
-CONCEPT = ROOT / "docs" / "concepts" / "episode-segmentation.md"
+CONCEPT = ROOT / "docs" / "concepts" / "episode-derivation.md"
 CONFIG = ROOT / "fathom.toml"
 SCHEMA = ROOT / "schemas" / "fathom.schema.json"
 
@@ -361,9 +361,9 @@ def test_the_corpus_validator_passes_on_the_committed_files() -> None:
 
 def test_both_documents_are_registered_and_link_each_other() -> None:
     assert CONCEPT.exists()
-    assert "episode-segmentation.md" in (ROOT / "README.md").read_text(), (
+    assert "episode-derivation.md" in (ROOT / "README.md").read_text(), (
         "the concept document must be reachable from the index, not just from here")
-    assert "episode-segmentation.md" in ADR.read_text(), "ADR-003 §18 must point at the spike's prose"
+    assert "episode-derivation.md" in ADR.read_text(), "ADR-003 §18 must point at the spike's prose"
     assert "reco-q6r" in (ROOT / "CHANGELOG.md").read_text(), (
         "the changelog entry is where a reader learns a constant's measurement changed")
 

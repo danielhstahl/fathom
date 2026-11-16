@@ -4,7 +4,7 @@
   shipped in `e1.3` (**reco-982**).
 - **Decided by**: [ADR-003](../adr/0003-episodes.md) (identity, extent, the boundary cascade, re-link
   tiers), with the measured accuracy of the boundaries in
-  [episode segmentation](episode-segmentation.md).
+  [episode derivation](episode-derivation.md#how-a-boundary-is-found--spike-s2).
 - **In code**: `crates/fathom-ingest/src/segment.rs`, `crates/fathom-core` (identity), and the glossary
   entry in [the thesis](thesis.md) that every later ticket cites.
 - **Read this if**: you have just run the [quickstart](../quickstart.md) and want the noun the whole tool
@@ -42,7 +42,7 @@ files it touched and their final content, the author, the subject and message sh
 * the **review does not move with it**, because a review is keyed to identity plus a content fingerprint,
   and Fathom runs a ladder of re-link tests (ADR-003 §6, four tiers, each with a published price) to
   re-attach it. A re-link that cannot be made is **fail-visible**: the ledger says `orphan` and the work
-  re-appears in the queue rather than being quietly considered reviewed.
+  is unread again on the rail rather than quietly considered reviewed.
 
 This is the single design decision that makes the tool usable on real agent history, because agent history
 is rewritten constantly. It is also why a [sign-off](review-ledger.md) is stored with four digests rather
@@ -50,8 +50,8 @@ than one: each digest answers exactly one question, and "was this the same thing
 
 **Consequences you can observe.** `fathom show <episode>` accepts an episode id, a revision
 (`HEAD~3`, `main`, `v1.2^{}`) or an oid prefix, and prints the digests it derived the identity from. The
-queue's selection follows the episode through all four re-link tiers, so a cursor does not jump when the
-history moves under it.
+rail's selection follows the episode through all four re-link tiers, so a cursor does not jump when the
+history moves under it, and the sign-off that was on it arrives on the successor.
 
 ## How boundaries are found, and what a wrong one hides
 
@@ -61,9 +61,13 @@ claim, a trailer. `episode.time_gap_minutes` (default 30) is the clock rung, and
 first: the clock is the rung that gets it wrong most often.
 
 The measured result — and the reason the config is what it is — is in
-[episode segmentation](episode-segmentation.md): the shipped cascade is precise (0.938) and short of
-recall (0.747) on 204 hand-annotated turns, and splitting every commit into its own episode scores better
-on naive F1 while **hiding 23 of 74 pathologies**. A boundary that is too coarse merges two intentions; one
+[episode derivation](episode-derivation.md#how-a-boundary-is-found--spike-s2). Read it off the generated
+tables, which are re-measured against the nine-rung cascade: the shipped cascade is precise (**0.976**) and
+its boundary recall is **0.907** on 204 hand-annotated turns — the report printed those figures only after
+the subject-claim rung landed, where the spike as published had measured 0.938 and 0.747 — while the measure
+`e1.3` actually gates the corpus at, pair co-membership, is still short at **0.733** against a published
+≥ 0.90. And splitting every commit into its own episode scores better on naive boundary F1 while **hiding 23
+of 74 pathologies**. A boundary that is too coarse merges two intentions; one
 that is too fine dissolves the pattern a detector was going to notice. Both are wrong, and the tool prefers
 the first, because a merged episode is still reviewable and a dissolved one is not.
 
@@ -76,7 +80,16 @@ change to a rung has to be argued.
 
 Every episode is labelled `agent`, `human` or `unknown`, with a confidence and a list of evidence — trailers,
 hook events, committer-versus-author shape, and a learned correction. The label is an *estimate*, and
-`fathom attribution` is the correction path:
+`fathom attribution` is the correction path.
+
+It is an estimate that **nothing prints** since `e10.4` (`reco-ydek.4`): the word is off the rail's row, the
+episode card, the ambient glance, `fathom show`, `fathom episodes` and `fathom why`, and the `kind=` filter
+dimension is gone with it — everywhere it was printed with no confidence and no evidence attached to argue
+with it ([ADR-006 §5.1.2 §6](../adr/0006-tui.md), [timeline §2](timeline.md#2-the-row-and-the-six-columns-it-is-made-of)).
+What is printed now is the *evidence*: the source, the confidence, and the reason a label was refused. The
+field itself, `episode.author_kind`, is unchanged in the store and unchanged in `fathom analyze --json`, where
+it ships as an `AttributionRef` carrying kind, confidence and evidence together — a machine consumer that can
+weigh a claim still gets to weigh it; a human is no longer handed the verdict as if it were a fact.
 
 ```bash
 fathom attribution list                        # what the classifier currently believes
@@ -87,31 +100,31 @@ fathom attribution forget <identity>
 A correction is keyed to an **identity** (an address), not to an episode id, because the identity is what
 you meant and episode ids move when a lineage is rewritten. Two consequences: attribution is not a
 truth you look up, it is a stance the tool holds and shows its evidence for
-([attribution, `e4.1`](risk-scoring.md)); and an uncredited commit is scored as *more* risky than an
+([attribution, `e4.1`](risk.md)); and an uncredited commit is scored as *more* risky than an
 agent's, not less — nobody-credited is the worst answer to "who wrote this", and the risk model treats it
-that way ([risk score](risk-score.md)).
+that way ([risk score](risk.md)).
 
 ## Provisional episodes: the ones that are not history yet
 
 Uncommitted work can be an episode too (`kind = 'provisional'`), drawn with a distinct marker and **never**
-mixed into a committed count in any headline figure — not the queue badge, not the ambient line, not a
-metric. That last rule is a schema property, not a UI convention: the windows that metrics are computed
+mixed into a committed count in any headline figure — not the rail's unread count, not the ambient line,
+not a metric. That last rule is a schema property, not a UI convention: the windows that metrics are computed
 over join committed rows only, so a provisional episode cannot leak into a number by accident.
 
 ## Where an episode shows up
 
 | Surface | Verb or key | What it answers about the episode |
 |---|---|---|
-| Timeline (the rail) | `t` | what happened, in order, and which of it you have not read |
-| Queue | `q` | which episode to look at next, and why that one ([risk score](risk-score.md)) |
-| `fathom show` | headless | identity, authorship, message, trailers, file rows with their taxonomy decision |
+| Timeline (the rail) | `t` | what happened, in order, which of it you have not read, and each row's [risk score](risk.md) — `w` expands the figure into the vector behind it |
+| `fathom show` | headless | identity, attribution, message, trailers, file rows with their taxonomy decision |
 | `fathom analyze` | headless | the [delta](delta.md) — the claims, with citations |
 | `fathom narrative` | headless | the prose version of the same claims |
-| `fathom why` | headless | the [risk score](risk-score.md) as an arithmetic you can check |
+| `fathom why` | headless | the [risk score](risk.md) as an arithmetic you can check |
 | `fathom review sign` | headless | "a human accepted this", durably ([the ledger](review-ledger.md)) |
 
 ---
 
 **Next**: [delta](delta.md) for what Fathom claims about an episode ·
-[episode segmentation](episode-segmentation.md) for the boundary cascade in full ·
+[episode derivation](episode-derivation.md#how-a-boundary-is-found--spike-s2) for the boundary cascade in full, and
+[the same page's second half](episode-derivation.md#how-a-rewrite-re-attaches-a-decision--spike-s6) for what a rewrite re-attaches ·
 [ADR-003](../adr/0003-episodes.md) for the identity model it all comes from.

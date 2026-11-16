@@ -1,0 +1,51 @@
+diff --git a/src/store/spine.rs b/src/store/spine.rs
+index 1111111..2222222 100644
+X-Fathom-Class: source
+X-Fathom-Complexity: +8
+X-Fathom-Complexity-Max: 14
+--- a/src/store/spine.rs
++++ b/src/store/spine.rs
+@@ -1,2 +1,4 @@
+ old spine line
++fn roll_up(&self) -> i64 {
++    if self.a { self.b } else { self.c }
++}
+diff --git a/src/store/cache.rs b/src/store/cache.rs
+index 3333333..4444444 100644
+X-Fathom-Class: source
+X-Fathom-Complexity: +3
+X-Fathom-Complexity-Max: 6
+--- a/src/store/cache.rs
++++ b/src/store/cache.rs
+@@ -1,1 +1,2 @@
+ old cache line
++new cache line
+diff --git a/src/tui/timeline.rs b/src/tui/timeline.rs
+index 5555555..6666666 100644
+X-Fathom-Class: source
+X-Fathom-Complexity: −5
+X-Fathom-Complexity-Max: 9
+--- a/src/tui/timeline.rs
++++ b/src/tui/timeline.rs
+@@ -1,2 +1,1 @@
+-fn old_one() {}
+-fn old_two() {}
++fn new_one() {}
+diff --git a/docs/complexity.md b/docs/complexity.md
+index 7777777..8888888 100644
+X-Fathom-Class: docs
+X-Fathom-Complexity: ? generated
+--- a/docs/complexity.md
++++ b/docs/complexity.md
+@@ -1,1 +1,1 @@
+-old doc
++new doc
+diff --git a/tests/it.rs b/tests/it.rs
+index 9999999..aaaaaaa 100644
+X-Fathom-Class: test
+X-Fathom-Complexity: ±0
+--- a/tests/it.rs
++++ b/tests/it.rs
+@@ -1,1 +1,2 @@
+ old test
++new test

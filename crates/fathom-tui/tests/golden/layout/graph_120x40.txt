@@ -38,5 +38,5 @@
 │                                                                          │                                           │
 │Did this turn make the shape of the system worse?                         │detail · reads node/edge evidence ids · ow…│
 └──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
-⏺ epoch 1 · 48 eps · queue 4 open · idx unknown
+⏺ epoch 1 · 48 eps · 4 unread · idx unknown
 10 episodes from fixture index

@@ -1,0 +1,147 @@
+{
+  "arms": {
+    "declined": {
+      "config": "[extract.complexity]\nmax_run_ms = 0\n",
+      "pass": {
+        "base_reused": 0,
+        "bytes_read": 0,
+        "ceilings": {
+          "max_file_bytes": 2000000,
+          "max_run_bytes": 128000000,
+          "max_run_ms": 0
+        },
+        "declined": "extract.complexity.max_run_ms",
+        "measured": 1911,
+        "missing": 0,
+        "ms": 35,
+        "refused": [
+          {
+            "code": "binary",
+            "rows": 70
+          },
+          {
+            "code": "language_unknown",
+            "rows": 3427
+          },
+          {
+            "code": "scan_budget",
+            "rows": 3352
+          }
+        ],
+        "rows": 4380,
+        "written": 4380
+      },
+      "peak_rss_mib": 239.0,
+      "phases_ms": {
+        "analyses": 2674,
+        "close": 0,
+        "episodes": 30,
+        "graph": 108948,
+        "refs": 1,
+        "spine": 334,
+        "worktree": 21
+      },
+      "proved": true,
+      "wall_ms_median": 112083.0,
+      "wall_ms_samples": [
+        112108.9,
+        112057.1
+      ],
+      "wall_ms_store_side": 112011
+    },
+    "shipped": {
+      "config": "",
+      "pass": {
+        "base_reused": 158,
+        "bytes_read": 98504188,
+        "ceilings": {
+          "max_file_bytes": 2000000,
+          "max_run_bytes": 128000000,
+          "max_run_ms": 60000
+        },
+        "declined": null,
+        "measured": 3088,
+        "missing": 0,
+        "ms": 18361,
+        "refused": [
+          {
+            "code": "binary",
+            "rows": 70
+          },
+          {
+            "code": "body_not_visible",
+            "rows": 4
+          },
+          {
+            "code": "language_unknown",
+            "rows": 3427
+          },
+          {
+            "code": "parse_failed",
+            "rows": 1
+          }
+        ],
+        "rows": 4380,
+        "written": 4380
+      },
+      "peak_rss_mib": 243.0,
+      "phases_ms": {
+        "analyses": 21040,
+        "close": 0,
+        "episodes": 30,
+        "graph": 108763,
+        "refs": 1,
+        "spine": 342,
+        "worktree": 22
+      },
+      "proved": true,
+      "wall_ms_median": 132212.0,
+      "wall_ms_samples": [
+        134171.7,
+        130252.3
+      ],
+      "wall_ms_store_side": 130202
+    }
+  },
+  "binary": {
+    "path": "target/release/fathom",
+    "version": "fathom 0.1.0-alpha.1 features: tui mcp watch sqlite-bundled langs-all deps-all"
+  },
+  "gate": {
+    "max_index_time_over_pct": 40.0,
+    "max_peak_rss_over_mib": 256.0
+  },
+  "host": {
+    "cpu_count": 8,
+    "machine": "aarch64",
+    "memtotal_gib": 7.7,
+    "python": "3.14.5",
+    "release": "7.0.14-linuxkit",
+    "system": "Linux"
+  },
+  "measured_at": "2026-11-12T02:56:15Z",
+  "overhead": {
+    "declined_proved": true,
+    "index_time_ms": 20129.0,
+    "index_time_pct": 18.0,
+    "peak_rss_mib": 4.0,
+    "per_rep_pct": [
+      19.7,
+      16.2
+    ],
+    "shipped_proved": true
+  },
+  "repository": {
+    "commits": 217,
+    "corpus": "this repository: the checkout the workflow is running",
+    "git_dir_mib": 29.6,
+    "head": "a40a8c4da22eb02cf6452a6d6e28b1806b7090f7",
+    "head_subject": "The `human`/`agent` word is printed nowhere a human reads it (`reco-ydek.4`)",
+    "name": "workspace",
+    "path": "/workspace",
+    "shallow_clone": false,
+    "tracked_files": 1905
+  },
+  "reps": 2,
+  "ticket": "reco-l9bz.4"
+}

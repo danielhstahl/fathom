@@ -1,6 +1,6 @@
 {
-  "_comment": "The archived breaking projection of schemas/episode-delta.schema.json, as blessed by `python3 tools/check_delta_compat.py bless`. CI compares the live schema against this; a difference in the breaking projection at the same version is a breaking change without a version bump, and this file is the diff that says it was intentional.",
-  "additive_digest": "45ae19adc97cc828f8977b970f8d7523aae54160dca4e21506b62a46e421ef96",
+  "_comment": "The archived shape projection of schemas/episode-delta.schema.json, blessed by `python3 tools/check_delta_compat.py bless`. CI compares the live schema against this and asks whether any document that validated against the baseline would be rejected now; if it would, at the same version, that is a breaking change without a version bump, and this file is the reviewed diff that says the bump was intentional.",
+  "additive_digest": "46bff4ae428ebca5416a8bbba478867783336af3cd9382c0fcafea683b39e139",
   "breaking": {
     "": {
       "closed": true,
@@ -8,8 +8,142 @@
         "object"
       ]
     },
+    ".complexity": {
+      "closed": true,
+      "ref": "#/$defs/complexity",
+      "required": false,
+      "types": [
+        "object"
+      ]
+    },
+    ".complexity.absolute": {
+      "required": false,
+      "types": [
+        "integer"
+      ]
+    },
+    ".complexity.basis": {
+      "required": true,
+      "types": [
+        "array"
+      ]
+    },
+    ".complexity.basis[]": {
+      "required": true,
+      "types": [
+        "string"
+      ]
+    },
+    ".complexity.coverage": {
+      "maximum": 1.0,
+      "minimum": 0.0,
+      "required": false,
+      "types": [
+        "number"
+      ]
+    },
+    ".complexity.delta": {
+      "required": false,
+      "types": [
+        "integer"
+      ]
+    },
+    ".complexity.gap": {
+      "closed": true,
+      "ref": "#/$defs/gap",
+      "required": false,
+      "types": [
+        "object"
+      ]
+    },
+    ".complexity.gap.owner": {
+      "required": true,
+      "types": [
+        "string"
+      ]
+    },
+    ".complexity.gap.reason": {
+      "required": true,
+      "types": [
+        "string"
+      ]
+    },
+    ".complexity.gap.remedy": {
+      "required": false,
+      "types": [
+        "string"
+      ]
+    },
+    ".complexity.gap.section": {
+      "required": true,
+      "types": [
+        "string"
+      ]
+    },
+    ".complexity.gap.short": {
+      "required": true,
+      "types": [
+        "string"
+      ]
+    },
+    ".complexity.max": {
+      "required": false,
+      "types": [
+        "integer"
+      ]
+    },
+    ".complexity.measured": {
+      "required": true,
+      "types": [
+        "boolean"
+      ]
+    },
+    ".complexity.measured_paths": {
+      "minimum": 0,
+      "required": true,
+      "types": [
+        "integer"
+      ]
+    },
+    ".complexity.reasons": {
+      "required": true,
+      "types": [
+        "object"
+      ]
+    },
+    ".complexity.reasons{}": {
+      "types": [
+        "integer"
+      ]
+    },
+    ".complexity.state": {
+      "enum": [
+        "measured",
+        "partial",
+        "unavailable"
+      ],
+      "ref": "#/$defs/sectionState",
+      "required": true,
+      "types": [
+        "string"
+      ]
+    },
+    ".complexity.touched": {
+      "minimum": 0,
+      "required": true,
+      "types": [
+        "integer"
+      ]
+    },
+    ".complexity.unmeasurable_paths": {
+      "minimum": 0,
+      "required": true,
+      "types": [
+        "integer"
+      ]
+    },
     ".contract": {
-      "const": "fathom-delta/1",
+      "const": "fathom-delta/2",
       "required": true
     },
     ".episode": {
@@ -18,6 +152,76 @@
       "required": true,
       "types": [
         "object"
+      ]
+    },
+    ".episode.attribution": {
+      "closed": true,
+      "required": false,
+      "types": [
+        "object"
+      ]
+    },
+    ".episode.attribution.agent": {
+      "required": false,
+      "types": [
+        "string"
+      ]
+    },
+    ".episode.attribution.confidence": {
+      "maximum": 1.0,
+      "minimum": 0.0,
+      "required": true,
+      "types": [
+        "number"
+      ]
+    },
+    ".episode.attribution.evidence": {
+      "required": true,
+      "types": [
+        "array"
+      ]
+    },
+    ".episode.attribution.evidence[]": {
+      "closed": true,
+      "required": true,
+      "types": [
+        "object"
+      ]
+    },
+    ".episode.attribution.evidence[].confidence": {
+      "required": true,
+      "types": [
+        "number"
+      ]
+    },
+    ".episode.attribution.evidence[].detail": {
+      "required": true,
+      "types": [
+        "string"
+      ]
+    },
+    ".episode.attribution.evidence[].source": {
+      "required": true,
+      "types": [
+        "string"
+      ]
+    },
+    ".episode.attribution.kind": {
+      "required": true,
+      "types": [
+        "string"
+      ]
+    },
+    ".episode.attribution.reason": {
+      "required": false,
+      "types": [
+        "string"
+      ]
+    },
+    ".episode.attribution.source": {
+      "required": true,
+      "types": [
+        "string"
       ]
     },
     ".episode.author_confidence": {
@@ -80,6 +284,173 @@
     },
     ".episode.id": {
       "required": true,
+      "types": [
+        "string"
+      ]
+    },
+    ".episode.intent": {
+      "closed": true,
+      "required": false,
+      "types": [
+        "object"
+      ]
+    },
+    ".episode.intent.confidence": {
+      "maximum": 1.0,
+      "minimum": 0.0,
+      "required": true,
+      "types": [
+        "number"
+      ]
+    },
+    ".episode.intent.evidence": {
+      "required": false,
+      "types": [
+        "array"
+      ]
+    },
+    ".episode.intent.evidence[]": {
+      "closed": true,
+      "types": [
+        "object"
+      ]
+    },
+    ".episode.intent.evidence[].confidence": {
+      "required": true,
+      "types": [
+        "number"
+      ]
+    },
+    ".episode.intent.evidence[].detail": {
+      "required": true,
+      "types": [
+        "string"
+      ]
+    },
+    ".episode.intent.evidence[].source": {
+      "required": true,
+      "types": [
+        "string"
+      ]
+    },
+    ".episode.intent.plan": {
+      "required": true,
+      "types": [
+        "array"
+      ]
+    },
+    ".episode.intent.plan[]": {
+      "closed": true,
+      "required": true,
+      "types": [
+        "object"
+      ]
+    },
+    ".episode.intent.plan[].status": {
+      "required": false,
+      "types": [
+        "string"
+      ]
+    },
+    ".episode.intent.plan[].text": {
+      "required": true,
+      "types": [
+        "string"
+      ]
+    },
+    ".episode.intent.prompt": {
+      "closed": true,
+      "required": false,
+      "types": [
+        "object"
+      ]
+    },
+    ".episode.intent.prompt.chars": {
+      "minimum": 0,
+      "required": false,
+      "types": [
+        "integer"
+      ]
+    },
+    ".episode.intent.prompt.sha256": {
+      "required": false,
+      "types": [
+        "string"
+      ]
+    },
+    ".episode.intent.prompt.text_captured": {
+      "required": true,
+      "types": [
+        "boolean"
+      ]
+    },
+    ".episode.intent.reason": {
+      "required": false,
+      "types": [
+        "string"
+      ]
+    },
+    ".episode.intent.schema": {
+      "required": true,
+      "types": [
+        "string"
+      ]
+    },
+    ".episode.intent.scope": {
+      "required": true,
+      "types": [
+        "array"
+      ]
+    },
+    ".episode.intent.scope[]": {
+      "required": true,
+      "types": [
+        "string"
+      ]
+    },
+    ".episode.intent.scope_rejected": {
+      "required": false,
+      "types": [
+        "array"
+      ]
+    },
+    ".episode.intent.scope_rejected[]": {
+      "types": [
+        "string"
+      ]
+    },
+    ".episode.intent.session_id": {
+      "required": false,
+      "types": [
+        "string"
+      ]
+    },
+    ".episode.intent.source": {
+      "required": true,
+      "types": [
+        "string"
+      ]
+    },
+    ".episode.intent.state": {
+      "required": true,
+      "types": [
+        "string"
+      ]
+    },
+    ".episode.intent.text": {
+      "required": false,
+      "types": [
+        "string"
+      ]
+    },
+    ".episode.intent.truncated": {
+      "required": false,
+      "types": [
+        "boolean"
+      ]
+    },
+    ".episode.intent.turn_id": {
+      "required": false,
       "types": [
         "string"
       ]
@@ -491,20 +862,6 @@
         "string"
       ]
     },
-    ".risk.rank": {
-      "minimum": 1,
-      "required": false,
-      "types": [
-        "integer"
-      ]
-    },
-    ".risk.ranked": {
-      "minimum": 0,
-      "required": false,
-      "types": [
-        "integer"
-      ]
-    },
     ".risk.score": {
       "maximum": 100,
       "minimum": 0,
@@ -549,7 +906,7 @@
       ]
     },
     ".schema_version": {
-      "const": 1,
+      "const": 2,
       "required": true
     },
     ".sections": {
@@ -799,9 +1156,9 @@
       ]
     }
   },
-  "contract": "fathom-delta/1",
-  "digest": "d4a6565af04354eb6b204649ef5a525625fd94b707eeb1a81b7eb36dcfb5cd67",
-  "note": "v1: the model as shipped by reco-tt4",
+  "contract": "fathom-delta/2",
+  "digest": "172758c13296e203b6a3ac9087c5e364389e8a92b712564586f1100c5d3e7fe1",
+  "note": "",
   "schema": "episode-delta.schema.json",
-  "version": 1
+  "version": 2
 }

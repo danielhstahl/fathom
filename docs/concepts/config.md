@@ -11,7 +11,7 @@
   `python3 -m recommender.config …`
 
 Normative tables in this document are **generated** from `src/recommender/config/schema.py` by
-`python3 -m recommender.config doc --write`; `doc --check` fails CI on drift, and
+`PYTHONPATH=src python3 -m recommender.config doc --write`; `doc --check` fails CI on drift, and
 `schema --check` fails CI if `schemas/fathom.schema.json` is not byte-identical to what the current
 key spec generates. A contract restated by hand is a contract that drifts — which is why the key
 reference is never typed by hand twice.
@@ -33,7 +33,7 @@ Everything else is machinery for that answer. The consequences worth stating:
 2. **Every value is traceable to a file.** `fathom config explain` prints the winning layer *and*
    the chain it beat, per key, with `file:line`. This is not a nicety: the plan's later features —
    noise policy (`e0.9`), layer rules (`e3.1`), risk weights (`e2.9`) — are all "a function of
-   config", so "why did the queue rank this episode at 61?" has to terminate in a file a human can
+   config", so "why did this episode score 61?" has to terminate in a file a human can
    open.
 3. **Repo config is hostile input.** A cloned `fathom.toml` is reviewed like code and treated like
    an untrusted event (§5). It may not grant network consent, may not carry a listener token, and
@@ -206,6 +206,18 @@ Four deliberate choices:
 `fathom config lint --strict` promotes warnings to exit 5 for a project that wants that; `lint`
 without `--strict` reports and returns 0, so a newer file's keys never break an older binary's CI.
 
+**A renamed key is a third case, and it is neither unknown nor wrong-typed.** `dismiss_reasons` — the
+extended dismiss vocabulary, read where it is used rather than through the typed schema, so it is not a row
+in §10's table — was spelled `[queue] dismiss_reasons` until `e10.3` deleted the pane the section was named
+for (ADR-006 §5.1.2 §2). The old spelling is **still honoured**: a repository whose `fathom.toml` predates
+the rename keeps its reasons, because refusing to obey a file the user did not write is the same failure
+§6 refuses twice above. It is also **still noticed** — the shell prints a line saying that
+`[queue] dismiss_reasons` is now `[review] dismiss_reasons` and that the old key is being read, in the same
+band it uses to say a config line did something unexpected — because a silently-renamed key is a key nobody
+edits again, and the vocabulary is the one part of this configuration a reviewer is meant to change. When
+both sections are present `[review]` wins and the notice says the `[queue]` list was ignored, so there is
+exactly one vocabulary in force either way (`fathom_cli::tui::dismiss_reasons`).
+
 ## 7. Types, coercion, and where the schema lives
 
 `src/recommender/config/schema.py` is the single key spec: every key carries its type, default,
@@ -266,7 +278,7 @@ privacy.llm             won: user config · ~/.config/fathom/config.toml:8
     repo fathom.toml      true  SUPPRESSED                    suppressed    /tmp/demo/repo/fathom.toml:14 · scope=user: a repo file may not set it
 ```
 
-`--path` answers the per-file question the queue and the diff views will keep asking:
+`--path` answers the per-file question the rail and the diff views will keep asking:
 
 ```
 path: dist/app.js
@@ -477,7 +489,7 @@ the budget row for the size class (§9). `scope = user` means §5's suppression 
 | `non_code.env.declaration_globs` | `glob_list` | `.env.example, .env.sample, .env.template, .env.default, .env.dist, **/.env.example, **/.env.sample, **/.env.template, **/*.env.example, **/*.env.sample, config/env.example, docs/env.example` | `extend` | `any` | — | non_code.surface | `e2.8` |
 | `non_code.env.committed_globs` | `glob_list` | `.env, .env.local, .env.production, **/.env, **/.env.production, **/.env.staging, config/env.ini, **/secrets.yaml, **/secrets.yml` | `extend` | `any` | — | non_code.surface | `e2.8` |
 | `non_code.env.placeholder_values` | `string_list` | `, changeme, change-me, change_me, your-value-here, your_value_here, your-secret-here, xxx, xxxx, xxxxx, <value>, <secret>, placeholder, sample, example, examples, test, dummy, todo, none, null, true, false, 0, 1, secret, password, admin, foo, bar, undefined, REPLACE_ME, insert-here, redacted` | `extend` | `any` | — | non_code.surface | `e2.8` |
-| `non_code.env.secret_name_pattern` | `string` | `(?i)(^|_)(secret|token|password|passwd|pwd|api[_-]?key|access[_-]?key|private[_-]?key|credential|auth[_-]?key|dsn|_key|_cert|_certificate)($|_)|(^|_)(aws|gcp|azure|oidc)(_|-)?(key|secret|token|credential)` | `replace` | `any` | — | non_code.surface | `e2.8` |
+| `non_code.env.secret_name_pattern` | `string` | `(?i)(^\|_)(secret\|token\|password\|passwd\|pwd\|api[_-]?key\|access[_-]?key\|private[_-]?key\|credential\|auth[_-]?key\|dsn\|_key\|_cert\|_certificate)($\|_)\|(^\|_)(aws\|gcp\|azure\|oidc)(_\|-)?(key\|secret\|token\|credential)` | `replace` | `any` | — | non_code.surface | `e2.8` |
 | `non_code.env.reference_scope` | `string` | `episode` | `replace` | `any` | — | non_code.surface | `e2.8` |
 | `non_code.env.rename_similarity` | `number` | `0.6` | `replace` | `any` | — | non_code.surface | `e2.8` |
 | `non_code.flags.globs` | `glob_list` | `flags.yaml, flags.yml, flags.json, feature-flags.yaml, feature-flags.json, **/flags.yaml, **/flags.yml, **/flags.json, **/features.yaml, **/features.json, **/featureflags.json, **/flip-flop.json, **/unleash-toggles.json, config/flags/**, **/config/flags/**, **/feature_flags.py, **/flags.php` | `extend` | `any` | — | non_code.surface | `e2.8` |
@@ -535,6 +547,9 @@ the budget row for the size class (§9). `scope = user` means §5's suppression 
 | `graph.max_corpus_mib` | `integer` | `64` | `replace` | `any` | MiB | graph.build | `e3.11` |
 | `extract.max_file_bytes` | `integer` | `2000000` | `replace` | `any` | bytes | structure.extract | `e3.1` |
 | `extract.complexity.max_nodes` | `integer` | `20000` | `replace` | `any` | syntax nodes | structure.extract | `e3.1` |
+| `extract.complexity.max_file_bytes` | `integer` | `2000000` | `replace` | `any` | bytes | — | `e8.4` |
+| `extract.complexity.max_run_bytes` | `integer` | `128000000` | `replace` | `any` | bytes per run | — | `e8.4` |
+| `extract.complexity.max_run_ms` | `integer` | `60000` | `replace` | `any` | milliseconds per run | — | `e8.4` |
 | `extract.resolution.max_passes` | `integer` | `4` | `replace` | `any` | passes | structure.extract | `e3.1` |
 | `extract.resolution.max_hops` | `integer` | `4` | `replace` | `any` | hops | structure.extract | `e3.1` |
 | `extract.ruby.max_files_per_run` | `integer` | `4000` | `replace` | `any` | files per run | structure.extract | `e3.1b` |
@@ -773,17 +788,23 @@ the budget row for the size class (§9). `scope = user` means §5's suppression 
 ## 11. The executable half
 
 ```bash
-python3 -m recommender.config explain --repo .            # what won, and what it beat
-python3 -m recommender.config explain --path src/foo.rs   # the per-file decision chain
-python3 -m recommender.config explain --key risk --json   # machine-readable, for a bug report
-python3 -m recommender.config get noise.globs
-python3 -m recommender.config schema --check              # CI: generated schema is not stale
-python3 -m recommender.config schema --validate fathom.toml
-python3 -m recommender.config lint --strict
-python3 -m recommender.config privacy
-python3 -m recommender.config doc --check                 # CI: this document is not stale
-python3 -m recommender.config init > fathom.toml          # commented, from the key spec
+PYTHONPATH=src python3 -m recommender.config explain --repo .            # what won, and what it beat
+PYTHONPATH=src python3 -m recommender.config explain --path src/foo.rs   # the per-file decision chain
+PYTHONPATH=src python3 -m recommender.config explain --key risk --json   # machine-readable, for a bug report
+PYTHONPATH=src python3 -m recommender.config get noise.globs
+PYTHONPATH=src python3 -m recommender.config schema --check              # CI: generated schema is not stale
+PYTHONPATH=src python3 -m recommender.config schema --validate fathom.toml
+PYTHONPATH=src python3 -m recommender.config lint --strict
+PYTHONPATH=src python3 -m recommender.config privacy
+PYTHONPATH=src python3 -m recommender.config doc --check                 # CI: this document is not stale
+PYTHONPATH=src python3 -m recommender.config init > fathom.toml          # commented, from the key spec
 ```
+
+Every line above runs from the repository root and needs nothing installed: `PYTHONPATH=src` is how
+the contract fixture is started, because `recommender` is read out of `src/` rather than installed.
+The `fathom config …` spelling this document and ADR-002 §4.3 use for the same surface is the
+product's verb, and `fathom-cli` does not ship it yet — which is why a message printed by one of these
+commands names the fixture form and not the design's, so what CI tells you to run is what you can run.
 
 `tests/test_config_contract.py` is the acceptance criteria as tests: precedence for all five layers,
 merge strategies including negation ordering and `--set` overriding a strategy, the hostile-repo

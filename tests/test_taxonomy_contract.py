@@ -480,6 +480,29 @@ def test_the_broad_bucket_stays_small():
     assert counts["entries"] >= 400, counts
 
 
+def test_every_broad_pattern_names_a_literal_it_can_refuse_with():
+    """The one linear-scan bucket is bounded by a substring test, not by a match.
+
+    Every path the index cannot key a probe by reaches `broad`, which is tried for every changed file
+    — and `**/*.egg-info/**`, one of its patterns, is wildcard-dense enough that it runs the linear
+    state machine rather than `re`. That is affordable only because a `Glob` refuses a path lacking a
+    literal its own pattern insists on before any engine runs: this bucket was nearly half of a cold
+    lookup, and the cold lookup was over its per-file budget (**reco-ghao**). A broad pattern with no
+    literal in it is a pattern whose cost is paid by every path in the repository, so it is refused
+    here instead of being discovered by a budget test on a slower machine.
+    """
+    tax = builtins()
+    silent = [entry.pattern for entry in tax.index.broad
+              if not getattr(entry.compiled, "required", None)]
+    assert not silent, ("broad patterns that cannot refuse a path until they match it: %s" % silent)
+    dense = [entry.pattern for entry in tax.index.broad
+             if getattr(entry.compiled, "engine", "regex") == "machine"]
+    assert dense, "no pattern in the table needs the linear engine, so this cost claim is about nothing"
+    assert dense == ["**/*.egg-info/**"], (
+        "a second pattern has fallen past `WILDCARD_BUDGET` into the bucket that runs for every path; "
+        "the literal prefilter covers it, but the cost of the broad bucket just doubled: %s" % dense)
+
+
 def test_index_hands_the_matcher_a_small_candidate_set():
     tax = builtins()
     paths = corpus.paths()

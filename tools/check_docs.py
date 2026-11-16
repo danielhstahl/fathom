@@ -24,7 +24,7 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 KEYMAP = ROOT / ".plan" / "keymap.json"
 THESIS = ROOT / "docs" / "concepts" / "thesis.md"
 DOC_GLOBS = ["README.md", "docs/**/*.md"]
-ADR_NUMBERS = {"001", "002", "003", "004", "005", "006"}
+ADR_NUMBERS = {"001", "002", "003", "004", "005", "006", "007"}
 
 GLOSSARY_ENTRY = re.compile(r"^\*\*(.+?)\*\* —", re.M)
 PLAN_KEY = re.compile(r"(?<![\w.-])([esdm]\d+(?:\.\d+)?)(?![\w-])")
@@ -33,6 +33,33 @@ ADR_REF = re.compile(r"ADR-(\d{3})")
 LINK = re.compile(r"\]\(([^)\s]+)\)")
 #: A link reference definition: `[label]: target`, optionally indented, target possibly in `<>`.
 LINK_DEFINITION = re.compile(r"^ {0,3}(?:> ?)*\[([^\]^]+)\]:\s*<?([^>\s]+)>?", re.M)
+
+#: Strings a deleted surface printed, and the pages still allowed to print them. ADR-006 §5.1.2 kills the
+#: Queue view, its ordering strip, its rank figure, its facade and its field names, and §7 names this gate
+#: as the thing that keeps them dead: a documentation page that prints `order: risk × staleness × blast
+#: radius` as though it were on screen is a page telling a reviewer to look for a strip that no longer
+#: exists, and no test of the binary can catch that because the binary prints the right thing.
+#:
+#: The allowance is per page, not per phrase. ADR-006 keeps the layout of a pane it deleted and
+#: [risk](../concepts/risk.md) keeps a retired ordering function's arithmetic — both are
+#: records, deliberately, and an unversioned deletion of the record is the other way a page lies. A page
+#: outside the list printing one of these is a page that has not been told the pane is gone. And because
+#: the exemption is keyed by path, a merge that retires a record page moves its exemption in the same
+#: commit: `reco-msv1.2` merged `risk-ranking.md` into `risk.md`, and these seven rows moved with it.
+RETIRED_TOKENS = {
+    "order: risk × staleness × blast radius": {
+        "docs/adr/0006-tui.md", "docs/concepts/risk.md"},
+    "rank N of M": {"docs/adr/0006-tui.md", "docs/concepts/risk.md",
+                    "docs/concepts/thesis.md"},
+    "fathom queue": {"docs/adr/0006-tui.md"},
+    "`q` queue": set(),
+    "queue_open": set(),
+    "fathom_analyze::queue": {"docs/adr/0006-tui.md", "docs/concepts/risk.md"},
+    "fathom-tui::worklist": {"docs/adr/0006-tui.md", "docs/concepts/risk.md"},
+    "rank_queue": {"docs/adr/0006-tui.md", "docs/concepts/risk.md"},
+    "QueuePolicy": {"docs/adr/0006-tui.md", "docs/concepts/risk.md"},
+    "QueuePlacement": {"docs/adr/0006-tui.md", "docs/concepts/risk.md"},
+}
 
 
 def doc_files():
@@ -107,6 +134,36 @@ def check_link_definitions(path, text, problems):
             )
 
 
+def check_retired_tokens(files, problems):
+    """No page prints a retired surface's strings unless it is the page keeping its record.
+
+    The other half of the rule is the exemption's own expiry: a page on the allow-list that no longer
+    prints the token is a page whose record was rewritten, and a stale exemption lets the token back in on
+    the first page that re-prints it. So both directions are problems.
+    """
+    printed = {token: set() for token in RETIRED_TOKENS}
+    for path, text in files.items():
+        rel = str(path.relative_to(ROOT))
+        for token, allowed in RETIRED_TOKENS.items():
+            if token not in text:
+                continue
+            printed[token].add(rel)
+            if rel not in allowed:
+                problems.append(
+                    "%s: prints %r, which a deleted surface printed. %s"
+                    % (rel, token,
+                       "It is retired; say so in the sentence that uses it, on a page already carrying "
+                       "the record (" + (", ".join(sorted(allowed)) or "no page is exempt yet") + ")."
+                       if allowed else
+                       "It is retired and no page is allowed to print it — say what replaced it instead."))
+    for token, allowed in RETIRED_TOKENS.items():
+        for page in sorted(allowed - printed[token]):
+            if (ROOT / page).exists():
+                problems.append(
+                    "%s: is allowed to print %r and no longer does — drop the exemption, or the record "
+                    "on this page went missing" % (page, token))
+
+
 def main():
     problems = []
     if not KEYMAP.exists():
@@ -130,13 +187,16 @@ def main():
         check_links(path, text, problems)
         check_link_definitions(path, text, problems)
 
+    checked = {path: path.read_text(encoding="utf-8") for path in doc_files()}
+    check_retired_tokens(checked, problems)
+
     for problem in problems:
         print(problem)
     if problems:
         print("\n%d problem(s)" % len(problems))
         return 1
-    print("docs OK: %d glossary terms, %d documents checked"
-          % (len(GLOSSARY_ENTRY.findall(thesis_text)), len(doc_files())))
+    print("docs OK: %d glossary terms, %d documents checked, %d retired tokens held to their record pages"
+          % (len(GLOSSARY_ENTRY.findall(thesis_text)), len(doc_files()), len(RETIRED_TOKENS)))
     return 0
 
 

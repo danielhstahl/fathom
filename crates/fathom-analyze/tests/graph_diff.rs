@@ -15,7 +15,7 @@ use fathom_analyze::graph::{
     MoveShape, Naming, RowKind, Rung, compose,
 };
 use fathom_analyze::structure::{
-    Complexity, Edge, EdgeKind, FileLevel, FileStructure, Granularity, Language, Resolution,
+    Edge, EdgeKind, FileLevel, FileStructure, Granularity, Language, Resolution, StructureProxies,
     Supertype, SyntheticScope, Visibility,
 };
 
@@ -113,7 +113,7 @@ fn structure_of(fixture: &Fixture) -> FileStructure {
                 span,
                 visibility: Visibility::Public,
                 exported: true,
-                complexity: Complexity {
+                complexity: StructureProxies {
                     body_lines: 1,
                     branches: 0,
                     loops: 0,

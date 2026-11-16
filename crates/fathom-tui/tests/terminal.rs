@@ -16,8 +16,10 @@ use fathom_tui::frame::{HeadlessSink, run_loop};
 use fathom_tui::keymap::Keymap;
 use fathom_tui::terminal::{
     ENTER_ALT_SCREEN, Guard, LEAVE_ALT_SCREEN, SHOW_CURSOR, TerminalRestore, install_panic_hook,
-    install_signal_hooks,
 };
+// Only the Unix-only signal test below uses it: off Unix there is no hook to install and nothing to call.
+#[cfg(unix)]
+use fathom_tui::terminal::install_signal_hooks;
 use fathom_tui::views::ViewId;
 
 /// A writer that remembers every byte, so the escape-sequence exchange is readable.
@@ -230,8 +232,8 @@ fn worker_progress_and_rows_land_in_the_model_not_in_a_thread_somewhere() {
         }));
         let _ = bus2.send(Message::Worker(WorkerMsg::Rows {
             task: "risk",
-            view: ViewId::Queue,
-            pane: "worklist".to_owned(),
+            view: ViewId::Timeline,
+            pane: "rail".to_owned(),
             lines: vec!["e8f1a2 risk 82".to_owned()],
         }));
         let _ = bus2.send(Message::Worker(WorkerMsg::Finished {
@@ -273,7 +275,7 @@ fn worker_progress_and_rows_land_in_the_model_not_in_a_thread_somewhere() {
         "the progress line is the reviewer's, with thousands separators: {progress}"
     );
     assert_eq!(
-        shell.model.rows_for(ViewId::Queue, "worklist"),
+        shell.model.rows_for(ViewId::Timeline, "rail"),
         ["e8f1a2 risk 82".to_owned()],
         "rows arrive in the pane they were addressed to"
     );
@@ -285,6 +287,12 @@ fn worker_progress_and_rows_land_in_the_model_not_in_a_thread_somewhere() {
     );
 }
 
+/// The signal door, where there is a signal to hook.
+///
+/// `install_signal_hooks` fills its notices on a platform with no `SIGINT`/`SIGTERM`/`SIGHUP` to hook
+/// (Windows: `<C-c>` is a console event, and `SIGHUP` means nothing without a controlling terminal, which is
+/// what `reco-wgcj` hit), so the claim this test makes is a Unix claim and the test goes where the claim does.
+#[cfg(unix)]
 #[test]
 fn sigterm_arrives_as_a_flag_and_the_loop_exits_through_the_same_door_as_quit() {
     let _serial = serialised();

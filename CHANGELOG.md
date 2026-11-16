@@ -17,6 +17,3183 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
+### The fence hole the render gate could not see is closed: no pasted markdown table inside a code fence (`reco-u962`)
+
+`reco-msv1.3` found two stale copies of the retired `rename-pairing.md`'s own generated tables pasted *inside*
+its fenced card sample, and epic 12's close re-measured the class tree-wide: **0** fenced blocks containing
+markdown table rows anywhere in `*.md` — nothing broken, and no rule refusing tomorrow's copy.
+`tools/check_docs_site.py` now refuses the shape, as `check_fenced_tables`: a fenced block tagged as literal
+text — no language, `text`/`txt`, `markdown`/`md` — holding two or more lines whose first non-space character
+is `|`, scanned over `docs/**.md` and `README.md`. The failure names the reason, because the tempting repair is
+to keep the copy and quiet the gate: inside a fence a table renders as pipes, so the render gate sees text and
+the generated-freshness gate never reads inside a fence, and the copy goes stale in silence. The paste `e12.3`
+found had already drifted to 361.71 ms and "2.69× shipped, 15.56× widened" while
+`benchmarks/reports/e2-4-rename-pairing.json` — what `A4a`, `A4b` and `A4c` read — said 416.14 ms and
+"2.3× shipped, 18.73× widened".
+
+* **The false-positive class is exempt by the fence's tag, not by a page allowlist** — the decision the bead
+  asked for, and [docs/reference/site.md](docs/reference/site.md#no-table-inside-a-fence) keeps it with its
+  residual hole. Exactly one block in the tree has pipe-leading rows: the `check_workflows.py triggers`
+  transcript in `docs/concepts/ci-gate.md`, a table the tool itself printed, in a fence tagged `console`.
+  Excusing that page by path — the shape `check_docs.py` uses for retired queue tokens — would have hidden
+  every fence on it, including every untagged one, from the only rule that looks inside a fence; the tag
+  exempts the block that needs exempting and nothing else, moves with no merge, and goes stale in no list.
+  What it cannot cover is written down rather than glossed: the tag is the author's claim about the block, so a
+  paste dropped into a fence tagged `bash` is not caught, and a page that ever needs to *document* markdown
+  table markup gets a block-level marker in its own fence, argued in the same commit that needs it.
+* **It can fail, and it can hold its peace.** `--self-test` went from one rule's five cases to two rules' ten,
+  each on its own scratch copy of the real tree: the historical paste replayed inside `rename.md`'s untagged
+  card-sample fence, the same paste in a `text` fence, and the controls that must stay silent — that table
+  inside a `bash` fence, one pipe-leading line alone, and the clean tree between them. A case expecting
+  silence now fails as loudly as one expecting a name, and a probe fence that has quietly moved out of its
+  page is reported as a broken probe instead of passing. `tests/test_docs_site_contract.py` asserts the clean
+  tree *and* that the parser read ≥ 300 fenced blocks on ≥ 50 pages, because a census of zero satisfies a
+  content rule exactly as loudly as a clean manual does.
+* **The fence parser is the builder's, not a second one.** A fence closes on a bare run of the *same*
+  character, at least as long as the opener: that is CommonMark, and it is
+  [`tools/build_docs_site.py`](tools/build_docs_site.py)'s existing rule. Toggle-pairing — what `prose_lines`
+  does for links and headings — would have pasted the test tables under closing fences and read any page that
+  quotes a fence wrong, so the new rule borrows the builder's regex and closer rather than re-deriving a
+  parser free to disagree with the render it claims to guard.
+* **The three pages that told the story say it is closed**: [site.md](docs/reference/site.md) gains the rule,
+  the verdict and the residue; [the merge map](docs/reference/doc-map.md) §7 puts the rule on the
+  `check_docs_site.py` row and §10's "one hole re-measured and still open" is shut; and the self-test step in
+  `.github/workflows/contracts.yml` names both rules it now runs.
+* **Gates, all green in the branch:** `check_docs.py` (99 glossary terms, 95 documents),
+  `check_docs_site.py` (+ `--self-test`, + the Pages render), `check_workspace.py check`, `check_workflows.py`
+  and `gen_changelog.py audit`, plus `python3 -m pytest tests/test_docs_site_contract.py
+  tests/test_docs_html_contract.py`.
+
+### The committed review record is one page: `review-memory.md` moved into `review-ledger.md`, and the merge map's M7 closes (`reco-lpuj`)
+
+`review-ledger.md` (338 lines) and `review-memory.md` (166) were one noun told twice: class **M** markdown
+under `.fathom/reviews/` because it is committed, keyed to episode identity, digested block by block, mirrored
+into the store, auditable with no index — and each page re-derived all of that for itself.
+[docs/concepts/review-ledger.md](docs/concepts/review-ledger.md) is now both halves (482 lines) in the section
+order §4.7 gives, `review-memory.md` is a pointer page the front door alone links, and
+[the merge map](docs/reference/doc-map.md) records the merge it had already planned — it executes §4.7 rather
+than re-deriving it.
+
+* **"Nothing was dropped" is a measurement, and it has a second half here.**
+  `.plan/evidence/reco-lpuj/surviving_claims.py` reads the retired page out of the merge's own parent — the rev
+  is derived from history, not typed in — and reports **166** lines, **100** content lines, **78** verbatim,
+  **3** normalised, **19** residue (one heading, three merged front-matter bullets, two list items and
+  thirteen re-flowed or re-pointed lines), **0** facts lost and **0** names lost. It also checks §4.7's shared
+  claims as eight named rows and the section order as a check that can fail. Because `review-ledger.md` keeps
+  its path, the script counts its losses too: **18** lines reached a count of zero and every one is named
+  beside the sentence that took it, and the one thing the ledger page printed twice — the sign-off sample and
+  the `sed -i` that gets caught — is proved a duplicate by four needles that appear twice in the parent and
+  once in the merged page. 44 table rows came in and 44 came out.
+* **5 links rewritten, not redirected** — exactly the §6.2 census: two in concept pages (one of which,
+  `cycle-detection.md`'s `§5`, pointed at a section number the page never carried and now names its heading),
+  and three in `cli.md`, two of them regenerated out of the `VERB_DOCS` rows that moved. `RELOCATIONS` gained
+  a row and `check_docs_site.py --self-test` still bites four ways; `docs/index.md` links the pointer.
+* **Two headings other pages cite crossed unchanged** — `#who-signed`, `#the-dismiss-vocabulary-is-closed` —
+  which is §1 rule 3 doing its job, and no fragment link pointed into the retired page.
+* **The pins, checked one by one, and two that were never there.** `VERB_DOCS["note"]` and
+  `VERB_DOCS["context"]` moved with `cli.md` regenerated off them, and `workspace_model.py`'s source-rule
+  comment now names one page where it named two. `tests/test_queue_era_fixture_contract.py` reads the
+  surviving page, so its path did not move — and it gains the one assertion a merge that *keeps* its target's
+  path otherwise lacks, that the page still names the memory's verbs, file, store mirror and agent door next to
+  its own, because `check_relocations` watches a retired path and nothing else watches a surviving one.
+  **`tests/test_release_contract.py` names no page in this merge** — the map said it tested
+  `review-ledger.md`, and it reads `release.md` and shells out
+  to `check_docs.py` — so the map now says that too, in §2.1 and §4.7, because rule 7 is worthless if a pin
+  that turns out to be air is edited out of the list instead of admitted.
+* **What the merge refused**: `summary-card.md` and `plan-drift.md` stayed out, for §4.7's reason — a card is a
+  rendering and a drift finding is a finding, and neither is a committed record. `docs/concepts/` measures
+  **49** content pages and **12** pointer pages, 61 files, which is the number the map predicted.
+* **Gates, all green in the branch:** `check_docs.py`, `check_docs_site.py` (94 pages, 1 333 fragment links, 12
+  relocations) and its `--self-test`, `check_ticket_claims.py`, `check_docs_commands.py` (130 invocations parsed
+  by clap), `gen_docs.py check`, `check_workspace.py check` and this audit, plus the whole
+  `python3 -m pytest -q` suite: **2 337 passed, 2 skipped, 4 failed**, and the four are the machine's — the
+  same timing-and-release-binary failures `reco-48qd` recorded on this checkout, none of them reading a
+  `docs/**` path, all four written down in `.plan/evidence/reco-lpuj/surviving-claims.md`.
+
+### Three pages about one crate became one page, and the merge map's M6 is closed (`reco-48qd`)
+
+`dependency-surface.md` (248 lines), `dependency-delta.md` (154) and `dependency-risk.md` (283) were one crate
+— `fathom-analyze/src/deps/` — cut by question instead of by noun: what a revision declares, what an episode
+changed, whether to be worried. [docs/concepts/dependencies.md](docs/concepts/dependencies.md) is now all
+three, in that order, and the three old paths are pointer pages. The merge map recorded M6 as a row
+(`docs/reference/doc-map.md` §4.6); this executes it, adds it to §6.2's redirect list with the counts it
+predicted, and moves every pin §1 rule 7 says must move in the same commit.
+
+* **"Nothing was dropped" is a measurement at three grains.**
+  `.plan/evidence/reco-48qd/surviving_claims.py` reads the three pages out of the merge's own parent commit —
+  the rev is derived from history, not typed in — and follows `e12`'s `no_loss.py` method: **685** lines,
+  **467** content lines, **419** verbatim, **4** normalised, **44** residue (20 headings, 7 merged
+  front-matter bullets, 17 wrapped lines and three hand-off sentences re-pointed from a neighbouring file to
+  a section of one page), **0** facts lost and **0** names lost, the names grain being the one the epic's own
+  close had to add after a line-grain proof waved a bullet through with its middle cut out. The script also
+  checks §4.6's six must-not-be-lost claims as six named rows: the format/ecosystem table, the "twenty-five
+  formats" claim, the installed-copy refusal, ADR-004 §6.6 R2/R7's O(changed paths) warm path, ADR-001 §7.5's
+  consent a clone cannot grant, and the tense an expired advisory cache is forced into. 75 table rows came in
+  and 75 came out; nothing in the family is generated, and `features.md`'s two rows are the generator's.
+* **19 links rewritten, not redirected** — the §6.2 census said 5 + 7 + 7 and the merge found 19: eleven now
+  land on an anchor (a family heading, or *Who asked for this*), five are plain page links, and three were the
+  retired pages linking each other and became links from one section to another. `RELOCATIONS` gained three
+  rows and `check_docs_site.py --self-test` still bites four ways.
+* **The pins moved in the same commit, because a test that reads a retired page stops asserting instead of
+  failing.** `tests/test_deprisk_contract.py` reads `dependencies.md` now, and its needles are cut to the risk
+  section so a neighbour cannot satisfy them; `FEATURE_DOCS["deps-all"]` and `["net-advisories"]` moved and
+  `docs/reference/features.md` was regenerated rather than retyped; `check::Check::Dependencies`'s doc anchor
+  — a SARIF `helpUri` — now points at the new page; `adapters/fathom-hook.py` and
+  `docs/harness/verification.md` stopped quoting a retired path. The one place that keeps the old paths is
+  `crates/fathom-fixtures/corpus/turns/fathom-self.json`, a recorded turn's file list: that is history, like
+  a `CHANGELOG.md` line, and a pointer page is what serves it.
+* **Two "who asked" questions, and they are not the same one.** The delta's edge path answers which **package**
+  asked for a package; the risk's provenance ladder answers which **episode** asked for a direct dependency.
+  Averaging them into one sentence would have been the smoothest possible way to lose both, so each section says
+  at its own head which grain it answers — and the surface's *Diffs* stayed a separate section too, because
+  `scan::delta` answers per changed file while `diff::DependencyDelta` answers per package.
+* **Gates, all green in the branch:** `check_docs.py`, `check_docs_site.py` (94 pages, 1 313 fragment links,
+  11 relocations, the Pages render) and its `--self-test`, `check_ticket_claims.py`,
+  `check_docs_commands.py` (131 invocations parsed by clap), `gen_docs.py check`, this audit, `pytest
+  tests/test_deprisk_contract.py` (292) and the deps suite — `deps_golden`, `deps_tolerance`, `deps_monorepo`,
+  `deps_repository` — 27 tests.
+
+### Every gate now runs on a branch the work reaches: `push:` names no branches, and a new rule refuses a list of them (`reco-kwg6`)
+
+Epic 11's census (§5.2, the item none of its four children owned) measured a fleet that
+**never once ran on the work**: 172 runs in thirty days, newest one a scheduled `dogfood`,
+because `master` has been frozen at `e194a63d9d` since 2026-10-26, the branch the loop works
+on has never been on the remote, and every gate file said `push: branches: [master]`. That
+last clause is the one a workflow file can own, and it is the one that is gone.
+
+* **Five files now trigger on every branch: `ci.yml`, `contracts.yml`, `docs.yml`,
+  `privacy.yml`, `sbom.yml` take `branches: ["**"]`.** Chosen over the ticket's other two
+  options because they need something this repository's commits cannot carry: a pull request
+  needs a token on the runner (`gh` is not here, and `git push` asks for a username), and
+  moving the default branch is a settings change, not a file. A catch-all was chosen over a
+  longer list of names for the same reason the rule below exists: **a list of branch names is a
+  claim about where the work was**, and the claim went false for three weeks with nobody able
+  to see it. `complexity.yml` keeps its path-narrowed pull-request trigger and no `push:` — it
+  is a specialist with a corpus, not the merge gate, and duplicating its 24-entry `paths:`
+  filter under a second trigger is two lists that can disagree. `docs.yml` needed the second
+  half of the same edit: its `build` job was gated on `github.ref == 'refs/heads/master'`, so
+  the widened trigger produced a run where every job silently skipped; it builds on every
+  event now, and the two steps that genuinely cannot follow a branch — the Pages artefact
+  upload and the deploy — name `github.event.repository.default_branch` instead of a name,
+  so moving the default branch moves them too.
+* **`R07` is the rule that keeps this from being a fix with an expiry date.** Two clauses, one
+  failure behind them: a `push:` trigger may not narrow by branch name, and a workflow that
+  triggers on *every* pull request must also trigger on a push, because a branch with no open
+  pull request otherwise reaches nothing. It reads GitHub's glob semantics rather than a
+  guess, which is what makes `branches: [*]` a refusal and not a pass — a single `*` stops at
+  a `/`, so it matches `master`, refuses `feature/more_functionality`, and would have let the
+  whole defect back in while the lint went green. `self-test` now fires both clauses from two
+  planted files, and `tests/test_workflows_contract.py` replays the old shape and asserts the
+  message.
+* **`python3 tools/check_workflows.py triggers` answers "will CI run on this branch?" from
+  the checkout** — no token, no `gh`, no network: the branch, whether `origin` can see it, and
+  per workflow whether a push of it or a pull request reaches that file, with a non-zero exit
+  when a merge gate cannot see the branch. It is the half of the ticket no trigger could
+  provide, and the first honest answer to it is in the transcript in
+  [docs/concepts/ci-gate.md](docs/concepts/ci-gate.md): the triggers reach the branch now, and
+  the branch is still not pushed, because pushing needs a credential this checkout does not
+  have. `.plan/evidence/reco-kwg6/branch-reach.md` is the record, including what stays blocked
+  and why.
+* **What the widened trigger costs, said out loud:** a branch that does have an open pull
+  request now runs both a push run and a pull-request run, in two `concurrency` groups that
+  cannot cancel each other. Accepted against a month of unobserved work, with the per-ref queue
+  `R02` still cancelling a superseded push of the same branch and `e11.2`'s cut already off the
+  per-push path.
+* **Still open, and no file can close it:** `schedule:` fires on the default branch only, so
+  `nightly`, `perf`, `fuzz`, `complexity` and `dogfood` keep measuring the frozen commit, and
+  `publish.yml` keeps waiting for a green `ci` on it — so still no tags, and
+  `self-review`/SBOM-publish/dogfood's installer half still wait on a release that cannot be
+  cut. The re-measurement this bead also carries (the census against a fresh window) needs a
+  pushed branch or a moved default branch, and so does every rate in epic 11.
+
+
+### Epic 12 closes: the five merges re-measured in one run, and the re-measurement found a loss M1 had left in `risk.md` (`reco-msv1`, `e12`)
+
+Each child proved its own merge and stopped, and nobody re-ran the set after the
+last one landed — so an epic whose entire subject is *none of the truth lost*
+closed by measuring all five merges again, from each merge's own parent commit,
+with one script: **`.plan/evidence/reco-msv1/no_loss.py`**. Across **9 313** source
+lines and **6 592** content lines it finds **6 110** verbatim in the page that took
+them, **15** more after stripping the scaffolding a merge necessarily changes, and
+**467** residue lines, every one of them classified by what it is. `e12.3`'s
+1 306 / 1 258 / 47 and `e12.4`'s 4 494 / 4 159 / 331 re-run exactly.
+
+* **M1 left a hole in its own front matter, and the close repaired it.** Eight of
+  `docs/concepts/risk.md`'s opening bullets had clauses cut out of their middle —
+  `- **Ticket / plan key, the spine half**: `reco-wsj`` followed by `ranking was
+  pulled forward out of` — and four names had left the concept pages altogether:
+  `e1.x` (which ticket the spine ranking came from), `e8.7` (which added the
+  `complexity` axis and renamed the model), `reco-ydek.3` (which deleted the queue)
+  and `risk::weights` (the module owning `[risk.weights]`, `risk.tau`, clamping,
+  provenance and the refusals, now misattributed to `risk::feature`). One bullet had
+  dropped `Surface`, `classify`, `Signals`, `rank` and `COMPONENTS`; two quoted ADR
+  clauses — ADR-001 §7.10's *"every score is explainable…"* and ADR-006 §5.1's *"the
+  strip must name the ranking function, and `w`…"* — were truncated mid-sentence. All
+  restored from `5be8ac3^`. **Why the merge's own proof missed it is the finding:**
+  `e12.2` classified its 91 non-verbatim lines by *kind* — "11 front-matter bullets",
+  "every code path named there is still named" — and a line with its middle deleted is
+  still a line. Classification by kind is not an accounting. The script's third grain
+  is the accounting: every identifier-shaped name a retired page backticks must be used
+  by the page that took its claims. Four were not, before this commit; zero are now.
+* **The other four merges hold up, at both grains.** M2–M4 retire five pages into two
+  and move 29 generated blocks by editing their generators: **0** names left behind.
+  M5's three slimmed ADRs keep every fact they gave up somewhere in `docs/`, `README.md`,
+  `CHANGELOG.md` or `benchmarks/`: **0** lost, and all **39** generated blocks are
+  **byte-identical** to their state at the merge's parent. Pointer pages, the front-door
+  link, the rewrite-every-real-link rule and the section maps are proven to be able to
+  fail by `check_docs_site.py --self-test`'s four cases.
+* **The map corrected against its own rule** (*a measurement that disagrees with the map
+  changes the map*). The three slimmed ADRs carry **39** generated blocks, not the 40
+  §2 and §4.5 said, and their body is 2 147 lines where §2.2's 2 226 counts each block's
+  two marker lines; ADR-006's close-out figure was **2 713**, not 2 712, which the
+  paragraph carrying it contradicted with its own total; the census's line counts came
+  from `text.split("\n")`, which charges every file one line more than `wc -l` does, so
+  `docs/concepts/` was 18 295 lines and `docs/adr/` 9 752 by `wc -l` — the method is
+  written where the numbers are, and `.plan/evidence/reco-msv1/census.py` prints both.
+  §9's three genuinely-open questions are struck with the bead that answered each: the
+  axis table (`e12.2`), ADR-006's normativity, option (a) (`e12.4`), the pointer cap,
+  24 non-empty lines (M0).
+* **What the epic bought, measured.** 60 files under `docs/concepts/` where there were
+  57: 52 with claims and 8 pointers, so **one page per noun** for every noun epic 12
+  scheduled, and the manual is 379 lines smaller in `docs/adr/` and slightly larger
+  overall — which is the point, since §9 refuses a word-count target. Cross-page audit
+  (`.plan/evidence/reco-msv1/duplicate_claims.py`): **0** claims shared by two content
+  pages before the merges and **0** after, so no merge handed a claim a second home.
+* **Handed on, as beads, citing the map instead of re-deriving it.** M6, the dependency
+  family, is **`reco-48qd`**; M7, the committed review record, is **`reco-lpuj`**; M8 is
+  **refused** for the reason §4.8 already gave. And the class `e12.3` found by hand — a
+  hand-pasted copy of a generated table inside a code fence, invisible to the render rule
+  that otherwise catches every dropped word — is clean tree-wide (**0** fenced blocks with
+  table rows in any `*.md`) and still ungated: that rule is **`reco-u962`**'s.
+
+Gates green at this commit: `check_docs.py`, `check_docs_site.py` (+ `--self-test`, + the
+Pages render), `check_ticket_claims.py`, `check_docs_commands.py`, `gen_docs.py check`,
+`gen_risk_tables.py check`, `gen_adr_tables.py check`, `check_workspace.py check`,
+`check_ci_gate.py`, `check_workflows.py`, `check_delta_compat.py check` and
+`gen_changelog.py audit`. No `.rs` file is touched, so no workspace build ran here.
+
+### Three fat ADRs gave up 408 lines, and no path, section number or generated block moved (`reco-msv1.4`, `e12.4`)
+
+`docs/adr/0002-workspace.md`, `docs/adr/0004-storage.md` and `docs/adr/0006-tui.md` were 1 119,
+2 637 and 2 764 lines, and a growing share of each was description the concept pages had
+already taken over. M5 from the merge map is done: the three are now **1 081, 2 318 and 2 713** —
+**6 520 → 6 112** — and every path, heading number and generated block is where it was, because
+`ADR-00N §x.y` is how the Rust sources, the schemas, the workflows and about 500 documents cite this
+folder. What left is prose that duplicated another page; what stayed is the decision, the constraints
+it imposes on later work, the alternatives and the consequences.
+
+* **Nothing left the repository except the copy of it it did not need.**
+  `.plan/evidence/reco-msv1.4/surviving_claims.py` reads the three ADRs as they were before the slim,
+  takes every content line outside a code fence, and looks for each one in the slimmed ADR, in
+  `docs/**`, in `README.md`, in `CHANGELOG.md` and in `benchmarks/`. Of **4 494** content lines
+  **4 159** are still verbatim somewhere; the **331**-line residue is printed as a list, and the
+  script then re-reads that residue at the grain a fact actually leaves at — the backticked
+  identifiers, commands and paths inside it — and reports **0** lost. A re-flowed paragraph is
+  residue; a dropped `card::top_paths` is not, and there are none.
+* **The map's three pointer candidates for ADR-002 were two generators and a noun clash.** §6.2 *is*
+  the `features` block — rule `R11` and `test_every_crate_and_feature_is_published_in_the_adr` make
+  the ADR the published list, and `docs/reference/features.md` is a different rendering, of
+  `features.rs`'s user-facing prose, generated by `gen_docs.py`. The crate-graph "duplicate" was
+  `architecture-graph.md`, which is about the graph of a repository fathom analyses, not of this
+  Cargo workspace; the ADR now says which graph it draws. What 002 genuinely shed is §8's
+  description of the CI fleet: the `C01` needle rules — including the comment-that-satisfied-a-gate
+  story, which existed nowhere else — to [ci-gate.md](docs/concepts/ci-gate.md), and the matrix and
+  privacy-job narrative to [privacy.md](docs/concepts/privacy.md).
+* **ADR-004's descriptive half was bigger than the store walkthrough: it was the perf chronicle.**
+  §11.10's bless-by-bless record — `reco-r3x`'s window decision, `reco-dkr`'s fleet spread,
+  `reco-0zot`'s five-key ratchet, `reco-axp`'s register, `reco-15wk`'s renamed probes,
+  `reco-xsog`'s 25 % parse win — is
+  [benchmarks/reports/perf-budget-chronicle.md](benchmarks/reports/perf-budget-chronicle.md), and
+  §11.9's `e7.2` run-and-fixes narrative points at
+  [benchmarks/reports/e7-2-real-repos.md](benchmarks/reports/e7-2-real-repos.md), which already
+  carried it and stated the TensorFlow anchor arithmetic better. What stays is what those findings
+  *decided* — a window is coverage, a store-size denominator names its lane, a ratchet floor is a
+  measurement, a bless is one machine's number, a register row comes off by measurement — plus the
+  ledger table `tools/epic7_acceptance.py` parses, and `benchmarks/BUDGETS.md` now points at the
+  chronicle from its own breaches section.
+* **ADR-006's screen descriptions had mostly moved already; the ADR had not given up its copies.**
+  The rail's columns and ladder are [timeline.md](docs/concepts/timeline.md) §2–§3's, the
+  ambient-as-process description is [ambient-mode.md](docs/concepts/ambient-mode.md)'s, the theme
+  chain and the audit floors are [theming.md](docs/concepts/theming.md)'s, and the dated execution
+  narratives — `reco-5js3`'s deleted-symbol list, `e1.12`'s eleven silent keystrokes of forty-one —
+  are `CHANGELOG.md`'s. The ADR keeps what is a constraint: the surrender order and why the Δ goes
+  first, that a column which vanished prints no `?`, the one wall-clock read per frame, and the band
+  table `episode_card.rs` parses out of the file.
+* **The normativity question the map told `e12.4` to settle once got settled: option (a).** §5 now
+  opens by saying the generated layout blocks are the only normative drawing of a shipped frame,
+  that a concept page may describe a pane but may not redraw the whole frame by hand, and that §5's
+  hand-written prose is decisions and binding notes. The re-sweep found no concept page drawing a
+  competing frame — the box-drawing on the screen pages is row-, strip- and pane-level — so the
+  decision costs nothing today and stops the drift that would otherwise be caught by a human; §5.7
+  also stopped hard-coding the ambient contract version now that `ambient-mode.md` states it.
+
+`check_workspace.py check` (9 blocks), `gen_adr_tables.py check` (7), `recommender.tui doc --check`
+(23), `gen_budgets.py check` — whose breaches section now points at the chronicle — `check_docs.py`,
+`check_docs_site.py`, `check_ticket_claims.py`, `check_docs_commands.py` and `gen_changelog.py audit`
+are green, as is the whole Python contract suite at **2 255 passed, 84 skipped** — identical to the
+count before the slim — and `cargo test -p fathom-tui --test episode_card --test layout` (29 + 10),
+the two Rust suites that read this ADR out of the file. The merge map records M5 as done, its ADR
+line counts as re-taken, and what `e12.4` had to change about the map.
+
+### Five concept pages became three, and a line-by-line check says what crossed (`reco-msv1.3`, `e12.3`)
+
+A reviewer asking "what is the delta" was sent to two pages, one explaining the noun and one the contract, and
+a reviewer asking "how are episodes made" or "how are renames handled" was sent to two pages apiece. M2, M3
+and M4 from the merge map are done: [docs/concepts/delta.md](docs/concepts/delta.md) is now the noun and the
+`EpisodeDelta` document in one order of reading; the two episode spikes live together in
+[docs/concepts/episode-derivation.md](docs/concepts/episode-derivation.md); and
+[docs/concepts/rename.md](docs/concepts/rename.md) argues the thing the epic said was one problem — what the
+measurement proved, and what the shipped detector therefore refuses to claim. `delta-model.md`,
+`episode-segmentation.md`, `episode-relink.md`, `rename-detection.md` and `rename-pairing.md` are pointer
+pages now, and 42 inbound links were rewritten rather than redirected.
+
+* **"Nothing was dropped" is a measurement, not a claim.**
+  `.plan/evidence/reco-msv1.3/surviving_claims.py` reads each retired page out of the merge's parent, takes
+  every non-empty line outside a code fence that is not front matter, heading or block marker, and looks for it
+  in the merged page — verbatim first, then after normalising the scaffolding a merge necessarily changes. Of
+  **1 306** content lines, **1 258** crossed verbatim; the **47**-line residue is printed as a list and is
+  five page titles, eight renamed headings, seven lines of merged front matter, twenty lines of duplicated
+  delta prose collapsed to one copy, and seven hand-off sentences re-pointed from a neighbouring file to a
+  section of one page. Every gate, refusal, corpus description and measured cell from `s2`, `s4` and `s6`
+  crossed verbatim; 29 generated blocks went in and 29 came out.
+* **Four disagreements, each resolved against the code and named.** `delta.md` said a gap names the plan key
+  that owns the answer while `delta-model.md` said the complexity gap's `gap.section` stays `what` —
+  `insight/delta.rs`'s two checks are both of those, and the merged page says the general rule then the figure
+  case. `episode.md` quoted the shipped cascade at precision 0.938 / recall 0.747, which are `s2`'s numbers
+  from before `e1.13` and `e1.14`; the blessed report's `D-shipped` row is 0.976 / 0.907 / F1 0.940 / pair
+  0.733, so the live page quotes the report and names the older pair as the spike's first measurement. Where
+  the `s2` page's prose (0.935 pooled) disagrees with its own generated table (0.940), the table is the
+  measurement and the page says so and names the gate — a spike's published prose is not retyped to match a
+  later re-bless.
+* **Two stale table copies deleted out of a code fence.** `rename-pairing.md` carried 18 lines of
+  `rename_pairing_display_budget` and `rename_pairing_cost` pasted *inside* its fenced card sample, with
+  numbers the report no longer prints (361.71 ms, "2.69× shipped, 15.56× widened" against the generated
+  416.14 ms and "2.3× shipped, 18.73× widened"), and the paste had cut the card's own GUESSES line in half
+  mid-word. The copies are gone; the card line is restored from `rename/render.py`, which is also what
+  `test_rename_pairing_contract.py` blesses. `docs/reference/site.md` had recorded this page's pasted-table
+  defect as long fixed — it had been, in prose, where the "the render dropped words" rule can see it; inside a
+  fence a duplicated table is invisible to the only gate that ever caught the class, and that is now written
+  down too.
+* **One generator per document turned out to be an assumption.** Two generators now write `rename.md`, and
+  each refused the other's blocks as "unknown generated block" — so that check is scoped to a generator's
+  block-name family (`rename_spike_`, `rename_pairing_`) instead of switched off: a mistyped name inside the
+  family is still an error, and a block whose owner renders it in no document is still an error.
+  `gen_segment_tables.py` and `gen_relink_tables.py` never noticed sharing ADR-003, which is what told us the
+  rename pair was the odd ones.
+
+`check_docs.py`, `check_docs_site.py` (+ its self-test), `check_ticket_claims.py`, `check_docs_commands.py`,
+both rename generators' `check`, the segment/relink generators' `check`, `gen_docs.py check` (which
+regenerated `cli.md` and `features.md` after `VERB_DOCS["analyze"]` and `FEATURE_DOCS["schema-gen"]` came off
+retired paths) and the `s2`/`s4`/`s6` contract tests (78 + 46) are green. The merge map records the merges as
+done, its counts as re-taken (52 content pages, not the 51 its arithmetic predicted), and what `e12.3` had to
+change about the map.
+
+### Three risk pages became one, the pointers that replaced them are gated, and the axis table is generated for real (`reco-msv1.2`, `e12.2`)
+
+A reviewer asking "how does risk work" was sent to `risk-score.md`, `risk-scoring.md` and `risk-ranking.md`,
+each answering one slice and none saying why there were three. M1 from the merge map is done: the three are
+now [docs/concepts/risk.md](docs/concepts/risk.md), which opens with **the two numbers and why there are
+two** — a `spine-3` ranking that exists in a build with no analysis layer, and a `features-3` score that
+needs one — and gives each its model string, its component or axis table, its calibration evidence, its
+blind spots and its measurements, then states the boundary at the
+[scorecard](docs/concepts/scorecard.md): the repository's number, not the episode's. Prose moved rather
+than being retyped, so a reviewer can diff a paragraph travelling, and the four claims that were stated in
+three places each — the `author`/`authorship` removal, no-zero-for-not-measured, "the noun has to be in the
+diff", the `queue-1` retirement — now have one home each and pointers from the rest.
+
+* **The relocation mechanism landed first, and it can fail on purpose.** `tools/check_docs_site.py` gained
+  `RELOCATIONS` (one row per retired path, one place), `check_relocations` (a pointer must exist, hold one
+  `# ` title, stay under the cap, name its target, hold **no table row and no generated block**, be linked
+  from `docs/index.md`, and be linked by nothing else in the tree), and `--self-test`, which copies `docs/`,
+  breaks it four ways — retired path deleted, pointer grown into a second copy, pointer unlinked from the
+  front door, a real page leaning on the redirect — and fails unless each break is named, with the clean
+  copy passing between them. The threshold is 24 non-empty lines, not the map's fifteen: `risk-ranking.md`
+  had fourteen sections to map, and a section map with a dropped row is the lie it exists to prevent.
+* **58 inbound links rewritten, not redirected.** `README.md`, `docs/adr/0006-tui.md`, three recipes, the
+  quickstart, the detector catalogue, six concept pages and the generated CLI reference now link
+  `concepts/risk.md`; the `#who-wrote-it-the-axis-that-used-to-be-called-authorship` fragment crossed
+  verbatim because the heading text did, so the four pages citing it needed only their path changed. Every
+  pin the map promised moved in the same commit: `VERB_DOCS["why"]`, the seven `RETIRED_TOKENS` exemptions
+  `risk-ranking.md` held, five comments in `risk.rs`, `risk/feature.rs` and `risk_score.rs`, the six nouns
+  in `epic7_acceptance.py` and `test_docs_site_contract.py`, and `risk/feature.rs`'s comment naming a
+  `tests/test_risk_score_contract.py` that has never existed.
+* **A page claiming to be generated is generated now.** The merged page's twelve-axis table carried the
+  sentence "this table is generated, not typed" with no block and no generator behind it, so the merge wrote
+  one instead of deleting the claim: `tools/gen_risk_tables.py` parses `risk::feature::SPECS` as text — the
+  way `features.rs` is read for `features.md`, so it gates in the job that compiles no Rust — and renders
+  the rows between `features_axes` markers, refusing a `SPECS` array whose declared length it cannot read
+  and a weight set that no longer sums to `1.00`. The table also got the header row it never had, which is
+  why its twelve rows had never rendered as a table at all.
+
+`check_docs.py`, `check_docs_site.py` (with the Pages render and the new relocation rule and self-test),
+`check_ticket_claims.py`, `check_workflows.py`, `check_workspace.py`, both generators' `check` and the
+regenerated `cli.md` are green; the three retired paths still resolve, as pointers, from the index's new
+`Retired page names` section.
+
+### The documentation merge map: 65 pages censused, four merges scheduled, and a list of what each merge is forbidden to lose (`reco-msv1.1`, `e12.1`)
+
+Epic 12 opens with "half the documentation, none of the truth lost" and four children ready to merge, and the
+one thing that would have made that fail is four people merging the same family without comparing notes. So the
+map came first: **every page read** — 57 in `docs/concepts/` (18 352 lines), 7 ADRs and their README in
+`docs/adr/` (9 760), 183 generated blocks in 19 pages — and one table written giving the page, the noun it is
+about, the page that should own that noun afterwards, and what must survive. It is
+[docs/reference/doc-map.md](docs/reference/doc-map.md), and `e12.2`–`e12.4` cite it rather than re-derive it.
+Two numbers in the epic's own framing were wrong the way framings go stale: the census found **57** concept
+pages, not 56, and **seven** ADRs, not five — `ADR-007` arrived after the epic was written, and
+`docs/concepts/thesis.md` *is* ADR-001's body, which is why `docs/adr/0001-product-thesis.md` is thirteen
+lines and why that stub is the pattern the ADR merge follows.
+
+* **Five merges scheduled, three recorded-but-unscheduled, twelve refused, and the refusals are the deliverable.**
+  M1 risk (3 → 1), M2 delta (2 → 1), M3 episode (3 → 2, spikes kept whole), M4 renames (2 → 1), M5 ADR slimming
+  in place; then M6 dependencies, M7 the committed review record and M8 the declared architecture, each with its
+  target and cost written down and *no bead*, which is what stops a fifth person discovering the same family.
+  The non-merge table is where the epics' recurring temptations get answered once: the scorecard is the
+  repository's number and not the episode's; a spike is a dated measurement and folding it into its subject page
+  is the loss the epic is defined by.
+* **A path a checker names is a path a merge must edit in the same commit, and nobody had written that down.**
+  `docs/concepts/*` paths appear in forty tools, tests, comments and workflow steps: `tools/gen_docs.py`'s
+  `VERB_DOCS` maps every shipped verb to the pages that explain it (so retiring a risk page moves
+  `why → risk.md`), `tests/test_g3_calibration_contract.py` asserts numbers quoted out of
+  `false-positive-calibration.md` by needle, `crates/fathom-analyze/tests/risk_score.rs` asserts the worked
+  example `risk-scoring.md` §4 quotes, and `tools/check_docs.py` allowlists retired queue tokens *by page path*
+  — seven of them held by `risk-ranking.md`, so merging that page moves an allowlist entry or the gate goes red
+  on a page that has only changed its name.
+* **A page claiming to be generated is not generated.** `risk-scoring.md` says its twelve-axis table "is
+  generated, not typed"; it carries no `BEGIN GENERATED` marker and no tool writes it, and what actually holds
+  it is `fathom why --weights` plus one Rust assertion. The map names that as the trap for the risk merge —
+  write the generator or fix the sentence — because a merge that copies the claim forward is epic 12 failing in
+  the act of being fixed.
+* **Normativity, decided where two pages draw the same object.** ADR-006's per-view layouts are generated and
+  `docs/concepts/timeline.md` hand-draws 113 lines of similar ones; the map picks the generated block as
+  normative (the checker already exists) rather than growing a second one, and refuses the status quo, where a
+  hand-drawn frame can drift from the shipped binary and nothing notices.
+* **Redirects need a rule before they need a page.** `check_docs_site.py` refuses a page unreachable from
+  `docs/index.md`, so a pointer page invented by one merge is an orphan in the next one's build: M0 is one
+  `RELOCATIONS` table, one `check_relocations` rule (pointer exists, is short, says where it moved, is linked
+  only from the index — which is what forces all **100** inbound markdown links in the scheduled set to be
+  rewritten rather than leaned on), and the index's `Retired page names` section. `build_docs_site.py` needs no
+  change: a pointer page builds at the path it replaces, so old URLs keep resolving and a stale reference stays
+  a hard failure instead of a redirect that hides it.
+
+The order of work is in the map, with the two rules that make a merge reviewable restated in it: move, do not
+retype, and name every disagreement resolved against the code in the commit message — an averaged sentence is
+how two pages that disagree become one page that is wrong. This commit adds the map and its link from
+`docs/index.md`; `check_docs.py`, `check_docs_site.py` and `check_ticket_claims.py` are green over it.
+
+### Epic 11 closes: four gates were asking a question twice, they ask it once now, and `C01` refuses a second copy (`reco-374v`, `e11`)
+
+`e11.1`'s census wrote the duplicate table (`.plan/ci-triage-reco-374v.md` §3, nine places where CI asked one
+question twice) and no child owned it, while the epic's own constraint was that every removal name the job
+that still pays for it. Working the table row by row, against what each step can prove with a compiler and
+without one, produced **four real duplicates, two rows that are not duplicates at all, and three already
+deliberate**. Record, with every number below reproduced: `.plan/evidence/reco-374v/epic11-exit-criteria.md`.
+
+* **The four deletions, each with its survivor named.** The default build's egress closure — `cargo tree -p
+  fathom-cli --no-default-features --features minimal`, against the same banned list — ran **byte-identical**
+  in `ci.yml · build-test` and `privacy.yml · offline`; `privacy.yml` keeps it, because it is the workflow
+  whose name says what it protects and it asks on a runner with no network. The demo repository's assembly is
+  `git` over the committed pack — 0.09 s, no toolchain — so `contracts.yml`'s m2 step answers it and `ci.yml`
+  stopped paying a second time on the leg that had just built a binary the check never consulted. The three
+  generated docs pages were checked in `contracts.yml` *above* the `check_docs_site.py` that calls the same
+  generator check inside itself (`check_generated_fresh`), and again in `docs.yml`; the named step in the
+  workflow whose subject is the site is the one kept. And the packager's negative controls ran in `ci.yml`'
+  `release-skeleton` and then again four minutes of archive build later in `packaging`, so the job with no
+  toolchain in front of it keeps them.
+* **A home names a workflow, so the job half needed its own guard.** `C01`'s home column (`e11.3`) cannot see
+  two copies inside one file, so `tests/test_workspace_contract.py` now refuses the packager's controls
+  appearing in two jobs of `ci.yml`, and refuses each of the four deduplicated gates running in a second
+  workflow — asserted from `CI_REQUIRED_STEPS` rather than from a pair hard-coded in the test. The four new
+  model rows (`egress-closure-query`, `demo-repo-assembly`, `generated-docs-pages`, `packager-negative-controls`)
+  and the regenerated ADR-002 §8.1 table land in this commit with the YAML, which is what the epic's first
+  constraint asked for and the only arrangement that makes the ADR, the lint and the workflows one statement.
+* **Two rows of that table were re-read and left alone, and that is the finding.** `check_ci_gate.py` and
+  `check_docs_site.py` each run in `ci.yml` *and* `contracts.yml` because half of each needs a compiled binary
+  — the verb-and-flag rules, and the documented-command check — and prints that it skipped when there is none.
+  `e11.1`'s table could not tell those from copies because it was built from workflow text, not from what a
+  step can answer. A duplicate is one question asked twice; a repeated file name is not.
+* **A comment inside a `run:` block is still a comment.** Proving the deletions stay deleted found the hole:
+  `C01` was rewritten in `e11.2` so a header comment could not discharge a gate, but a `#` line inside a step's
+  shell script is text in `step.run`, and a substring test cannot tell it from a command. Those lines are
+  stripped now too, and a test proves the new half by commenting a real gate out and refusing the result (the
+  YAML half already had its own).
+  `.plan/evidence/reco-374v/dedupe_proofs.py` re-wires each deletion back into a scratch copy of the fleet and
+  shows `C01` refusing it — eight cases, the first the untouched fleet as a control, all as expected.
+* **A gate that fails because time passed is not a gate.** The beta contract asserted epic 11's beads were in
+  `[Unreleased]` — green today, red at the next `gen_changelog.py cut`, when that heading is renamed and
+  refilled. Same bug the suite had already been rewritten away from once (`e11.1` §2.2), arriving through a
+  different door: the beads are now asserted traceable over the whole file, and the per-commit claim stays
+  `C03`'s, which cannot rot because it is per commit.
+* **What it actually buys, measured rather than assumed.** Not minutes: the four removed commands re-timed here
+  cost 0.05–0.10 s each, and the census puts the two it priced at 0.00 and 0.04 minutes. The cost of a second
+  report was never seconds — it is the second ticket, which `e11.3` already counted in tickets for the
+  changelog half. Across the whole epic the per-pull-request path went 9 workflow files → 6, 28 jobs → 15, 222
+  steps → 134, while `ci_gate_map.py` finds **0 gate families gone** and the commands asked more than once down
+  42 → 39.
+* **Still owed, and now held by a bead rather than by prose.** CI still has not run on a branch the work
+  reaches — the Actions API still answers 172 runs, newest a scheduled `dogfood` on `master` from 2026-11-10,
+  and `master` is still `e194a63d9d` — so not one of this epic's changes has been exercised by a run, the daily
+  schedules all measure a frozen tree, and the census's "then re-measure" is blocked. **→ `reco-kwg6`**, which
+  carries both the branch decision and the re-measurement it unblocks.
+
+### The changelog gate reported from two jobs; it reports from one, and `C01` is what keeps it there (`reco-374v.3`)
+
+The gate is good and the second copy was pure cost. `tools/gen_changelog.py audit` ran in `contracts.yml` *and*
+in `ci.yml`'s `e7.7` beta-loop step, and `e11.1` §4 had already counted the bill: three consecutive commits
+where one missing `[Unreleased]` paragraph reddened both jobs, and `reco-s6ge` exists because a mistake that
+reports twice gets filed twice — two tickets, two triage threads, one sentence nobody wrote. This is the
+deduplication the census asked for (`.plan/ci-triage-reco-374v.md` §5, "keep `gen_changelog.py audit` in
+`contracts.yml` only … the C01 needle list moves in the same commit"), done with the rule in the same commit as
+the move.
+
+* **One job.** `contracts.yml · docs + workspace contracts` now owns `audit`, `lint` and the `draft` smoke, as
+  a named step placed first, before the document gates: the job compiles no Rust and was already a
+  `fetch-depth: 0` checkout for the contract suite's history-reading gates, so the finding lands in seconds,
+  at the top of the log, in the audit's own words instead of eight minutes behind a workspace build that had
+  nothing to do with the missing paragraph (`reco-ghao` is why the history matters and why the audit now
+  refuses a shallow clone as `C06` rather than dying in `git log`). `ci.yml`'s beta-loop step keeps what it was
+  the beta loop — `check_beta_loop.py`, `beta_intake.py ledger` — and its name no longer promises a changelog
+  gate it does not run.
+* **Enforced, not narrated.** `CI_REQUIRED_STEPS` gained a fourth field, the **one workflow** a required step
+  may run in, and rule `C01` now refuses both halves of the accident: a pinned needle missing from its home,
+  and a pinned needle turning up in a second workflow. The cadence column could not see the duplicate at all —
+  the gate was present where it was required *and* present again somewhere else. Every row now names its file
+  except two where two homes are the truth (`workspace-boundary-lint`, which two jobs ask for different
+  reasons, and `release-artifact-matrix`, dispatched from two files), and each is commented as such rather than
+  left to be inferred. ADR-002 §8.1's generated table prints the column, so the ADR, the lint and the YAML stay
+  one statement, and `tests/test_workspace_contract.py` breaks both directions on purpose.
+* **A stale instruction is worse than none, so three were rewritten.** `AGENTS.md` told every contributor that
+  two jobs ran the audit and that one red commit bought two tickets; [docs/concepts/release.md](docs/concepts/release.md)
+  §9 hedged with "wherever the gate runs"; [docs/concepts/ci-gate.md](docs/concepts/ci-gate.md)'s fleet table
+  listed the changelog gate under `ci.yml`. All three now name the one job, and the `ci.yml` header says where
+  it went and why.
+* **The checkout that only the audit was using.** With the audit gone, nothing left in `build-test` reads
+  history — its steps read the tree or build their own throwaway repositories — so that job went back to
+  actions/checkout's default depth. Verified rather than assumed: all eleven python steps were run in a full
+  clone and in a `--depth 1` one and answered identically, and no Rust test or build script asks the checkout
+  for a commit it does not have.
+* **Proved on the failure path, once.** A scratch clone of this repository, the changed workflows copied in,
+  and one commit naming a bead `[Unreleased]` never heard of: the `contracts.yml` gate step exits 1 with
+  `C03 … reco-jvv is not accounted for in ## [Unreleased]`, and the `ci.yml` beta step exits 0. The same
+  commit reddened both before this change. Transcript, the depth-1 table, and the honest limit — no GitHub
+  check-run list, because no pull request exists for this branch and `master` is still the frozen default
+  branch — are in [`.plan/evidence/reco-374v.3/one-red-check.md`](.plan/evidence/reco-374v.3/one-red-check.md).
+
+One copy stays on purpose: `tests/test_beta_loop_contract.py` calls the same `audit()` from the pytest step at
+the end of the same job. That is a mirror with contributor-shaped failure messages, not a second gate — one
+job is one check, and the thing deleted was the other *job*.
+
+### The fixture cold index was over its budget because the complexity pass parsed one blob twice; it parses it once (`reco-xsog`)
+
+`reco-15wk` put `cold.index.ms.small` on the register of consciously-relaxed budgets when it re-blessed the
+baseline: **1 491-1 563 ms p95 against a published 1 500 ms**, the analyzer lane named as the cause
+(`phases_ms`: `analyses` 209 ms at `36b011f`, 828 ms at the bless), with two candidate beads and the honest
+note that nobody had measured either. This is the measurement, and it closes the row.
+
+* **Which lane, decided rather than assumed.** `extract.complexity.max_run_ms = 0` is the shipped spelling
+  of "decline the complexity pass outright", and with it the phase measures **212 ms** at this tree —
+  `reco-3h82`'s 209 ms, almost to the millisecond. The whole move is `reco-l9bz.4`'s fill and none of
+  `reco-ydek.5`'s risk vector, which is the sentence the register row was missing.
+* **What inside the pass was costing.** Of the 699 file sides it counted on the perf fixture, **313 (45 %)
+  were a content version the same run had already counted for the same path.** A figure is a property of
+  those bytes under that path, not of the commit that quoted them, and a history is mostly old versions
+  coming back: a row's base side is what an earlier row for that path counted as its head. Inflating the
+  blob is 4 ms of the whole pass; parsing it and counting the branches inside is the other 600, so a repeat
+  costs the expensive half.
+* **The fix is a memo, not a cheaper count.** `fathom_analyze::fill` keeps what it counted per path, on a
+  window of four keyed by the blob each figure was counted from, and a side whose blob equals one of those
+  takes the figure with its `complexity_max` beside it. The equality is with a blob id, so a rename, a
+  revert and a merge that landed two versions of one path all fall back to a read: a miss costs what this
+  pass always cost. Only a figure counted from content is remembered, so a `scan_budget` refusal — a fact
+  about the run, not about the bytes — can never be memoised into a row the next run owed; the window is per
+  path and four wide, so it is a bound and not a cache that grows with the history. The ledger says
+  `run_reused`, in `fathom index --json` and in `schemas/index.schema.json`, and a test feeds the pass a
+  revert and asserts every stored figure equals counting those bytes again.
+* **The number, argued and not absorbed.** The pass went **619 → 372 ms**, `analyses` **826 → 567 ms**, and
+  the cold index **1 490 → 1 254-1 377 ms p95** on the container class `blessed_environment` describes —
+  about 10 % inside the published budget. `cold.index.ms.small` is re-blessed at **1 342.4 ms** (the
+  quietest of three bless runs, divided by that box's ×0.939 calibration factor, §11.8) and **the
+  1 500 ms budget was never touched**: the row came off because the measurement came inside it, which is the
+  only way a row on that register may come off. `benchmarks/baselines/perf-gate.json`'s `known_breaches` and
+  ADR-004 §11.10's ledger are both empty again, and `tools/epic7_acceptance.py`'s ledger gate — red on a row
+  that has stopped biting — is what makes leaving one behind a red build rather than a rumour.
+* **What did not move.** The counting rules, the `mccabe-1` basis token and every stored figure; a
+  repository whose files are each edited once pays every parse it always paid. `e8.4`'s committed overhead
+  report (`+18.0 %` of a cold index on that corpus) predates the memo and is quoted from the report rather
+  than re-measured here, and `cold.index.ms` on real repositories stays held and failing in §11.9. FLEET's
+  cold-index leg moved to this tree's readings; the `ubuntu-latest` leg stays `None`, because it was never
+  measured at a tree carrying the analyzer lane.
+
+### Two perf budget keys still spelled the queue; they now name what their probes press, and the whole baseline was re-measured (`reco-15wk`)
+
+Epic 10 deleted the Queue pane (`reco-ydek.3`, `22148e6`) and renamed `fathom_analyze::queue` to
+`::review`, but the two budgets that pane was named for stayed: `cold.queue_visible.ms` ("queue
+populated, timeline browsable") and `query.queue.ms` ("the attention queue's ordering query
+(`v_queue`), 100 rows"). `v_queue` exists nowhere in `crates/` any more, and the probes that fill those
+ids press `t` and `j` — a budget for a query that no longer runs, described by a view that no longer
+exists, sitting beside a probe measuring the rail. Epic 10 named this as owed and did not do it, because
+renaming a published key is a re-bless of every number on the baseline and a re-bless needs a release
+build on a representative runner (`reco-3h82` and `reco-0zot` both watched a blessed number stop being
+transferable between machines).
+
+* **The names.** `cold.queue_visible.ms` → **`cold.rail_visible.ms`** (time to the home rail's first
+  paint: spawn to first frame, through the pty) and `query.queue.ms` → **`query.rail_keystroke.ms`**
+  (one keystroke on that rail: `j` written to the frame drawn, plus the trend-only `.visible` row the
+  probe drives with `t`). They moved in one commit through `tools/gen_budgets.py`, so
+  `benchmarks/budgets.json`, `benchmarks/BUDGETS.md` and ADR-004 §11's generated table cannot disagree
+  about a name, and with them every consumer: `tools/perf_gate.py`'s coverage and `how=` strings,
+  `tools/mvp_acceptance.py`, `tools/perf_realrepo.py`, `tools/tui_session.py`, the perf, `e1.12` and
+  risk-ranking contract suites, ADR-004 §11.9/§11.10's prose, [docs/concepts/risk-ranking.md](docs/concepts/risk-ranking.md)
+  and [docs/demo/README.md](docs/demo/README.md). The committed reports carry the new ids too, with a
+  line saying which name the run that produced them published under. **No budget id spells `queue`
+  anywhere in the tree now.**
+* **The re-bless.** `make bench-bless`, on the container class the baseline's own `blessed_environment`
+  describes (8 cpus, 7 934 MiB, release build, python 3.14.5, git 2.47.3): all 23 measurements
+  re-measured, nothing hand-copied, floors carried forward and never narrowed. The renamed rows moved
+  because they were measured again, not because they were renamed — 154.87 → **134.4 ms** for the first
+  frame and 1.8 → **2.7 ms** for the rail keystroke — and `reco-dkr`'s floors say which of them the
+  ±15 % ratchet can actually resolve (neither: a 25 ms spawn floor and a 10 ms pty one, so their
+  budgets guard them). The criterion rows are blessed with their own floors for the first time, which
+  takes four of them off the "cannot resolve" list.
+* **What the re-bless found, said out loud instead of absorbed.** `cold.index.ms.small` measures
+  **1 563 ms against its published 1 500 ms budget** — 1 512-1 563 across the runs — and it is not this
+  ticket and not the box: the binary built at `36b011f`, the commit the baseline was blessed at, indexes
+  the same fixture at 846-890 ms *on this same box*, and the store's own `phases_ms` puts the entire
+  move in `analyses` (209 ms → 828 ms) with `graph`, `spine` and `episodes` flat. Work landed since the
+  bless — the per-file complexity count of `reco-l9bz.4`, the risk vector of `reco-ydek.5` — is the
+  candidate and nobody has measured it. The budget is not raised, because §11.9 already refused to make
+  that cost invisible on real repositories; the breach goes on the register of consciously-relaxed
+  budgets (`perf-gate.json`'s `known_breaches` and ADR-004 §11.10's ledger, same row, same bound) with
+  **`reco-xsog`** as its owner, this bless's own number as the ceiling it may not grow past, and
+  2026-12-20 as the date the grace runs out. `python3 tools/perf_gate.py --check` is green on that
+  runner with the breach named in its output rather than hidden by it.
+* **What that did to the epic-7 gate, which was red before this change and is green after.**
+  `tools/epic7_acceptance.py` at `ab0762b` scored **3/4 clauses**, and the failing one was the perf clause:
+  the committed baseline still expected 1 122.5 ms where the tree measures 1 507, so `+34.3 % vs baseline`
+  was red on every run of it in this container. With the re-bless and the register it prints **4/4**.
+  That needed one contract test moved, said here rather than slipped: `test_the_committed_register_is_empty_
+  and_agrees_with_the_adr` asserted `known_breaches == {}`, which was epic 7's close state and not a rule
+  for every tree after it — a re-bless that measures a real regression has exactly two honest outcomes: a
+  bounded row in both documents, or a red build. It is now `test_the_committed_register_agrees_with_the_adr_and_
+  every_row_is_alive`: register and ADR row-for-row, nothing expired, every owner a bead that exists, every
+  row a measurement the tree makes. The ledger discipline tests are untouched and still probe a *synthetic*
+  row, so a green there never depends on what the real register holds today.
+* **What stopped being assertable, and why.** `tests/test_perf_budget_contract.py`'s FLEET table — every
+  reading both boxes are known to produce, fed to `evaluate` so a bless cannot end one argument by
+  starting another — was recorded on 2026-11-07/08 trees, and a tree that no longer exists cannot be a
+  control for a bless made at this one. The container legs are re-measured here; the `ubuntu-latest` legs
+  that the analyzer move invalidated are now `None` with their numbers kept in the comment, and they go
+  back in when the daily `perf` job reports a number for this tree. The two diff-pane legs survived
+  because the diff pane did not move, and they still clear.
+
+### A store written by the build that had the queue is now a committed file, so a queue-era read cannot be broken silently (`reco-o884`)
+
+Epic 10 retired the attention queue and shipped every check that could be shipped without one file: a store
+written *by the build that still had the pane*, read back by the build that deleted it. ADR-006 §5.1.2 §7 and
+[docs/concepts/review-ledger.md](docs/concepts/review-ledger.md) named it as owed, and named the reason —
+a store this build writes agrees with this build for the only reason that matters, so it cannot catch the
+failure the check exists for, which is a **later** migration quietly changing what an old store means. This
+closes it by building the old build.
+
+* **`fixtures/queue-era/`** is three committed files — `store.sqlite3` (forty commits, forty episodes, forty
+  acts, the `review_state` markers, the `ledger_entry` mirror), the class-M `ledger.md` those acts rendered,
+  and a `manifest.json` that records the pinned commit, each file's SHA-256, and what *that* build's own
+  `fathom review sync`/`verify`/`status` printed. It was produced by `81eba3b`, epic 10's decision commit and
+  the last tree that shipped the queue, and nothing in it was written by a build that has seen the deletion.
+  Three files and no fourth: the store is WAL-mode, so SQLite's `-wal`/`-shm` sidecars are git-ignored, the
+  freeze tool refuses to copy a store whose WAL still holds frames, and a contract test fails if any other
+  `.sqlite3` file is tracked.
+* **`tools/freeze_queue_era_store.py`** is how it is reproduced: a detached worktree of the pinned commit
+  beside the checkout, `cargo build --locked` from that commit's lock, a fixed-clock forty-commit repository
+  indexed by the pinned binary, acts written through the pinned `Store::record_triage` — the door `x` `f`
+  `-` `z` used, and the only one that keeps the act log and the marker in one transaction — and the ledger
+  rendered by the pinned `fathom review sync`. `tools/freeze_queue_era_store.rs` is the one file the pinned
+  tree gains, as an `examples/` target of `fathom-store`; this workspace never compiles it.
+* **The expectations are the pinned build's.** `crates/fathom-store/tests/queue_era_store.rs` reads every act
+  back — disposition, actor, reason, note, stamped snooze condition, stamped score and the model name that
+  scored it (`spine-1`, a name this build no longer writes for a fresh act) — and `triage_event_count` says
+  the number it said before the pane went away.
+  `crates/fathom-cli/tests/queue_era_review.rs` drives the verbs: `verify` checks forty entries and calls them
+  intact, `status` prints the queue-era sentence byte for byte (`40 entries · 40 fresh`, `40 live · 20 with a
+  fresh sign-off · 20 without`, the same exit `7`), and `sync` over the act log with the ledger deleted
+  re-renders a file **identical to the queue-era ledger, byte for byte** — never `0 with a fresh sign-off`
+  printed over somebody who had forty. `tests/test_queue_era_fixture_contract.py` pins the bytes by digest,
+  proves from git that the producer commit really predates the deletion, and fails if the pages start
+  calling the check owed again.
+* **What it is not, said in the same breath.** The store is frozen by commitment and digest, not
+  bit-reproducible: `fathom index` stamps its run and its cache rows with the one system clock read in the
+  workspace, which has no fake, so a re-run of the freeze tool is a **re-bless** and wants a reason in the
+  commit that carries the new bytes. `manifest.json` lists the clock columns that move, and
+  [docs/concepts/fixtures.md](docs/concepts/fixtures.md) gains the §7 that argues for this second fixture
+  class — why a store file rather than a SQL dump, why the workspace root rather than a crate, and why the
+  generator builds a whole binary instead of writing rows.
+
+### Every job now says how long it may take, cancels the run it made obsolete, and pays for its own cache and artefacts (`reco-374v.4`)
+
+`e11.1` measured what the fleet spends; this is the budget that measurement made possible, and the lint that
+keeps it a budget rather than a set of intentions. Six new rules in `tools/check_workflows.py` — the same
+workspace-contract lint that already reads the workflows against the tree, so a workflow change is checked by
+the job that checks a `Cargo.toml` change — and `self-test` still proves each of them can say no.
+
+* **Timeouts (`R01`).** Every job declares `timeout-minutes`, and none declares six hours: the ceiling is 120
+  minutes against a slowest job that ever *finished* of 17.7, because a hung cargo or a hung git used to hold a
+  runner for GitHub's default and look exactly like a flake — four such jobs were 43 % of a month's
+  runner-minutes, two of them the beta lane hanging for twelve hours. The numbers came from the census's per-job
+  p95 at about five times the measurement, not from a guess: a timeout tighter than the work is a new class of
+  red.
+* **Queues (`R02`).** The `pull_request` workflows with no concurrency group got the per-workflow, per-ref group
+  with `cancel-in-progress: true`, and `docs.yml`'s `group: pages-deploy` — one queue shared by every workflow
+  that touches the site, which is a queue that cancels a build with a docs run — became the same shape. A
+  `cancel-in-progress` that is not `true` now has to come with the reason written next to it.
+* **Tolerated failures (`R03`).** `continue-on-error` is gone from the fleet. `nightly.yml`'s beta lane and
+  `fathom-check.yml`'s gate step now *name* what they let pass and publish it: beta writes its build and test
+  verdicts, with the log lines that say why, into the nightly's job summary — 778 minutes had been spent on a
+  red nobody could read — and the reusable gate publishes its exit code as an output so the verdict step at the
+  end of the job can say which of its three answers happened, instead of raising before the SARIF and the
+  summary existed. The shape a checker can read is `# tolerates: <what>, because <why>`, and a note whose
+  tolerance has since been deleted is a failure too.
+* **Cache discipline (`R04`).** One caching action; keys derived by it and written by nobody; one dated
+  `CACHE_BUST` per file, commented with when to pull it; `cache-on-failure: "true"`, which is 102 of `ci.yml`'s
+  233 saves back; every job that compiles restoring the cache before its first compiling step, which is two that
+  did not (`self-review`, `fuzz`); and a second workspace named under `workspaces:` or it is rebuilt every run
+  under a key that does not describe it. Where *not* caching the build products is the honest setting — the
+  nightly fuzz toolchain, whose objects are dead weight by morning — it is written down instead of looking like
+  an oversight.
+* **The artefact budget (`R05`).** Seven rows in `ARTEFACT_BUDGET`: what each artefact is, its size, its
+  retention, and the paths it is made of — printed by `python3 tools/check_workflows.py budgets` and quoted in
+  [docs/concepts/ci-gate.md](docs/concepts/ci-gate.md). Every upload declares a `retention-days` inside its row,
+  ships only the paths its row describes, and has a step in front of it that measures the bytes, prints the spend
+  to the job summary whether it passes or not, and fails past the limit. A budget that prints a number in green
+  is a report, not a budget.
+* **Cadence (`R06`).** The one rule that comes from the next ticket rather than from the census: a step the
+  required-step model calls `scheduled` may not walk back onto the `pull_request` path, where `e11.2`'s removal
+  of three `continue-on-error:` lines would otherwise be free to undo itself quietly. It is `C01`'s mirror, not a
+  copy — `C01` asks whether a required step is reachable, this one asks what it costs.
+
+What it deliberately does not do: `release.yml` is exempt from the three line-shape rules (`R01`, `R04`, `R05`)
+and only those three, because cargo-dist owns that file and `dist generate --check` refuses a hand edit; the
+release matrix's own artefacts stay out of the budget for the same reason, being the shipped product rather than
+a report about it, with the release they are attached to as their retention. The exemption is keyed to the
+generator's own banner, so a hand-written workflow cannot claim it.
+
+### The long tail is off every pull request: the reproductions, the package matrix, fuzz and perf are a daily schedule now (`reco-374v.2`)
+
+`e11.1` measured the fleet; this is the cut it authorised, executed against its own cut list. The rule that
+makes a moved gate a deliberate act moved in the same commit as the gates, which is the only way that rule
+means anything.
+
+* **The cut.** Spike `s1`, `s2` and `s6` report reproductions, the `e3.1` structure core and tail legs, the
+  Guardrail 3 calibration `--check`, the out-of-tree plugin build and the `beta` toolchain lane moved from
+  `ci.yml` to `.github/workflows/nightly.yml` (daily, `workflow_dispatch`, on the default branch). The
+  perf *measurement* moved to `perf.yml`'s daily schedule and the fuzz smoke to `fuzz.yml`'s — each keeping
+  the half a pull request can be blamed for in `contracts.yml` as a one-second no-build proof
+  (`perf_gate.py --self-test`, `gen_budgets.py check`, `gen_adr_tables.py check`, `gen_fuzz_corpus.py check`).
+  The six-target package matrix left `pull_request` through the config that generates it
+  (`pr-run-mode = "skip"`; `release.yml` and the captured plan are `dist`'s output, not hand-edits), and runs
+  on dispatch, on a tag, and daily — `nightly.yml` dispatches it in cargo-dist's dry-run mode rather than
+  duplicating six runners here.
+* **What a pull request still pays for, written down** in `ci.yml`'s header: `fmt`, `clippy`, `cargo-deny`,
+  `build+test` on linux × {stable, MSRV}, the headless `minimal` build and test, the changelog gate, the
+  generated-page checks that keep a committed flag list from lying, `check-gate`, and the `.deb`/`.rpm`/installer
+  job that caught six real defects in five days (`reco-hzr`, `reco-ndf`) — which is why it stays.
+* **Measured, with `e11.1`'s own tooling** (`ci_census.py prwall`, same window, same payloads; one push is one
+  unit because its workflows run at once): median PR wall **13.42 → 11.92 min**, median runner-minutes per push
+  **126.88 → 110.28**, total measured runner-minutes **3 355.7 → 2 352.1 — a 30 % cut**. The wall median moves
+  less than the minutes do, and the honest reason is in the numbers: on a warm-cache push the critical path is
+  the workspace build, which is not on any cut list, while the tail ran beside it — where it *was* the critical
+  path the cut is worth minutes immediately (`4a14c7cfcc` 17.9 → 1.95 min, `54bf439f38` 14.18 → 1.25). The p95
+  is unchanged at 362 min because the p95 is the four hung jobs, and those are `timeout-minutes` — `e11.4`'s
+  one-line-per-job fix, worth more than this. Evidence:
+  [`.plan/ci-triage-reco-374v.2.md`](.plan/ci-triage-reco-374v.2.md) and
+  [`benchmarks/reports/ci-triage-reco-374v.2-prwall.json`](benchmarks/reports/ci-triage-reco-374v.2-prwall.json).
+* **`C01` got sharp before any needle moved**, because it is the rule every cut is argued against. Needles are
+  now matched against the steps that execute (`run:` / `uses:` / `with:`) and never against prose — `e11.1` §3
+  caught a header comment satisfying the cargo-deny needle while an action was the real gate — and every needle
+  carries a **cadence**: `pull_request` or `scheduled`, read off the workflow's own `on:` block. A required step
+  that survives only at the cadence it does not belong to is now a red build, which is precisely the drift this
+  ticket could have caused. The list went from six to nineteen entries; `T07` also refuses a matrix that spells
+  a second copy of the MSRV and wants the pin in a pull-request workflow. ADR-002 §8.1's table is generated from
+  the model, §8.3's stale three-OS sentence is gone with the test that asserted it, and
+  `tests/test_workspace_contract.py` breaks both halves of the new rule on purpose to prove they fire.
+* **Discoverable, because a gate nobody can locate gets deleted twice.** The whole fleet, cadence and all, is a
+  table with status badges in [docs/concepts/ci-gate.md](docs/concepts/ci-gate.md) and linked from the README;
+  [docs/concepts/release.md](docs/concepts/release.md) §1.2 and §3.1 say when the package matrix runs, and each
+  workflow's header says why its cadence is its cadence.
+* **Three contracts that asserted a frozen past now assert something they can win** — the other half of the
+  census's drift family (`e11.1` §2.2, §5.4: “a gate that cannot be turned green is not a gate”).
+  `test_ci_builds_on_all_three_operating_systems_and_both_channels` had been red at every commit since `e7.4`
+  deleted the macOS and Windows legs, and it now checks the `strategy:` block for the two channels the pull
+  request really runs plus the `beta` lane on the schedule (a comment is allowed to *name* a runner without
+  running on one, so it reads structure, not prose). `test_the_changelog_has_an_entry_for_this_ticket_and_for_the_five_it_found`
+  demanded five 2026-10-18 bead ids inside `[Unreleased]`, which rotates under them at every release cut; it
+  checks traceability in the file and leaves “is this commit accounted for“ to `gen_changelog.py audit`'s `C03`,
+  which is CI's own gate. And `test_the_ignore_matcher_agrees_with_git` was red *here* because this clone
+  carries `target` in `.git/info/exclude` — a gate about the repository reporting on the workstation — so git
+  is now asked in a throwaway repository holding this repository's `.gitignore`, which is also what `P01` is
+  making a claim about: a runner gets a checkout, not somebody's clone.
+* **Not done here, on purpose:** timeouts and concurrency groups (`e11.4`), the changelog-audit duplicate
+  (`e11.3`), a perf baseline that assumes a real machine rather than a shared two-core one, and the fact that
+  the default branch has not moved since 2026-10-26 — a `schedule:` fires there, so every daily job here
+  measures a frozen commit until the work reaches it. `workflow_dispatch` is the way to run them against the
+  tree you are standing on.
+
+### Thirty days of CI, measured instead of remembered: what actually went red, and the cut list that follows (`reco-374v.1`)
+
+The claim that the actions "cover too much and are flaky" was a feeling, and `C01` is the rule that makes
+deleting a step a deliberate act — so the spike measured before it proposed. 172 runs in the window, 83 of them
+red, 3 367 runner-minutes, every red classified with its evidence: the case is
+[`.plan/ci-triage-reco-374v.md`](.plan/ci-triage-reco-374v.md), the numbers are
+[`benchmarks/reports/ci-triage-reco-374v.json`](benchmarks/reports/ci-triage-reco-374v.json), and
+[`.plan/evidence/reco-374v/ci_census.py`](.plan/evidence/reco-374v/ci_census.py) makes the whole thing again.
+
+* **The flake signature is not in the data.** Zero reds were re-run to green on the same commit; the one second
+  attempt in thirty days is `fuzz.yml` #16. What gets called flaky is drift — 33 of the 83 reds against 32
+  that were the commit's own fault — and `perf.yml` is the proof: it reddened on a commit whose only file was
+  `.github/workflows/ci.yml`, two runs after passing the identical build. A retry policy would have bought
+  nothing and hidden everything.
+* **The largest cost is a hang, not a failure.** Four jobs in two runs ran to GitHub's six-hour default and were
+  cancelled: 1 441 runner-minutes, 43 % of everything measured, and more than `ci.yml`'s nineteen pushes spent
+  on everything else — because no job in `ci.yml`, `contracts.yml`, `privacy.yml`, `sbom.yml`, `release.yml` or
+  `docs.yml` declares `timeout-minutes`. That is the cheapest item in the report and it is not a cut.
+* **One red workflow is quietly stopping four others.** `publish.yml` triggers on `ci` completing and its `if`
+  requires `ci` green; `ci` was never green, so 19 of 19 runs are `skipped`, `git tag` lists zero tags, and
+  `self-review.yml`, `sbom.yml`'s publish job and `dogfood.yml`'s installer step all wait on a release that has
+  never been possible. `dogfood` has gated the same frozen default-branch commit three Tuesdays running.
+* **CI has not run at all since 2026-11-08**, because the triggers are `pull_request` and `push: master`, master
+  stopped moving on 2026-10-26, and the branch the work is on has never been pushed. Any cut made from this list
+  is invisible until that is fixed, which is why it is item 2 of the order of work and not item 9.
+* **The duplicated gates are named with their copies.** `gen_changelog.py audit` runs in `ci.yml`'s `e7.7` step
+  *and* inside `contracts.yml`'s pytest — which is how three consecutive commits each filed two tickets, already
+  recorded as `reco-s6ge`; `gen_docs.py check --page cheatsheet --page detectors --page features` is byte-identical
+  in `contracts.yml` and `docs.yml`; `check_docs_site.py` is asked up to six times a push across three files; and
+  `check_workspace.py lint` runs in two jobs when `C01` requires it in one.
+* **The cut list**, each row naming the gate that still pays for it: delete `release.yml`'s pull-request trigger
+  (18 runs, 0 green, and the source of every `superseded` red in the window), move the perf measurement, the fuzz
+  smoke, the `beta` lane and `g3-calibration` to the schedule, re-point the gates that assert a frozen past, and
+  leave `docs.yml`, `sbom.yml` and `privacy.yml · posture` alone — 56 runs between them, zero red, under two
+  minutes each. Nothing was implemented here: the implementing tickets are the ones after this.
+
+### Epic 10 closes: the queue and the badge are gone, and the pages that deleted them are the pages that had to be told (`reco-ydek`, `e10`)
+
+Five tickets retired a view and a label, and each one moved the code, the goldens and its own share of the
+documentation. What no child owned was the rest of the surface: the ADR section that *lists the commands the
+epic is accepted by* still told a reviewer to run three commands against a deleted pane, and two other
+epics' gates were reading arithmetic and goldens this epic had already moved, and the two style gates every
+PR has to pass had been red since the first of the five. Every claim below was run on
+this tree; the record is [`.plan/evidence/reco-ydek/epic10-exit-criteria.md`](.plan/evidence/reco-ydek/epic10-exit-criteria.md).
+
+* **The constraints, checked rather than assumed.** Not one of the five epic commits touched
+  `crates/fathom-store` — no migration, `SCHEMA_VERSION` still 12, `triage_event`/`review_state`/
+  `ledger_entry` under their own names — so a store written with the queue reads back whole and
+  `triage_ledger` (8) and `review_verb` (12) still pass over it. The write-before-state-change rule left
+  `queue.rs` with the acts and is now `review.rs`'s, with its three proofs `timeline_acts.rs` walking them
+  from the rail. The `d` diff view was touched by none of the five: the only diff golden that moved moved
+  because the shared status strip changed word (`queue unknown open` → `unread unknown`), and the rail row
+  kept every cell it had except the badge — `e8f1a2 0:12 agent +412 −90 ●●●●●● ? ⚑` became
+  `e8f1a2 0:12 +412 −90 ●●●●●● ? ⚑`, age, churn, sparkline, risk and state all intact.
+* **ADR-006 §14 was a list of commands that were acceptance criteria and are now wrong.** It ran
+  `layout queue`, `fit queue 60x12` and `press "q <Enter> x"` — the first two print `unknown view 'queue'`
+  and the third resolves `q` to nothing at all since `e10.3` gave the letter back to the user — and named
+  `cargo test --test queue_triage`, a file `e10.3` split and renamed. It is now `layout timeline`,
+  `fit timeline 60x12`, `press "t j <Enter> d x"` and `--test triage_vocabulary`, which is the half of the
+  old file that outlived the pane. Six more places still counted nine views after the inventory went to
+  eight, §5.1's header still said everything was "prospective until `e10.2`–`e10.5` land", and §5.2 — the
+  protected rail row — still listed `author` as a rung in the width ladder that `Columns::for_width`
+  stopped having, in an order that also had the complexity/sparkline pair inverted from the commit that
+  added the complexity rung.
+* **Forward-looking prose that its own children made false, rewritten as landed.** §5.1.2(c)'s "until then
+  `fathom why` prints `author 8`" and ADR-001's risk-score glossary, which still named *attribution
+  confidence* a vector input, now say what `e10.5` actually did: `spine-3` with five components and a 92
+  ceiling, the freed 8 points deliberately not redistributed, `features-3`'s twelve axes with the `0.04`
+  paid to `findings` and `surface`, and authorship printed as a blind spot. Amendment 3 item 4 carries an
+  *as executed* line for the same reason.
+* **Two other epics' gates were red because of this epic's arithmetic, and were re-measured rather than
+  re-stated by hand.** `reco-6t7`'s gate asserted the MCP risk report ranked the agent's own change first;
+  8 points of `author` is what held it there, and with the term gone a three-line human commit beside it
+  outscores it — so the clause now asserts what a clause about *"is it risky"* is about: the report answers
+  about the change that was asked about, is ordered by the scores it prints, and cites evidence and a model
+  for it. `reco-l9bz`'s golden audit ran `git show -- <goldens>` with no sha, which diffs HEAD, so it had
+  audited the tree it ran on rather than epic 8's commits and passed vacuously on a close commit that
+  touched no golden; pointed at each commit properly it reads 6 changed goldens and 0 unexplained, where
+  before this fix it read 216 unexplained lines off epic 10's own re-bless.
+* **The two hard style gates were red for the whole of the epic, and nothing that runs before CI says
+  so.** ADR-002 §2 makes rustfmt and clippy-strict hard failures and `ci.yml` runs both as gates every PR
+  must pass, but nothing local checks them: the contract suites only assert that the ADR *claims* the gate
+  exists (`check_workspace.py` matches the §2 table row), this tree carries no git hook, and
+  `tools/release.py` runs `cargo fmt` as release step 12, which would have folded the whole reflow into a
+  release commit attributable to nothing. Measured commit by commit, the tree was fmt-clean at `e10.1`'s
+  parent and is clean again here, and the debt is mostly epic 10's own: `c25642e` and `957730a` (epic 8's
+  complexity work, landing between `e10.2` and `e10.3`) took it to 4 sites, `e10.3`'s rename of `queue` →
+  `review` and its split of the queue's tests took it to 36, and `e10.5` left 28. `cargo fmt --all` is run
+  here — 28 sites in 20 files, every one an import re-flow or a re-wrap and none of them behaviour
+  (`fathom-tui/src/lib.rs` listed `pub mod render` after `pub mod review` only because `review` is what
+  `queue` was renamed to, and rustfmt sorts module lists). Clippy, run with `ci.yml`'s two invocations and
+  nothing else, was red on six sites — five of them in code `e10.3` wrote or split out of `queue_triage.rs`:
+  a nested `if … if let` in the strip under the rail, `.into()` on a value that was already a `Disposition` in the
+  ambient open-work row, `.iter().nth(1)` on a `Vec`, an over-indented list item in the module doc of the
+  half of that split which outlived the pane, and `word == &score.to_string()` in `risk_rank.rs`
+  (`clippy::op_ref`); the sixth is `risk::collect`'s `&[row.id.clone()]`, which
+  `clippy::cloned_ref_to_slice_refs` rejects on the pinned 1.97 toolchain, on the line `e10.5` had just
+  re-flowed. All six now read the way the rest of the workspace already does — `std::slice::from_ref`, a
+  let-chain, `.get(1)`, one `&` taken off a comparison — and both CI clippy invocations are green here.
+* **Code documentation the facade rename walked past.** Two intra-doc links still pointed at
+  `fathom_analyze::queue` (`ledger`, `risk::weights`'s `DEFAULT_TAU`), and the plugin-facing finding
+  schema advertised `queue` as one of `view`'s legal names while `view::ALL` has four — a plugin naming it
+  gets `None`, which is rule R7, not a guess.
+* **Still owed, and named as owed rather than closed quietly** — now held by tickets rather than by prose:
+  `reco-o884` for the byte-frozen store fixture ADR-006 §5.1.2 §7 asks for, and `reco-15wk` for the perf
+  budget keys (`cold.queue_visible.ms`, `query.queue.ms`) whose probes now press `t` and whose description
+  still cites a `v_queue` view that no longer exists. Both need a runner and a fixtures decision, not a
+  documentation commit. Ten contract tests were already red on the commit
+  this one follows — the packaging man page's feature set (`e7.4`), `ci.yml`'s dropped macOS/windows legs,
+  the beta-loop changelog reader, the perf and frame-budget gates on a debug build, and an MCP write-audit
+  fixture whose search returns nothing here — and each was re-run red with this commit's diff stashed.
+### Who wrote it stopped being a risk, so the arithmetic lost a term and every number that quotes it had to be re-measured (`reco-ydek.5`)
+
+ADR-001 §7.3 is the reason `fathom` separates a person's turn from a machine's at all: a reviewer reads an
+agent's +4 000 lines differently. But *reading* it differently is an act of the reviewer, and the two places
+the score claimed to do it — `spine-2`'s `author` component and `features-2`'s `authorship` axis — were
+scoring an actor label that `fathom` itself documented as an identity string in disguise. `reco-0er` made the
+axis refuse the guess and `reco-0zi` re-measured what was left of it; what was left was a denominator effect
+on 448 of 540 corpus episodes and a claim the product could not stand up. Both terms are out, the model
+strings moved with them, and everything that quotes either one was measured again rather than restated.
+
+* **The ranking lost a component and did not replace it.** `spine-2` → `spine-3`: `surfaces 50`,
+  `complexity 12`, `size 12`, `deletions 10`, `breadth 8`, and a ceiling of **92**
+  ([`risk::SCORE_CEILING`](crates/fathom-analyze/src/risk.rs)). The 8 points were deliberately **not**
+  redistributed. Every remaining cap is measurement-shaped — `surfaces` is a table whose top rung is 50
+  because an operator has to act on a migration, `complexity` is sized off this corpus's own distribution of
+  added V(G) — and none of them became more true when a mention stopped being a risk; handing the 8 to any of
+  them would have raised the score of every episode that never had an author problem, which is the same
+  over-scoring arriving from the other side. So `spine-3 92` is as high as `spine-3` goes, and a reviewer
+  comparing a `spine-2 46` with a `spine-3 40` is reading one episode before and after one withdrawal, which
+  is what the model name is for.
+* **The vector lost an axis and paid the two axes whose noun is in the diff.** `features-2` → `features-3`,
+  twelve axes, and because `risk::score` divides by the sum of the weights it has, the freed `0.04` had to be
+  placed rather than deleted: **`findings` 0.16 → 0.18 and `surface` 0.13 → 0.15**, and nothing else moved.
+  Not one hundredth went to `attribution`, which stayed at `0.04` — giving the retired axis's weight to its
+  nearest neighbour, the axis that scores how unsure we are who wrote this, would have spent the same money on
+  the same subject again. The arithmetic consequence is stated where the weights are: `findings` and `surface`
+  now count about a tenth more, every other axis about a twentieth less.
+* **`risk::collect` stopped reading the actor for risk at all.** The `Signals.author` field is gone, and with
+  it the identity-confidence ladder that turned a git name into a point on an axis. Nothing about attribution
+  got less honest: `fathom show`, `fathom who`, `fathom attribution` and the delta document still print the
+  actor, the kind and the confidence, still say `not recorded — that is a label, not a proof`, and the CLI
+  still refuses to render a bare `human`. What is gone is the step from that label to a number of risk.
+* **The claim moved to the blind-spot lists, where it was always honest.** The spine prints "who wrote it: an
+  agent turn reads the same here as a person's" and `fathom why` prints the same limit as a scope statement —
+  `attribution` still answers *how sure is the record*, which is a question about the record, not ADR-001
+  §7.3's question about the reviewer's own agent. `risk-scoring.md` and `risk-ranking.md` carry the same
+  section: the thing the axis used to score is now a named hole in what the model can see.
+* **Every printed surface that quoted the arithmetic was re-blessed, not edited.** The rail's risk cell and
+  strip, the episode card's `w` band and its blind-spot rows, `fathom why`, `--plain`, the episode-delta
+  schema and its 173 declared shapes, the narrative golden (whose `author (8/8)` row and citation chain are
+  now the size and breadth rows that moved up a slot), the export record, and three concept pages plus the
+  corpus README. Doc transcripts were regenerated from the binary rather than hand-tuned: the worked example
+  in `risk-score.md`, the four-step repository in `risk-scoring.md`, and the doc tour's and epic 8's
+  acceptance expectations of `features-3`.
+* **Guardrail 3 was re-measured, and the τ answer did not move at all.** Same 51 episodes at the published
+  τ 40, the same 31 false positives, `G3` **0.608** unchanged — 24 of those 51 scores moved by a point or two
+  and none of them crossed the threshold, which is what an axis worth ±1 point on a real corpus looks like. At
+  the corpus cut the flag population went **67 → 63** and `G3` **0.642 → 0.619**, and the reason is a
+  denominator, not a better ranking: the episodes the axis had been paying were the bot- and agent-authored
+  ones, so six `cli` rows that had sat at exactly its cut of 33 scored 31 and fell under a cut that had itself
+  dropped only to 32 (five `low-stakes` bot bumps and one `accepted` CVE bump), one `accepted` episode came in
+  at 32, and `ruff` traded a `low-stakes` typeshed sync for a toolchain bump across its 42 → 41 move. The
+  one episode the lower cut promoted had never been flagged in any pass before this one and so had never been
+  read — `cli` `01f9dd3975`, *Add issue artifact API client*, read against its own diff and dispositioned
+  `accepted` in the truth file, which is what made `every-flagged-episode-is-labelled` go red and come back
+  green for the fifth time. No bar moved; five of nine gates still fail; the miss rate is 0.833/0.750 exactly
+  as before, and the closest miss in the file is now one point further from τ.
+
+### The Queue pane is deleted, the rail is the home view, and the badge's count becomes a count of something (`reco-ydek.3`, `e10.3`)
+
+`reco-ydek.1` decided this in [ADR-006 §5.1.2](docs/adr/0006-tui.md) and `reco-ydek.2` moved the acts off it;
+this is the deletion, and the arithmetic says so — across `crates/` the diff removes 3 425 lines and adds
+1 960. What `fathom-analyze::queue` (`rank_queue`, `QueuePolicy`, `QueueRow`, `QueuePlacement`),
+`fathom-tui::worklist` and `fathom queue` were built to answer does not disappear with them, and the ticket's
+real content is the four places that had to be named as their replacements rather than left as holes: the
+home view, the retrospective, the ambient glance, and the sentence under the rail that used to justify the
+ordering. `q` is **retired to the user**, not reused: ADR-002 §6.2 refuses to re-bind a public letter, so the
+keymap ships no entry at all, an override file may claim it, and pressing it says what it used to do and where
+those rows live now.
+
+* **Nine views become eight, and `q` is not the ninth.** `ViewId` loses its `Queue` arm; `Mode::Queue` leaves
+  the keymap precedence list; the shell opens on `t`, the rail, which is the pane that was already absorbing
+  the queue's job row by row. The generated layout tables, the matrix screenshots, the cheatsheet, the
+  shell's own `?` page and both completion artefacts are re-rendered from the same inventory, so there is one
+  list of views and it is printed in every place that used to have a second copy of it. `fathom queue` becomes
+  `fathom triage`, naming the ledger it reads instead of the pane that died.
+* **The retrospective is a listing, not a pane.** The acts the queue used to fold into a column — dismissal,
+  author, reason, note, when — are the timeline's own act list (`a` walks it, the card prints the one under
+  the cursor, `fathom review list --state dismissed` is its deep form), and a session with nothing written
+  says so in the same breath rather than painting an empty list. The write path is untouched: `fathom review
+  verify` still refuses a ledger that drifted, and `fathom review sync` still renders each act once.
+* **The ambient line stops counting a queue and starts counting reading.** `IndexState.queue_open` becomes
+  `unread` and prints `7 unread of 12` where it printed `queue 7 open`, because "open" was never a property a
+  reviewer could check — an episode is open because *you have not read it*, which is the sentence the pane now
+  prints, with the snoozed and overridden counts kept beside it as the exceptions they are. The ambient JSON
+  contract moves to `fathom.cli.ambient/2` for the same reason: `queue` becomes `open_work`, and a consumer
+  that asked for the old key gets the version it asked for rather than a renamed one.
+* **A ranking that orders nothing stops shipping an ordering.** `risk.rank` and `risk.ranked` leave the delta
+  document, which is `fathom-delta/2` after the bump and is re-blessed through `tools/check_delta_compat.py`
+rather than patched in place — a document whose *shape* changed is a version bump, not an edit. The strip
+  under the rail says `order: newest first` and keeps naming the model that produced the row's figure
+  (`risk spine-2`), because the number on the row is still `spine-2`'s and ADR-006 §5.1.2 §3's rule is that a
+  printed figure names its producer.
+* **The last two names the pane left behind, and a gate so they stay dead.** `fathom_analyze::queue` is
+  `fathom_analyze::review` — the disposition vocabulary, the retrospective roll-up and the counts were never
+  about a queue and are now not named for one — and the config key `[queue] dismiss_reasons` is
+  `[review] dismiss_reasons`, **still honoured in the old spelling with a notice naming the new one**, because
+  a repository's own vocabulary may not silently stop working because a view went away (`fathom queue` is
+  `fathom triage`, which names the ledger it reads). `tools/check_docs.py` gained the retired-surface gate
+  ADR-006 §7 asked this ticket for: ten deleted strings — the ordering strip's sentence, `rank N of M`, the
+  worklist's module path, the ranking's type names — each mapped to the pages allowed to print them, checked
+  in both directions so an exemption that outlived its record fails too.
+
+Tests moved with the deletion, including the ones that had to be re-asked rather than deleted:
+`tests/test_risk_ranking_contract.py` now asks the 500-commit pty "does every row print its score, print `?`
+when nothing scored it, and get a strip naming where the number came from" instead of "is the queue ranked",
+and asks the migration/CI pair through `fathom why` now that no pane sorts by their scores;
+`tests/test_tui_contract.py` counts eight views and asserts `q` is bound to nothing; the shell-open and
+view-key pty chords are green with the rail as home; `tools/perf_gate.py`'s and `tools/mvp_acceptance.py`'s
+probes are retargeted from `q` to the rail while the **budget keys keep their names**, because what they
+measure — first paint, and one keystroke on the home list — did not change, only the letter that reached
+them; and the finding schema's view registry drops `queue` with its blessed JSON re-generated rather than
+hand-edited. **Still owed, said out loud**:
+the committed store fixture [review-ledger](docs/concepts/review-ledger.md) asks for (a `.sqlite3` written by
+the build that still had the queue, to prove forty old sign-offs still read back) does not exist yet and this
+repo keeps no committed stores; the argument in the meantime is structural and is written on that page — no
+table moved, `SCHEMA_VERSION` did not move, and nothing in epic 10 read `triage_event` differently.
+
+### Epic 8 closes, and its exit criteria became a program that can be told to lie to it (`reco-l9bz`, `e8`)
+
+Seven tickets made complexity a primitive: `e8.1` defined it, `e8.2` counted it in six grammars against a
+hand-authored corpus, `e8.3` gave it six columns and a roll-up that is a join, `e8.4` budgeted the reading
+of file contents and made a spent ceiling talk, `e8.5` wrote the figure into the delta model, `e8.6` put it
+on the rail, in the card and in the tree, and `e8.7` taught both rankings to use it and re-read G3
+afterwards. Every one of those has its own contract. What none of them had was the epic's own sentence —
+*measured, stored, carried, printed at a glance* — as something that runs, so the close is
+`tools/epic8_acceptance.py`: six clauses, 50 checks, ~9 s, and `tests/test_epic8_contract.py` pins it the
+way `e6` and `e7`'s gates are pinned. It is the third gate of that shape and it adds one rule to the
+pattern: **a gate that has never been seen to fail is a print statement**, so the gate ships
+`--self-test`, which doctors its own store four ways and is red unless each fault is caught.
+
+* **The corpus is authored in the open, and the figures are literals.** Six grammars, one hand-countable
+  file each, plus prose, a binary and a file whose syntax is broken, committed in four sittings six hours
+  apart so that a partial roll-up, an addition, a deletion and an uncountable path are four episodes
+  instead of one standing in for four. Twelve `(commit, path)` figures are written in the gate as numbers
+  it chose before it ran anything, and all twelve come out of one `fathom index` — which is also what makes
+  "all six shipped grammars" a measured sentence rather than a paraphrase of the `langs-all` feature. The
+  three refusals arrive from the files themselves (`binary`, `language_unknown`, `parse_failed`), so the
+  `?`-is-not-`0` rule is tested on bytes that cannot be read rather than on a row somebody marked up.
+* **The seams are the point, and the seam with no owner is the one that leaks.** One store, one episode,
+  the figure asked of seven readers: the store's rows re-added in Python, `fathom analyze --json`, `fathom
+  show --plain`, `fathom show --json`, `fathom why --json`, the JSON export, and the rail cell read off a
+  real pty after `t`. They agree on `+2` and every one of them names `mccabe-1`. The episode with nothing
+  to count prints `?` on all of them and carries no `delta` key at all. `spine-2`'s sixth component is
+  recomputed from `COMPLEXITY_CEILING = 20` and `features-2`'s thirteenth axis is checked against the
+  delta document rather than against itself, and the committed G3 report has to show
+  `complexity_axis.pass` writing every row it was owed — because an axis measured from parsed source is
+  silently absent in a build without the grammars, which is the one thing a byte-exact `--check` must not
+  be able to miss.
+* **The four things a doctor cannot see, the gate looks for.** A `CHECK` constraint is read out of the
+  table's own DDL, not assumed; **zero derived rows evicted** is measured by counting `cache`/`blob`/
+  `blob_ref` across a cold index and a warm one and requiring nothing went down (they moved +2/+4/+2 while
+  file rows with a figure went 8 → 9); both ceilings are spent for real — `max_file_bytes = 40` refuses
+  nine rows with `too_large`, `max_run_ms = 0` declines the pass and names its key, `doctor` prints the
+  remedy naming that key, and after the key is raised the next row for that path is counted again, which is
+  what makes a budget a fact about a run and not a fact about a file; and every change this epic made to a
+  **protected golden** has to name itself — by the commit message or by the primitive's own vocabulary —
+  which is a real constraint, since `e8.7` moved three card goldens without saying so and is legal only
+  because the lines it moved are `spine-1` → `spine-2`.
+* **The gate found one mislabel, and named it instead of fixing it.** `spine-2`'s complexity bullet prints
+  *"the worst single unit at head is V(G) 5"* from a figure that is ADR-007 §5.1's max over *path* figures:
+  one file, two functions, V(G) 4 + 1. The number follows the ADR and the noun does not. It is recorded in
+  the run as a `note` that disappears if the sentence is ever corrected, and written into
+  [ADR-007 §13](docs/adr/0007-complexity.md) beside the two older mislabels, because correcting it means
+  blessing a golden and an epic close does not get to do that quietly.
+* **What the gate refuses to pretend.** It does not re-score the corpus or re-fetch the Guardrail 3
+  repositories: `complexity_harness --check` and `g3_calibration --check` are CI's, and a second scorer in
+  Python is how a measurement goes quiet — so those two are `note`s naming what they own, not passes. It
+  claims nothing about whether the count predicts anything a reviewer cares about (§8.3's refusal still
+  stands; `e8.7`'s G3 moved up in two of four cuts and that argument lives on the calibration page). And
+  `--skip-tui` reports the rail/card/tree clause as **blocked**, never as passed: the clause the epic is
+  about cannot be earned by a run that skipped it.
+
+### The ranking learned to count decision points, and the corpus had to be read again because of it (`reco-l9bz.7`)
+
+`e8.3` measured V(G) per function, `e8.4` filled the column, `e8.5` wrote the episode roll-up into the delta
+model, `e8.6`/`e8.7` put it on the rail and in the tree. Every one of those surfaces *displayed* the figure.
+None of them *used* it: the ordering that decides what a reviewer opens first — `spine-1`, five components,
+all of them shape — had no way to say "this change is +2 lines and twelve new branches" and
+`features-1`'s twelve axes had the same hole, so an episode that added a decision point every 50 lines and
+one that re-emitted a lockfile could arrive at the same number and print the same reasons.
+[ADR-007 §6](docs/adr/0007-complexity.md) asked for exactly this wiring and
+[§7.10](docs/adr/0001-product-thesis.md) insisted there be only one figure to wire. Both halves are done
+here, and neither half invents a second calculation.
+
+* **The ranking grew a sixth component and a new name.** `spine-1` → `spine-2`: `surfaces 50`,
+  `complexity 12`, `size 12`, `deletions 10`, `breadth 8`, `author 8`. `surfaces` and `author` were left
+  alone because the case studies keep saying they dominate; `size` and `deletions` paid most of the new
+  component because complexity is what they stand in for when a change's difficulty is not its length. The
+  12-point ceiling is filled by **+20 added decision points**, measured on this corpus rather than chosen:
+  the added figure is a long-tailed count — median 2 in `flask`, 8 in `ruff`, 12 in `cli` among episodes that
+  add any — and a ceiling of 20 spreads that middle instead of saturating it at the first refactor.
+* **The vector grew a thirteenth axis, and the axis is the same figure.** `features-1` → `features-2`,
+  `complexity` at weight `0.07` of a denominator that still sums to `1.00`. `risk::collect` reads
+  `Store::episode_complexity` — the one roll-up ADR-001 §7.10 allows — and the ranking reads the same
+  column, so `fathom why`, the episode card, the delta document and `--plain` cannot disagree about what an
+  episode added. A change that touches only files the indexer refused a figure for leaves the axis out of the
+  denominator rather than claiming zero; a floor — some paths counted, some refused — prints its tally, its
+  coverage, its worst unit and the word "floor", and is scored on the floor it states.
+* **`spine-2` says what complexity is not, in the same breath.** The ceiling bullet now states that the axis
+  counts decision points, not wrong branches and not complexity that was only moved, and `deletions` is
+  still the only thing that notices a function being pruned. The blind spot `spine-1` printed as "harder to
+  follow" is closed; the one beside it — a 40-branch function whose branches are all wrong — is stated
+  rather than papered over.
+* **The G3 harness moved, and it had to be made honest before it could be measured.** Two things. It was
+  running without the grammars, so the new axis would have been silently absent on every episode it
+  measured; it now runs `--features sqlite-bundled,langs-all` here and in CI. And the complexity fill is
+  budgeted — `extract.complexity.max_run_ms`, 60 s by default, exists so one pathological file cannot hold
+  a scan open — which on a corpus parsed from scratch per run meant *machine speed* decided which rows had a
+  figure. The same commit produced `G3` 0.625 on one run and 0.667 on the next. The harness now runs the
+  pass at the policy ceiling, refuses to certify a report where the scan budget refused any row, and prints
+  the pass's per-repository rows/written/refused under `complexity_axis.pass` so the promise is in the
+  artefact. Two runs later, the report is byte-identical to itself.
+* **Re-measured, with four new hand readings, and two gates moved for the reviewer and one against them.**
+  `G3` at the published τ went **0.660 → 0.608** and at the corpus cut **0.683 → 0.642**, because four
+  promoted episodes were worth the flag (three `accepted`: a telemetry-lifecycle rewrite, a solver change to
+  which generic solutions may be inferred, a new `flake8-type-checking` notion) and five long-dismissed bot
+  bumps fell under the threshold. The miss rate at τ went **0.792 → 0.833**: one `accepted`, later-reworked
+  `cli` episode sat at exactly 40 and landed at 37, because the weight the new axis earned came off the axes
+  that episode was scoring on. That is the price of the change and it is written into
+  `thresholds.json` at the gate it moved, not in a footnote. No bar moved; five of nine gates still fail;
+  the axis did not make the ranking's claims truer (`blamed_on_score` held at 24) and it did not re-enable a
+  disabled detector.
+* **Two honesty notes the harness owed and now prints.** The 40-case calibration corpus cannot fit this axis
+  — no case in it turns on added decision points — so `fathom why --calibrate` says **`not fitted by this
+  set: blast, complexity`** instead of presenting thirteen weights as though thirteen were measured. And
+  the vendored-typeshed sync the new term carried over τ was dismissed `low-stakes` and blamed on the
+  ranking, in the corpus, by a label: 926 changed lines of `turtle.pyi` is a worst-unit V(G) of 874 and
+  nothing to read. That is a real limit of a branch count, recorded where the measurement will keep
+  repeating it.
+
+* **Two generated artefacts were regenerated, and one of them was not this ticket's to find.**
+  `schemas/episode-delta.schema.json` moved because the delta model's own description strings name the
+  ranking, and they now name `spine-2`. `schemas/fathom.schema.json` had been stale since `e8.4`: the two
+  complexity-run budget keys (`extract.complexity.max_run_ms`, `.max_run_bytes`) were in the config schema's
+  source and had never been written into the committed artefact, which is the same pair of keys that made the
+  corpus nondeterministic two bullets up. Regenerated here because the same CI job that gates this ticket
+  reads the artefact — not as a fix to `e8.4`, which owes its own note if anyone wants one.
+
+`docs/concepts/risk-ranking.md`, `risk-scoring.md`, `risk-score.md` and
+`false-positive-calibration.md` (§3d) carry the new vectors and the re-measured numbers; the blessed report
+is `benchmarks/reports/e4-3a-g3-calibration.json`.
+### Complexity became a column you can glance at, a row that says its coverage, and a tree you can sort by it (`reco-l9bz.6`)
+
+`e8.3` built the columns and `e8.4` filled them; `e8.5` carried the figure into the delta model. The review
+question — *did this episode make the code harder to follow?* — still needed a reviewer to open something to
+answer it. [ADR-007 §5.3](docs/adr/0007-complexity.md) says the episode delta belongs on the rail "as a
+signed delta (`+7`, `−3`, `±0`)" and [ADR-006 §5.2](docs/adr/0006-tui.md) owns the row that has to carry it,
+including the order the row surrenders in when the pane is narrow. This is the glance.
+
+* **The rail grew a sixth column, and a new rung to hold it.** `state · sha · age · size · sparkline · Δ ·
+  risk · state-marker`, printing `+6`, or `~+6 (2/5)` for a floor, or `?` where the analyzer could not count
+  the file — glyphs and digits, never a hue, so a `NO_COLOR` terminal loses a colour and not a fact
+  (§10.1). The surrender priority is `7`, above the risk number (`6`) and the change size (`5`), and the
+  justification is that this is the only figure on the row whose proof is a keystroke away and getting
+closer: `d` now prints it per file and can sort by it. §5.3 fixes the bottom of that choice itself ("the
+  figure is allowed to be dropped before the change-size cell"), because `+412 −90` is what every other
+  surface states a change's size in.
+* **It is a new rung, not a wider one.** Full stays at 34 columns' worth of the old five cells and the Δ gets
+  37; between them the rail reads `no complexity Δ` and draws exactly what it drew before. Below the
+  sparkline rung the Δ is never drawn at all, because `+412 −90 +6` is a third line count with a plus on it
+  — the exact misreading §10.1 allows this column only when it sits *apart* from the size columns. And a row
+  that lost the cell says so in the strip (`complexity Δ dropped to fit this row`), because a column that
+  vanished silently is a column a reviewer reads as a `?`, which is a different claim (`e8.3`).
+* **The card's reserved row states its coverage, and `?` never travels alone.** Delta first, absolute at
+  head second, coverage third — read out of the one figure `e8.5` writes, so the card cannot recount and
+  disagree with itself. A floor's denominator arrives inside the figure's own string, so the card adds one
+  only where there was nothing to warn about; an episode with nothing counted prints `?` with its reason and
+  the verb that would fill the column, never `±0`.
+* **`d` is where the number is proved, per file.** `X-Fathom-Complexity: +7` / `? generated` and
+  `X-Fathom-Complexity-Max:` travel in the patch from the roll-up `e8.4`'s pass already wrote (the
+  episode scope reads `Store::episode_complexity`, a bare `d <oid>` reads `commit_complexity`), the tree
+  prints them beside each file's `+adds −dels`, and the counts row carries the legend — `complexity +6 (1?)
+· worst 14` — so the column stays bare numbers on the rows without becoming a guess. `<` cycles the sort:
+  path, or complexity Δ with the worst single unit behind it, uncountable files last (§5.3), always inside
+  the taxonomy groups and never dissolving them.
+* **`tests/tables/mod.rs` is regenerated, not edited**, for the one new action (`diff.sort_cycle`, `<` in
+  the diff mode) and the rail's new read of `delta.complexity.*`; ADR-006 §5.2's column set, §7.3 and §7.4
+  and the generated layout frames were re-derived from the same tables.
+
+Asserted by `crates/fathom-tui/tests/timeline_behaviour.rs` (the three states, the surrender order, the
+strip's two different sentences, coverage-before-figure), `tests/diff_behaviour.rs` (per-file cells, the
+`?` that names its reason, the sort and its cycle, group order surviving a re-sort, and a patch with no
+headers drawing no column), `tests/episode_card.rs` (the denominator stated once), and the goldens —
+`timeline/ladder.txt` (four rung *names* changed: three to `all six columns`, 34 to `no complexity Δ`; every
+row byte-identical, because that corpus has no complexity figures to draw), `diff/frame_mixed.txt` (the tree
+strip gained `sort: path` after the path), and one new golden, `timeline/rail_complexity.txt`. Docs:
+[the timeline](docs/concepts/timeline.md) §2 and §3, [ADR-006 §5.2](docs/adr/0006-tui.md).
+
+### Complexity arrives inside the delta, beside the line counts it qualifies, so no surface has to derive its own (`reco-l9bz.5`)
+
+`e8.3` built the columns, `e8.4` filled them, and the review question — *did this episode make the code harder
+to follow?* — still answered `?` on every surface, because nothing carried the answer from the store into
+[the one model every surface reads](docs/concepts/delta-model.md). [ADR-007 §5.4](docs/adr/0007-complexity.md)
+had already named the grain (*this change*) and insisted the figure "enters the single `EpisodeDelta` model,
+not a card-only calculation", for the reason ADR-001 §7.10 exists: a rail that sums the columns, a card that
+sums them again and an agent that sums them a third time are three answers, and all three can be defensible.
+This is the figure entering the model.
+
+* **`ComplexityView` is a field of the document, and a figure of `what`.** The block carries the delta
+  against the episode's base, the absolute at head over the paths *this episode* touched (never a repository
+  total — ADR-007 §8.1), the largest unit figure, the coverage pair `measured_paths`/`touched`, the
+  ADR-007 §7.1 reason codes counted once per path, the basis tokens, and the gap when there is no figure.
+  The figure goes through `Figure::new`/`Figure::unknown` like every other figure in this document — there is
+  no constructor for a figure without evidence — points at `#/complexity`, and prints beside
+  `reviewable churn`: `+6`, or `~+6 (2 of 5 measured · 3 unmeasured: language_unknown 3)`, or `?` with its
+  reason. `FIGURE_CAP` goes 8 → 10 to make room; nothing the card prints was pushed out.
+* **The three silences are three different claims.** No roll-up read prints **no figure at all**; a roll-up
+  that could count nothing prints `measured: false`, `?`, its code, its remedy and a gap — never
+  `delta: 0`, which would be a statement about the code rather than about the index; a partial count prints
+  a floor that names its own denominator. A mixed basis (`mccabe-1` beside `cc-shannon-1`) caps the state at
+  `partial` even when every path was counted, and says so in the value and in
+  `provenance.models.complexity` — `structure::complexity (mccabe-1)`, the basis token being part of what the
+  number *is* (ADR-007 §9.5).
+* **`integrity` gained a tenth check, and the gap contract is now machine-checked.** The figure and the block
+  may not disagree, measured + unmeasurable must be the paths in scope, the state and the coverage must be
+  what the counts make them, and an unmeasured figure's one-line gap — `complexity: not measured yet (e8.3)`
+  — must fit the thirty-five columns of the narrowest card and blame a plan key. Every one of the
+  seventeen §7.1 codes is walked in a test, so no code can arrive with a sentence that gets cut.
+* **One read, four doors.** `fathom_analyze::insight`'s store bridge takes the roll-up from
+  `Store::episode_complexity` — one join over the episode's own file rows, batched for the rail and the page
+  — and hands it to every composition: `fathom analyze`, `fathom show`, `fathom export` (`e5.7`) and the MCP
+  `explain_episode` result (`e6.4`), which copies the document rather than re-deriving it. The TUI card's
+  reserved `complexity` row, waiting since `e2.10` for a figure to draw, draws it now; the markdown artefact
+  links `#/complexity` to the card it came from.
+* **The contract moved additively.** `schemas/episode-delta.schema.json` was regenerated by
+  `fathom analyze --schema --write` (a new optional `$defs/complexity`, an optional top-level property, the
+  figure cap raised) and `tools/check_delta_compat.py check` reads it as additive at the unchanged v1 — no
+  reader of yesterday's documents is wrong today. `schemas/show.schema.json` gained the same block under
+  `identity`, since `fathom show` prints it beside its own line counts.
+
+Asserted by `crates/fathom-analyze/tests/complexity_delta.rs` (12 tests, including a real index run and a
+store whose complexity columns were blanked, which is how "the analyzer could not" is told apart from "the
+index has not filled the column"), three new documents in the `delta_schema.rs` corpus, the verb-level
+assertions there that `fathom analyze` and `fathom show` print one number, and
+`tests/test_mcp_contract.py`, which checks the agent's figure is the reviewer's figure. Docs:
+[delta](docs/concepts/delta.md) and [the delta model](docs/concepts/delta-model.md).
+### Complexity is counted while the bytes are in hand, under three ceilings, and the run says when one of them bites (`reco-l9bz.4`)
+
+`e8.3` built the columns and nothing wrote them: a figure could be read out of the store only if some other
+pass had already paid for the file contents, so the review question "did this episode make this file harder to
+follow?" answered `?` for the entire history. [ADR-007 §12.11](docs/adr/0007-complexity.md) had left the
+question of *where* the counting happens open on purpose. It is decided now: **during the index run, in the
+pass that already asked the object database for those bytes to compute churn**, and stored in
+`git_commit_file`'s complexity columns — not later as a derived row produced by an analyzer re-reading the
+contents through a cache whose ceilings had already decided they were not worth keeping. The argument, and the
+measurement that priced it, are [ADR-007 §9.7](docs/adr/0007-complexity.md) and
+[the concept page](docs/concepts/complexity-ceilings.md); what landed is this.
+
+* **`fathom index` fills the columns, in cost order.** `fathom_analyze::fill` answers a commit's owed file
+  rows and writes one transaction per commit: an absent side, a binary file and an unsupported extension are
+  refused for free, a base side already in the store is taken back from the first parent's row instead of
+  recomputed (a rename is excluded, because the parent's figure lives under the *old* path hash), and only
+  then does anything get inflated. Over the 5 501-commit generated-Go history that is 66 885 file rows and
+  122 MiB read in 15.6 s, of which one file row in five had a figure — the refusals are what the pass is
+  mostly made of, and they are nearly free because the order makes them free.
+* **Three ceilings, in the vocabulary `e7.3` already established.** `extract.complexity.max_file_bytes`
+  (2 000 000, decided from the object header, so a 400 MB vendored file costs a header read and nothing
+  else), `extract.complexity.max_run_bytes` (128 000 000) and `extract.complexity.max_run_ms` (60 000 —
+  this pass's own clock, summed over the commits it filled, not a deadline that would charge it for the
+  structural pass). Each one spent leaves `?` with `scan_budget` or `too_large`, names the key that ran out,
+  and counts itself in the `counter` table. The two per-run numbers are measurements, not round guesses:
+  512 MB cost the pass 60.9 s of its own clock on that corpus — half again the rest of the run — so the
+  shipped byte ceiling is a quarter of it.
+* **A ceiling is not a hole in the index.** A row refused by a budget or a size cap stays in the owed set
+  that decides what a run may skip, so raising the key and re-indexing fills what this run declined, and a
+  series of budgeted runs converges instead of calcifying. Every other reason — `language_unknown`, `binary`,
+  `parse_failed`, `not_utf8`, `grammar_not_compiled` — is a property of the bytes, closes the row, and is
+  never asked again. A refusal is also never a figure: only `absent_revision` and `no_bodies` are zeros that
+  feed a sum.
+* **The progress row is told, because a percentage cannot show an absence.** A run whose pass was declined
+  still finishes every commit it was asked to analyse, so `analysing … 100 % · done` would have been true and
+  misleading at once; the tick now carries a note naming the spent ceiling, the row keeps it for the rest of
+  the phase, and the run report closes with what was read, what was refused, under which basis, and which key
+  would have read more. `fathom doctor` carries the durable half: the coverage line `e8.3` asked for — with
+  "measured" and "carries a figure" kept as two numbers, because collapsing them is how a half-filled column
+  lies quietly — a pass line, and a finding that fires only on `scan_budget`, whose remedy is a person raising
+  a number.
+* **The cost is a committed measurement with a gate on it.** `tools/complexity_cost.py` runs one binary twice
+  — once with the pass declining everything, once at the shipped ceilings — interleaved so the page-cache
+  advantage of going second is shared rather than charged to the pass, and it never clones: each report names
+  the corpus it measured and `--check` refuses a run against anything else. Two are committed.
+  `benchmarks/reports/e8-4-index-time-complexity.json`: **+18.0 %** of cold index time and **+4.0 MiB** of
+  peak RSS on this repository, where the complexity pass is 18.4 s reading 93.9 MiB inside a run whose module
+  graph pass is 108.8 s on its own.
+  `benchmarks/reports/e8-4-index-time-complexity-monorepo.json`: a shallow `aws-sdk-go` clone, 5 501 commits,
+  66 885 file rows, **+11.8 %** and **+1.6 MiB** — and the one place the byte ceiling is observed actually
+  spending, `declined: "extract.complexity.max_run_bytes"`, with 75 847 sides left `scan_budget` and owed and
+  46 785 more refused for free because no grammar reads generated Go.
+  The declared allowance is **+40 % and +256 MiB**, and the `complexity corpus` workflow re-measures this
+  repository and gates it. `--audit` re-derives a report's own arithmetic from its own medians without
+  measuring anything, which is what the contract test runs on both reports on every commit. That harness also
+  caught a bug worth naming: the pass's first self-reported figure, 143.8 s, was the whole analyses phase,
+  and the pass itself had spent 60.9 s — which is why the reported milliseconds are now the same accumulated
+  quantity the time ceiling compares against.
+
+### The `human`/`agent` word is printed nowhere a human reads it, and the filter built on it goes with it (`reco-ydek.4`)
+
+`reco-ydek.1` decided this in [ADR-006 §5.1.2 §6](docs/adr/0006-tui.md) and changed no code; this is the
+half that prints nothing. What made the badge a bug rather than a rough edge is the rung underneath it: an
+episode with no session arc, no claim trailer and a person-shaped git author string falls through the
+classifier to `human` at `0.50` — *nobody said otherwise* — so the one case a reviewer most needed the
+label to be right about was the case it was guessing about, and the `?` that was supposed to be the honest
+bucket was reserved for a *missing* identity, a different failure. The datum survives all of this untouched;
+what is gone is the collapsed verdict in a place that could not show its working.
+
+* **Five print surfaces, and the one nobody asked for.** The rail's author cell and the ladder's `NoAuthor`
+  rung; the card's facts row, which stops being an attribution line and becomes `4 commits · 0:12 ago · ⚑
+  unread`; the ambient glance (`latest e8f1a2 · 0:12 · risk 82 ✱ · unread`); `fathom episodes`, whose `KIND`
+  column is deleted rather than blanked; and `fathom show`, where the verdict leaves the `grouping` line it
+  was riding at the end of and the block below it prints what it was made of instead — `attribution via
+  identity · confidence 0.50` over the evidence and the reason a label was refused. `fathom why`'s header
+  loses the same verdict for the same reason. The sixth surface was the **worklist** row: the ticket names
+  the rail, and leaving the badge on a pane `e10.3` deletes would have kept the word on screen one ticket
+  longer than the decision allows.
+* **The filter retires with the label, because it asserted what the label could not.** `Dimension::Kind`, the
+  `F` editor's toggles, the facet counts, the `kind=` segment of the filter summary and `timeline.members`'
+  `kind:` prefix are gone: a rail filter cannot carry a confidence, so offering the narrowing at all meant
+  re-printing the retired word in the one surface with neither confidence nor evidence beside it, and a rail
+  reporting 300 rows under `kind=human` asserts that 300 *is* the number of human-authored episodes.
+  Degrading is not deleting: a store written while `kind=` was a dimension names a constraint the reviewer
+  set, so `filter::retired_keys` puts a sentence on the resume toast — `stored `kind` filter — the
+  author-kind filter is retired …` — beside what did come back, because a rail that quietly stops honouring
+  a filter is a rail lying about what it is showing.
+* **Two survivors, named so a later tidy hand does not delete them.** The rail's `author=` and search's
+  `author:` match a git **name**, which git records rather than infers. `fathom episodes --kind` stays a
+  CLI filter: it is the machine channel the rule excepts, because those rows ship `author_kind` with
+  `author_confidence` beside the claim and the consumer decides what a 0.50 is worth. `fathom analyze --json`
+  and `fathom show --json` are unchanged — the verdict was already travelling there with its confidence and
+  its evidence as an `AttributionRef`, which is why no schema was bumped and no gate needed a waiver.
+* **The freed six cells bought thresholds, not content.** `Columns::for_width` is 34 / 28 / 26 / 22 where it
+  was 40 / 34 / 32 / 27 / 22: every rung above the floor moved down by exactly what the cell cost, and the
+  18-column identity floor did not move, because `e10.4`, `e9.2` and `e8.6` were all about to assume they
+  alone owned that space. The rail's ideal, minimum and refusal values are untouched, so the generated layout
+  tables and the matrix screenshots move only in their rows.
+
+Tests moved with the print, including one added for the absence: no rail row may contain `agent`, `human` or
+`?` as a standalone cell in any rung; the retired `kind=` degrades with a sentence and an `F` editor that
+offers eight rows where it offered nine; and the real-binary rail over a 500-commit index is now asserted to
+print no author word at all — the version of the claim a reviewer's actual screen could fail. Goldens were
+reblessed, the generated tables re-run from `src/recommender/tui/views.py` and the ADR's own layouts, and the
+hand-written pages that showed the word were corrected rather than left to rot: the rail's column table,
+the ladder, the filter dimensions, the card's facts row, the glance samples in two recipes, and the
+quickstart's `fathom show` transcript. **Flagged for the ADR's owner, not spent here:** whether the freed
+cells pay for a rung no ticket owns (three columns spare at a 34-wide rail, enough for an absolute date) is
+[ADR-006 §5.1.2 §6a](docs/adr/0006-tui.md)'s call, not this ticket's.
+
+### The four acts and the audit trail move onto the timeline, and the write still comes first (`reco-ydek.2`)
+
+`e10.1` decided this in [ADR-006 §5.1.2](docs/adr/0006-tui.md) and changed no code; this is the move, and the
+rule it had to carry intact is the one sentence `e4.5` built the queue on: **an act is not taken until it is
+written**. What the reviewer sees change, and what had to be true for that to be a move rather than a loss:
+
+* **The rail is where a disposition reads back.** `x f - z` were already `global` and already addressed the
+  rail's cursor row, so what moved was the host of the feedback: the row's state glyph is the confirmation
+  (`⚑`→`✔`, `⚐`, `×`, `z`) — the one cell the column ladder promises never to drop — and the rail strip now
+  **leads** with the open-work count (`4 unread · 1 snoozed · filter: … · 10 of 10`), because §5.1.2 §3's
+  drop order sells the strip from the right and a count at the end of that line is a count nobody at the
+  rail's 42 columns ever sees. An act re-counts it where it stands, and re-filters when a filter is in force,
+  so a `state=unread` rail loses the accepted row in the same frame instead of lying about a decision it just
+  made.
+* **The acts stop advancing, and the reason is the cursor's.** A queue's whole content is undispositioned
+  work; a chronology's cursor is a *place in time*, and a keystroke that jumped forward would break the next
+  keystroke — which is `d` on the episode just signed nine times in ten. The run-of-rows workflow is the
+  filter that already exists (`F` → `state=unread`, which reads the marker, so an accepted row leaves it) or
+  `j`. `e4.5`'s five-minute bar keeps its test, re-hosted on the rail with the filter and motion in it.
+* **The ledger write still runs first, and the answer comes back in three ways.** `Ledger::record` keeps its
+  `Result` — it is still the first thing that runs, and nothing on screen changes before it returns — but
+  `State::commit` now answers where the act landed (`Landed::Recorded`, `Landed::Refused` with the store's own
+  words, or `Landed::InMemory` because there is no ledger at all). A refusal moves no glyph, no count and no
+  cursor, and the toast says `NOT
+  written` in the shell's sentence rather than in Rust's; a run with no ledger marks the row for the session
+  and says so on the toast **and** in the strip, because `e4.5`'s no-ledger case hid that difference behind
+  the queue's own `decided` map, which the rail has no excuse for rebuilding.
+* **`r` is the rail's other subject, not the queue's flip back.** `queue.retrospect` in the `queue` mode
+  became `review.retrospect` in `global`, so the audit trail is one keystroke from wherever the reviewer was
+  standing: the rail lists *acts* — dismissals by reason and actor over the coverage denominator — and its
+  strip says `ledger: 41 acts · 12 dismissed · 3 reasons · Dana Stahl` or `no ledger — nothing written this
+  run`, because a footer describing a filter would be a strip about a list the pane is not showing. `r`
+  again, or `<Esc>`, puts the episodes back without leaving the timeline. The rollup itself is
+  `fathom_analyze::queue::retrospect` and did not change, including its honesty rule: an unreadable ledger
+  prints its complaint and the *nothing dismissed* line is withheld.
+* **The keymap's generated projections are regenerated, not hand-written**: §7's binding and action tables,
+  §9's canonical walkthrough, the palette dump, the cheatsheet and the Rust test fixture all move together —
+  which is how a key that only existed in the retired view's mode (`r`) ends up with a `global` entry that
+  the shipped docs and the built table agree about, how the one entry whose text was welded to the dead view
+  (`Queue: what you skipped, and why`) got renamed without anyone editing a generated file by hand, and how
+  **T1 — "triage the top of the queue and sign it off"** became `t j <Enter> d x` in `keymap.TASKS` rather
+  than quietly disappearing with the pane it was written against. `docs/recipes/review-a-session.md`, which
+  says out loud that it is T1 in prose, moved with it.
+
+Three of the queue's proofs are moved rather than rewritten green — write-before-mark, refusal-keeps-the-row,
+and the no-ledger case — and `crates/fathom-tui/tests/timeline_acts.rs` is where they live now, with the
+retrospective's four states and the rail's counts beside them; `queue_triage.rs` keeps only what the queue
+still owns until `e10.3` deletes it. The whole-session walk is re-hosted with them, not just the act tests:
+`session_arc.rs` picks its row off the rail — `t` where it pressed `q`, which is §5.1.2 §7's migration check
+— and its sign-off reads the written record *and* the row's state cell instead of a toast.
+`docs/concepts/timeline.md` gains §12 and §13, and `docs/concepts/review-ledger.md`'s *«what proves it
+survived»* row is pointed at the file the proofs moved to — that document's boundary is otherwise untouched,
+which is the point of it.
+
+### The queue was a pane, not the job — what is home once it goes, and what the badge was covering for (`reco-ydek.1`)
+
+Epic 10 takes two features out of the product and both had load-bearing parts welded on, so the decision
+had to be written before the deletion or the ADRs would describe a product nobody ships. `e10.1` is that
+decision and it changed no code: **ADR-006 §5.1.2** is the surface contract, **thesis.md Amendment 3** is
+the product position, and `review-ledger.md` and `risk-ranking.md` were amended in the same commit rather
+than left as a ticket for someone braver.
+
+* **Home is the timeline.** The argument that once made the ranking the home screen is reversed out loud
+  rather than dropped: a second ranked list of the episodes the reviewer already works in time order is a
+  second place to be, not a second insight. `t` keeps the letter — moving home onto the freed `q` would
+  charge the reviewer for a deletion — and `q` retires to the user's set under §7.6, this ADR's second
+  instance of that rule and its first for a whole view. Start lands on the rail with **no filter applied**,
+  and a persisted tab naming the dead view decodes to the home view *with a warning that names what it
+  carried* rather than to a cursor that vanished in an upgrade.
+* **The acts and the audit trail move; the ledger does not move at all.** `x f - z` were already `global`
+  bindings and `App::act_target` already addressed the rail, so what moves is the host of the feedback, not
+  the act — and **the acts stop advancing**, because a chronology's cursor is a place in time and `x` then
+  `d` must be about the episode just signed; the run-of-rows workflow is `F` with `state=unread` and `n`, and
+  `e4.5`'s five-minute bar keeps its test while losing its pane. `r` survives as `review.retrospect` in
+  `global`, flipping the rail to a list of *acts*; the write-before-state-change rule and its three tests
+  move whole; and the one config key welded to the dead name — `[queue] dismiss_reasons` — is renamed with
+  the old spelling honoured and noticed, because a silently ignored vocabulary is a filter that quietly
+  stopped filtering.
+* **The strip's sentence is decided in parts with a drop order**: `order: newest first · 7 unread ·
+  filter: … · risk spine-1`, replacing `order: risk × staleness × blast radius`, on two rules — a list names
+  the order its renderer implements, and a model name beside no number is a citation to nothing. `queue-1`
+  dies with the pane and takes `rank N of M` with it: a place in a set nothing ranked is not a fact, so
+  `w`'s label moves from *why this rank* to *why this score*, and the score itself — components, reasons,
+  counted ceiling — does not move at all.
+* **The author-kind decision is three decisions**, which is why the ticket asked for it in three parts: the
+  printed **label** goes from the rail cell, the card, the glance line and `fathom show`/`fathom episodes`;
+  the **datum** stays in the store and in `analyze --json` with its confidence and evidence, and the rail's
+  kind **filter is retired** while `fathom episodes --kind` survives, which is the whole rule in one line —
+  *a datum a human is never shown may not decide what that human sees* — since a query asserts completeness
+  and cannot carry a confidence, while a machine consumer is handed one; and `spine-1`'s 8-point `author`
+  component is marked due for `e10.5` **with the constraint that it may not be struck from the printed
+  vector before its points leave**, because the vector is the explanation of the number and a hidden live
+  component is the same lie pointing the other way.
+* **Nobody's sign-off may become invisible, and how that gets checked is named**: no migration and no table
+  rename (`SCHEMA_VERSION` does not move — a rename is a migration, and "it is only a name" is what every
+  data-loss migration says about itself on the way in), an act's stamped risk and model never recomputed, the
+  markdown ledger untouched, and four named tests that open a store written *before* the deletion and assert
+  its acts, its rendered ledger entries and its `fresh` sign-offs all come back.
+
+Two strings §5.1.1 wrote about band 4 (*"the vector, with its place"*, *"why is this one in front of me?"*)
+are recorded as superseded, and the section says which child owes which regenerated table — including the
+`check_docs.py` token rule that stops a page advertising a dead pane. No code changed, and none was supposed
+to: `check_docs.py`, `recommender.tui doc --check`, `check_ticket_claims.py`, `gen_docs.py check` and
+`check_workspace.py check` are green.
+
+### The card's row budget is a number, and the page that spends it now says which one (`reco-5js3`)
+
+Three children closed this epic: `e9.1` decided the surface, `e9.2` cut the card to its budget, `e9.3`
+folded the ranking into the card and retired `i`. What the epic asked for and none of the three delivered
+was the second half of its own acceptance criterion — *a named row budget on the pane, with a test that the
+rendered card never exceeds it*. The budget was named, four times, and never once checked against the thing
+that decides it.
+
+* **Eighteen, not nineteen.** ADR-006 §5.1.1 rule 4 spent itself arguing about what fits in "twenty rows:
+  one is the strip, nineteen are content" — a count off a layout mock, in which the pane's own title row was
+  booked as content. `frame_plan`, the renderer's arithmetic and the number `App::pane_body_rows` is
+  documented to agree with, gives the `card` pane **eighteen** body rows at the 80×24 that same page draws:
+  twenty-four at 120×30, ten at the timeline's 61×16 minimum, seven at its 41×9 ladder floor. Those four
+  are now the numbers in the ADR, and
+  `the_budget_is_the_rows_the_frame_gives_the_card_pane` reads them out of the plan rather than off a
+  screenshot and then holds every card the pane draws to them — exactly as deep as the pane, in both band
+  states and with and without a delta document, and wherever the document is deeper than the pane, the row
+  that counts the fall is on screen saying so. `docs/concepts/summary-card.md` and two doc comments in
+  `timeline/card.rs` had copied the nineteen; four copies of a figure is four chances to disagree with the
+  pane that computes it.
+* **What "at most ten rows at 120×30" was actually asking for.** The epic named that ceiling when the card
+  still spent rows on intent. What the measurements say is that at 120×30 the pane has twenty-four rows and
+  the whole card — header, five bands, provenance — is twenty with a delta document in hand and eighteen
+  without one, so at that size nothing falls and there is nothing to hide. The budget is not a ceiling on
+  the card: it is the order the rows are spent in and the count of whatever did not fit, which is rule 4
+  and now also a test.
+* **The window is not owed any more.** The section that created the debt closed with *"the **window** is the
+  other half and `e9.3` owes it … Until then the `card` pane takes no `App::scroll_of` offset, and its
+  overflow row points at `<C-w>o` rather than at a motion it does not implement"*. `e9.3` paid the debt in
+  the code and in the key table and left the paragraph that incurred it standing, so the normative page told
+  a reviewer to expect a pane that cannot scroll and an overflow row that points at a zoom — the same defect
+  §5.1.1 calls "a scroll a pane cannot show is a key that lies", written by the page that wrote the rule.
+  Rule 2's *"moves into `fathom-analyze`"* and the key table's *"`e9.3` owes the window"* were still in the
+  future tense about the same two shipped moves; both now name what landed, including `risk::CEILING_NOTE`
+  by the name the code carries.
+
+No behaviour changed, and none was supposed to: this is the page catching up to the build it governs.
+`cargo test -p fathom-tui`, `tools/check_docs.py` and `PYTHONPATH=src python3 -m recommender.tui doc
+--check` are green, and §14's `e9.1` check block still names the commands that hold §5.1.1.
+
+### One card, one surface: `w` opens a band inside the card and `i` is retired (`reco-5js3.3`)
+
+Three renderings of one episode had been living behind three keys. `app.rs` branched between the card,
+`card::risk_lines` and `card::intent_lines`; `w` swapped the card pane for a ranking pane and `i` swapped
+it for an intent pane, and each swap re-laid-out figures the card had already printed — the churn as
+`size` and as the document's `what` row, the ranking as `risk`, as `vector`, and as an `attention` row
+carrying the same bytes, the ceiling as two rows both labelled `blind`. `e9.1` wrote the rule that ends
+it (ADR-006 §5.1.1: one row per figure, the pane authors no prose about a figure, one surface per figure);
+this is the diff that pays for it.
+
+* **The ranking is a band of the card again.** `w` toggles band 4 between its brief rows and its full
+  rows **in place**: the vector row — the exact string `fathom why` prints, `spine-1 88 = surfaces 88 +
+  size 8 + author 4 · rank 1 of 3`, from `RiskView`'s own accessor and no other source — then every line
+  of `reasons()`, then every blind spot, then the counted ceiling and the model's own line about what a
+  ceiling is for. Every other band prints what it printed before, in the order it printed it; the test
+  asserts that against the unwindowed document rather than a hand-picked width. `intent.show` is deleted,
+  not unbound: `i` joins §8.2's reserved-for-user set and refuses with where the answer went (the card's
+  `intent` row, and `fathom show <episode>` for the plan and the declared scope behind it), because a key
+  that cannot apply has to say so (`reco-xf8`'s rule, applied to a key this build retired).
+* **The pane stopped authoring prose about figures.** *"read those by hand: the ranking is a reading
+  order, not an all-clear"* moved into `fathom-analyze` as `risk::CEILING_NOTE`, reached through
+  `RiskView::ceiling_note()` beside the `blind_spot_note()` it belongs to, so the ceiling is the model's
+  words in the model's voice and the card only places them — indented under the row it explains, because a
+  note that opens flush-left with a word like `read` reads as a figure of its own. The other pane-authored
+  line went the same way: the pane no longer rolls the index's paths up into a `where` row of its own and
+  says, in the gap, which verb writes the document that answers it.
+* **Blind spots are not the first thing cut.** They are the honest half of the ranking, so they are exempt
+  from the one-row-per-figure compaction and wrap instead — and where the pane is too narrow to wrap a
+  sentence legibly, they take one row each, cut with a visible `…`, rather than a column of fragments or
+  nothing. The card is a windowed document now: what falls below the frame is counted by a row that names
+  the motion, which has its own short form for a twelve-column card (`… 21 more rows — j walks them, G
+  walks to the end` becomes `… +21 j·G`, because a counted remainder that gets clipped to `… 21 more r…`
+  is the silent cut wearing the honesty badge). `j`/`k`, `H M L`, `gg`/`G`, `<C-d>`/`<C-u>` and the wheel
+  walk it through the one shared motion; `<Esc>` no longer pops a mode, because there is no mode.
+* **Three absences, three readings.** An unranked episode, an episode with no delta document, and an
+  episode with neither all say which of them they are — the document's own gap string where the document
+  has one, the card's own gap string where it does not, and `nothing to expand — no ranking, so no reasons
+  and no ceiling to list` when `w` is asked for an argument that was never computed. No zero is printed
+  for a figure that was never measured, and no band is an empty section.
+
+The keymap table, the action registry, the palette, the hint line, §8.2's reserved set,
+`docs/reference/cheatsheet.md` and the ADR-006 layouts were regenerated from the Python tables in the
+same change — `w` is `Why this rank: every reason and the whole ceiling` everywhere, and the Queue and
+Timeline layout samples now draw the card that actually ships. `tools/tui_tables.py` emits a
+`EXPECTED_RETIRED` table so a retired letter stays accounted for in `tests/tables/mod.rs` and cannot be
+quietly rebound by whoever wants a free key next. `tests/episode_card.rs` grew the band-in-place,
+one-string-per-figure, walk-the-window and three-absences cases; `tests/intent_card.rs` asserts `i` is
+unbound in every view and every pane and that no keystroke swaps the card pane; `tests/risk_rank.rs` and
+`tests/session_arc.rs` assert the `w` case against the card instead of a swapped pane; the timeline and
+layout-matrix goldens are re-baked.
+
+### The episode card gets its rows back: intent to one line, the code delta into the space (`reco-5js3.2`)
+
+`e9.1` wrote the rule and left the card unchanged, so the card was a rule waiting on twenty rows. Intent was
+three rows of the nineteen the pane had — the request, then *for the plan and scope press i* pointing at a
+pane `e9.3` is about to delete — and the rows it bought with them were the ones a reviewer was scrolling
+past: the noise fold was a figure inside a `+N more`, the top-paths list was cut to four directories, and
+the complexity figure `e8.6` is going to draw had no row to land in. ADR-006 §5.1.1's rule 4 — written in
+`e9.1`, paid for here — says where the nineteen go: header, then every warning that says a row cannot be
+trusted, then the five bands in order, then the provenance — and **no band is cut to make room for a
+provenance row**.
+
+* **Intent is one row, in every state, at every width the pane documents.** The recorded line carries the
+  first line of the request, its source, its confidence, and — when there is a plan or a declared scope
+  behind it — the name of the verb that prints them, so the row says what it is and where the rest lives at
+  the same time. A long request is cut at the row's end with a visible `…` and keeps its source, because a
+  quotation nobody can attribute is a guess. Digest-only prints *no text captured · prompt `<sha256>` · via
+  `<source>`*; nothing prints *no recorded intent* with the reason; a row whose document never arrived says
+  so, in words nobody else on the card says. The `i` pane is untouched here — `e9.3` retires it — and
+  `crates/fathom-tui/tests/intent_card.rs` now asserts the three states on the row as well as the pane.
+* **The code delta band spends the reclaimed rows.** The churn is the delta document's own `what` row
+  (`brief()`'s first figure and its counted remainder), and what is left is no longer a counter a reviewer
+  cannot weigh: `noise 5 of 9 files were discounted (generated 4f · 1 204 lines)` is its own row, because a
+  412-line change and a 412-line change that is mostly a lockfile are different reviews. `where`'s
+  pane-local rollup takes six path prefixes instead of four, and every figure on the card keeps its counted
+  remainder when the row is cut — `src/store 9f +338 −74…` is not a figure, so the cut falls at the last
+  whole figure and the row says how much it did not show.
+* **The complexity row is reserved, wired, and empty.** The slot is band 1's, after the noise fold, labelled
+  with the one word ADR-007 §10.1 binds every surface to, drawn from `delta.structure.complexity`'s figure
+  and nothing else. It is not a placeholder that prints `?` under every episode in the language: with no
+  figure there is no row, and with a figure that says *unknown* the row prints the unknown with its reason —
+  ADR-007 §7's rule, in the place §7's children will land. ADR-007 §10.4 now says the row exists so that
+  `e8.6` fills a defined row instead of choosing a home for it.
+* **The layout became a budget instead of a scroll.** The card builds its rows, then lays them out: values
+  wrap under the label column until the card does not fit, and then every figure takes exactly one row and
+  the counted remainders are what survive the cut. That is why the same card that used to spill nineteen
+  rows off the bottom now prints the whole card inside the 80×24 pane, and why the overflow note went from
+  `… 10 more rows` to nothing at all in the no-document case — and where it does not fit, the provenance is
+  what falls.
+* **ADR-006 §5.1.1 now says what the pane does.** `e9.1` wrote that a card which does not fit
+  "windows, reading `App::scroll_of`", and named that as `e9.2`'s work. The budget is the better answer
+  to the same problem, and the budget is what shipped: a wrapped card that scrolls still shows one band
+  and hides four, while one row per figure shows all five and counts what fell. The page now describes
+  the budget and moves the window to `e9.3` — the ticket that gives the card sections worth walking,
+  since a scroll offset a pane cannot show is a key that lies. The card-focus row of §5.1.1's key table
+  splits the work the same way, and `docs/concepts/summary-card.md` states the reachability rule beside
+  the budget.
+* **Figures kept their evidence.** Every string on the card is `brief()`'s, a `RiskView` accessor's,
+  `intent_block()`'s, or a cited spine column, and the rows that name the owner of a missing analysis are
+  rendered by the same `fathom-analyze` function the CLI prints (`e2.10`'s *the card names who owns it*, now
+  one function instead of two phrasings). The two rows the pane had written for itself are gone.
+
+`crates/fathom-tui/tests/episode_card.rs` is new and reads the band table out of ADR-006 §5.1.1 the way
+`tests/layout.rs` reads the ladder tables: it fails on drift, on a second spelling of one figure, on an
+intent row that is two rows, and on a code-delta row that did not reach the screen at 80×24, at the 61×16
+floor, or at the pane's documented minimum. The timeline goldens gained `card_delta_80x24` and
+`card_delta_floor` — the corpus now carries a delta document, so the goldens show a card answering all
+seven questions rather than a card whose analysis never arrived — and `docs/concepts/summary-card.md` §2.1
+and ADR-006 §5.1.1 carry the budget.
+
+### One episode surface: the card gets the ranking, the intent goes to one line, and `i` is retired (`reco-5js3.1`)
+
+Epic 9's first ticket was a decision with a diff of documentation, because the thing it had to stop was
+a decision nobody had made: the summary card and the `w` pane were answering the same question from
+different ends, the `i` pane was answering a third, and nothing on paper said where either stopped. The
+overlap was worse than the ticket described — the duplication was *inside* the card, which printed four
+figures nine times in one pane and eleven times in one frame: the churn as `size` and again as the delta
+document's `what` row; the ranking as `risk`, as `vector` and as the `attention` row (the same
+`RiskView::headline()` string, twice); the ceiling as two rows both labelled `blind`; and "where it
+landed" as a pane-local prefix count beside the document's churn-ranked directory rollup — two answers,
+two rows apart, computed by two pieces of code.
+
+ADR-006 §5.1.1 decides it, and `e9.2`/`e9.3` are the execution:
+
+* **The one question.** *What did this episode do, and what should I open first?* Five bands answer it,
+  in the delta document's own reading order — what changed (code delta first), where it landed, what it
+  touches and could break (the four rows: `dependencies`, `surface`, `tests`, `blast`), why it ranks
+  here, and what the agent said it was doing, one line, last. Every band names the function that renders
+  its strings, so a row cannot be added without saying who owns its bytes.
+* **One figure, one string, one surface** — ADR-001 §7.10 applied by name to this pane. The pane places,
+  wraps and truncates with a counted remainder; it authors nothing. The one pane-authored line in the
+  ranking moves into `fathom-analyze` beside the ceiling note, and `card::top_paths` — a rollup a pane
+  wrote for itself — is deleted.
+* **Two depths, neither a duplicate.** The pane keeps the vector, the badge, the counted ceiling, and the
+  one fact the CLI cannot have (`rank N of M` for the set on screen, which is the caller's to know);
+  `fathom why` keeps the per-feature table, the weight denominator, the `τ` comparison, `--weight` and
+  `--calibrate`, and none of that is ever drawn in the shell.
+* **`w` survives as an expander, `i` does not survive at all.** `w` grows band four in place instead of
+  swapping the pane — which is also why it keeps its key: `RiskView::blind_spot_note()` ships the sentence
+  "`w` lists them all", and a model-owned string is not edited to fit a key. `intent.show` is deleted:
+  everything the intent pane printed but the card had already printed, in the same words from the same
+  `intent_block()`, left one row to draw, and what was left (the plan items, the declared scope) is
+  evidence for the scope-creep finding the card already prints, whose home is the delta document, printed
+  whole by `fathom show`. `i` becomes a reserved-for-user letter (§7.6, new: retirement is a keyed rule,
+  not a deletion), and §11 records that buying it back needs an amendment naming a question one line
+  cannot answer. The card focus, meanwhile, becomes a document you can move inside: the pane windows on
+  the shared motion instead of truncating its own tail, which is what makes a mode unnecessary.
+* **The rule, with its checks named.** `crates/fathom-tui/tests/episode_card.rs` reads the band table out
+  of the ADR the way `tests/layout.rs` reads the ladder tables and fails on drift, on a second spelling
+  of one figure, on a swapped pane; `crates/fathom-cli/tests/risk_rank.rs` asserts the card's vector row
+  and `fathom why`'s line are the same bytes; `tools/check_docs.py` gains a retired-surface rule so no page
+  advertises a dead pane. The review gate is two questions: *which band, and who renders it?*
+
+`docs/concepts/summary-card.md` §2.1 and `docs/concepts/risk-ranking.md` §13 now describe that split —
+seven questions in the model, five bands in the pane, two depths of a ranking and one verb for the deep
+one — and `docs/harness/verification.md` stops advertising the intent pane.
+
+### Complexity became a column, and the bill for it came due as zero (`reco-l9bz.3`)
+
+ADR-007 §9.1 told `e8.3` to make the primitive a column rather than a computation, and §9.3 told it to say
+what that costs in invalidation. The columns are there — `complexity_before`, `complexity_before_reason`,
+`complexity_after`, `complexity_after_reason`, `complexity_max`, `complexity_basis` on `git_commit_file`,
+beside the `n_add`/`n_del`/`is_binary` they will be read with — and the answer to what they cost is
+**zero derived rows evicted**, now asserted against a live cache row instead of resting in a comment.
+`crates/fathom-store/src/complexity.rs` owns the three reads a later ticket needs: the per-row shape,
+`Store::episode_complexity` for the roll-up, and `Store::complexity_coverage` for the coverage line.
+
+* **Zero evicted, tested both ways so the claim can fail.** A store written by an older fathom is built by
+    *removing* what this build adds — the six columns `DROP`ped, `user_version` and `meta.schema_version` put
+    back to 11 — so it is the same DDL rather than a hand-copied fixture that drifts, and a real derived row
+    goes into it first. Reopen: the columns arrive in the never-looked state, the file row is still the file
+    row, the cache row is still there **under the same key** and still answers a lookup, and nothing was
+    re-derived. Then the counterfactual: `Versions::with_row_schema(+1)` turns that same row into
+    `key_changed`, which is the lever §9.3 forbids pulling here and the reason the assertion means something
+    rather than passing forever. Field 9 is `cache::ROW_SCHEMA_VERSION` because `reco-3sa` measured what the
+    old coupling cost, and a column on a spine table is not a derived-row schema change.
+* **`SCHEMA_VERSION` moves to 12, and migration 12 is empty on purpose.** `MIGRATIONS` has to stay contiguous
+    with the version this build writes, but the DDL is the probe list's, because §9.5 needs a migration to be
+    re-runnable and SQLite has no `ADD COLUMN IF NOT EXISTS`. So version 12 buys exactly one thing: an *older*
+    fathom refuses this store instead of reading columns it cannot name — ADR-004 §9.5's published
+    forward-compatibility rule, written out where the columns are (`episode::ADDED_COLUMNS`) and in the
+    version's own note. It re-counts nothing: an unfilled column is an absent figure, not a stale one, which
+    is the one place §9.5's "invalidate, never migrate" is allowed to be the weaker statement.
+* **The two `CHECK`s needed two clauses the ADR does not spell out, and §9.1 now says so.** As written,
+    `CHECK (complexity_after IS NOT NULL OR complexity_after_reason <> '')` rejects **every row an older
+    fathom wrote** — `NULL` figures and `''` reasons is §7.4's fourth row, the state the same section demands
+    be satisfiable — so each constraint begins with `complexity_basis = ''`: no basis, no figures to defend.
+    The second clause is §9.5's *every figure carries its basis*, without which that escape would let a figure
+    with no basis read as a figure that shares a basis with everything. Both are tested through SQLite, not
+    through a re-statement: `?`-without-a-reason is refused, a figure-without-a-basis is refused, and the
+    never-looked row stays writable.
+* **The episode roll-up is a join, and it is read beside the line counts.** `Store::episode_complexity` is
+    one statement over `episode_member ⋈ git_commit ⋈ git_commit_file` for a whole page of rails — `complexity_before` on
+    a path's **earliest** row, `complexity_after` on its **latest**, then delta, absolute at head, max as a
+    max, coverage, and the reason tally, per ADR-007 §5.2/§9.2 — so `e8.5` fills a delta document without
+    re-walking files. The telescoping identity is asserted on the fixture, and so is the case it protects:
+    with the middle commit gone from the episode, base-to-head still answers 13 and Σ over the two rows
+    present answers 7, and 7 is the wrong answer to "what did this episode do". A pair counted under two
+    basis tokens contributes nothing to a sum and is tallied `mixed_basis` (§9.5); nothing measured at all is
+    `?`, never `±0` (§5.4).
+* **A half-filled column is the one that lies quietly, so doctor prints the fraction.** Every surface that
+    reports the index now carries `complexity 1 of 2 file row(s) measured (50 %) — the rest print `?`, never a
+    figure; basis mccabe-1; reasons: column_not_filled 1`, and the *finding* — `index_complexity_partial`,
+    untidy, exit 12 under `--strict` only — fires in the half-filled state rather than the empty one, because
+    a wholly empty column prints `?` everywhere and invites nobody to average anything. The threshold is
+    doctor's, named in the line that prints it, per §8.3.
+
+Nothing writes a figure yet, and that is stated rather than papered over: counting needs file *contents*, and
+deciding when the index may read them is `e8.4`'s budget. `Store::record_complexity` is the fill half, it
+reports `written`/`missing` so a fill in progress prints as a fraction, and every row it has not reached reads
+back as `Side::NotMeasured` — which prints `?` with `column_not_filled` and never a number. The code that
+names that code is in `fathom-analyze`, one crate over the dependency line, so `tests/complexity.rs` pins the
+two spellings together.
+
+*Asserted by*: `cargo test -p fathom-store --features sqlite-bundled` (13 in `src/complexity.rs` — the
+constraints, the fill, the roll-up and its gap case, the mixed-basis pair, the coverage; 2 new in `spine.rs`,
+the zero-eviction upgrade and the field-9 tripwire), plus `crates/fathom-analyze/tests/complexity.rs` for the
+one-vocabulary claim across the crate boundary.
+
+### The counting pass landed with a hand-counted corpus under it, and the corpus immediately proved it could count (`reco-l9bz.2`)
+
+`e8.1` wrote ADR-007; this is `e8.2`, the pass it describes: a per-function decision-point count beside
+the structural extraction in `crates/fathom-analyze/src/structure/`, over the six grammars that already
+ship, with no new grammar dependency and no new feature gate. Each unit carries its dotted name, span,
+figure and **the decision points that earned it** (kind, rule, line), so a figure is defensible line by
+line instead of being a number a reviewer takes on faith; each file rolls up `sum` and `max`, prints a
+state (`measured` / `partial` / `unavailable`) and a plain-text dump of every function in it. The basis
+token is `mccabe-1`, and nothing in this build has altered what that means.
+
+The deliverable that decided the shape of the rest is the corpus: **`crates/fathom-analyze/complexity/<language>/`,
+six languages, 18 files, hand-authored**, each with a `truth.json` naming every function's figure or its
+reason code, plus the expected file state, marks and roll-up. It is weighted toward the awkward cases
+§4's verdict table lists — trait signatures and `.d.ts` declares, `let … else`, a `match` arm written
+`1 | 2`, Python comprehension filters and a `def` inside a `def`, Java's two switch spellings, Go's one
+loop written four ways, Ruby's four modifier forms — and it is checked by a harness that refuses a report
+differing **byte for byte** from the committed one:
+
+```sh
+cargo run -p fathom-analyze --features langs-all --example complexity_harness -- \
+    --repo . --report benchmarks/reports/e8-2-complexity-core.json
+cargo run -p fathom-analyze --features langs-all --example complexity_harness -- \
+    --repo . --report benchmarks/reports/e8-2-complexity-core.json --check
+```
+
+That command prints, today: **6 languages, 18 corpus files, 69 units, accuracy 69/69 (100.00 %), C-KIND
+clean, every unknown carries a reason code.** Accuracy is 100 % because every disagreement was adjudicated
+rather than blessed — `--suggest-truth` exists to *diff* a human's arithmetic against the machine's and is
+never called by `--check`, because a checker that generates its own expectations only proves the pass
+agrees with itself. And the corpus found four bugs in the pass in its first hour, which is the argument for
+authoring it by hand:
+
+* **Ruby counted half its tests twice.** A rule matching on the kind string `if` also matches the anonymous
+    `if` *keyword token* inside `if_modifier`, and `elsif`, `while`, `until` and `for` each arrive in a Ruby
+    file as a named node **and** an anonymous keyword of the same spelling. Every Ruby figure in the corpus
+    was double-counted until that was fixed; the fix is that named-kind rules apply to named nodes only, and
+    anonymous spellings are counted by the token half of each table (`&.`, `&&`, `or`).
+* **A `Shape.name=` setter was the most complex function in a Ruby file.** Region assignment tested whether
+    a node *started* inside a unit, and a class body starts at the same byte as the `attr_accessor :name`
+    eight bytes above it — so the entire class body inherited the accessor's unit and its `V(G)` came out
+    35. Containment is now decided per node by the whole span. The accessor is 1, as an accessor should be.
+* **Unknown printed bare.** A `.d.ts` in which every declaration lives in another file has no file figure
+    and had no file reason, so it printed `?` with nothing beside it — what §7.1 forbids. No new code was
+    invented for it: when nothing in a file was countable and every unit names the same reason, the file's
+    `?` carries that reason (`? (body_not_visible)`), because the units already said why.
+* **The node budget had never actually run out.** The report re-measures the corpus at a bound of 24 nodes
+    and lists which units then refuse with `node_budget` (§7.2), so "a spent bound sets the state and the
+    code" is a demonstrated outcome in the committed report rather than a sentence in a comment.
+
+**C-KIND is executable, not advisory.** Every node kind a grammar's decision-point list names is checked
+twice — present in the `node-types.json` of the crate `Cargo.lock` pins, and produced by at least one file
+in that language's corpus — which is the rule `e8.1`'s §11.1 built to catch the fourteen kinds `e3.1`'s
+proxy counted and the pinned grammars never emit. It was not decoration: the first corpus run named
+**eleven declared kinds nothing produced** (`while_modifier`, `until_modifier`, `unless_modifier`,
+`unless_guard`, `&&`, `||`, `and`, `or` and `&.` in Ruby, `while_statement` in Python, `&&` in TypeScript),
+and the corpus now exercises each one in a file written to hold exactly that construct. Two spelling
+differences between the ADR's tables and the grammars are recorded in the report rather than quietly
+absorbed: Java has no `else_clause` (an `else` is an anonymous token, worth nothing wherever it is spelled),
+and a pattern-switch guard is a `guard` node whose `when` keyword is the same test spelled twice — counted
+once, so `mccabe-1` still names what the figures are.
+
+Two places where the ADR's unit list and the shipped extractor's symbol list disagree are named instead of
+smoothed over, because ADR-007 D1 makes the extractor's list the identity a figure is keyed by: **a Java
+constructor is not a unit** (`e3.1` normalises constructors away as declarations, so a `record`'s compact
+constructor with validation branches in it contributes nothing — the gap is written in the report's
+`unit_list` row, beside the mechanical fact that the corpus *does* parse both constructor node kinds and
+names no unit after either), and **a `const` bound to an arrow function is a unit** where `e3.1` names it,
+which is what `e8.2` counts. Each language row now carries its §4 unit list, which of those kinds the
+corpus's own parses produced, what got counted, and the named place the two lists part company.
+
+Unknowns arrive as `unknown` with an ADR-007 code and never as `0`, and that is asserted twice over: in the
+corpus, where every unknown names its reason, and in `crates/fathom-analyze/tests/complexity.rs`, which
+owns what a corpus cannot — that the seventeen codes in §7.1's table, `structure::UnavailableReason` and
+the *wording a surface prints* are one vocabulary rather than three that drifted, that exactly two codes
+mean a zero that is a fact (`absent_revision`, `no_bodies`) and fifteen mean no figure, that a body with no
+branches is 1 and not 0, that `sum`/`max` are the arithmetic they claim, and that starving the node budget
+changes the state and names the code instead of shortening a figure. The CI step is a scheduled
+reproduction (`.github/workflows/complexity.yml`, plus a path filter so the pull request that changes the
+counting rules is the one that has to reproduce them), not a per-PR gate — placed where `e11`'s cut list
+(`reco-374v`) is going to put report reproductions anyway, so that folding it into one scheduled workflow
+later is a file deleted rather than `ci.yml` rewritten.
+
+### Six tickets were about to invent six complexity metrics, so the definition went down before the code that has to obey it (`reco-l9bz.1`)
+
+Epic 8 makes cyclomatic complexity a primitive: a counting pass over six grammars, store columns, an
+index-time budget, a figure in `EpisodeDelta`, a rail column and a risk axis. Every one of them cites a
+definition nobody had written, and ADR-007 (`docs/adr/0007-complexity.md`) is that definition — written
+before the extractor, the way ADR-002 … ADR-006 were, because the extractor, the store schema and the risk
+vector all cite it and none of the three may invent its own.
+
+It decides, and the children implement: **the unit** (one named callable, identity `(file, kind, dotted
+name)` — `e3.1`'s normalisation rule, so no second vocabulary for "which function"); **`V(G)` per
+language**, with six decision-point lists naming node kinds and ruling the arguments a reviewer would
+otherwise have to re-litigate — an arm is one decision point whatever its pattern list holds, a
+short-circuit is one, an early `return` is none; **aggregation** (sum and max per file; per episode the
+delta against ADR-003 **X3**'s base, and *the delta* is the glance number on a rail row, with the reasons
+the absolute is not); **renames**, by reuse of `e2.4`'s measured pairing tiers rather than a second
+similarity score — a fact pairs, an accepted guess pairs on the reviewer's authority, an untouched guess
+pairs nothing and prints `~ rename_unpaired`; **the fifteen reason codes behind every `?`**, extending
+`e3.1`'s shipped `UnavailableReason` instead of starting a rival vocabulary; **the refusals** (no
+repository-wide absolute score, no per-author leaderboard, no threshold inside the metric, no
+cross-language normalisation); **the store's inheritance** — six columns, two `CHECK`s that make
+unknown-without-a-reason unrepresentable, and the claim that **zero derived rows are evicted**, because
+key field 9 is `cache::ROW_SCHEMA_VERSION` after `reco-3sa` and a spine column is not a derived-row
+schema change; and **one word**, `complexity`, with `cx` refused and the three shipped sites that already
+print the word assigned owners instead of being quietly renamed by a child of this epic.
+
+Two things were measured rather than recalled, which is why the page is allowed to be this specific:
+
+* **Every node kind in the six lists was checked twice** — against the `node-types.json` of the exact
+    crates `Cargo.lock` pins, and against real parses through the shipped bindings (`s1_spike --sexp`).
+    That audit found **fourteen node kinds `e3.1`'s complexity proxy counts and the pinned grammars never
+    emit** (`if_expr`, `while_loop`, `let_else` for Rust; `if_expression`, `for_clause` for Python;
+    `when_clause`, `rescue_clause`, `ternary`, `call_block` for Ruby; `conditional_expression` for
+    TypeScript), so today a Rust `if`, a Python ternary and a Ruby `when` each contribute exactly nothing
+    to a printed score. The rule that stops it recurring — C-KIND: a listed kind must exist in the pinned
+    grammar *and* be produced by a corpus file — is `e8.2`'s acceptance criterion, and the proxy's own
+    axis is named with its owner (`e3.8`) rather than fixed here.
+* **The spike `s1` verdict table and `e2.4`'s pairing report are quoted as the evidence**, so the blind
+    spots the ticket insisted on carrying forward (macro-generated Rust items, decorated Python class
+    bodies, Ruby's computed method names, Java's synthesised accessors) arrive as named unknowns in the
+    reason-code table with `may have more` as their only permitted sentence, and not as four surprises
+    `e8.2` discovers at corpus time.
+
+`docs/adr/README.md`, `docs/index.md` and `README.md` now list ADR-007, and `tools/check_docs.py` knows the
+number, so a later page may cite it.
+
+### `build+test (ubuntu-latest · stable)` was still red on the same `C03` the contracts job was red on, because one red commit files two tickets (`reco-s6ge`)
+
+The beta-loop step of the ubuntu stable leg came back with `C03 a3ac95637: reco-37te, reco-kltg is not
+accounted for in ## [Unreleased]` — and the ticket said *still*, which was fair: that is the same finding
+`docs + workspace contracts` had just been closed for. It was, and it was not. Same rule, same commit, same
+CI run; two jobs run `tools/gen_changelog.py audit` (the pytest mirror in `tests/test_beta_loop_contract.py`
+and this step in `ci.yml`), so one commit that shipped without a note of its own bought two tickets, and the
+second one arrived holding a log written before the fix landed.
+
+Which is worth writing down, because the honest answer to the second ticket is *there is nothing left to
+fix* — and "nothing left to fix" has to be shown rather than said:
+
+* **The log is dated by its own numbers.** It reports 150 commits in `0f7495f3b5f3..HEAD`, one of them a
+    merge, and a rung distribution of `bead 130 … none 1`. `reco-kltg` is 149 commits deep at that anchor
+    with no merge and `bead 130`; HEAD is 150 with no merge and `bead 131`. The log is therefore `reco-kltg`
+    plus the host's merge commit for it — the run from before `reco-0qq9`, one commit behind the tree that
+    fixed it. Nothing about the range disagrees between the runner and a laptop; the runner was just earlier.
+* **The step is green here, run as the job runs it** — all five commands under `bash -e -o pipefail`, as
+    `ci.yml` writes them, exit 0, with `every one of 150 commits … is accounted for`. Checked rather than
+    inferred from the missing line in the log.
+* **What did change is the one thing this ticket could still change**: the rule was written down in
+    [the release runbook](docs/concepts/release.md), which is a document nobody reads before a commit, so it
+    has now been copied into `AGENTS.md` — the file an agent is handed before it touches the tree. One
+    sentence: your commit adds its own `[Unreleased]` entry naming its bead, and
+    `python3 tools/gen_changelog.py audit` run in the branch is how you know it did. The gate counts commits,
+    not diffs, so the prose cannot be postponed; all this changes when it is where the committer already looks.
+
+This entry is also the entry for its own commit, which is the trap the last two tickets fell into twice: a
+fix commit that names its bead in the message and nowhere else is the next `C03`. The audit is the only judge
+of that, and it is cheap, and it runs on the history alone.
+
+### The ubuntu msrv leg could not test the headless build, over twenty CLI suites that never said which features they needed (`reco-kltg`)
+
+`build+test (ubuntu-latest · msrv)` died at `cargo test -p fathom-cli --no-default-features --features
+minimal`: first on a compile error — `crates/fathom-cli/tests/architecture_verb.rs:201`, `cannot find Lane
+in graph` — and past that on 136 test failures across 20 targets. `reco-37te` had fixed the first file of
+this kind and the leg went red again on the next one, because it was never one file: it was the whole CLI
+suite.
+
+Why the msrv leg is the one that showed it: `minimal` (ADR-002 §6.1) turns on no store, no `tui` and no
+`watch`, so the binary under test refuses every verb that needs one with `FEATURE_ABSENT` (9) — `fathom
+index` among them, which is how nearly every fixture in `crates/fathom-cli/tests/` builds its repository in
+the first place. Some files had already been curated test by test (`cli.rs`, `analyze_deps.rs`,
+`risk_rank.rs`); twenty had not. Every other leg runs `--all-features`, where all of them pass, so a missing
+gate was invisible until a job ran the headless configuration on its own.
+
+* **Whole-suite gates**, in the spelling `tests/check_verb.rs` and `tests/show_trailers.rs` already used —
+    `#![cfg(feature = "…")]` at the top of the file, with the reason beside it: `sqlite-bundled` for the
+    store-backed suites (`architecture_verb`, `ratchet_verb`, `resilience`, `cli_why`, `compare_verb`,
+    `episodes_verb`, `export_verb`, `extensibility_verb`, `index_graph`, `intent`, `notes_verb`,
+    `search_verb`, `session_arc`), `tui` for the shell's (`theme_cli`, `tui_text`, `keymap_conflicts`,
+    `hint_line`), both for `ambient_verb`, and `watch` for `daemon` beside its existing `cfg(unix)`. Every
+    test in each of those files failed in the headless build, so there was no subset worth keeping: `fathom
+    architecture`, `ratchet`, `search` and `notes` answer 9 rather than answer.
+* **Per-test gates** wherever a file has both halves — `cli_drift`, `cli_narrative`, `review_verb`,
+    `hostile_repo`, `cli.rs`, `schemas.rs` — so the headless build keeps the claims that are its own: the
+    store-backed tests, and the fixtures and helpers only they use, are gated, while the `--help` and
+    no-index refusal tests keep running headless. Gating the tests alone left their fixtures dead code in
+    the headless build, so `Repo`, its `impl` and `Drop`, `git` and the symlink helpers are gated with them.
+* **Four unit tests in `src/`** called items §6.2 does not compile without a feature —
+    `review::must_survive_blockers` and `open::best` (store), `handoff::environment` and
+    `queue::ReasonVocabulary` (shell) — and each is gated to match the item it calls.
+* **The convention now sits where the step is**, in a comment on `ci.yml`'s own headless-test step: that
+    command is the one to run before opening the pull request, so the next store-backed CLI suite is gated
+    in the change that adds it instead of in the next red leg.
+
+Nothing was dropped from the claim. On a store-backed build every one of those files still compiles and
+runs, exactly as before; `minimal` now runs the 89 tests it can actually answer — 51 unit plus the headless
+CLI suite — and passes them, on the pinned MSRV toolchain.
+
+And this paragraph is the second half of the story, which is `reco-0qq9`: the commit above shipped without a
+release note for itself, and `docs + workspace contracts` came back with the one thing the audit is for —
+`C03 a3ac95637: reco-37te, reco-kltg is not accounted for in [Unreleased]`. The gate was right and there
+was nothing in the tool to fix, so the fix is this entry, in the section where it belongs. The rule it
+restates is the one at the top of this file — work lands under `[Unreleased]`, in the change that is the
+work — and [the release runbook](docs/concepts/release.md) now names `tools/gen_changelog.py audit` as the
+command that says whether it did, to be run before the pull request rather than by the job after it.
+
+### `docs + workspace contracts` came back red again, over a clone CI has that no laptop has, a fixture that leaked, and a cold number that was not cold (`reco-d2bo`)
+
+Three failures, none of them reproducible here, and all three were one mistake made three times: a check
+that reads whichever box it landed on and reports the answer as a fact about the code. (`reco-ghao` is
+the same story with eight chapters; this is the sequel nobody wanted.)
+
+* **`C03` refused a release because of a merge commit.** The gap was `Merge d6a9aa5… into e194a63…` — not
+    a commit anybody wrote, but the host's merge commit that a pull request's checkout is standing on, with
+    no bead ref, no conventional header and no `Changelog:` trailer anybody could have written. A merge is
+    a join rather than a change: its own content is the conflict resolution, and every commit it joins is
+    audited in its own right, so it is not a commit the notes forgot. `Commit` now carries its parents —
+    the one field that says "join", where matching the subject would only match one phrasing of it — and a
+    merge is exempt from coverage the way a `chore:` commit is: exempt, not invisible. `lint` still reads
+    it, `--include-internal` still prints it, and a merge that carries a `Changelog:` trailer is taken at
+    its word like anything else. The audit stays green on every laptop because no laptop's history has a
+    merge in it; the runner's clone *is* one.
+* **The multilib loader fixture was not a fixture.** `test_the_loader_search_never_hands_a_64_bit_libc_to_the_32_bit_loader`
+    builds `/lib` and `/lib64` under `tmp_path`, patches `_LOADER_DIRS`, and expects the fake tree to be the
+    world the search sees. It was not: the multiarch directories (`/lib/<triple>`) were a literal inside
+    `_loader_candidates`, so the patch re-ordered the search without closing it. On the Debian runner the
+    search stepped onto `/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2` and reported the host's own loader —
+    the right answer to a question the test had not asked — and on a macOS laptop, where no such directory
+    exists, it reported the fixture and passed. The multiarch directories are part of `_LOADER_DIRS` now
+    and the candidate builder reads nothing else, so pointing the search at a tree *is* the whole search;
+    "a loader search pointed at a tree stays inside that tree" is a test now rather than an accident of the
+    operating system.
+* **The cold card number was a race, and the runner won it.** `cold_p95 > warm_p95` was asserted across
+    two differently-shaped samples: one cold measurement per fixture (compose only, no render) against
+    `repeats` warm ones (compose *and* render), and `p95` of sixteen items drops its largest — which was
+    precisely the one fixture whose analysis was worth measuring — while the first sample of the run was
+    paying for lazily-imported modules. On the runner that came out 8.30 ms cold against 8.44 ms warm.
+    Cold is now the warm path's work *plus* the analysis it starts from: same repeats, same render, taken
+    after one untimed pass over the corpus so neither number is the price of the interpreter waking up.
+    The ordering is arithmetic about what the two paths compute now — 3.7× here, and still 2.6× with six
+    busy loops competing for eight cores.
+
+Asserted by three new tests — a throwaway repository whose head is a `Merge <sha> into <sha>`, the
+loader search held to the tree it was handed, and the cold/warm ordering above — and read by
+`tools/gen_changelog.py audit`, `tests/test_harness_contract.py` and
+`tests/test_summary_card_contract.py`.
+
+### Eight contract tests were red on the runner and green on every laptop, over four claims the suite was making about somebody else's machine (`reco-ghao`)
+
+`docs + workspace contracts` came back with eight failures, none of which reproduced here. That is the
+shape this job fails in: it reads the checkout, the loader and the clock of whichever box GitHub gave it,
+and every one of the eight was a claim about that box rather than about the code. Four claims, four fixes,
+one of them a real defect the shallow clone was hiding.
+
+* **The changelog gate had no history to read, and said it in git's words rather than its own.** Three of
+    the eight were `tests/test_beta_loop_contract.py`, and all three were the same line:
+    `SystemExit: git log failed: fatal: Invalid revision range 0f7495f…..c05860b…`. The job checked out at
+    actions/checkout's default depth of one, so the commits the audit counts — and the endpoints the rung
+    claim in `[Unreleased]` names — were not in the clone. The audit's own resolver did not catch it
+    because `git rev-parse --verify --quiet` reports *success* for a 40-character SHA the repository has
+    never seen; the guard passed and `git log` died further in. The job now fetches `fetch-depth: 0`, and
+    the tool asks the object store (`cat-file -e`) instead of believing `rev-parse`, so a short clone is a
+    `C06` that names `fetch-depth: 0` as its remedy instead of a traceback.
+* **The FFI probe verified the host's own libc through a loader from another architecture.** Four more of
+    the eight were `e0.5`, and all four were `ABI mismatch: /lib/ld-linux.so.2 --verify
+    /usr/lib/x86_64-linux-gnu/libc.so.6: rc=1` on a healthy x86-64 runner. There is no such thing as *the*
+    `ld.so`: on a multilib Debian host that path is the **i386** loader — installed by `libc6-i386`, and
+    found first by a glob for `/lib/ld-*so*` — and the x86-64 one is in `/lib64`. So the probe asked the
+    wrong loader whether the host's libc could run on the host, and it answered "no". `_find_ld_so` now
+    takes the machine and ELF class of the object being verified and looks for a loader that speaks for it
+    (riscv32 and riscv64 share an `e_machine`, so the class is not decoration), and a host with no matching
+    loader gets `abi=not-run` — an honest absence — instead of a mismatch nobody can act on.
+* **A bead reference was three characters wide, and the board had grown four-character ids.** The ladder
+    said `subject 17` out of 144 commits, which failed the bar that no more than one release note in ten
+    may be guessed from a prose subject. They were not guesses: `BEAD_REF` was `reco-[a-z0-9]{3}` followed
+    by a "no more word characters" lookahead, so it matched *no* four-character id at all, and fourteen had
+    landed (`reco-cqwz`, `reco-p6zw`, this ticket among them). Every commit of the last fortnight looked
+    like a commit with no bead in it, which put them on the prose rung and — for one of them — made it a
+    `C03` gap as well. The pattern is `{3,4}` now; a fifth character, if the board ever grows again, is one
+    character wide and will be loud rather than silent, because the lookahead refuses a partial match.
+* **The cold per-file lookup was 87.3 µs against an 80 µs bar, and most of it was saying "no".**
+    The taxonomy's `broad` bucket is tried for every changed path, and one pattern in it — `**/*.egg-info/**`
+    — is wildcard-dense enough that it cannot be handed to `re`, so the Python state machine ran it, twice
+    per file counting the directory re-test, against a corpus with no `.egg-info` in it. Measured here with
+    that one pattern deleted from the table: 60.1 µs becomes 15.8 µs, so four fifths of a cold lookup was
+    that pattern refusing paths that could not possibly match. A `Glob` now reads the literal runs its own
+    pattern insists on out of its own tokens and refuses any path missing one before an engine runs at all:
+    `.egg-info/` settles the pattern in a substring test, the same cold lookup goes from 60.1 µs to 13.0 µs,
+    and the language is unchanged — cross-checked with and without the prefilter over the whole conformance
+    table.
+
+And one of the eight was a real gap, hiding behind the shallow clone: the audit's `C03` had been trying to
+say that `5033bbf41` ("fixed deb") is described nowhere in `[Unreleased]`. It is now, in the `.deb` entry
+where it belongs — which is also the entry for that commit's own bug, a reader that asked a tar member's
+*name* whether it was a directory when `tarfile` had written no trailing slash to ask.
+
+*Asserted by*: `tests/test_beta_loop_contract.py`, all three, on a clone with its history — and
+`tools/gen_changelog.py audit`, whose `C06` now prints `fetch-depth: 0` at whoever runs it on a short one;
+`tests/test_harness_contract.py::test_the_probe_verifies_with_a_loader_of_the_libcs_own_machine`,
+`test_the_loader_chosen_for_a_libc_is_its_own_architecture`,
+`test_a_loader_from_the_other_architecture_is_refused_even_when_it_is_the_only_neighbour` and
+`test_a_loader_of_the_other_word_size_is_refused`, which build both loaders as fakes so the multilib host
+is a fixture instead of a runner; `tests/test_config_contract.py::test_a_glob_refuses_a_path_that_lacks_a_literal_it_insists_on`
+and `test_the_literal_prefilter_never_eats_a_match`; `tests/test_taxonomy_contract.py`'s
+`test_every_broad_pattern_names_a_literal_it_can_refuse_with` alongside the cold budget it was failing;
+and `tools/package_release.py --self-test`, which now carries the `.deb` reader's own two claims.
+### The ubuntu leg hung instead of failing, over a `vi` a test had not installed (`reco-67ml`)
+
+`build+test (ubuntu-latest · stable)` reported no failure at all: it stopped. The last thing
+`crates/fathom-cli/tests/handoff_verb.rs` printed was the `fathom open HEAD~1` inside
+`no_editor_at_all_is_a_normal_path_that_names_what_to_set`, and it stayed the last thing it printed until
+the runner took the job away at its own timeout. No assertion, no panic, no exit code — a hung test is the
+one failure mode a CI log cannot quote.
+
+The claim the test makes is a good one: a machine with no editor should get a sentence and the three keys
+that change it, not a stack trace. What it did not do was *arrange* that claim.
+
+* **The variables were emptied and `PATH` was not.** An editor is looked for in `$FATHOM_EDITOR`, then
+    `$VISUAL`, then `$EDITOR`, then the platform default — and the default is not a setting, it is a
+    name. `vi` is on the `PATH` of every Linux and macOS box in existence and `notepad` is on every
+    Windows one, so the refusal branch this test asserts was never the branch taken on any of the three
+    legs. On ubuntu — the leg the ticket saw — what happened next was the hang below.
+* **And the verb runs what it plans.** Nothing in that test passes `--print`. Every other test here that
+    starts a program passes `--editor` an absolute path to this very binary, which prints, exits, and
+    needs no terminal; with the platform default found instead, `fathom open` did the thing it exists to
+    do and handed the terminal over.
+* **Which is where the hang is, and it is a deadlock.** `handoff::run` gives the editor this process's own
+    stdin, stdout and stderr — and in a test, those are the pipes the test is reading. `vi`, given no
+    terminal to draw on, makes a console of its stderr and polls it for input; the harness is blocked
+    reading that same stderr to the EOF that only `vi` leaving would produce. Neither can proceed. The
+    condition was reproduced here by putting a real `vim.tiny` on `PATH`: the run never returns, its
+    `wchan` says `poll_schedule_timeout`, and its swap file stays open.
+
+Three changes, one of them the bug and two of them the reason it was silent rather than merely red:
+
+* **A test that says "nothing is installed" now installs nothing.** `empty_path()` is a real directory,
+    empty, handed to a run as the whole of its `PATH`, so "no editor at all" is a statement about the
+    environment the test built rather than about whichever machine ran it. The same scrubbing goes to the
+    two difftool assertions that refuse a tool for the same reason — `nvim` and `code` are on some
+    developer's `PATH`, and a refusal that only happens on the runner is not a test.
+* **A hand-off that cannot finish is now a failure rather than a silence.** Every run goes through `drive`,
+    which captures to two files instead of two pipes — a file never blocks a writer, and its bytes are
+    still there after the kill — and waits in a `try_wait` loop with a 60-second deadline before killing
+    and reporting what the run had managed to say. `Command::output()` is why this could only ever have
+    hung: it cannot be interrupted, and it is the *reader* that blocks, so no deadline existed to fail.
+    The whole file runs in well under a second, so a minute is not a budget anyone has to measure
+    against.
+* **What is *not* changed is the product.** `fathom open` still starts the editor it planned with the
+    terminal handed over, because that is the feature; `--print` stays the door for a run that has no
+    terminal, and [the hand-off page](docs/concepts/handoff.md) and
+    [the troubleshooting table](docs/troubleshooting.md) now say so where someone staring at the hang
+    will look.
+
+*Asserted by*: `crates/fathom-cli/tests/handoff_verb.rs`, in the test this ticket is named for — green on
+a box with `vi` on `PATH`, which is the condition that hung the leg — plus
+`a_missing_difftool_lists_what_was_tried_and_leaves_the_pair_behind` and
+`a_configured_difftool_is_asked_in_its_own_shape_and_says_so`, whose substituted-tool branch is no longer a
+coin toss on whose laptop ran the suite, and `drive`, which every run in the file now goes through.
+
+### Every agent turn on Windows lost its intent, over the separator a harness path was rejoined with (`reco-raz3`)
+
+`build+test (windows-latest · stable)` failed nine of the twenty-one tests in the two `tests/intent.rs` files
+— four of `crates/fathom-analyze`'s eleven, five of `crates/fathom-cli`'s ten — while the Linux and macOS
+legs passed them all. Every one of them said the same impossible thing about a repository whose event stream
+was full of agent turns:
+
+```text
+assertion `left == right` failed: one episode, and its intent came from the stream:
+  left: (0, 0)
+ right: (1, 1)
+
+intent    no recorded intent · no harness events for this repository, and no `Intent:` or `Task:` trailer
+```
+
+No event was missing, and no rung of the ladder was consulted and refused: the turns were never linked to any
+commit, and the ladder then told the reviewer — loudly, and wrongly — that nothing had been recorded, which
+is the one answer this feature exists to withhold. Measured under a Windows-emulating probe (below), the same
+cause reddened sixteen tests that already existed, across four binaries — the nine in the two
+`tests/intent.rs` files, and seven more in `crates/fathom-ingest/tests/hooks_v1.rs` and
+`crates/fathom-cli/tests/hooks_verb.rs`, which is where the rule is now pinned — and it goes red over the
+guard this ticket adds, which is what a guard is for.
+
+* **`contain_path` was answering in the host's spelling instead of the store's.** The reader normalises the
+    path a `file_edit` event names — drop `./`, drop `.` segments, drop a trailing slash — and the rebuild
+    joined the components with `std::path::MAIN_SEPARATOR`. On Linux and macOS that is `/`, and the answer
+    was the path. On Windows it is `\`, so an event naming `src/rail.rs` came back as `src\rail.rs`, and
+    that is what the turn recorded.
+* **Which is the wrong answer exactly once: at the match.** `hooks::attribute` decides which turn a commit
+    belongs to by asking whether one of the commit's paths is one of the turn's paths, and a commit's paths
+    are git's — `/`-separated on every platform, including this one. So on Windows no path ever met, the
+    time-only rung could not cover for it (it fires only for turns that recorded *no* paths, and these turns
+    had one), and every agent commit arrived with no turn at all. The ladder's normal case — nothing stated
+    anywhere — is a state with a reason sentence, and the reason it printed blamed a harness that had been
+    talking the whole time. Absence is a claim here, and Windows was making it falsely.
+* **The fold is the platform's, so the fix is to stop translating.** `Path::components` already treats `\`
+    and `/` as the same separator on Windows and as *not* the same separator everywhere else, which is
+    exactly the rule wanted here: split with `Path::components`, join with `/`, and each platform folds no
+    more than it says a path's name contains. No `cfg!(windows)` branch, and no rewriting of a Linux file
+    whose name really does contain a backslash. The join is `/` because that is how the store spells every
+    path (`scope.rs` has said so all along: "a Windows capture and a Linux one compare equal") and because a
+    `/`-spelled path opens its file on Windows too — the reverse is not true.
+* **The reader owns this, not the three writers.** A Windows harness has no way to spell a relative path
+    except with `\`: `os.path.relpath` in `adapters/fathom-hook.py`, `path.relative` in
+    `adapters/fathom-pi-hooks.ts`, and `Path::components` in this crate all emit that spelling there. Fixing
+    one of them would fix one adapter; the reader is where a path from any of them becomes a store path, so
+    that is where the two spellings become one — which also means a stream written on Windows *before* this
+    change is still readable after it.
+* **How it was reproduced without a Windows box.** Two probes, one line each, both making the Linux build
+    split a path the way `Path::components` does on Windows; they differ only in the join, which is the half
+    that was wrong. With the join left as the host's — exactly what Windows did — the probe reddens the leg's
+    nine intent tests plus five in `hooks_v1.rs` and two in `hooks_verb.rs`. With the join `/`, which is what
+    this change makes it on every platform, every one of them is green; the only two assertions a Linux build
+    cannot judge are named in the tests themselves (a drive prefix is not a prefix here, and a trailing `\` is
+    not a separator here). So the diagnosis is measured, not assumed; the honest limit is that no Windows
+    machine ran any of this, and the leg itself is the check that the fix lands.
+* **What is *not* claimed:** that Windows is now known-good. This is the separator that broke the intent
+    ladder, found because the intent tests were red; the platform's other ways of disagreeing — line endings
+    (`reco-d3p9`), the signals it does not have (`reco-wgcj`) — each arrived as its own ticket, and the next
+    will too.
+
+*Asserted by*: `crates/fathom-ingest/tests/hooks_v1.rs`
+(`a_contained_path_comes_back_in_the_spellings_git_uses`, which is the red-on-Windows guard on every leg;
+`a_backslash_is_an_ordinary_character_where_it_is_one`, which pins that the fold is Windows' and not a
+translation; and — compiled only by the Windows leg — `a_stream_written_on_windows_is_read_like_every_other_stream`
+and `a_turn_written_with_windows_separators_still_owns_its_commit`), by `path_containment_refuses_every_shape_that_escapes`
+and the attribution tests of the same file, and by the twenty-one tests of
+`crates/fathom-analyze/tests/intent.rs` and `crates/fathom-cli/tests/intent.rs` that this ticket is named for.
+
+### Two dependency tests were red on Windows and green on the other two legs, over what a checkout contains (`reco-d3p9`)
+
+`build+test (windows-latest · stable)` failed two of `crates/fathom-analyze/tests/deps_delta.rs`'s tests
+while the Linux and macOS legs of the same matrix run passed them. Nothing in the product was different on
+Windows; the *tree* was. The Git for Windows installer leaves `core.autocrlf=true` behind, and a repository
+with no `.gitattributes` lets that decide what a checkout contains — so one commit arrived on Windows as a
+different set of bytes, every LF in it rewritten to CRLF, and both tests read those bytes:
+
+```text
+assertion `left == right` failed: the rendered table for `cargo-lock-refresh` changed
+  left:  "dependency delta — 12 transitive packages refreshed…\npattern         transitive_refresh…\n…"
+  right: "dependency delta — 12 transitive packages refreshed…\r\npattern         transitive_refresh…\r\n…"
+```
+
+* **The repository now says what a checkout contains.** `.gitattributes`, first rule `* text=auto eol=lf`:
+    text is stored LF and checked out LF on every platform, so a clone's bytes are the blob's bytes. The
+    paths whose bytes *are* the point are declared `-text`, which converts in neither direction — the fuzz
+    corpus, the diff viewer's CRLF fixture, `main.wxs`, every committed binary. `-text` rather than
+    `text eol=crlf` deliberately: `main.wxs` and `crlf.diff` carry carriage returns in the stored blob, and
+    `crlf.diff` mixes lines that have one with lines that do not, which no `eol=` value can express; an
+    attribute that normalised them would clean a worktree to bytes the blob is not and make a clean clone
+    read as dirty.
+* **The gate is `tests/test_line_endings_contract.py`.** It pins the `*` rule, requires every tracked path
+    whose stored content carries a CR to be `-text`, and makes the claim the bug violated: clone this
+    repository the way a Windows runner does (`core.autocrlf=true`) and the dependency goldens arrive with
+    LF while the byte-exact paths arrive byte for byte. Take `.gitattributes` away and all six of its rules
+    go red, which is the check that they are load-bearing.
+* **One of the two tests was quietly conditional, and that is the worse half.**
+    `an_unreadable_side_is_reported_rather_than_invented` chose the file to corrupt by sniffing its bytes
+    (starts with `{`, ends with `}\n`, longer than 200 bytes). A CRLF checkout has no file ending `}\n`, so it
+    corrupted nothing and went on to assert a corruption it had never made. It now names `package-lock.json`
+    and asserts it corrupted exactly one file; the golden comparison folds CRLF to LF before comparing,
+    because the reviewed text is the contract and however somebody's clone stored it is not.
+* **The product's half had never been tested.** `a_checkout_with_windows_line_endings_reads_the_same_as_a_unix_one`
+    reads every golden case both ways and requires the same projection and the same rendered table. That is
+    the promise `deps/text.rs` ("the lines of a document, `\r\n` tolerated") had been making unchecked, and
+    the one that matters in the product: a repository under review is allowed to keep its lockfiles with
+    CRLF, because it was written on Windows. Verified three ways — an LF tree 22/22, the same tree converted
+    to CRLF 22/22, and a `core.autocrlf=true` clone of the repository 22/22.
+
+### The contracts job's pytest step was red four ways, and three of them were the job's own shape (`reco-uyiq`)
+
+`docs + workspace contracts` failed at its last step — `python3 -m pytest -q`, the ADR-002 / ADR-004 /
+ADR-005 / e0.6 / e0.8 / e0.9 / e2.1 suites — with four failures that shared nothing but the job, and the
+job is the reason for three of them. All four are fixed here; none of them changes what the product does.
+
+* **A gate that demanded a binary from a job documented as having none.**
+    `tests/test_packaging_contract.py::test_the_generator_can_go_red_four_ways` shells out to
+    `gen_shell_artifacts.py self-test`, and every one of that self-test's four controls is a mutated file
+    compared against what `render(binary)` prints — the set of verbs with man pages comes out of the
+    `clap::Command`, not out of a list. With nothing built it exits 1 (`no binary at
+    target/debug/fathom`), and the contracts job — which says in its own header comment that it
+    *deliberately* needs no Rust toolchain — was red on every push and green on every laptop that had ever
+    compiled. The file already had the rule ("the two tests that need a built binary skip without one") and
+    two of its tests obeying it; the third now calls `binary()` and skips like its siblings, and the
+    self-test keeps running where a binary exists: `ci.yml`'s `e7.4 packaging:` step builds `-p fathom-cli`
+    and runs `check` and `self-test` back to back. Same lesson as `reco-p40`, one layer up.
+* **The RSS sampler's control was measuring the test runner.**
+    `test_the_rss_peak_is_sampled_while_the_child_holds_memory` asked a child what its peak resident set
+    was and failed the sampler for reading 125 528 KiB of a "142 696 KiB peak" — but the child answered
+    with `getrusage(RUSAGE_SELF).ru_maxrss`, and Linux does not reset an accumulated `ru_maxrss` across
+    `fork`+`execve`: a child reports `max(the forking process's peak, its own)`. Standalone, pytest had
+    barely more resident than the child and the test passed; in a whole-suite run the runner has already
+    touched more than the fixture ever will, so the "truth" was pytest's own memory and the assertion was
+    a race with the harness rather than a claim about the sampler — which was reading the child exactly
+    right. The fixture now prints `/proc/self/status`'s `VmHWM`, which is per address space, reset by
+    `execve`, and the same instrument `_PeakSampler` reads from beside the child. Measured before and after
+    on this machine: sampler 125 612 KiB against a self-reported 125 344 KiB, and the assertion is now
+    independent of what else the process running it has ever allocated.
+* **Eight commits had no release notes, and the changelog audit said so.** `C03` named them; the four
+    sections below this one account for all eight, and `.plan/changelog-coverage.json` is still empty,
+    which is the state this repository keeps — an exemption is an admission, not a way to get green.
+* **The `s5` panel's seal had been broken by a name change.**
+    `test_three_reviewers_scored_every_cell_blindly` compares each scorecard's recorded blinded-corpus
+    digest with the digest of the corpus on disk, and it came back `R1/R2/R3 scored a blinded corpus whose
+    digest does not match this one`. The cause was the repository-wide author-handle sweep: it rewrote
+    `crates/fathom-analyze/spike/s5/{arms,evidence,packets,blinded}/` after the panel had scored it — and
+    re-serialised the ten packets at `indent=2` where `write_json` emits `indent=1`, which is drift from
+    the generator whether or not a name changed in the same edit. The scorecards are the sealed half: re-
+    recording their digest to match the new bytes would be the panel testifying that it was blind after
+    seeing the key, which is the one thing that test exists to refuse. So the frozen corpus goes back to the
+    bytes the panel scored (43 files, `git checkout` of the pre-sweep tree), the sweep stops at the frozen
+    corpus's edge, and `spike score --check` reproduces
+    `benchmarks/reports/s5-narrative-polish.json` again — including its `panel.integrity_problems: []`,
+    which had been lying.
+
+### The `.deb` the CI step asked for was not the `.deb` the packager wrote, and the data archive never named its own directories (`274c3e164`, `b94569091`, `09858ce79`, `da0874c6b`, `5033bbf41`)
+
+The packaging leg built the archive, repacked it, and then died in the step that installs the result the way
+a user would. Four commits, one after another, because the step had two independent bugs and the second was
+only visible once the first stopped hiding it — and a fifth, once the leg finally got far enough to run the
+reader this section ends on.
+
+* **`~` is a home directory to bash, even inside a substitution.** The step builds the file name from the
+    manifest version, and `0.1.0-alpha.1` is `0.1.0~alpha.1` to `dpkg` (`-` is not legal upstream), so the
+    name is `fathom_${version/-/~}_amd64.deb`. Bash performs *tilde expansion* on a replacement that begins
+    with `~` — the runner looked for `target/packaging/fathom_0.1.0/home/runneralpha.1_amd64.deb` and
+    printed `no …`, which reads exactly like "the packager wrote nothing". The replacement is `\~` now
+    (`274c3e164`). The `ls -la target/packaging/` that went in to find out (`09858ce79`) came straight back
+    out, having proved the file was there all along.
+* **`grep -q` closes the pipe, and `pipefail` remembers.** `dpkg-deb --contents "$pkg" | grep -q …` is the
+    natural way to assert a member exists, and with `set -euo pipefail` it is a coin flip: `grep -q` exits at
+    the first match, `dpkg-deb` is killed writing the rest of the listing, and the pipeline reports 141.
+    The listing is captured once into `contents` and matched with a here-string instead (`b94569091`).
+* **A `.deb` whose data archive names no directories installs only the directories it was told about.**
+    `tar_bytes` wrote one member per file, so `./usr/share/zsh/vendor-completions/_fathom` arrived with no
+    `usr/`, no `usr/share/`, and no `./` — `dpkg-deb`'s own writer emits all three, and a `dpkg` unpack of
+    an archive that omits them is a package that lays files into directories nobody declared.
+    The writer now emits an entry for every parent of every member, directories first, sorted so a parent
+    always precedes its children, with the same deterministic fields (`uid`/`gid` 0, `root/root`, zero
+    mtimes) (`da0874c6b`).
+* **And the reader refused a `.deb` that was fine.** `verify` checks the finished container for the same
+    property — every file member's every parent has a directory entry — so the shape is a rule with a red
+    answer rather than a habit, and `--verify` runs it in the step that builds the packages. What it read
+    was wrong: the reader decided which members were directories by looking for a trailing `/` in the member
+    name, and `tarfile` does not append one to a `DIRTYPE` entry — so every directory the writer had just
+    emitted came back a file, the declared set of directories came back empty, and the package the leg had
+    just built was refused for naming no directories. The member's own type decides now (`isdir()`), the
+    directories are read under their own key, and the packager's own `--self-test` carries both halves of
+    it: the archive's directories are read as directories, and the `.deb` this tool writes passes the
+    reader the packaging leg runs (`5033bbf41`).
+
+### `cargo fuzz build` has no `--debug`, and two clippy steps handed cargo a backslash the YAML had folded (`2c351ae77`, `8063516de`)
+
+* **The flag never existed.** `fuzz.yml` built its targets with `cargo +nightly fuzz build --debug`.
+    `cargo-fuzz` 0.13 offers `-D`/`--dev` for the dev-release profile that comment above the step describes
+    and there is no `--debug` to accept, so *Build the targets* died on its own argument before the
+    sanitizer ran (`2c351ae77`).
+* **A plain scalar is folded, so the backslash arrived as a word.** The two clippy steps were written as a
+    bare `run:` with the invocation on two lines — YAML folds that into one line, and cargo was fine with
+    it. The first repair here (`2c351ae77`) added shell backslash continuations *inside* that plain scalar,
+    and a folded scalar keeps the backslash: cargo got a literal `\` argument and both steps went red. The
+    follow-up (`8063516de`) put the steps on the folded block scalar `run: >-` the rest of the workflows
+    already use, where the line break belongs to the YAML and the shell sees one clean line.
+
+### One spike gate read a list of one as a table of keys (`5acd99ade`)
+
+`s1_spike`'s report comparator walked `for key in ["thresholds"]` — a loop shaped like a table of compared
+keys that contains exactly one, which is a structure that promises a second and silently means nothing when
+nobody adds it. It is a named comparison now, with the same single claim: the committed report's `thresholds`
+block is the freshly measured one.
+
+### The `lockfile` fuzz target died on a `pom.xml` whose text was wider than a byte, because the XML reader walked one byte at a time (`reco-eyo`)
+
+`smoke (lockfile)` failed on *One minute per target* with nothing but `Fuzz target exited with exit status:
+86`, which is libFuzzer's `error_exitcode` for any report at all — crash, timeout and OOM alike. The report,
+recovered by building the target on the nightly and running the committed corpus with those flags, was a
+panic at `crates/fathom-analyze/src/deps/xml.rs:137` — *end byte index 131 is not a char boundary; it is
+inside* `'\ufffd'`.
+
+* **One loop stepped a byte at a time.** The scanner keeps byte indexes and every caller hands it a byte
+    count — the distance a `find` returned, the width of a `<` or a `</`, and in `children` the walk across
+    the text between two tags, one byte per step. A character wider than a byte parks the cursor *inside*
+    that character, and the next slice by index is a panic instead of an answer. No committed XML seed held
+    a single non-ASCII byte, so nothing on stable had ever stood there.
+* **It never needed a fuzzer.** `<description>Zürich</description>` in an ordinary valid-UTF-8 `pom.xml`
+    panics the same line. The artefact the fuzzer found was a `Fathom.csproj` whose element text was a run
+    of `0xbe`, which arrives as three-byte U+FFFD because the caller lossy-decodes; all four artefacts left
+    by the run were this one panic wearing different bytes.
+* **The control is one boundary snap in `Scanner::advance`,** which makes "the cursor is on a character
+    boundary" a property of the type rather than a hope about its callers, so every index slice the scanner
+    takes is one `str` allows. It is a no-op for every search the scanner performs — `>`, `"` and `</` are
+    ASCII and cannot match inside a character — and it changes only the byte-stepping text loop, from
+    walking into a character to skipping over it.
+* **Three gates hold it,** each checked red by removing the control: a named regression test in
+    `tests/hardening.rs`; two corpus seeds (`pom.xml__wide-text`, `Fathom.csproj__wide-text`), so the shape
+    is in the per-commit stable corpus run too; and two new degradations in `deps_tolerance.rs` that spread
+    a wide character *through* every golden fixture, in both spellings — the one the file really holds and
+    the one the lossy decode invents. The existing matrix could not reach a mid-file panic, because every
+    degradation that adds bad bytes adds them at one end of the file.
+* **Written into the threat model as F-18,** register row, §4.18 and the test that fails when the control is
+    removed, per §6 — "a reader panicked on somebody's manifest" is a finding about what a clone may
+    contain, not a line of release prose.
+* **Found next door and fixed:** `fuzz/artifacts/` was not gitignored, though the comment six lines above it
+    says crash artefacts do not belong in git, and this reproduction put four there; `-jobs`/`-workers` also
+    drops one `fuzz-<n>.log` per worker in the directory the run started from. Both are ignored now.
+
+Verified against the real target with `-Zsanitizer=address` on nightly: the four artefacts exit 0, the smoke
+step's own command exits 0 where it exited 86, and a 15-minute four-worker run after the fix (~350k
+executions, coverage up from 6 206 to 7 471 edges because the path that died early now keeps going) found
+nothing.
+
+### The search budget went red on a two-core runner, over a letter set recomputed half a million times a keystroke (`reco-sr1q`)
+
+`build+test (linux · stable)` failed the latency test with:
+
+```text
+p95 52.98548ms is over the 50ms budget ADR-006 §5.8 sets for `query.search.ms`
+```
+
+It was both of the ticket's hypotheses at once. The runner is one of the two-vCPU ones and the box this
+was written on reproduces the failure only under `taskset -c 0,1`; but the scan was also doing work it
+did not need, and the margin it needed for a slow runner was not there. What the corpus of measurements
+said: one keystroke out of the eighteen in the budget test — `graph render cache patch`, four words,
+none of them a substring of anything in the fixture and every one of them a *subsequence* of every
+episode body — costs several times the median, because all 14 339 rows are hits and none of them can be
+refused by the letter masks. That is the worst keystroke the box can be asked for, which is what a p95 is
+for; the fixes are about what one row costs, not about which rows are looked at.
+
+* **A token's letter set was re-derived per row per field.** `Letters::holds(token)` starts by computing
+    the token's letters, and it was asked per field, per token, per row: six fields over fourteen
+    thousand rows is half a million byte tests per keystroke that all answer the same thing.
+    [`score::Token`] now compiles each typed token once per search and rows are asked through
+    `Letters::holds_set`. This was the largest single cost in a keystroke.
+* **The field walk read the long field first.** A token was scored against name, body, then the four short
+    fields — so the 230-byte episode body was walked before the hundred bytes of paths, dependencies,
+    detail and author, for every token, in every row, and the only early exit was a name prefix (500).
+    The walk now follows the weight ladder in `score::field_score`: the name whole, then a secondary field
+    that *is* the token (a compare, not a walk), then the body as a substring, then a secondary field that
+    contains it, then the subsequence rungs — and it stops as soon as the match in hand is worth at least
+    what everything unread could pay. That cannot move the ranking: the body pays `160`/`120`/`20` and no
+    secondary field pays any of those, so the only ties are between secondary fields, whose relative order
+    the walk keeps exactly as the hit explanation prints them.
+* **Two byte-at-a-time loops went to `core`.** `find` was a hand-rolled first-byte scan (the comment said
+    `str::find` was too expensive to call once per field per token) and `subsequence` was an iterator chain
+    over bytes. `core`'s searcher is compiled at the standard library's optimisation level, not the
+    caller's, so at `-C opt-level=0` — which is where this budget is measured — it is 2.3× faster to call
+    it than to write the loop here, and still 1.8× faster in release; `subsequence` is now one `memchr`
+    per letter of the needle from where the last one stopped, 1.6× faster in a debug build and the same
+    greedy leftmost walk as before.
+* **The report sorted everything to show five rows.** A broad query scores ten thousand rows and prints
+    five, and ordering the other ten thousand measured 3.5 ms of a keystroke. The best `limit` are now
+    seated with `select_nth_unstable_by` and only those are sorted — legal because the tie-break rank makes
+    the order total.
+
+Measured on the same two vCPUs, debug build, the same corpus: median **19 ms → 6.1 ms**, p95
+**56.7 ms → 30.0 ms** against the 50 ms budget (the runner that opened the ticket was about 7 % faster
+than this one, so read the CI number as ~28 ms). The same test with `--release` measures a 0.9 ms median
+and a 3.8 ms p95, which is worth saying out loud: ADR-006 §5.8 names *this test* as the measurement of
+record, and a debug build is about eight times stricter than the binary anybody ships. The budget is
+unchanged, and so is the golden ranking — this was a cost change, and `the_ranking_is_the_golden_one`
+reproduces `tests/golden/search-ranking.txt` byte for byte.
+
+Two more things came with the fix. The failure now **names the keystroke it tripped on** (median, p95 and
+worst each carry their query, in the assertion as well as the trace line) because a budget that fails
+silently is a ticket that starts with "this could be a slower runner" — the `reco-axp` lesson again. And a
+new unit test, `the_rung_walk_and_the_whole_ladder_pick_the_same_field`, checks that phase one's cheap rung
+walk and phase two's whole-ladder walk pick the same field at the same offset for the same score on every
+row of the fixture — with the fixture itself asserted to reach every rung of the ladder, so the test cannot
+quietly stop covering one.
+
+Not fixed here, and unrelated: `fathom-cli`'s `search_verb::a_saved_query_is_named_in_the_next_process`
+fails on this tree before these changes and after them.
+
+
+### The workflow gate was red in CI and green on every laptop, over a file CI has never had (`reco-8myi`)
+
+`docs + workspace contracts` was red at the step that runs the workflow gate, with a complaint about a
+path in a workflow that is not wrong:
+
+```text
+P01 perf: job `budgets` step 9 (the trend, for the run summary): names `benchmarks/trend/trend.md`, which does not exist
+```
+
+Both commands the step runs — `check_workflows.py --verbose` and its `self-test` — pass on any machine that
+has ever run the perf gate, and fail on a fresh clone (`git clone` the repository and try it: the whole
+gate has one problem, and it is this one). The gate was asking *"does this path exist"* of the working
+tree, and the tree of whoever last ran `make bench-check` is not the tree `actions/checkout` produces.
+
+* **`benchmarks/trend/trend.md` is the run's own output.** `perf.yml` writes it twelve steps earlier in
+    the same job, guards the step that reads it with `if [ -f … ]`, uploads it as a job artefact, and
+    `.gitignore` excludes `benchmarks/trend/` on purpose — *"the trend is a CI job artefact, not a
+    committed file"*. So `P01`'s one question had exactly one wrong answer in the file set, and it was the
+    answer that only a laptop could give.
+* **`P01` and `P02` now ask about the checkout, not the working tree.** A named path is fine when it is
+    here, and also when `.gitignore` says it is not part of the repository: an ignored path is build or run
+    output, and requiring one to be committed is a rule that flips with the weather — green where somebody
+    built, red where nobody did. A typo is still red, because `tools/no_such_tool.py` is not ignored by
+    anything.
+* **`.gitignore` is read by the gate itself, not by `git`.** The gate's whole argument is that it runs
+    offline with no toolchain, so it parses the ignore file with the standard library: anchored versus
+    basename patterns, `*`/`?` that stop at `/` and `**` that does not, negation, and git's rule that an
+    excluded directory settles everything beneath it. `tests/test_workflows_contract.py` checks those five
+    shapes against rule lists written inline, and against git where git is available, so a rewrite of
+    `.gitignore` cannot make the exemption mean something else.
+* **The exemption is falsified, not assumed.** The self-test now writes a workflow whose steps name two
+    paths under an ignored directory in a stand-in `.gitignore`, requires that `P01` stay quiet about both
+    — and fails if the stand-in ignore file yields no rules at all, because an exemption that was never
+    consulted reads exactly like a passing one. The contract suite asserts the exempted paths are absent
+    from this repository, so the check cannot be satisfied by a stray build file.
+* **Found next door and fixed:** four `read_text()` calls in the gate (the root `Cargo.toml`, the three
+    workspace manifests and `dist-workspace.toml`, all of which contain non-ASCII) inherited the process
+    locale, so a runner without a UTF-8 `LC_CTYPE` — `PYTHONCOERCECLOCALE=0 LC_ALL=C`, the shape a bare
+    cron or container gives you — stopped the gate with `UnicodeDecodeError: 'ascii' codec can't decode
+    byte 0xc2` before it read a single workflow. They say `encoding="utf-8"` now.
+
+### `e2.4`'s own re-measure could only reproduce on the computer that wrote the report (`reco-2ezf`)
+
+`docs + workspace contracts` was red on every push at the `e2.4 rename pairing … re-measures to the
+committed report` step:
+
+```text
+CHECK FAILED — the committed report disagrees with this run:
+  ! totals differs from the committed report
+```
+
+Every one of the 30 gates passed, and every count in `totals` was identical. Two fields moved, and both
+were wall clock: `ms_total` 17.3 against 16.6, `ms_mean` 0.468 against 0.447.
+
+* **The pooled totals carried the clock.** `pool()` sums the per-window pairing time into the same block
+  it pools the counts into, and `check_report` compares that block whole — so a measurement that
+  reproduced exactly was "drift" on any computer but the one that last wrote the report. Spike `s4` had
+  been given this rule hours earlier (`reco-v1z`): runner facts are recorded, printed, and not compared.
+  `pool()` no longer writes milliseconds into a compared block; the timing is still measured and still
+  reported, one row under `rows[]` and `per_scenario[]`, which is where a millisecond belongs — next to
+  the window it was taken on.
+* **A gate's expectation is a claim made before the run, and `A4b`'s was filled in from the run.** The
+  refused O(repo) mode's cost ratio was asserted `>= ` *the shipped mode's own measured ratio*: the
+  committed report said `>= 2.69`, the next run said `>= 2.3`, and it was true on every machine by
+  construction because widening always reads more. It is now a number written in advance
+  (`rename.eval.DECISIVE_COST_RATIO`, 2.0), which the widened mode clears at 18.73.
+* **The failure output still names the claim, not the machine.** A doctored `totals.found` fails the
+  check; a `ms_total` of 900 000 does not. Both halves are pinned by a test, because a loosened
+  comparison that cannot fail is the same bug wearing the fix.
+
+### The binary stopped building on Windows, over a signal that platform does not have (`reco-wgcj`)
+
+`cargo build --workspace --all-features` is a CI step on `windows-latest`, and it died in the daemon's signal
+setup, before anything of the product was compiled:
+
+```text
+error[E0425]: cannot find value `SIGHUP` in module `signal_hook::consts`
+   --> crates/fathom-cli/src/daemon.rs:620:35
+```
+
+* **`SIGHUP` is the controlling terminal going away, and a Windows console is not a controlling terminal.**
+  `signal-hook` exports, on Windows, only the signals the C runtime can actually be told about — `SIGINT`,
+  `SIGTERM`, `SIGABRT`, `SIGFPE`, `SIGILL`, `SIGSEGV`, plus `SIGBREAK` — so `SIGHUP` is not a handler that
+  never fires there, it is a name that does not exist. Closing a console is a `CTRL_CLOSE_EVENT`, which the
+  C runtime does not turn into a signal at all.
+* **The stop table is built per platform now (`Signals`/`stop_signals`), not filtered at run time.** `SIGINT`
+  and `SIGTERM` set the stop flag everywhere; `SIGINT` and `SIGTERM` are hooked on Windows too, so Ctrl-C and
+  a supervisor's stop still land in the same settle `fathom daemon stop` uses. `SIGHUP` is added on Unix, for
+  both the stop flag and the hang-up flag. The one thing Windows gives up is an exit-code claim: a daemon whose
+  console is closed leaves with it instead of exiting `Cancelled`, which is the platform's own answer and the
+  closer truth — there is no `SIGHUP` to name as the reason.
+* **The same build failure was waiting one layer down, in the tests.** `cargo test --workspace --all-features`
+  compiles every test target on every OS in the matrix, and `crates/fathom-ingest/tests/daemon.rs` and
+  `crates/fathom-cli/tests/daemon.rs` both drive a daemon *over its socket*, which is the transport
+  `fathom-ingest` already says it cannot bind off Unix (a named pipe needs the FFI `#![forbid(unsafe_code)]`
+  rules out). They are `cfg(unix)` now, with the reason next to the gate rather than in a ticket nobody
+  re-reads; the one `fathom-tui` terminal test that asserts "`SIGINT`/`SIGTERM`/`SIGHUP` are hookable here"
+  went the same way, and its import with it.
+* **What is *not* claimed:** that the Windows test suite passes. This ticket is the build. What was verified is
+  `cargo check --workspace --all-features --all-targets --target x86_64-pc-windows-msvc` clean, the same
+  invocation on the host clean, and the three affected test binaries green here (`fathom-tui --test terminal`,
+  `fathom-ingest --test daemon`, `fathom-cli --test daemon`) — so the Unix behaviour the gates moved is known
+  not to have moved.
+
+### An open frame kept naming the branch it had opened on, long after the reviewer had left it (`reco-nup`)
+
+A `fathom` shell open in the second terminal printed `myrepo · main` in the tab bar while the first terminal
+was three branches away from `main`. The label is read once, before the first frame, by the composition root
+— which is the only party allowed to open git (ADR-002 §5.2, lint `E01`) — and nothing read it again. Every
+other fact in the frame arrives off the producer `reco-bpc` installed; the branch was the one fact it never
+re-read, so the frame's own claim about *which state of this repository I am showing you* went stale in
+silence, underneath a status line that said `live`.
+
+* **The producer re-reads what `HEAD` names, and the frame prints it.** `watch::Update` gained
+  `repo_label`: the same string the CLI composed at startup, composed again when the probe says the head ref
+  moved, and drawn in the tab bar's right-hand column. A label the shell already has is not news and
+  announces nothing.
+* **The cheap probe now carries the name as well as the commit**, because they are not the same fact. Two
+  branches sit on one commit as often as not — a fresh `git switch -c`, a switch back to a sibling nobody has
+  committed to yet — and the probe compared oids, so the one keystroke that changes the label was the one it
+  did not notice. A switch between two refs at one tip is now a `worth_reading` event, and the ask that
+  follows is the one allowed to skip the store re-read: the rows, the numbers and the working tree are all
+  what they were, and one line of chrome is not.
+* **The switch says so** on the hint row (`now on myrepo · feature/x`) when nothing else in the update has a
+  sentence to say, and stays quiet when something does — a switch that also brought new commits already has
+  the rail to announce itself with.
+* **What is not fixed, on purpose:** a frame that admits it is a snapshot (`--no-watch`, nothing indexed yet,
+  a binary built without the indexer) keeps the label it opened with. That is what a snapshot is, and the
+  status line already says which it is and what would move it.
+
+`crates/fathom-tui/tests/watch.rs` drives the loop with a scripted producer and asserts on the drawn tab
+bar; `crates/fathom-cli/src/ambient.rs`'s probe tests run `git switch` against a real temporary repository,
+because a probe that only notices oids *is* the bug. Checked end to end against the built binary in a pty:
+`fathom` open on an indexed repository, `git switch -c feature/same-tip` typed in another shell, and the
+label moves from `… · main` to `… · feature/same-tip` inside one poll — with no keystroke in the frame.
+
+### The perf budgets job had been red on every run it ever had, and the check page said only "exit code 11" (`reco-axp`)
+
+The `perf` workflow fails on every pull, and its annotations explained everything except the one thing
+worth knowing — *which* measurement failed:
+
+```text
+perf budgets (small class)
+  Run the budgets, the baseline, and the trend (local spelling: make bench-check)
+    Process completed with exit code 11.
+```
+
+The gate printed its failures to stderr as prose and gave a GitHub annotation only to the *cannot
+classify* list, so the budgets that stopped the build were in a log nobody had to open. Reading them on
+the same box the baseline was blessed on was the fix:
+
+* **A red gate now names what it blew, as an annotation** (`::error title=Perf budget gate::`, one per
+  failing measurement), and `tests/test_perf_budget_contract.py` fails if a red gate annotates nothing.
+  The self-test and the injected regression already proved the gate could fail; this proves it can be read.
+* **Five blessed rows sat at the fast tail of their own distributions.** `warm.reindex.ms.small`
+  (blessed 120.1 ms) has measured 101.5-107.0 ms in every run since — 11-15 % *under*, which trips
+  `stale_baseline`, because the row was blessed before `reco-dkr` took the harness's own 2 ms poll out
+  of every timed process — and the three pty rows (`query.diff_open.ms.small` 2.9 ms,
+  `query.diff_first_hunk.ms.small` 4.3, `query.queue.ms.visible.small` 2.8) have read 4.2-12.5,
+  5.6-16.3 and 2.7-8.8 ms, so the tail of their own noise crossed the floor and was reported as a
+  regression on a pane that had not moved. Six gate runs of one tree and one binary: red, green, green,
+  red, green, green. Those five rows are re-blessed at the median of ten probes, divided by that
+  runner's calibration factor so they stay in reference-machine units, each carrying the
+  centre/scale/spread/floor `reco-dkr` asks for. Every other row is untouched.
+* **A runner faster than the blessed machine was credited a speed-up it had not earned.** The
+  improvement half of the ratchet is judged on raw numbers so that a box shared with eight jobs is never
+  read as faster code — but the runner factor is *also* clamped at 1.0, and a box the calibration bench
+  measures at 0.8× measures every wall clock two tenths low against blessed times that are
+  reference-machine times. The clamp is about budget headroom, so the improvement half now divides by
+  the unclamped ratio when, and only when, that ratio is below 1.0. A slow runner is still credited
+  nothing; a real speed-up still has to be re-blessed on any runner.
+
+ADR-004 §11.10 carries the detail, including the two rows left alone on purpose and the one a re-bless
+cannot fix: the diff pane's first paint arrives in two clumps, so it is a 120 ms budget guarding a 12 ms
+measurement, and the gate says so rather than guessing.
+
+### The packaging action could not write an `.rpm`, because one of its paths was missing a slash (`reco-ndf`)
+
+The release job's packaging step — the one that repacks `dist`'s archives into `.deb` and `.rpm` — wrote
+the `.deb` and then refused to write the `.rpm`:
+
+```text
+Processing files: fathom-0.1.0~alpha.1-1.x86_64
+error: File must begin with "/": usr/share/zsh/site-functions/_fathom
+RPM build errors:
+    File must begin with "/": usr/share/zsh/site-functions/_fathom
+```
+
+* **One map, two spellings.** The packager relocates the archive's files with a map written in relative
+    paths — `usr/share/zsh/site-functions/_fathom` — because that is what a `.deb`'s data tar names its
+    members and what `cp -a` into `$RPM_BUILD_ROOT` lays down. `rpmbuild`'s `%files` section wants the
+    absolute spelling, and one entry in its template was the relative one pasted in. The four that were
+    literal `/usr/…` text in the template survived; the one that came from the map did not, and rpm
+    refuses the *whole package* over it: not one missing file, no `.rpm` at all.
+* **The list is generated now.** `spec_files` builds the `%files` block from `SHELL_DIRS["rpm"]` — the
+    same map the staging reads — with every entry routed through `rpm_file()`, so a completion directory
+    appears in the package and in the spec in one edit, and it cannot be a relative one. The claim is
+    therefore about the two agreeing, not about five strings having been typed the same way twice.
+* **Checked before `rpmbuild` is asked.** `spec_problems` answers rpm's two refusals — a relative entry,
+    and an entry naming nothing that was staged — in the packager, on any machine, and `build_rpm` refuses
+    to invoke `rpmbuild` until they are clear. That matters because the tool is missing from every image
+    but the one that provisions it, in the one stage of a release that gets no second chance.
+* **Read back afterwards, from rpm itself.** `--verify` now compares the finished package against
+    `rpm -qlp`, the package's own answer to "what does this install", and the CI step that builds the
+    packages runs with `--verify` rather than three steps later under `dpkg -i`.
+* **Both halves go red,** since a checker that cannot fail is a decoration: the packager's `--self-test`
+    and `tests/test_packaging_contract.py` each assert every `%files` entry is absolute *and* that a
+    relative entry, and a spec claiming an unstaged file, are refused.
+* **Found next door and fixed:** `packaging/linux-packages.sh` installed `rpmbuild` with
+    `apt-get install rpmbuild`, and no Debian or Ubuntu archive has a package by that name — `/usr/bin/rpmbuild`
+    ships in `rpm`. The message telling a human what to type said the same wrong thing. It provisions
+    `rpm` now, and the packager's own "rpmbuild is missing" error says so.
+
+### Spike `s4` could only reproduce on one computer, which is not where CI runs (`reco-v1z`)
+
+`docs + workspace contracts` was red on every push with a claim about a measurement that had not moved:
+
+```text
+spike s4 does not reproduce: the measured report differs from the committed one
+  line 1972:
+    committed: "cpu_count": 4,
+    measured:  "cpu_count": 8,
+  line 1973:
+    committed: "git": "git version 2.50.1",
+    measured:  "git": "git version 2.47.3"
+```
+
+`s4` re-measures sixteen authored `git` histories across 23 detector configurations and diffs the result
+against `benchmarks/reports/s4-rename-detection.json`. All 51 gates passed; the four fields that
+disagreed were facts about the machine that ran it.
+
+* **The comparison included the runner.** `--check` already projects out wall clock — a busy runner is
+    not a regression — but `environment`'s interpreter, platform, core count and `git` build were
+    compared, and they can never match: the committed report was written on an aarch64 box under CPython
+    3.14, and the step runs on `ubuntu-latest` under the workflow's own `setup-python` 3.12. A gate that
+    only one computer can satisfy is a gate that is red forever, and red about nothing.
+* **Recorded, printed, not compared.** The four are now excluded by path, and a differing environment is
+    announced rather than quietly ignored — `note: measured on a different machine than the committed
+    report (not a drift): python 3.12.7 -> 3.14.5; platform Linux x86_64 -> Linux aarch64; …` — because
+    the git rows are git's and the log has to say which git produced them. Everything else in
+    `environment` (the 128 MinHash permutations, the default shingle width, the prototype's stated
+    profile) is a claim about the measurement and is still compared, and so is `corpus.scenarios`, which
+    the old key-name-only exclusion list was discarding along with `meta.scenarios`.
+* **The failure output is a list of claims now, not a line diff.** The report is about 2 600 lines of
+    JSON, so the old positional diff said `line 1972 differs` and then every line below it shifted: one
+    runner fact, printed as a catastrophe. A drift reads `corpus.true_pairs: 59 -> 60`.
+* **The git rows no longer read the runner either.** `repo.py` builds every fixture with
+    `GIT_CONFIG_GLOBAL=/dev/null`, pinned dates and pinned identities, but `detect.git_detect` — the
+    measurement of git itself — ran `git diff` with the ambient environment, where a stray
+    `[diff] renames = false` or `renameLimit` changes which pairs git even considers. It runs through
+    the same scrubbed environment now, and the committed report reproduces byte for byte afterwards.
+* **Both halves are pinned by a test,** because a loosened comparison that cannot fail is the same bug
+    wearing the fix: a moved probe, a moved `true_pairs`, a moved `corpus.scenarios`, a moved permutation
+    count and a moved gate expectation are each still a drift, and a different runner is not.
+
+### One test asked the machine it ran on who it was (`reco-6wr`)
+
+`a_removed_manifest_is_a_deletion_and_a_new_member_is_an_addition` — one test, and it was red on a clean
+clone and green on the laptop that wrote it:
+
+```text
+---- a_removed_manifest_is_a_deletion_and_a_new_member_is_an_addition stdout ----
+Author identity unknown
+*** Please tell me who you are.
+fatal: unable to auto-detect email address (got 'user@host.(none)')
+assertion failed: status.success()
+```
+
+* **The fixture scrubbed everything except the one helper that needed it.** Every commit this test's
+    repository is built from goes through `tests/common`'s `git` helper, which clears the environment,
+    pins `user.name` and `user.email`, and pins the clock to `BASE_EPOCH` — the module says why: a
+    fixture whose commit ids move between machines makes a failure impossible to reproduce. The deletion
+    half of this one test shelled out to `git rm` and `git commit` directly, with the ambient environment,
+    so it inherited the developer's own identity. On a box with a global `user.email` (every box that
+    wrote the test) it committed under that identity and dated the commit *now*, while every other commit
+    in the fixture is dated January 2025 — different commit ids on every machine, which is precisely what
+    the fixture exists to prevent. On a box without one — CI, a fresh clone, a container — the commit was
+    refused and the test could not get to its own assertions at all.
+* **The fix is the helper the fixture should have had.** `Fixture::remove(path)` stages `git rm -- path`
+    and commits it through the same scrubbed `git` as `commit`, `edit` and `rename`, so the deletion
+    commit is now the same object everywhere and the test passes with or without a configured identity.
+    Verified both ways: the target is 8/8 green with the ambient identity present and 8/8 green with
+    `HOME` pointed at an empty directory and `GIT_CONFIG_GLOBAL=/dev/null`, which is the shape that was
+    red. An audit of every `Command::new("git")` in the workspace (`grep` for a commit whose invocation
+    does not `env_clear` first) found this one and no others; the rest of the fixtures already scrub.
+
+### Two workspace tests were a coin flip, because both of them asked the clock a question (`reco-ecb`)
+
+`cargo test --workspace --all-features` failed on a clean tree and could not be reproduced on the next
+run, or the one after that:
+
+```text
+---- a_span_is_the_composition_of_its_parts stdout ----
+Test failed: the generated history changed nothing at all, so the composition was never exercised
+    at crates/fathom-analyze/tests/graph_diff_property.rs:321
+test result: FAILED. 4 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out
+
+---- answering_appends_the_note_that_closes_it stdout ----
+assertion `left == right` failed: exactly one block was appended:   left: 2  right: 1
+test result: FAILED. 8 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out
+```
+
+Roughly one run in thirteen broke the first way and one in ten the second, same commit, same binary,
+different verdict — and proptest even helpfully saved the first failure to a
+`graph_diff_property.proptest-regressions` file, which turned a one-in-thirteen flake into a permanent
+red until somebody deleted a file nobody had meant to create. Neither test was wrong about the product.
+Each of them asked a question whose answer is not a fact about the code.
+
+* **The property test treated an input that never exercised it as a counterexample.** The delta algebra
+    is proved over random histories, and the history generator draws a *history*, so about one draw in
+    twenty-four hundred the seed lands such that every revision of a one-module history carries the same
+    exports and the same edges. Every span in such a history is empty at every cut, the composition
+    equality holds vacuously, and the guard that exists to notice — "a strategy that generated identical
+    revisions would prove the property about nothing" — was a `prop_assert!`, so *nothing was tested* was
+    reported as *the algebra is wrong*. It is now a `prop_assume!`: the case is rejected rather than
+    refuted, which is what proptest's vocabulary has for exactly this. Nothing is unguarded — a strategy
+    that stopped moving **altogether** trips `max_rejects`, which fails the run and blames the generator,
+    which is the thing to blame. Measured, not assumed: 12 × 5 000 draws after the change, no failure and
+    no regressions file; before it, the same draw at 20 000 cases failed on the 2 376th.
+* **The notes test counted blocks after two answers, and a note's id carries the second it was written
+    in.** `notes::entry::note_id` hashes kind, episode, author, text **and the instant**, truncated by
+    `ledger_clock` to the whole second the markdown can round-trip — the same reasoning `reco-2pw` applied
+    to the ledger. `fathom note answer nt-… "no — it went in the cleanup"` run twice inside one second is
+    therefore one block; run twice across a second boundary it is two, because under that identity rule
+    the second one *is* a second note. The test wrote the same answer twice — once for the human line,
+    once for `--json` — and then asserted exactly one block had been appended, so the assertion was
+    measuring where the second hand sat. The count now happens after the one answer this test's claim is
+    about, and the `--json` door is still exercised, just after the append-only claim has been checked.
+    Deliberately **not** fixed by making `answer` idempotent forever: that means taking the instant out of
+    note identity, which re-addresses every note in every committed review memory and orphans every
+    `about:` link in it. That is a product decision with a breaking change attached, not a flake fix.
+* **Both rates are measurements.** Each binary was run 40 times before and after (4 red / 40, then
+    0 red / 40 for the notes verb), the property test was run at 5 000 cases per run, and the remaining
+    170 test binaries of the workspace were each run 5 times to look for a third: nothing else moved.
+    The wall-clock lesson is the house rule, restated in the two places it was not written: a test may
+    read the clock, but a test may not *depend on where the clock was* between two of its own steps.
+
+### The perf gate died on its first measurement, because the RSS sampler had taken a name `threading` owns (`reco-yfd`)
+
+`perf` — the perf budgets job — failed *the budgets, the baseline, and the trend* about two seconds in,
+before it had indexed anything, and printed a traceback instead of a table:
+
+```text
+  File "…/tools/perf_gate.py", line 783, in measure_end_to_end
+    ms, rss = harness.fathom("index", fresh_store=True)
+  File "…/tools/mvp_acceptance.py", line 142, in peak
+    self.join(timeout=2.0)
+  File "…/python3.12/threading.py", line 1171, in _wait_for_tstate_lock
+    self._stop()
+TypeError: 'Event' object is not callable
+```
+
+Every number the gate takes — wall clock and resident set together — goes through
+`mvp_acceptance.run_measured`, which samples a child's `VmHWM` from a `threading.Thread` subclass and
+tells that thread to stop by setting an `Event` on it. The Event was bound to `self._stop`, and
+`Thread._stop` is not a free name: through CPython 3.12 it is a **method** — the one
+`Thread._wait_for_tstate_lock`, the body of every `join()`, calls when the thread has finished. Binding
+an Event over it turns the join that closes every measurement into `TypeError: 'Event' object is not
+callable`, so the gate died in its very first `fathom index` and the trend, the baseline comparison and
+the artefact never got written. It reproduced nowhere a developer looked: the interpreters people run
+are 3.13 or newer, which dropped `Thread._stop`, while every workflow here pins `python-version: "3.12"`
+— so CI was the only place the bug could speak, and the contract suite that would have caught it (the
+next step in the same job) was skipped because the gate had already died.
+
+* **The flag is called `_stop_requested`, and the name is the fix.** Nothing about the sampler's
+    behaviour changes; what changes is that it no longer overwrites a member `threading.Thread` uses
+    for its own lifecycle. The class docstring says so, because `self._stop` reads as the obvious name
+    for a stop flag and will be proposed again.
+* **The same shadowing went for anything that measures a verb on 3.12**, which is `tools/perf_gate.py`,
+    `tools/perf_realrepo.py` and `tools/mvp_acceptance.py`'s own acceptance harness: all three take
+    their RSS numbers from this sampler, and all three died at the first measurement rather than
+    reporting a budget.
+* **What guards it.** `tests/test_perf_budget_contract.py` now reads the assignments
+    `_PeakSampler.__init__` makes and refuses any name from CPython's private `Thread` vocabulary.
+    The vocabulary is spelled out in the test rather than read off `dir(threading.Thread)`, because
+    the interpreter running the guard is not the interpreter that broke — a guard that can only see
+    the interpreter it is standing on guards nothing. A second test takes one real measurement through
+    `run_timed` and demands a number back; that one is the shape of the crash, and it fails on the
+    interpreter CI pins.
+
+* **The job reports a verdict even when the gate cannot produce one.** The contract suite is now
+    `if: always()`: it is the step that names what a working gate does, and skipping it turned a
+    crashed gate into a log with one traceback and nothing to compare it against.
+
+### The config reference gate could never go green, because the fix had been typed into the generated file (`reco-c81`)
+
+`contracts` — the docs-and-workspace job — failed on the step *the config reference tables match the key
+spec*:
+
+```text
+fathom config: docs/concepts/config.md: generated block `keys` is stale — run `fathom config doc --write`
+```
+
+Two things were wrong with that line, and the second is why the first survived. The remedy names a command
+that does not exist: ADR-002 §4.3 designs `fathom config <subverb>`, `src/recommender/config/` is that
+design made executable, and `enum Verb` in `fathom-cli` has no `config` variant to run — so the message sent
+the reader to a command the binary refuses. And the row the gate called stale was
+`non_code.env.secret_name_pattern`, whose default is a regex alternation:
+`(?i)(^|_)(secret|token|password|…)`. A GFM table row is split on every `|` that is not written `\|`, so that
+row arrived at the reader as four cells with its header row missing — the defect `reco-x69`'s render audit
+correctly found, and which was then fixed in the wrong file: the bars were escaped *by hand*, inside the
+`BEGIN GENERATED` block of `docs/concepts/config.md`. A hand edit inside a generated block is drift by
+definition, so from that commit the generator and the document could not agree at all: fixing the render
+re-opened the gate, passing the gate broke the render, and every diff that touched a config key inherited
+the argument.
+
+* **The escape belongs to the generator.** `recommender/config/explain.py` builds every table line through
+    `_row(…)`, which passes each cell through `_md()` exactly once — `|` becomes `\|`, which is the escape
+    GFM defines here and which `tools/build_docs_site.py` renders back to `|`, so the reader still sees the
+    regex whole and the table keeps its columns. Once that was true, `doc --write` rewrote
+    `docs/concepts/config.md` to … nothing: not one byte of its generated blocks changed, which is the proof
+    that the file had been right and the generator was the party that was wrong.
+    Escaping once is a rule, not a coincidence — `_row` is the only way a table line is built, so a default
+    with a bar in it cannot be escaped twice and prints no stray backslash.
+* **A remedy is a command, or it is decoration.** `recommender/config/command.py` states the invocation once
+    — `PYTHONPATH=src python3 -m recommender.config …`, prefix included because `recommender` is read out of
+    `src/` and installed nowhere — and every message that used to say `fathom config doc --write`, `fathom
+    config schema`, `fathom config lint`, `fathom config keys` and `fathom config explain --key K` now spells
+    it that way: the stale and missing doc-block problems, the schema-drift problem (which also retypes the
+    `generator` field inside `schemas/fathom.schema.json`, so the artefact names the command that
+    reproduces it), and the hints for unparseable TOML, a value of the wrong type, a value outside its
+    declared range and a key nobody declared. `fathom config …` stays where it was always honest — prose
+    about the design, in ADR-002 and in this document — and appears in nothing a reader is told to type.
+* **The manual's own recipe list types too.** §11 of `docs/concepts/config.md` now runs its ten commands
+    through that prefix the way `docs/concepts/rename-pairing.md` and the ADRs already do, and says in one
+    sentence why there are two spellings of one surface.
+* **What guards it.** `tests/test_config_contract.py` gained six clauses — fifteen cases, counting the
+    parametrized ones: every generated table row splits into as many cells as its header, which is the
+    assertion that goes red the moment a bar stops being escaped; a stale block, a missing block and a stale
+    schema each name their remedy; each remedy is then handed to a real shell with `--help` appended and must
+    be accepted, which is `tools/check_docs_commands.py`'s argument moved from the manual to the messages;
+    and four refusals must not print a backticked `fathom …`. The new module is in the package's import
+    whitelist with nothing in it but `__future__`, so it cannot smuggle IO into the types half.
+
+### The perf budgets job stopped measuring the budget it was most likely to break (`reco-cwx`)
+
+Every `perf` run since the baseline was blessed printed the line and moved on:
+
+```text
+cold.queue_visible.ms.small                               —      3,000         —  blocked: the probe never saw a first frame
+```
+
+That row is ADR-004 §11's *time to first frame* — the one budget about what a reviewer waits for when they
+open the TUI — and a `blocked` verdict does not fail the build. It just means nobody looked. The gate has
+been printing this on every box that is not the one the baseline was blessed on, and the reason was the
+harness mistaking its own patience for an absence: `tools/tui_session.py`'s `drain` calls a frame *settled*
+after two quiet ticks of 50 ms, which is a fine way to find the end of a burst and a terrible way to wait
+for the beginning of one. Applied before the first byte of the answer, it is not a settle rule at all, it is
+a ~150 ms ceiling on what the probe can observe: the blessed first paint measured 138 ms, this box paints
+at 152-171 ms, and everything past the window came back `None`. A 3 000 ms budget that can only be read up
+to 150 ms is decoration, and the trend shows the censoring rather than the product — the published
+first-frame column is 25 ms on one box, 130 ms on another, and empty on a third.
+
+* **Quiet now means "the answer has stopped", never "nothing has arrived yet".** `drain` waits for the first
+    byte for the whole deadline and starts counting quiet ticks only once something has been seen, which is
+    what makes `first_paint_ms`, `visible_ms` and `until_ms` mean the same thing at 400 ms as they mean at 4.
+    A key that draws nothing still comes back as nothing; a key that draws late used to come back as nothing.
+* **A dead child no longer measures as a fast paint.** `spawn` passes `--binary` to the pty child *after* it
+    has `chdir`ed into the repository under review, so a relative `--binary target/release/fathom` — the
+    spelling the tool's own `--help` suggests — pointed at nothing, and the child's
+    `exec failed: [Errno 2] …` landed on the pty as terminal output, which the reader timed as a first frame
+    about 1 ms after spawn. The program is resolved in the parent now, and an unresolvable one is a named
+    exit instead of a number.
+* **The ratchet stopped being asked to guess.** With the probe repaired, a ~140 ms row compared at ±15 % asks
+    for 21 ms out of a spread that is that wide by itself (19 ms across nine probes of one tree, and the same
+    tree measured 109-150 ms across the blessed runs). `SPAWN_NOISE_MS` states that as the measurement's
+    floor, so the row is now listed under *ids the ±15 % ratchet cannot resolve* and guarded by its budget —
+    the honest state, said out loud, instead of a build that goes red on a slower box and green on a fast one.
+    A 400 ms injection still lands sixteen floors over it.
+* **What guards it.** `tests/test_perf_budget_contract.py` drives `tools/tui_session.py` against a fake TUI
+    that paints at a *known* delay: a first frame at 300 ms must come back at 300 ms, not `None`, and a key
+    answered at 400 ms must come back late rather than absent. A second test uses the same fake to prove a
+    relative `--binary` reaches the child, and a third asserts the gate publishes a number for
+    `cold.queue_visible.ms.small` rather than a blocked row.
+
+### The docs job's CI-gate check crashed instead of reporting, because nothing was built (`reco-p40`)
+
+`contracts` — the `docs + workspace contracts` job, the one that deliberately installs no Rust toolchain —
+printed a Python traceback for its `m2 CI gate` step:
+
+```text
+Traceback (most recent call last):
+  File "…/tools/check_ci_gate.py", line 359, in check_reusable
+  File "…/tools/check_ci_gate.py", line 167, in binary_verbs
+    proc = subprocess.run([str(binary), "--help"], …)
+FileNotFoundError: [Errno 2] No such file or directory: /home/runner/work/fathom/fathom/target/debug/fathom
+```
+
+The gate is run twice on purpose: on `ci.yml`, where the leg that compiles the binary re-checks the two rules
+whose source *is* a compiled program, and on `contracts.yml`, where the half that reads documents and
+workflow files catches a recipe that names a deleted script without waiting four minutes for a build. Only
+the flag rule knew about that second home — `check_flags` opened with `if not binary.is_file(): return`. The
+verb rule beside it did not, so on a runner where `target/debug/fathom` has never been built, `binary_verbs`
+handed a missing path straight to `subprocess.run` and the job died of an exception instead of printing a
+verdict. `tools/check_ci_gate.py self-test` raised the same way, for the same reason, which meant the one
+command that is supposed to prove the checker can fail needed a toolchain to do it.
+
+* **An absent binary is a state, not an exception.** `ask_binary()` is the one place that touches the
+    process: no file, a file that is not executable, a binary for another architecture and a non-zero exit
+    all come back as `None`, which `binary_verbs` and `binary_flags` turn into "nothing to read". The two
+    rules that need an answer now say so on stdout — `reusable workflow: verbs not checked (no binary at
+    …; ci.yml runs this half on the leg that builds one)` and `flag check skipped: …` — and the note is
+    printed without `--verbose`, because a skipped half that nobody mentions is a green job that lies about
+    what it looked at. The exit code is 0, which is the honest answer: nothing here disagrees with anything,
+    and two rules had no source to disagree with.
+* **`self-test` needs nothing again.** Its verb clause used `binary_verbs(…target/debug/fathom) or
+    {"flarble"}`, which was written to survive a missing binary and could not: the `or` never got to run past
+    the raise. It now ships its own `--help` — a stub in the temp directory that prints a clap-shaped
+    `Commands:` block — so the parser is exercised on every job, and separately asserts that the *real*
+    `fathom --help` parses when a binary happens to exist, since the stub is a guess at clap and the built
+    binary is the fact.
+* **The gate's own step in `contracts.yml` now runs `self-test` first**, the way `docs.yml` opens with the
+    builder's self-test: it costs nothing, it needs no toolchain, and it proves the gate underneath it is
+    capable of failing rather than merely silent.
+* **What guards it.** `tests/test_ci_gate_contract.py` gains the docs-job state as a promise: the gate run
+    against a path that is not a binary exits 0, prints neither traceback nor silence, and names the two
+    halves it could not check; a file that is not a runnable *program* is the same state; and
+    `binary_verbs()` on a missing path returns a set rather than raising. Those run on a machine with nothing
+    built, which is the state that used to raise. The pre-existing verb tests carry `@needs_binary` and so
+    never covered it.
+
+### Every `cargo fuzz` job refused to open the fuzz workspace (`reco-com`)
+
+The three `smoke` jobs on any pull that touches the readers, and the three `nightly` ones, printed the same
+three lines and then nothing else:
+
+```text
+Error: manifest fuzz/Cargo.toml does not look like a cargo-fuzz manifest. Add following lines to override:
+[package.metadata]
+cargo-fuzz = true
+```
+
+cargo-fuzz reads `package.metadata.cargo-fuzz` before it builds a target — `is_fuzz_manifest`, five lines,
+no fallback, no warning — and it is the only reader of that key in this repository. `cargo build`,
+`cargo clippy`, `cargo deny` and `python3 tools/gen_fuzz_corpus.py check` all read the same manifest happily
+without it, so the fuzzing lane could be red for a nightly cycle at a time with no crash report, no compile
+error, and no diff that looks as though it touched fuzzing. `reco-yuk` had fixed the *working directory* of
+these steps, which is how a run got as far as reading the manifest at all; the marker is the other half of
+the same discovery rule, and the half nothing was guarding.
+
+* **The fix is two lines in `fuzz/Cargo.toml`**: `[package.metadata]` and `cargo-fuzz = true`. Measured with
+    the tool itself rather than by reading its docs — `cargo +nightly fuzz list` from the repository root now
+    prints `hooks`, `lockfile` and `paths`, and `cargo +nightly fuzz build --dev lockfile` gets as far as
+    invoking `cargo build --manifest-path fuzz/Cargo.toml --bin lockfile` with the sanitizer flags, where
+    before the marker it stopped before starting a build. (Here it then stops at a missing `c++`, which is
+    this container having no C++ compiler for libfuzzer's build script and not a claim about the manifest.)
+* **The marker is also what directory discovery keys off**, which is why the prose moved with it.
+    cargo-fuzz walks up from the working directory to the first manifest that is **not** marked and takes
+    `<that>/fuzz`, so marking this one is what lets a run started inside `fuzz/` walk back up to the root
+    instead of looking for `fuzz/fuzz/`. `fuzz/README.md` and the header of `fuzz.yml` now give the real
+    reason the root is where a run belongs — the seed copy and the `fuzz/artifacts/<target>` upload are both
+    root-relative — instead of claiming the wrong directory is unrecoverable, and rule `P03`'s message says
+    the same.
+* **`P04` is the gate.** `tools/check_workflows.py` now refuses a workflow that runs `cargo fuzz` while
+    `fuzz/Cargo.toml` is a manifest cargo-fuzz would not open, `self-test` supplies the unmarked manifest to
+    prove the rule can fire, and `tests/test_workflows_contract.py` mirrors it with the error text a
+    contributor actually sees. It runs in `contracts.yml` on every pull, which is the only place a marker
+    invisible to every other tool can be caught.
+
+### The Guardrail 3 harness refused its own committed report, so five more diffs got read (`reco-0zi`)
+
+`ci`'s `g3-calibration` job went red on a corpus nobody had touched, with the one message that job exists to
+print:
+
+```text
+g3: the committed report is not what the pinned corpus and the shipped detectors and weights produce now.
+committed:         "blamed_on_score": 23,
+re-measured:       "blamed_on_score": 20,
+```
+
+Nothing under `crates/fathom-analyze/calibration/g3/**` had moved since `reco-6co`. What had moved is the code
+underneath it: `reco-0er` made `risk::feature::authorship` answer `Measurement::missing` wherever the
+attribution ladder had only fallen through to a guessed `human`, so in every repository whose harness stamps
+no turn evidence the weight leaves the score's denominator — eleven axes instead of twelve — and every
+measured term on those episodes is renormalised upward by a few percent. Over 540 real episodes that is 1 to
+4 points, which is enough to move a top-decile cut (33 / 40 / 40 → 34 / 42 / 43) and to lift five episodes
+over a threshold they had been under. The report is a byte-for-byte promise, so the harness was right, and
+the fix was to re-measure rather than to edit the promise.
+
+* **Five promoted episodes, five diffs read, five dispositions written.** `cli`'s `go-gh/v2` v2.16.0 →
+    v2.16.1 patch bump, `flask`'s `update dev dependencies` refresh, and in `ruff` the released-`black`
+    switch, the hyperfine 2.0.0 bump and the py-fuzzer minimisation budget. Four are `low-stakes` blamed on
+    the ranking — the score raised a flag no finding justified — and the fifth is a `false-positive` blaming
+    `untested_new_logic` (119 lines in a directory that has no test suite and never had one) and
+    `debug_leftover` (the fuzzer's own `--quiet`-guarded error line, a claim this corpus has now dismissed
+    on that file three times). 67 dispositions became 72, and `every-flagged-episode-is-labelled` came back
+    to `pass` the way it did after `reco-6co`: by being paid for, not by being relaxed.
+* **What the numbers did.** `G3` at the published τ 0.633 → **0.660** (35 false positives on 53 labelled
+    flags) and at the corpus cut 0.672 → **0.683** (43 on 63); false positives blamed on the ranking 23 →
+    **24**; six more `cli` readings now sit under a cut that moved out from beside them and are printed in
+    `labels_unflagged` instead of counted. The two miss-rate gates did not move at all — 0.792 and 0.750,
+    byte-identical — because a few percent carried the lockfile band over the line and left every reworked
+    episode under it.
+* **What did not move.** §5.4's three bars, `tau_alpha` 40, `min_denominator`, `DEFAULT_FLIP_MIN_LABELLED`
+    and the flag floor. One consequence has to be stated because it is a moving denominator and not an
+    improvement: `test_weakening` measures 0.273 on 11 answerable flags now and is under α, because two of
+    its attributed false positives were readings of `cli` episodes the raised cut stopped flagging. The
+    corpus has two default-enabled detectors over α with ≥ 8 answerable flags, not three.
+* **The written answer was dragged to the measurement, not the other way round.**
+    `docs/concepts/false-positive-calibration.md` gains a §3c for this pass, and its gate table, τ sweep and
+    per-detector table are the new report's numbers; `thresholds.json`'s `how_gates_are_set`, `tau_note` and
+    every gate `why` that quoted a moved number says the new one; the corpus README's §1.1 table gains the
+    fourth pass. `tests/test_g3_calibration_contract.py` is what proves none of that was remembered rather
+    than read.
+
+Verified: `python3 tools/fetch_g3_corpus.py` (three pins, oids checked),
+`cargo run --locked -p fathom-analyze --features sqlite-bundled --example g3_calibration -- --check` (reproduces
+byte for byte, 9 gates, 0 surprises), `pytest tests/test_g3_calibration_contract.py` (26 passed),
+`tools/check_docs.py`, `tools/check_ticket_claims.py`.
+
+### Six workflows were red, and four of them had no log to read (`reco-yuk`)
+
+`ci`, `contracts`, `fuzz`, `perf`, `Release` and `dogfood` were all failing, and the shape of the failure is
+what took the time: nothing in the YAML could show *why*. A job's `uses:` reference is resolved over the
+network at run time, so a wrong one is not a syntax error — the job dies in *Set up job*, before its first
+step runs, which is the one failure in the whole system with no log. `ci.yml`'s `release-skeleton` job ran
+`axodotdev/cargo-dist/action@v1`, a path that repository has never contained: `cargo-dist` ships an
+installer, not an action. `fuzz.yml` read a step output as `steps.minutes.value` instead of
+`steps.minutes.outputs.value`, which GitHub answers with the empty string rather than an error, so the
+empty string travelled four steps and died in `$(( … ))`. Both jobs looked like infrastructure flakiness
+from the outside and neither had anything to say for itself in a diff.
+
+* **The workflows are now checked against this repository**, by `tools/check_workflows.py`, offline and
+    standard library only. Twelve rules in five families: every action reference is well-formed and on an
+    explicit inventory (and `--network` proves each inventoried ref resolves on GitHub); every `${{ … }}`
+    context path resolves to a step `id:`, a `needs:` job, or a declared `inputs:` name — including the
+    `steps.<id>.<prop>` shape that is missing `.outputs.`; every repository path a `run:` step names, and
+    every `working-directory:`, exists; every `cargo -p`/`--features`/`--test`/`--example` is a member,
+    feature and target of the manifests it is typed next to, and every `tools/*.py <subcommand>` is a
+    subcommand that tool's argparse offers; and job wiring adds up — a `needs:` that exists, `permissions:`
+    somewhere rather than the organisation default, and artefact names uploaded once and downloaded by a
+    pattern that matches one of those uploads. It is a step in `contracts.yml`, mirrored by
+    `tests/test_workflows_contract.py`, and `python3 tools/check_workflows.py self-test` writes nine
+    workflows designed to break one rule each and requires every rule to fire, because a gate that has
+    never said no is a gate that cannot say yes.
+* **`cargo fuzz` runs from the repository root.** `fuzz.yml` set `working-directory: fuzz`, and cargo-fuzz
+    takes its fuzz directory from the package it finds in the working directory — from inside `fuzz/` that
+    is `fuzz/fuzz/Cargo.toml` and `fuzz/fuzz/fuzz_targets/`, so it reported "no fuzz target by the
+    name(s): 'lockfile'" about a target that is committed. The `fuzz/fuzz/…` paths that step then uploaded
+    were the same mistake one level down. The corpus is now copied to `$RUNNER_TEMP/seeds` and passed
+    explicitly, because the fuzzer writes into whatever directory it is pointed at and a discovered byte
+    sequence is not something this repository reviews; `fuzz/README.md` said "run it from `fuzz/`" and now
+    says the opposite, with the reason.
+* **The release path was stopped by whitespace.** `crates/fathom-cli/wix/main.wxs` is generated, and had
+    been hand-touched; `dist plan` — the first step of `release.yml`, the job that decides what a release
+    contains — refuses to start when a generated file is not its generator's output, so the entire release
+    pipeline was red over eight lines of re-wrapped XML. Regenerated, and `dist generate --check` now runs
+    on every pull request (which is what finds the next one), with the pinned `cargo-dist` read out of
+    `dist-workspace.toml` instead of copied into a URL.
+* **A `--all-targets` build has to name the features its targets need.** Two structure jobs built
+    `fathom-analyze --features langs-all --all-targets`, and `tests/graph_index.rs` drives the graph pass
+    through `fathom-store`'s SQLite backend, which ADR-002 §6.2 gates behind a store feature: the library
+    built, the test suite did not. Those steps now say `langs-all,sqlite-bundled`.
+* **A generated file is only "the binary's own grammar" for the binary it was blessed from.** A man page's
+    VERSION section prints `fathom --version`, which carries the feature list it was compiled with; the
+    committed page carried the all-features list while `gen_shell_artifacts.py`'s contract is the default,
+    shipped build (ADR-002 §6.1) — and in the job, the binary on disk at that step was the headless
+    `minimal` one built earlier. The step now builds the default binary itself before diffing, so the
+    answer does not depend on which step last wrote the file.
+* **Two clippy lints had landed with the toolchain.** `crates/fathom-ingest/src/oid.rs` now uses
+    `as_chunks::<2>()` where it hand-rolled a `chunks_exact` length check, and two tables in test files name
+    their types instead of spelling them inline: the language-convention row in
+    `crates/fathom-analyze/tests/api_surface.rs`, and the scripted-detector body in
+    `crates/fathom-analyze/tests/plugin_api.rs`. Both are new lints firing on code that was clean under the
+    previous toolchain, in a step that runs `-D warnings`.
+* **The search box's hint line was smaller than the search box.** `crates/fathom-tui/tests/tables/mod.rs`
+    is generated from the Python tables, and had not been regenerated since `reco-6sw` widened the token
+    grammar: the pane hint — and the keymap's T3 step beside it — still advertised `author: path: risk> dep:`
+    while `search.rs` accepted and explained `since:` and `kind:`. The Rust prose caught up with the
+    normative tables, `tests/tables/mod.rs` was regenerated, and five layout goldens were re-baked, one line
+    each: the hint, now listing the grammar it has.
+* **Still red, on purpose.** Two gates fail for reasons a workflow edit must not paper over, and blessing
+    either is a decision about the product rather than about CI. Guardrail 3 (`g3-calibration`) re-measures
+    against three pinned real repositories and no longer matches its committed report: `blamed_on_score` 23
+    → 20, and 11 flags in the current corpus have no label in the hand-authored truth files
+    (`unlabelled_total` 0 → 11), which moves the published miss rate from 0.672 to 0.655 — that is
+    [docs/concepts/false-positive-calibration.md](docs/concepts/false-positive-calibration.md)'s headline
+    number and somebody has to label those flags and agree to move it. `perf_gate.py --check` is red on one
+    line: `query.metrics.ms.small` 12.831 → 14.900 ms, +16.1 % against a 15 % ratchet, with a runner factor
+    of ×1.03 and a noise floor a fifth of the change, so the regression is real by the gate's own standard
+    and small in absolute terms. `make bench-bless` is the ratchet, done loudly, and it is the budget
+    owner's call.
+* **Tests**: `tests/test_workflows_contract.py`, nine cases — every rule green on the tree as committed,
+    every action reference inventoried, no step context read without `.outputs.`, the store feature still
+    present for the target that needs it, the checker pure-Python and network-free, the checker wired into
+    `contracts.yml`, and the checker's own `self-test` proving it can fail.
+* **Three commits in this range carried a subject and no bead id**, which the coverage rule in
+    `gen_changelog.py` counts as a gap, and the honest way to close a gap is to say what they did:
+    `bf983176a` retyped the two clippy steps' `run:` folding (the shape that is what made the next person
+    read them as data), `e194a63d9` added `publish.yml`, the workflow that turns a version-bump commit into a
+    release after `ci` goes green on the default branch, and `3875f524a` put a screenshot of the TUI in the
+    README and touched two workflow step names to keep the docs honest about it.
+
+### The manual had a renderer, and the render disagreed with the markdown in four pages (`reco-x69`)
+
+`docs/` was published in two places and rendered in one: GitHub showed the markdown, and nothing at all
+turned it into a site, so the only reader able to notice a page whose markdown is legal and whose *render*
+is wrong was a person, looking at the page. Four such pages were in the tree when this landed — a table row
+whose code span holds an unescaped `|` (in `concepts/config.md` and `concepts/noncode-surfaces.md`, where
+the regex in `non_code.env.secret_name_pattern` cut the row and the header out of the table), two tables
+pasted into the middle of sentences in `concepts/rename-pairing.md`, two stray fence lines in
+`reference/cli.md` that dropped `## The verbs` and `## Global flags` out of the page, and five pages that
+wrote a code span containing backticks as backslash-backtick, which prints the backslashes because a code
+span does not unescape. `check_docs.py` and `check_docs_site.py` were structurally unable to see any of it.
+
+* **`tools/build_docs_site.py`** builds the site: one page per `docs/**.md`, a generated listing for every
+    section directory with no `README.md`, sidebar, per-page table of contents, breadcrumbs, a lazily loaded
+    search index, `404.html`, a sitemap and robots when a host is known, and every non-markdown file copied
+    verbatim so `docs/demo/*.cast` plays on Pages. `write`, `check` (builds in memory, writes nothing) and
+    `--self-test`, standard library only, so the same command runs on a laptop, in CI, and on a runner with
+    no network.
+* **The render is audited against the source.** Each page's characters are compared with the characters its
+    markdown contained, so a dropped table cell, a swallowed `<episode>` placeholder or a fence that ate the
+    rest of the file is a build failure rather than a reader's confusion. That rule is what found all four
+    defects, and all four are fixed rather than worked around in the renderer.
+* **CI builds it.** `.github/workflows/docs.yml` builds a preview artefact on a pull request and publishes
+    on the default branch; `python3 tools/check_docs_site.py` builds the same site in the contracts run; and
+    `tests/test_docs_html_contract.py` holds the promises the HTML makes. The entry is here because the
+    commit that did all of this did not add one, two days ago: the coverage rule in `gen_changelog.py`
+    noticed, which is the argument for the rule having a number on it.
+
+### A timeline that had been open for an hour still said its newest row was brand new (`reco-5oe`)
+
+The rail's age column printed `0:00` for a commit that landed four seconds ago, and printed `0:00` an
+hour later. Two defects were in that one screen and they are different shapes of it. `0:00` is what the
+`h:mm` arithmetic says at forty seconds: a spelling whose resolution is a minute, printed as though it
+measured seconds, about a row that had not had one yet. And the frame is handed exactly one wall-clock
+instant at the CLI's edge — ADR-002 §4.4, because nothing below the composition root may read a clock —
+which an interactive run then aged every row against for as long as it stayed open. An episode that
+landed *after* the frame opened was dated ahead of it, clamped to the same `0:00`, and read "this
+hour" for the rest of the session. A reviewer who believed that column was being lied to by a clock,
+not by the index.
+
+* **The bucket.** `days::relative` says `<1m` below a minute and then `0:12`, `2d4h`, `3mo` exactly as
+    before, and the card says `just now`, because `<1m ago` is not English. A row the frame has not
+    reached — clock skew, a fixture dated forward — says `ahead`, and the card says *dated ahead of
+    this frame*, instead of the clamped zero that made a future commit look like the newest thing on
+    the screen. The same call [`ambient::age_since`](docs/concepts/ambient-mode.md) already makes with
+    `unknown`: an age that cannot be computed is not an age of zero.
+* **The clock.** `App::age_clock` anchors the frame's one wall-clock read to the monotonic instant the
+    loop already wakes on — `SIGNAL_POLL`, the same clock that ages the toast and the chord timeout —
+    and derives "now" from the distance between them. Monotonic is the right instrument for an age: NTP
+    cannot step it backwards and make a row younger, and a laptop that slept cannot make an episode
+    younger than it was when the lid closed. `run_loop` asks it next to `age_toast`, so the fix costs a
+    subtraction per wake-up and no new timer.
+* **The ticklessness, kept.** A draw is for a change somebody can see (ADR-006 §0.1), so the answer is
+    "draw" only when the instant crossed a minute, and only when the rail is on a rung that prints an
+    age at all. Below `Columns::NoSparkline` the age column is a date read off the row and the only
+    `now` on the screen is the footer's day label, so there a minute turns nothing and a day does.
+    `Rail::set_now` reports the minute crossing; the caller who owns the layout decides whether it is
+    visible.
+* **What did not move.** A one-frame render — `--plain`, `--json`, every golden — is still the single
+    instant it was handed, so a piped frame stays reproducible (ADR-006 §6.7). `fathom-tui` still reads
+    no clock: the instant is derived from one the caller already had, which is what makes the minute
+    turn testable at all.
+* **Tests**: `crates/fathom-tui/tests/timeline_age.rs`, eleven cases with the monotonic instant
+    injected so none of them sleeps — every bucket edge, the ahead row, the card's sentences, a rail
+    aged forty minutes in one call, same-minute wake-ups that buy no frame, the date-only rung that
+    will not draw for a minute, a frame whose instant moved on its own, and a quiet `run_loop` that
+    asks its clock and still draws one frame and stops.
+* **Docs**: [ADR-006 §5.2](docs/adr/0006-tui.md) states the four spellings and the resolution a redraw
+    turns on; [concepts/timeline.md](docs/concepts/timeline.md) says where the instant comes from and
+    what carries it forward.
+
 ### A Cargo workspace could not answer its own layering question (`reco-842`)
 
 `use fathom_analyze::graph::model::Graph;` written in `crates/fathom-core` produced a graph node and no

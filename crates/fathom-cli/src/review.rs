@@ -149,7 +149,7 @@ fn status(root: &Path, as_json: bool) -> eyre::Result<ExitCode> {
     }
     if !pending.is_empty() {
         output::line(format_args!(
-            "  · {} settled act(s) in the queue have never been rendered into the ledger — `fathom review sync`",
+            "  · {} settled act(s) on the timeline have never been rendered into the ledger — `fathom review sync`",
             pending.len()
         ));
     }
@@ -558,7 +558,7 @@ pub fn reviewer(root: &Path, explicit: Option<&str>, agent: Option<&str>) -> (Ac
         .as_deref()
         .is_none_or(|value| value.trim().is_empty() || value == "unknown")
     {
-        let from_git = crate::queue::actor(root);
+        let from_git = crate::triage::actor(root);
         if from_git != "unknown" {
             display = Some(from_git);
             source = "git config";
@@ -751,6 +751,10 @@ fn display(path: &Path, root: &Path) -> String {
 mod tests {
     use super::*;
 
+    // `sqlite-bundled`-gated with the function it calls: `must_survive_blockers` reads the store's blockers,
+    // and §6.2 does not compile it into a binary with no store, so the headless build has no ledger to call
+    // "not blocked" about.
+    #[cfg(feature = "sqlite-bundled")]
     #[test]
     fn an_unbuilt_directory_is_not_a_blocked_ledger() {
         // No `.fathom/reviews/` at all is "nobody has reviewed anything yet", not "the ledger is missing".

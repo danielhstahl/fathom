@@ -991,7 +991,7 @@ is a budget row lookup, never an `if` in product code.
 
 | Budget id | Unit | Statistic | large | medium | small | xlarge | Rationale |
 |---|---|---|---|---|---|---|---|
-| `cold.queue_visible.ms` | ms | p95 | 20,000 | 8,000 | 3,000 | 45,000 | Time to the first *useful* answer: queue populated, timeline browsable, graph lane still pending and labelled. This is the number `e1.12` (time-to-first-orientation < 60 s) actually depends on, which is why it is a separate budget and not a fraction of `cold.index.ms`. |
+| `cold.rail_visible.ms` | ms | p95 | 20,000 | 8,000 | 3,000 | 45,000 | Time to the first *useful* answer: the home rail drawn with its rows, the chronology browsable, graph lane still pending and labelled. This is the number `e1.12` (time-to-first-orientation < 60 s) actually depends on, which is why it is a separate budget and not a fraction of `cold.index.ms`. Named `cold.queue_visible.ms` until `reco-15wk`: the same probe, the same threshold and the same first pane — `e10.3` deleted the pane's name, and the key followed the pane it was never measuring. |
 
 | Budget id | Unit | Statistic | large | medium | small | xlarge | Rationale |
 |---|---|---|---|---|---|---|---|
@@ -1043,7 +1043,7 @@ is a budget row lookup, never an `if` in product code.
 
 | Budget id | Unit | Statistic | large | medium | small | xlarge | Rationale |
 |---|---|---|---|---|---|---|---|
-| `query.queue.ms` | ms | p95 | 20 | 12 | 8 | 30 | The attention queue's ordering query (`v_queue`), 100 rows. Prototype: 0.574 ms at 800 commits. |
+| `query.rail_keystroke.ms` | ms | p95 | 20 | 12 | 8 | 30 | One keystroke on the home rail — `j`, one row down — from the key written to the frame drawn: the rows redraw from the chronology the composition root handed it. Named `query.queue.ms` until `reco-15wk`, and the thing it named is gone twice over: the ordering query it was written for (`v_queue`, 100 rows, prototype 0.574 ms at 800 commits) went out with the Queue view in `e10.3`, and what the probe has pressed since is `j` on the rail. The prototype figure is kept as the anchor it still is — one ordered read of a 100-row page — with the query that produced it named as history. |
 
 | Budget id | Unit | Statistic | large | medium | small | xlarge | Rationale |
 |---|---|---|---|---|---|---|---|
@@ -1250,54 +1250,43 @@ decoration.
 ### 11.9 What `e7.2` measured against real repositories, and what it changed here
 
 `reco-66q` ran §11's budgets against real open-source repositories for the first time, with
-`tools/perf_realrepo.py` (the harness, and what each number's method is, is in that file's own
-docstring; the numbers are `benchmarks/reports/e7-2-real-repos.md` and its `.json` payload). The
-three repositories were chosen for §11.1's two axes plus a third thing the axes cannot express:
-`aws/aws-sdk-go` (5 501 commits, 5 509 files, `medium`, generated code — every release rewrites
-thousands of machine-written files), `git/git` (82 542 commits, 4 857 files, `xlarge` on commits)
-and `tensorflow/tensorflow` (201 675 commits, 37 370 files, `xlarge` on both). The box was 8 cores
-with 7 934 MiB of RAM, so §11.8's `skip_xlarge_below_ram_mib` applies to the *gate*; the
-repositories that fall into `xlarge` were still measured, and are reported against the class they
-are, because "we did not run it" is not a budget verdict.
+`tools/perf_realrepo.py`. The three repositories were chosen for §11.1's two axes plus a third thing the
+axes cannot express: `aws/aws-sdk-go` (5 501 commits, 5 509 files, `medium`, generated code — every
+release rewrites thousands of machine-written files), `git/git` (82 542 commits, 4 857 files, `xlarge` on
+commits) and `tensorflow/tensorflow` (201 675 commits, 37 370 files, `xlarge` on both). The box was 8
+cores with 7 934 MiB of RAM, so §11.8's `skip_xlarge_below_ram_mib` applies to the *gate*; the
+repositories that fall into `xlarge` were still measured, and are reported against the class they are,
+because "we did not run it" is not a budget verdict. **The run, the three fixes it bought and everything
+it deliberately left unfixed are in
+[`benchmarks/reports/e7-2-real-repos.md`](../../benchmarks/reports/e7-2-real-repos.md)**; what follows is
+what changed in this document.
 
-**The finding, in one sentence: the budgets are missing a denominator.** §11.1 classes a repository
-by commit count and tracked-file count, and neither of those is what an index costs. Cost is a
-function of the *file rows a history writes* (churn) and the *width of a tree per commit*
-(enumeration), and on the fixture corpus both are near their minimum: a fixture commit touches
-about two paths. `aws-sdk-go` is `medium` on both published axes and writes **66 521 file rows,
-twelve per commit**. Eight of eleven budgets missed on it — `cold.index.ms` at 19× — and every one
-of the misses that looked mysterious from its own number had a cause once the run was attributed by
-phase (`fathom index --json`'s `phases_ms`, added by this ticket for exactly that argument).
+**The finding, in one sentence: the budgets are missing a denominator.** §11.1 classes a repository by
+commit count and tracked-file count, and neither of those is what an index costs. Cost is a function of the
+*file rows a history writes* (churn) and the *width of a tree per commit* (enumeration), and on the fixture
+corpus both are near their minimum: a fixture commit touches about two paths. `aws-sdk-go` is `medium` on
+both published axes and writes **66 521 file rows, twelve per commit**. Eight of eleven budgets missed on
+it — `cold.index.ms` at 19× before the fixes — and every miss that looked mysterious from its own number had
+a cause once the run was attributed by phase (`fathom index --json`'s `phases_ms`, added by this ticket for
+exactly that argument).
 
-What the fixes were, and what they were worth on that repository (the commits carry the before and
-after in full):
+So `tools/gen_budgets.py` gained **rate budgets**: the same measurements divided by the work that caused
+them, with the headroom in the rationale. `cold.index.ms_per_commit` (10 ms) and
+`cold.index.ms_per_file_row` (4 ms) say what a cold index may cost, and a per-class ceiling is arithmetic
+away from them; `warm.reindex.ms_per_commit_in_store` (1 ms) budgets the O(repository) term a warm run still
+pays — a *description* of the episode rebuild re-segmenting every reachable commit, not an endorsement, and
+until segmentation is incremental §11.7's warning about `warm.reindex.ms` is live for every user whose
+repository grows up; `cache.bytes_per_cached_row` (32 KiB) and `store.bytes_per_file_row_spine` (3 KiB) are
+the per-row halves of `cache.budget.mib` and §11.6, which is where those two become implementable: a cap on
+the cache with no ceiling per cached row is a policy nobody can code.
 
-| change | the number it moved | before → after |
-| --- | --- | --- |
-| `resolve()`'s twin diagnostic did not constrain `input_kind`, so it scanned the whole `cache` table once per **miss**: the cold index cost grew quadratically in its own output | `analyses` phase, aws | 319,876 ms → 140,620 ms |
-| `structure.delta` stored a tree's whole inventory per row instead of a chain of deltas, and asked for the parent tree in an order that could not have it | `.fathom/objects`, aws | 764.9 MiB → 104.8 MiB (budget 512) |
-| read verbs ran `PRAGMA quick_check` + the foreign-key scan on every process start, which §9.6 and the function's own comment both assign to `doctor` | `fathom show --json` end to end | 621 ms → 176 ms |
-
-Cold index on aws went 380.6 s → 161.2 s and still misses `cold.index.ms.medium` (20 s) by 8.1×.
-That is deliberate: **`cold.index.ms` is not being revised.** A ceiling raised until the current
-code passes it would stop failing on the things that are actually wrong with it — `diff.per_file`
-at 1.20 ms/row, the spine at 5.0 ms/commit, the `Store::inventory()` read that is still on the
-query path — and §11.1's size classes were always the *fixture* corpus's (§11.8's first bullet),
-which is the thing CI can gate in three minutes. What was stale was not the fixture's ceiling; it
-was the assumption that it was a statement about repositories.
-
-So `tools/gen_budgets.py` gained **rate budgets**: the same measurements divided by the work that
-caused them, with the headroom in the rationale. `cold.index.ms_per_commit` (10 ms) and
-`cold.index.ms_per_file_row` (4 ms) together say what a cold index may cost, and a per-class
-ceiling is arithmetic away — `medium` at its §11.1 maxima with a real-world twelve rows per commit
-is 10 000 × 10 ms + 120 000 × 4 ms ≈ 580 s, against the 161 s measured. `warm.reindex.ms_per_commit_in_store`
-(1 ms) budgets the O(repository) term a warm run still pays — measured 0.55 ms/commit, and it is
-a *description* of the episode rebuild re-segmenting every reachable commit on every run, not an
-endorsement: the number to beat is the one that tends to zero when segmentation becomes incremental,
-and until then §11.7's warning about `warm.reindex.ms` is live for every user whose repository
-grows up. `cache.bytes_per_cached_row` (32 KiB) and `store.bytes_per_file_row_spine` (3 KiB) are
-the per-row halves of `cache.budget.mib` and §11.6, which is where those two budgets become
-implementable: a cap on the cache with no ceiling per cached row is a policy nobody can code.
+**And one ceiling was deliberately not revised.** Cold index on aws went 380.6 s → 161.2 s and still misses
+`cold.index.ms.medium` (20 s) by 8.1×. That is deliberate: raising a ceiling until the current code passes
+it stops the budget failing on the things that are actually wrong with it — `diff.per_file` at 1.20 ms/row,
+the spine at 5.0 ms/commit, the `Store::inventory()` read still on the query path — and §11.1's size
+classes were always the *fixture* corpus's (§11.8's first bullet), which is the thing CI can gate in three
+minutes. What was stale was not the fixture's ceiling; it was the assumption that it was a statement about
+repositories.
 
 The dispositions, stated rather than implied:
 
@@ -1312,21 +1301,15 @@ The dispositions, stated rather than implied:
 | `store.bytes_per_commit_spine` | 27,264 B | 4,096 B | **explained and re-based**, not relaxed: it is 2,242 B/row × 12.1 rows/commit, and `store.bytes_per_file_row_spine` (3 KiB) is the budget that says something true about it. §11.6 has to be read with the row in it. (`reco-7yq` has since narrowed what the harness charges to this budget to the commit tables, so 27,264 B is the lane-inclusive measurement this disposition was written against.) |
 | `cache.budget.mib` | 104.8 MiB | 512 MiB | **passes** as of this ticket, having been a 1.5× miss before it; `cache.bytes_per_cached_row` is what keeps it passing. |
 | `store.size.mib` | 291 MiB | 2,048 MiB | passes. |
-| `query.timeline.ms`, `query.queue.ms`, `query.diff_open.ms` | 0.15, 0.1, 112 ms | 12, 12, 150 ms | pass, through the same pty probe the gate uses. |
+| `query.timeline.ms`, `query.rail_keystroke.ms`, `query.diff_open.ms` | 0.15, 0.1, 112 ms | 12, 12, 150 ms | pass, through the same pty probe the gate uses. (The middle one was published as the queue's ordering read when this run was made; `reco-15wk` renamed it, not the number.) |
 | `query.diff_first_hunk.ms` | 223 ms | 40 ms | **held, failing**: the first `@@` of a 100 000-line generated file is a different problem from the first `@@` of a source file, and the pty probe does not distinguish them. |
 | `rss.tui.mib` | 197 MiB | 180 MiB | **held, failing** by 9 %, on a store whose episodes are the aws release commits; not chased further here. |
 
-Two things this ticket did not fix and did not pretend to, recorded because they are the shape of
-what is left. TensorFlow is the repository that stays out of reach: at a 12-minute deadline the
-fixed binary had completed the spine (201 675 commits, 880 546 file rows) and derived 11 094 tree
-rows, of which **4,491 are anchors carrying a full 37 370-path enumeration (~830 KB each, 99.97 %
-of the bytes)** where the 1-in-32 cadence alone would have produced ~350 — on a merge-heavy
-monorepo history the parent tree is usually not derived yet when the child is asked, so a link has
-to be an anchor, and an anchor's cost is the tree. The follow-ups that would actually move it are
-deriving in first-parent order and compressing anchor payloads, not a smaller cadence. And the two
-`git/git` runs on either side of the fixes were not a clean pair (the pre-fix run shared the box
-with two other measurements), so its numbers are reported as bounds in the report rather than as a
-ratio — which is the kind of thing a report should say out loud rather than round away.
+Two things this ticket did not fix are recorded in the report rather than here, because both are about a
+repository rather than about a decision: TensorFlow stays out of reach of a 12-minute deadline (the anchors
+its merge-heavy history forces are the cost, not the cadence), and the two `git/git` runs on either side of
+the fixes were not a clean pair, so they are reported as bounds rather than as a ratio. That is the kind of
+thing a report should say out loud rather than round away.
 
 ### 11.10 What the epic's close measured, and what it consciously accepted
 
@@ -1337,173 +1320,52 @@ against the fixture, reads `e7.2`'s real-repository verdicts, reads
 inside its budget or on the register at the end of this section**. Rationale a gate does not read is a
 wish, and §11.7 has already told us what a budget nobody fails on is worth.
 
-**What it found: the fixture gate had been red for a week and no word had been written about it.** The
-baseline was last blessed at `89f7198` (2026-10-17); ninety-three commits later, at `36b011f`, eight ids
-were red. Three are over their published budget and went on the register at the end of this section — which
-`reco-7yq` has since emptied — and the rest were red *against
-the blessed baseline* while sitting inside their budget, so they were **re-blessed** at `36b011f` — the
-ratchet act of §11.2–11.5, not a waiver:
+**The chronicle moved; the rules it settled did not.** Epic 7's close, and the eight tickets that worked the
+perf gate afterwards (`reco-r3x`, `reco-7yq`, `reco-dkr`, `reco-axp`, `reco-0zot`, `reco-3h82`,
+`reco-15wk`, `reco-xsog`), are recorded run by run in
+[`benchmarks/reports/perf-budget-chronicle.md`](../../benchmarks/reports/perf-budget-chronicle.md) —
+every bless, its box, its factor and its floor. What stays here is what those findings *decided*, because
+that is the half a later ticket may not re-litigate:
 
-| measurement | blessed at `89f7198` | at `36b011f` | budget | note |
-| --- | ---: | ---: | ---: | --- |
-| `cold.index.ms.small` | 411.3 ms | 1,340.8 ms | 1,500 ms | inside; the graph lane arrived after the bless |
-| `cold.queue_visible.ms.small` | 26.6 ms | 138.3 ms | 3,000 ms | inside, by 21× |
-| `rss.cold_index.peak_mib.small` | 20.4 MiB | 32.2 MiB | 300 MiB | inside |
-| `rss.warm_reindex.peak_mib.small` | 12.1 MiB | 24.2 MiB | — (trend) | no budget of its own, §11.7's standing complaint |
-| `rss.tui.mib.small` | 10.9 MiB | 30.8 MiB | 120 MiB | inside |
-| `store.size.mib.small` | 2.258 MiB | 4.715 MiB | 400 MiB | inside; half of it is the lane (§ below) |
-| `query.metrics.ms.small` | 17.9 ms | 15.1 ms | 250 ms | **faster** — `97fd258` took whole-database checks off the read verbs |
-| `query.card.ms.cli.small` | 18.5 ms | 15.3 ms | 50 ms | **faster**, same commit |
-
-The causes are not a mystery and they are dated: `89ebeda` (`reco-8s4`) wrote the per-revision graph lane,
-`3d0ecae` (`e3.11`) made a revision owe a graph row at index time, `ac50279` (`e7.3`) added a bounded
-working set that is a floor and not a leak, and `97fd258` (`e7.2`) made two read verbs cheaper than the
-blessed numbers — which is its own red, because an unacknowledged improvement is as much a broken ratchet
-as a regression. Nothing in that table was made legal by blessing it: every number in it was already
-inside its budget. A number that is **over** its budget is not blessed away; it goes on the register.
-
-**The basis finding, which is the one worth reading.** Two of the three breaches are not the warm path at
-all. A cold index of the fixture writes 500 commits and leaves **340 revisions without a graph row**
-(`graph.window = 32`), and every *subsequent* `fathom index` — including the ones that answer
-`nothing_new: true` — settles 32 more of them at 894–1,172 ms a run, for ten runs, until the debt is gone.
-At rest the same two measurements pass: the store-side no-op is **2–4 ms** (§6.6 R1's ~1 ms, and
-`reco-7tc`'s fix is intact) and a warm re-index with one new commit is **~100 ms** (`episodes` 46–54 ms,
-`graph` ~40 ms, `spine` ~8 ms) against a 150 ms budget. `graph.window` caps a *pass*: it bounds the rate
-at which the lane converges on a graph row for every revision, not whether it converges — the store at
-rest holds 467 `graph_snapshot` rows for 503 commits. **`reco-r3x`** owns that, and the sentence worth
-keeping is that the budget is right and the run is wrong: this is not a licence to make §6.6 R1 slower,
-and the second it costs is user-visible in `ctrl-r` and in `watch` mode while the debt lasts.
-
-**What `reco-r3x` did about it.** It made the window mean what the report already said: `graph.window` is a
-**coverage window, not a batch size**. `Store::graph_pending_revisions` takes the cutoff over every revision
-the refs can reach rather than over the owed ones, so a pass writes the revisions that are both owed and
-inside the window and refuses everything older; `graph.outside_window` in `fathom index --json` is the count
-of what was refused, and the partial a capped pass prints — "raise the window to backfill them" — is now a
-sentence the reader can act on instead of a promise the next run quietly breaks. Measured on the same
-fixture with the same binary and re-blessed into `benchmarks/baselines/perf-gate.json`:
-`warm.reindex.noop.ms.small` is **3.8 ms** against the 10 ms budget §6.6 R1 wants and `warm.reindex.ms.small`
-**120.1 ms** against 150 ms. Both pass, and their two register rows came off with them. (A word on the bless,
-because a blessed number nobody can trace is folklore: only the four rows this change moves were re-blessed —
-the two warm ones, and the two store-size ones below — with the times divided by this runner's calibration
-factor of ×1.057 so they are in reference-machine units as §11.8 requires. The other eighteen are still
-blessed at `36b011f`; a ticket is not licence to move a number nothing touched.) The lane at rest now holds
-**34 `graph_snapshot` rows for 502 commits** instead of 467 for 503: the graph is a function of the
-configuration rather than of the repository's age, which is what §11.6's `store.bytes_per_commit_graph` was
-always assuming, and the store measurements came down with it — `store.bytes_per_commit_spine.small` 8,273 →
-**5,545 B/commit**, still over its 4,096 B budget and still `reco-7yq`'s, because that row is about a
-denominator and not about this, and `store.size.mib.small` 4.715 → **3.402 MiB**. Nothing here is a licence
-to graph less than the tool reads: the default stays one anchor period (`32`), which is
-what the three 30-revision windows — scorecard, churn, hotspots — need, and a repository that wants the
-architecture of its whole history raises the knob and pays for it once, in the run where it asks.
-
-**What `reco-7yq` did about the third, which was a denominator and not a cost.** `store_split` had two
-buckets — "the cache" (`cache`, `cache_input`, `session_state`, `index_run`, `schema_meta`) and "not the
-cache", which it called the spine — so the graph lane was billed to a budget whose byte model (§11.6) is
-`git_commit` + `git_commit_file`. On this corpus at the close `graph_*` was **6,865 B/commit of the
-8,289** measured, 49.8 % of the store, while the commit tables were **1,376 B/commit**, a third of their
-ceiling; §11.6's budget for the lane (`store.bytes_per_commit_graph`, 32 KiB/revision, `s3`'s measured
-22,335 B) was listed in `perf_gate.py` as *not measured yet*, which is the same sentence from the other
-side. The split now has the ADR's three denominators plus the residue — commit tables, `graph_*` lane,
-cache side, everything else — and an index is charged to the table `sqlite_master` says it indexes, so
-`commit_tree` and `commit_author_time` reach the spine instead of being lost to a name prefix. Measured on
-the same fixture with the same binary: the commit tables are **1,466 B/commit** against their 4 KiB, and
-the lane — measured at last, and therefore off the *not measured yet* list — is **8,064 B/revision**
-against its 32 KiB, which sits between `e3.2`'s interned 6 041 B on the payload basis and `s3`'s
-un-interned 22 335 B, on the pages basis, which is the larger quantity and is never mixed with payload.
-The denominator is a **revision the lane holds** (32 after a cold index: 3 full snapshots, 560 delta
-rows), not a commit of history, for the reason `reco-r3x` just established: the lane is a coverage window,
-so a per-commit quotient is 516 B here and half that in a repository twice the age, and it would describe
-the corpus rather than the encoding. The byte split is also taken on the store **a cold index leaves**,
-before the warm commits, because how much of the lane a store holds depends on how many index runs made it
-— the same confound that made the old number 8,289 B/commit at three samples and 10,446 at five — and a
-cold store is a function of the corpus and the configuration and nothing else. Two rows were re-blessed
-for it: `store.bytes_per_commit_spine.small` 5,545 → **1,466 B**, which is a denominator moving and not a
-speedup, and the new `store.bytes_per_commit_graph.small` at 8,064. `store.size.mib.small` was left alone:
-moving the measurement point moved it from 3.402 to 3.375 MiB, inside the 1 MiB floor §11.10 admits two
-paragraphs below, and a ticket is not licence to move a number nothing touched.
-
-**The third finding is about the gate, not the code, and it is the one that will bite next.**
-`query.metrics.ms.small` (`fathom stats --json`, p95 of three) measured **14.8, 14.9 and 21.6 ms** in
-three identical runs of the same tree on this runner — bimodal, and by more than the ratchet can see: a
-±15 % two-sided limit with a 5 ms floor on a 15 ms number is a threshold inside its own noise. There is no
-middle of the spread to bless — every sample is one mode or the other — so the blessed values sit in the
-fast mode, and a slow-mode run is absorbed by the 5 ms floor up to about 5 ms and goes red beyond it.
-What was done instead of tuning a knob: `tools/epic7_acceptance.py` re-runs the fixture gate once when it
-comes back red and requires the verdict twice, which keeps a real regression red (it is red both times) and
-stops the epic from being red about a jitter. **`reco-dkr`** owns it, with three candidate remedies in order:
-sample the read verbs more than three times (the probes cost ~20 ms each, so five samples is ~30 ms of
-wall clock, not a second), record a noise floor beside each blessed value instead of a constant per unit,
-or find out *why* `fathom stats --json` is bimodal — which is the only one of the three that is a product
-fix rather than a measurement fix. What must not happen is widening the ±15 % limit or raising
-`NOISE_MS`: the ratchet's whole value is that it can see a real 15 % regression in the verbs users wait on.
-
-**What `reco-dkr` did about it: the bimodality was in the harness.** Of the three remedies the finding
-listed, the root cause was the third one — find out why — and the answer is that the gate was timing its
-own polling loop. `tools/mvp_acceptance.py`'s timed runner was `t0 = monotonic(); Popen(...)` and then
-`while proc.poll() is None: sample VmHWM; sleep 0.002`, and the number it returned was the wall clock
-around all of that: the 2 ms interval, the cost of reading `/proc` inside the loop, and wherever the
-scheduler happened to wake the poller. On a 13 ms verb that is 1.7 ms of the measurement at p50 and 8 ms
-of it in the tail, measured against a ratchet whose whole job is to see 15 % — that is, 1.5 ms — and the
-reason the same tree read 14.8, 14.9 and 21.6 ms minutes apart. The clock is the child's exit now
-(`os.wait4` blocks until it is reaped and hands back its status and its rusage) and the RSS sampler runs
-on its own thread; `tools/perf_realrepo.py`, which had the same defect with a 5 ms interval, measures the
-same way. Five samples of `fathom stats --json` on the same tree now scatter with a robust standard
-deviation of **0.12–0.22 ms**, where three samples used to land a mode apart; six consecutive gate runs put
-`query.metrics.ms.small` within **±4 %** of its blessed value, green six times out of six where the same
-tree used to be a coin toss. The other two remedies went in with it, deliberately, because fixing
-the clock does not make a 3-sample p95 into a statistic: the read-verb probes take **five** samples,
-and a blessed value now carries the noise it was blessed with — `center`, `scale`, `spread` and `noise`
-beside `value` in `benchmarks/baselines/perf-gate.json` — instead of a constant per unit in the script. A
-change has to clear the percentage **and** that floor, and the floor is the widest of: this run's own scatter
-times two, the floor blessed with the value, or the probe's stated resolution. Two, because the change being
-judged is a gap between two independent draws (√2) and a run's within-run scatter understates its
-run-to-run scatter by about as much again. The scatter is a median absolute deviation, not the range: a
-range is a maximum, one slow sample in five trebles it, and a floor built on a maximum is widest exactly on
-the runs that should be distrusted and tightest on the ones that can be judged — which is the opposite of a
-floor. And the ratchet compares the **middle** of the samples, not the worst: a worst-of-five drawn from a
-distribution with a tail cannot resolve a 15 % change on a 15 ms verb at any floor, so the median of the run
-is compared against the median the baseline was blessed with, while the *budget* keeps being checked against
-the p95 — the budget is a promise about a bad run, the ratchet is a statement about a changed one.
-`NOISE_FLOOR` was not raised (5 / 1 / 256, as `reco-pef` blessed it) and `regression_fail_pct` is still 15.0,
-which is what `reco-r3x` asked for: the constant is now the fallback for a value that was blessed before
-floors existed, and it keeps its hold on every one of those until somebody blesses a floor and says what it
-was. What changed instead is what happens when a floor is wider than the percentage: that is no longer a
-silent pass. The run lists those ids under **cannot classify**, in the table, in the report
-(`resolution.changes_this_run_could_not_classify`) and as a GitHub warning, with the floor and its basis in
-the sentence — because a gate that cannot resolve a metric should name the metric, and epic 7's exit clause
-is "met, or consciously relaxed with a written rationale", not "unresolvable, and green". Which ids those
-are is now written down rather than discovered per run: every measurement taken through the pty —
-`cold.queue_visible.ms.small` and the keystroke probes behind `query.timeline.ms`, `query.queue.ms` and
-`query.diff_*` — whose instrument resolves 10 ms (`PTY_NOISE_MS`, the poll granularity of the pty reader,
-not a choice about tolerance) while the numbers it reports are 1–5 ms; and `warm.reindex.noop.ms.small`,
-whose `elapsed_ms` the store prints as whole milliseconds — three ticks of that clock is its floor
-(`STORE_CLOCK_FLOOR_MS`), so it can see a doubling of the no-op and nothing finer. What guards those ids is
-their budgets — 12 ms against a 1.8 ms keystroke, 10 ms against a 4 ms no-op — and the ratchet now says so
-out loud. A deterministic reading does not buy its way out of the constant floor either: what varies on the
-byte counters is not the reading but the run — how much of the graph lane one gate run happened to write
-moved `store.bytes_per_commit_spine.small` by more than a fifth, until `reco-7yq` moved the lane into its own
-budget with its own denominator.
-And because a blind spot is a fact about the gate rather than about the run, the gate now prints the standing
-list too — **IDS THE ±15 % RATCHET CANNOT RESOLVE**, in the report under
-`resolution.ids_the_ratchet_cannot_resolve` — which after this ticket is seven on a run without the
-criterion benches: the five pty probes (a 10 ms instrument being asked for 0.27 ms), the store-side no-op,
-and `store.size.mib.small` (a 1 MiB floor on a 3.4 MiB store), each named with its floor, what the floor
-was, and what the ratchet was asking for. On a full run the criterion rows join them, because a
-per-iteration number blessed on a tail statistic and without a floor is gated by the 5 ms constant — a
-sentence about the bless and the constant, not about the bench. Every one of those ids is a row a bless will
-put under the ratchet, because a bless now records a centre and a floor along with the value; until then
-their budgets are what guard them, and the gate says that instead of guessing.
-
-The bless moved three rows, the ones whose measurement this changed — `query.metrics.ms.small` 15.1 →
-**13.4 ms** (centre 12.83, floor 0.24), `query.card.ms.cli.small` 15.3 → **14.8 ms** (centre 14.43, floor
-0.24), and `warm.reindex.noop.ms.small` 3.784 → **3.9 ms** (that row is the *basis* moving, not the code:
-whole-millisecond readings of a no-op that has measured 3.8 ms store-side since `reco-r3x`) — blessed from
-the quietest of three runs, its times divided by that run's calibration factor so they stay in
-reference-machine units, §11.8's convention as `reco-r3x` set it. The other twenty rows are untouched, still
-blessed where they were. The two-run concession in
-`tools/epic7_acceptance.py` stays, and says something different now: it is a backstop for a runner that was
-busy for one run and quiet for the next, which is a property of the machine, and no longer a workaround for a
-metric the gate could not read.
+* **`graph.window` is a coverage window, not a batch size** (`reco-r3x`). A capped pass settles the
+  revisions that are both owed and inside the window and refuses everything older, and
+  `graph.outside_window` in `fathom index --json` counts what was refused. The budget was right and the
+  run was wrong — a cold-indexed fixture owed the lane a graph row for every revision behind the window,
+  and every later run paid for settling them. Nothing here licenses graphing less than the tool reads:
+  the default stays one anchor period, which is what the three 30-revision windows need.
+* **A store-size denominator must name the lane** (`reco-7yq`). `store_split` had two buckets and billed
+  the graph lane to a budget whose byte model (§11.6) is `git_commit` + `git_commit_file`. It now splits
+  into the ADR's three denominators plus the residue, and an index is charged to the table
+  `sqlite_master` says it indexes. The lane's denominator is *a revision the lane holds*, not a commit of
+  history, and the byte split is taken on the store a cold index leaves: a cold store is a function of the
+  corpus and the configuration and nothing else.
+* **The ratchet's floor is a measurement, not a constant** (the third finding, and `reco-dkr`). The gate
+  had been timing its own polling loop, so on a 13 ms verb it measured the harness's tail rather than the
+  verb's. The clock is the child's exit now, the read-verb probes take five samples, and a blessed row
+  carries `center`, `scale`, `spread` and `noise`. **The ratchet compares the median; the budget is still
+  checked against the p95** — a budget is a promise about a bad run, a ratchet a statement about a changed
+  one. Neither `NOISE_FLOOR` (5 / 1 / 256) nor `regression_fail_pct = 15.0` was raised. An id whose floor
+  is wider than the percentage is not a silent pass: it is listed under **cannot classify**, in the run,
+  in the report and as a GitHub warning, and the standing list
+  (`resolution.ids_the_ratchet_cannot_resolve`) names which ids the ±15 % cannot resolve and what guards
+  them instead — the pty probes at a 10 ms `PTY_NOISE_MS`, the store no-op at its whole-millisecond
+  `STORE_CLOCK_FLOOR_MS`, `store.size.mib.small` at its 1 MiB floor.
+* **A bless is one machine's number, so bless from the fleet and floor with the fleet** (`reco-axp`,
+  `reco-0zot`, `reco-3h82`). Two boxes were 1.73× apart on a row whose whole ratchet is ±15 %, and §11.8's
+  one calibration ratio cannot bridge a bulk-store bench and a process-start verb. Rows are re-blessed at
+  the middle of the fleet's readings and floored with the fleet's spread, each row's `how` carrying the
+  readings, the run each came from and the factor it was divided by. **A bless may widen a floor and may
+  not narrow one**, because a floor is a claim about the instrument, not about the afternoon. The
+  improvement half of the ratchet divides by the unclamped ratio when — only when — it is below 1.0, so a
+  fast runner is credited nothing it did not earn.
+* **A memory row is a footprint, not a program** (`reco-0zot`). `VmHWM` on the TUI row is over half
+  `RssFile` — pages of a statically-linked binary — so it moves with codegen settings and machine class
+  while the heap does not. The row is blessed with a floor that is that measured build-and-machine spread;
+  the published budgets were deliberately *not* re-defined as `RssAnon`. A gate that crashes instead of
+  judging is its own defect: a binary that writes no store yields `blocked` rows, not a `KeyError`.
+* **A register row comes off by measurement, or it comes off red.** The last row closed because the
+  fixture came inside the budget it breached — the 1 500 ms `cold.index.ms` was never touched — and
+  `cold.index.ms` on real repositories is still held and failing in §11.9 for the same lane.
 
 **The register.** Hand-written into `benchmarks/baselines/perf-gate.json`'s `known_breaches`, carried
 forward by `make bench-bless` so a bless cannot launder it, and read by `tools/epic7_acceptance.py`, which
@@ -1513,19 +1375,15 @@ worse.
 
 | budget id | measured at the close | budget | ceiling | owner | expires |
 | --- | ---: | ---: | ---: | --- | --- |
-| — | — | — | — | — | — |
+| (none) | — | — | — | — | nothing is on the register; `make bench-check` is the word on what is inside its budget |
 
-**The register is empty**, which is the state this ledger exists to reach rather than a relaxation of it: it
-started as three rows, `reco-r3x` took two off and `reco-7yq` took the last — the denominator defect above,
-whose row said *delete this row when `reco-7yq` gives `store_split` the ADR's three denominators*, and that
-is what happened. The ticket that closes a defect deletes its row and re-blesses; an expired row is a red
-build, because a grace period nobody extended is not a decision; a row whose breach has stopped biting is as
-much a lie as a breach with no row. Three rows have come off this table that way, which is the ledger doing
-its job rather than being renegotiated. This is `e6.6`'s ratchet ledger applied to budgets: named owner, a
-bound, a clock, and no quiet way to widen the exception. An empty register is checked as hard as a full one:
-`tools/epic7_acceptance.py` still refuses the epic if anything measured is over its budget with nothing
-written about it, and it says out loud that the register is empty so that a reader can tell "nothing is
-relaxed" from "the ledger was not read".
+**The register today is empty, and the last row came off by measurement.** That is the rule working, not an
+absence of debt: three rows at epic 7's close, `reco-r3x` and `reco-7yq` paid two and the denominator,
+`reco-15wk`'s re-bless wrote one back for a defect real at the tree it measured, and `reco-xsog` measured
+it and deleted its own row in the commit that closed. The ticket that closes a defect deletes its row and
+re-blesses; an expired row is a red build, because a grace period nobody extended is not a decision; and a
+row whose breach has stopped biting is as much a lie as a breach with no row. This is `e6.6`'s ratchet
+ledger applied to budgets: named owner, a bound, a clock, and no quiet way to widen the exception.
 
 **The real repositories.** §11.9's dispositions are unchanged and are now *checked* rather than reread:
 the epic gate parses `benchmarks/reports/e7-2-real-repos.json`'s per-budget verdicts and fails if any
@@ -1541,8 +1399,6 @@ raises no ceiling that §11.9 did not already hold: what changed is that the deb
 **299 MiB against a 512 MiB ceiling**, with the cache ending at 511 MiB after the §8.6 pass evicted
 106 898 rows (601 MiB). Met, and carved: the episode rebuild is not inside that ceiling and costs ~250 MiB
 more at that size, which the report says out loud and no budget in §11 covers yet.
-
----
 
 ## 12. What is committed, what is portable, what is machine-local
 

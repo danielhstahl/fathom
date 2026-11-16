@@ -1,24 +1,24 @@
 {
- "blessed_commit": "36b011f",
+ "blessed_commit": "ab0762b",
  "blessed_environment": {
   "binary": "target/release/fathom",
-  "commit": "36b011f",
+  "commit": "ab0762b",
   "cpu_count": 8,
   "git": "git version 2.47.3",
-  "platform": "Linux 7.0.14-linuxkit #1 SMP PREEMPT Fri Oct 16 11:55:50 UTC 2026",
+  "platform": "Linux 7.0.14-linuxkit #1 SMP PREEMPT Fri Oct 30 13:45:20 UTC 2026",
   "profile": "release",
   "python": "3.14.5",
   "ram_mib": 7934
  },
- "blessed_utc": "2026-10-24T23:27:21Z",
+ "blessed_utc": "2026-11-15T19:23:29Z",
  "calibration": {
   "bench": "calibrate: 100k-row batched insert + 10k FTS queries",
   "passes_ms": [
-   441.46,
-   438.29,
-   433.71
+   380.56,
+   398.07,
+   395.02
   ],
-  "reference_ms": 438.29
+  "reference_ms": 395.02
  },
  "corpus": {
   "commits": 500,
@@ -29,152 +29,206 @@
  "measurements": {
   "calibrate: 100k-row batched insert + 10k FTS queries": {
    "budget": null,
+   "center": 395.02,
    "higher_is_better": false,
-   "how": "ADR-004 \u00a711.8's runner characterisation; not a budget",
+   "how": "ADR-004 \u00a711.8's runner characterisation; not a budget. Re-blessed by `reco-15wk` (2026-11-15) on the container class this block's `blessed_environment` describes: the same 8 cpus, the same 7 934 MiB, python 3.14.5, git 2.47.3, a release build of `ab0762b`. This box reads the bench 9-11 % faster than the October reference, which buys no budget headroom (the published factor is clamped at 1.0) and no credit for a speed-up: `reco-axp`'s check-time division puts a fast runner's wall clocks back into these units before the ratchet asks whether the baseline needs re-blessing.",
+   "noise": 9.0438,
+   "scale": 4.5219,
    "scaled": true,
+   "spread": 17.51,
    "unit": "ms",
-   "value": 438.29
+   "value": 395.02
   },
   "cold.index.ms.small": {
    "budget": "cold.index.ms.small",
+   "center": 1341.7285,
    "higher_is_better": false,
-   "how": "`fathom index` into a deleted store; p95 of the samples",
+   "how": "`fathom index` into a deleted store; p95 of the samples. Re-blessed by `reco-xsog` (2026-11-15) at the quietest of three bless runs on the container class this file's `blessed_environment` describes \u2014 the same 8 cpus, the same 7 934 MiB \u2014 whose calibration bench reads \u00d70.939 of this file's reference, so every time in this row is that run's own number divided by 0.939 to keep it in reference-machine units (\u00a711.8); the other two runs normalise to 1 325.8 and 1 383.7 ms, and the quietest of the three is also their median. The move since `reco-15wk`'s bless is one defect, measured rather than assumed. The register row named the analyzer lane (`analyses` 828 ms) and two candidate beads and admitted nobody had measured either: declining the complexity pass outright (`extract.complexity.max_run_ms = 0`, the shipped spelling of \u201cdecline everything\u201d) takes the phase to 212 ms \u2014 `reco-3h82`'s 209 ms \u2014 so the fill of `reco-l9bz.4` is the whole of the move and the risk vector of `reco-ydek.5` is none of it. Inside that pass, 313 of the 699 file sides it counted (45 %) were a content version the same run had already counted for the same path, so the run now remembers what it counted, per path, keyed by the blob each figure was counted from (`run_reused`, in `fathom index --json`): 619 \u2192 372 ms for the pass, 826 \u2192 567 ms for the phase. The counting itself is untouched \u2014 a repository whose files are each edited once pays every parse it always paid \u2014 and the budget is untouched too: **the 1 500 ms was never raised**, the row came off because the measurement came inside it, which is the only way a row on that register may come off. This box now reads the cold index at 1 253.8\u20131 376.8 ms p95 across the bless and gate runs taken at this tree (FLEET, `tests/test_perf_budget_contract.py`), about 10 % under the budget, and `phases_ms` says where the rest of the run is: `graph` ~590 ms, `analyses` ~567 ms, `episodes` ~39 ms, `spine` ~33 ms. The floor stays the 250 ms `reco-3h82` blessed against the fleet and is not re-argued here; it is wider than the \u00b115 % this row is meant to resolve, so the row stays on the list of ids the ratchet cannot resolve and the 1 500 ms budget is its guard. The `ubuntu-latest` leg is still not asserted against this bless: it was never measured at a tree that carries the analyzer-lane move, and FLEET says so.",
+   "noise": 250.0,
+   "scale": 0.9345,
    "scaled": true,
+   "spread": 3.3365,
    "unit": "ms",
-   "value": 1340.8
+   "value": 1342.4
   },
-  "cold.queue_visible.ms.small": {
-   "budget": "cold.queue_visible.ms.small",
+  "cold.rail_visible.ms.small": {
+   "budget": "cold.rail_visible.ms.small",
+   "center": 134.4,
    "higher_is_better": false,
-   "how": "spawn to first frame on a warm store: the queue is the first pane (median of 3 probe(s))",
+   "how": "spawn to first frame on a warm store: the home rail is the first pane (median of 3 probe(s)). Renamed from `cold.queue_visible.ms` by `reco-15wk` in the same commit as this bless, and re-measured rather than carried: 132.2-134.4 ms over three pty probes of one tree, where the old key carried 154.87 ms. The key spelled the pane `e10.3` deleted; what the probe presses is the home rail, and the number is the same quantity either way \u2014 spawn to first frame. The floor stays `SPAWN_NOISE_MS`'s 25 ms, because the row is process start and not the reader's poll loop (`reco-cwx`), and 25 ms is wider than the +/-15 % of a 134 ms row: the 3 000 ms budget is what guards first paint and the ratchet says `cannot classify` instead of guessing.",
+   "noise": 25.0,
+   "scale": 1.4826,
    "scaled": true,
+   "spread": 6.4,
    "unit": "ms",
-   "value": 138.3
+   "value": 134.4
   },
   "query.card.ms.cli.small": {
    "budget": "query.card.ms.small",
-   "center": 14.4301,
+   "center": 7.9128,
    "higher_is_better": false,
-   "how": "`fathom show --json dea1a0e11618ed83059caa6b698236105eab5351`: the card's read, end to end",
-   "noise": 0.2398,
-   "scale": 0.1199,
+   "how": "`fathom show --json dea1a0e11618ed83059caa6b698236105eab5351`: the card's read, end to end. Re-blessed by `reco-15wk` (2026-11-15) at the middle of its own five samples (7.724-7.986 ms), the same quantity as `query.metrics.ms.small` wearing a card and moving the same way; `reco-3h82`'s 9.815 ms is now its slow end. The 2.5 ms floor blessed with the fleet is wider than the +/-15 % of this centre, so a runner swap cannot classify and what still reds is ~32 %; the 50 ms `query.card.ms` budget guards the rest. The runner leg `reco-3h82` recorded (7.78-12.11 ms) predates the analyzer-lane move and is not asserted against this bless \u2014 FLEET, same file.",
+   "noise": 2.5,
+   "scale": 0.1181,
    "scaled": true,
-   "spread": 0.4469,
+   "spread": 0.3639,
    "unit": "ms",
-   "value": 14.8
+   "value": 8.2
   },
   "query.card.ms/episode_and_files/1000 commits": {
    "budget": "query.card.ms.small",
+   "center": 0.0623,
    "higher_is_better": false,
-   "how": "criterion: query.card.ms/episode_and_files/1000 commits (20 samples, p95 of per-iteration times)",
+   "how": "criterion: query.card.ms/episode_and_files/1000 commits (20 samples, p95 of per-iteration times). Re-blessed by `reco-15wk` (criterion, 20 samples). This bless is the first to record a floor beside the criterion rows, so they are no longer gated by the 5 ms per-unit constant and have come off the list of ids the ratchet cannot resolve.",
+   "noise": 0.0006,
+   "scale": 0.0003,
    "scaled": true,
+   "spread": 0.0009,
    "unit": "ms",
-   "value": 0.0705
+   "value": 0.0638
   },
   "query.diff_first_hunk.ms.small": {
    "budget": "query.diff_first_hunk.ms.small",
+   "center": 4.5,
    "higher_is_better": false,
-   "how": "`d` written to the first `@@` on screen \u2014 the streaming rule, timed as it is written (median of 3 pty probe(s))",
+   "how": "`d` written to the first `@@` on screen \u2014 the streaming rule, timed as it is written (median of 3 pty probe(s)). Re-blessed by `reco-15wk` at the middle of its own pty samples (2.0-10.9 ms, median 4.5) \u2014 the same two-clump diff pane `reco-axp` recorded, and the same conclusion: a 10 ms instrument cannot resolve +/-15 % on a 4.5 ms row, so the 40 ms `query.diff_first_hunk.ms` budget guards it and the run says so.",
+   "noise": 10.0,
+   "scale": 4.5961,
    "scaled": true,
+   "spread": 8.7,
    "unit": "ms",
-   "value": 4.3
+   "value": 4.5
   },
   "query.diff_open.ms.small": {
    "budget": "query.diff_open.ms.small",
+   "center": 3.8,
    "higher_is_better": false,
-   "how": "`d` written to the diff pane painting its tree (median of 3 pty probe(s))",
+   "how": "`d` written to the diff pane painting its tree (median of 3 pty probe(s)). Re-blessed by `reco-15wk` at the middle of its own pty samples (2.0-9.0 ms, median 3.8). `reco-axp` wrote the shape: the diff pane lands in two clumps and the 10 ms pty floor is what says so rather than calling one of them a regression. The floor is wider than the +/-15 % of a 3.8 ms row, so the 120 ms `query.diff_open.ms` budget is this row's guard.",
+   "noise": 10.0,
+   "scale": 3.5582,
    "scaled": true,
+   "spread": 7.2,
    "unit": "ms",
-   "value": 2.9
+   "value": 3.8
   },
   "query.frame_store_budget.ms/count_episodes/1000 commits": {
    "budget": "query.frame_store_budget.ms.small",
+   "center": 0.0107,
    "higher_is_better": false,
-   "how": "criterion: query.frame_store_budget.ms/count_episodes/1000 commits (20 samples, p95 of per-iteration times)",
+   "how": "criterion: query.frame_store_budget.ms/count_episodes/1000 commits (20 samples, p95 of per-iteration times). Re-blessed by `reco-15wk` (criterion, 20 samples), now with its own floor rather than the 5 ms per-unit fallback; the 8 ms keystroke-path budget is a hard limit and is the real guard.",
+   "noise": 0.0002,
+   "scale": 0.0001,
    "scaled": true,
+   "spread": 0.0005,
    "unit": "ms",
-   "value": 0.0127
+   "value": 0.0108
   },
   "query.frame_store_budget.ms/episode_paths/1000 commits": {
    "budget": "query.frame_store_budget.ms.small",
+   "center": 1.1034,
    "higher_is_better": false,
-   "how": "criterion: query.frame_store_budget.ms/episode_paths/1000 commits (20 samples, p95 of per-iteration times)",
+   "how": "criterion: query.frame_store_budget.ms/episode_paths/1000 commits (20 samples, p95 of per-iteration times). Re-blessed by `reco-15wk` (criterion, 20 samples), now with its own floor rather than the 5 ms per-unit fallback; the 8 ms keystroke-path budget is a hard limit and is the real guard.",
+   "noise": 0.0092,
+   "scale": 0.0046,
    "scaled": true,
+   "spread": 0.0325,
    "unit": "ms",
-   "value": 1.0791
+   "value": 1.116
   },
   "query.metrics.ms.small": {
    "budget": "query.metrics.ms.small",
-   "center": 12.8312,
+   "center": 6.581,
    "higher_is_better": false,
-   "how": "`fathom stats --json` \u2014 the verb `query.metrics.ms` names",
-   "noise": 0.2378,
-   "scale": 0.1189,
+   "how": "`fathom stats --json` \u2014 the verb `query.metrics.ms` names. Re-blessed by `reco-15wk` (2026-11-15) at the middle of its own five samples (6.267-6.504 ms), on the reference container class; `reco-3h82`'s 8.52 ms is now the slow end of what this box reads, not its middle. The floor stays the 2.5 ms blessed with the fleet, and it is wider than the +/-15 % of this centre, so a machine swap lands under `cannot classify` and what still reds here is a move of ~38 %; the 250 ms `query.metrics.ms` budget guards the rest. The `ubuntu-latest` leg `reco-3h82` recorded (6.6-10.80 ms) was measured at a tree that predates the analyzer-lane move, so it is not asserted against this bless \u2014 see the FLEET note in `tests/test_perf_budget_contract.py`.",
+   "noise": 2.5,
+   "scale": 0.1746,
    "scaled": true,
-   "spread": 0.8748,
+   "spread": 0.7911,
    "unit": "ms",
-   "value": 13.4
+   "value": 7.2
   },
-  "query.queue.ms.small": {
-   "budget": "query.queue.ms.small",
+  "query.rail_keystroke.ms.small": {
+   "budget": "query.rail_keystroke.ms.small",
+   "center": 2.7,
    "higher_is_better": false,
-   "how": "`j` written to the grid changed: the rail's ordering read (median of 3 pty probe(s))",
+   "how": "`j` written to the grid changed: the rail's ordering read (median of 3 pty probe(s)). Renamed from `query.queue.ms` by `reco-15wk` in the same commit as this bless, and re-measured rather than carried: `j` written to the frame drawn, 2.2-3.0 ms over three probes (median 2.7), where the old key carried 1.8 ms. The ordering query the old key was named for (`v_queue`) went out with the pane, so the key now names the keystroke the probe actually presses. A 10 ms pty instrument on a 2.7 ms row is a row the +/-15 % cannot resolve, and the 8 ms budget is its guard (`reco-dkr`).",
+   "noise": 10.0,
+   "scale": 0.4448,
    "scaled": true,
+   "spread": 0.8,
    "unit": "ms",
-   "value": 1.8
+   "value": 2.7
   },
-  "query.queue.ms.visible.small": {
+  "query.rail_keystroke.ms.visible.small": {
    "budget": null,
+   "center": 3.0,
    "higher_is_better": false,
-   "how": "`q` to the ranked worklist printing `order: ` (trend only: `e1.12` gates the queue's own budget) (median of 3 pty probe(s))",
+   "how": "`t` to the rail repainting with its `order: ` strip (trend only; the letter was `q` and the worklist until `e10.3` deleted them, ADR-006 \u00a75.1.2) (median of 3 pty probe(s)). Renamed with its family by `reco-15wk`; trend-only, no budget of its own. `t` written to the rail repainting with its `order: ` strip, 2.7-4.4 ms over three probes. The 10 ms pty floor is wider than anything a 3 ms row can show the ratchet, so nothing here is a verdict about the rail's repaint \u2014 the guarded number next door is `query.timeline.ms.small`, and this row is the trend line.",
+   "noise": 10.0,
+   "scale": 0.1483,
    "scaled": true,
+   "spread": 0.2,
    "unit": "ms",
-   "value": 2.8
+   "value": 3.0
   },
   "query.timeline.ms.small": {
    "budget": "query.timeline.ms.small",
+   "center": 3.0,
    "higher_is_better": false,
-   "how": "`t` written to the grid changed: one page of the rail (median of 3 pty probe(s))",
+   "how": "`t` written to the grid changed: one page of the rail (median of 5 pty probe(s)). Re-blessed by `reco-15wk` at the median of its own samples (2.2-3.7 ms through the pty). Same shape as `reco-dkr` described: a 10 ms instrument on a 3 ms row cannot resolve +/-15 %, so the 8 ms budget guards this row and the criterion leg beside it (`query.timeline.ms/rail_page/1000 commits`) is the half that can see a real move.",
+   "noise": 10.0,
+   "scale": 0.2965,
    "scaled": true,
+   "spread": 1.1,
    "unit": "ms",
-   "value": 1.8
+   "value": 3.0
   },
   "query.timeline.ms/rail_page/1000 commits": {
    "budget": "query.timeline.ms.small",
+   "center": 0.6249,
    "higher_is_better": false,
-   "how": "criterion: query.timeline.ms/rail_page/1000 commits (20 samples, p95 of per-iteration times)",
+   "how": "criterion: query.timeline.ms/rail_page/1000 commits (20 samples, p95 of per-iteration times). Re-blessed by `reco-15wk` (criterion, 20 samples), now with its own floor rather than the 5 ms per-unit fallback \u2014 which is how this row came off the list of ids the +/-15 % cannot resolve.",
+   "noise": 0.0172,
+   "scale": 0.0086,
    "scaled": true,
+   "spread": 0.03,
    "unit": "ms",
-   "value": 0.779
+   "value": 0.6403
   },
   "rss.cold_index.peak_mib.small": {
    "budget": "rss.cold_index.peak_mib.small",
    "higher_is_better": false,
-   "how": "VmHWM of the index child, sampled while it ran",
+   "how": "VmHWM of the index child, sampled while it ran. Re-blessed by `reco-15wk` (2026-11-15) from the same cold index as the wall clock beside it (32.2 to 32.6 MiB). A peak is a peak: the worst sample, because the budget is a ceiling and a ceiling is only breached once.",
+   "noise": 1.63,
    "scaled": false,
    "unit": "MiB",
-   "value": 32.2
+   "value": 32.6
   },
   "rss.tui.mib.small": {
    "budget": "rss.tui.mib.small",
+   "center": 33.53,
    "higher_is_better": false,
-   "how": "VmHWM of the TUI child, sampled after every keystroke, worst probe",
+   "how": "VmHWM of the TUI child, sampled after every keystroke, worst probe. Re-blessed by `reco-15wk` (2026-11-15) at the median of the three probes one gate run takes (33.4-33.62 MiB), on the container class `blessed_environment` describes; the centre is what the ratchet compares, because a worst-of-N peak cannot resolve \u00b115 % (`reco-dkr`). The floor is `reco-0zot`'s 4 MiB and it stands: at the TUI's peak the child's own dirty memory \u2014 `RssAnon` \u2014 is 15.0-15.2 MiB of this 33-34 MiB, and the rest is `RssFile`: how much of the 36 MB release binary the kernel had paged in, which is code layout and demand paging, not the program's memory. Rebuilding one tree with `-C codegen-units=1` moves this row to 30.3 MiB with `RssAnon` unmoved at 15.0 MiB \u2014 a 9 % swing out of a compiler flag, on a row whose whole ratchet is \u00b115 % \u2014 and a container and a runner read 2.4-3.5 MiB apart on the same tree. A floor that wide is a claim about the instrument, and `RssAnon` plus `codegen-units` are the two measurements that trace it; what the row can still red on is a move past 4 MiB, and the 120 MiB budget guards the rest.",
+   "noise": 4.0,
+   "scale": 0.1334,
    "scaled": false,
+   "spread": 0.24,
    "unit": "MiB",
-   "value": 30.82
+   "value": 33.62
   },
   "rss.warm_reindex.peak_mib.small": {
    "budget": null,
    "higher_is_better": false,
-   "how": "VmHWM of the warm index child (trend: no RSS budget names the warm path alone)",
+   "how": "VmHWM of the warm index child (trend: no RSS budget names the warm path alone). Re-blessed by `reco-15wk`; still no budget of its own, which is \u00a711.7's standing complaint about a number nobody can fail on, and still trend-gated against this file.",
+   "noise": 1.115,
    "scaled": false,
    "unit": "MiB",
-   "value": 24.2
+   "value": 22.3
   },
   "store.bytes_per_commit_graph.small": {
    "budget": "store.bytes_per_commit_graph.small",
    "higher_is_better": false,
-   "how": "258,048 `dbstat` bytes of `graph_*` over the 32 revisions the lane holds after one cold index (3 full snapshots, 560 delta rows). The denominator is a revision, as it is for `s3`'s 22 335 B and `e3.2`'s 6 041 B in \u00a713.7 \u2014 not a commit of history: over the 500 commits in the fixture this is 516 B/commit, and that quotient falls as a repository ages, because the lane is a window and not a ledger (`reco-7yq`)",
+   "how": "258,048 `dbstat` bytes of `graph_*` over the 32 revisions the lane holds after one cold index (3 full snapshots, 560 delta rows). The denominator is a revision, as it is for `s3`'s 22 335 B and `e3.2`'s 6 041 B in \u00a713.7 \u2014 not a commit of history: over the 500 commits in the fixture this is 516 B/commit, and that quotient falls as a repository ages, because the lane is a window and not a ledger (`reco-7yq`). Re-blessed by `reco-15wk` at the same 8 064 B/revision `reco-3h82` blessed, which is the control that says the cold index's move is in `analyses` and not in the graph window.",
    "noise": 403.2,
    "scaled": false,
    "unit": "bytes",
@@ -183,49 +237,55 @@
   "store.bytes_per_commit_spine.small": {
    "budget": "store.bytes_per_commit_spine.small",
    "higher_is_better": false,
-   "how": "733,184 spine bytes \u2014 `git_commit`, `git_commit_file`, `ref_tip` and their indexes \u2014 over 500 commits, `dbstat` pages of the store a cold index leaves; the same file holds 258,048 bytes of graph lane, 765,952 of cache and session rows and 1,781,760 of episodes, blobs and ledger, and none of them are charged here (`reco-7yq`)",
-   "noise": 73.3,
+   "how": "757,760 spine bytes \u2014 `git_commit`, `git_commit_file`, `ref_tip` and their indexes \u2014 over 500 commits, `dbstat` pages of the store a cold index leaves; the same file holds 258,048 bytes of graph lane, 765,952 of cache and session rows and 1,785,856 of episodes, blobs and ledger, and none of them are charged here (`reco-7yq`). Re-blessed by `reco-15wk` at 1 515 B/commit where `reco-3h82` blessed 1 466 \u2014 +3.3 %, inside this row's own floor, on a deterministic fixture: what moved is how the pages landed, not the schema, and the lane, cache and session rows are still charged elsewhere (`reco-7yq`).",
+   "noise": 75.75,
    "scaled": false,
    "unit": "bytes",
-   "value": 1466
+   "value": 1515
   },
   "store.size.mib.small": {
    "budget": "store.size.mib.small",
    "higher_is_better": false,
-   "how": "the whole `.fathom/index.sqlite3`",
+   "how": "the whole `.fathom/index.sqlite3`, as the cold index left it. Re-blessed by `reco-15wk` at the same 3.402 MiB. The 1 MiB floor it carries is wider than the +/-15 % of a 3.4 MiB store, so the 400 MiB budget is the guard and the row is on the cannot-resolve list (ADR-004 \u00a711.10).",
+   "noise": 0.1701,
    "scaled": false,
    "unit": "MiB",
    "value": 3.402
   },
   "warm.reindex.ms.small": {
    "budget": "warm.reindex.ms.small",
+   "center": 78.7921,
    "higher_is_better": false,
-   "how": "one new commit with unique content, then `fathom index`",
+   "how": "one new commit with unique content, then `fathom index`. Re-blessed by `reco-15wk` (2026-11-15) at the middle of its own three samples (77.4-80.6 ms) on the reference container class; `reco-3h82`'s 91 ms is now the slow end of what this box reads, which is `structure.delta` no longer enumerating whole trees. The 31.5 ms floor stays, blessed against the fleet rather than this box, and it is wider than this centre's +/-15 %: a machine swap cannot classify and a real move of ~40 % still bites. The 150 ms budget guards the rest, and the runner leg `reco-3h82` recorded (62.9-118.6 ms) predates the analyzer-lane move and is not asserted here \u2014 FLEET, `tests/test_perf_budget_contract.py`.",
+   "noise": 31.5,
+   "scale": 0.2569,
    "scaled": true,
+   "spread": 1.9524,
    "unit": "ms",
-   "value": 120.1
+   "value": 80.6
   },
   "warm.reindex.noop.ms.small": {
    "budget": "warm.reindex.noop.ms.small",
-   "center": 3.861,
+   "center": 3.0,
    "higher_is_better": false,
-   "how": "the run's own store-side `elapsed_ms` from `fathom index --json` \u2014 like \u00a713.3's prototype rows, like the `warm.reindex.scaling_ratio` rationale, and like the `ctrl-r` this budget is written for, which re-indexes inside a process already running. The same 5 runs timed fork to exit are 15.9 ms, which is the toll every verb pays: process start, `Repository::discover`, `Store::open`",
-   "noise": 2.8958,
+   "how": "the run's own store-side `elapsed_ms` from `fathom index --json` \u2014 like \u00a713.3's prototype rows, like the `warm.reindex.scaling_ratio` rationale, and like the `ctrl-r` this budget is written for, which re-indexes inside a process already running. The same 5 runs timed fork to exit are 7.3 ms, which is the toll every verb pays: process start, `Repository::discover`, `Store::open`. Re-blessed by `reco-15wk` at 3.0 ms store-side \u2014 three ticks of the store's own whole-millisecond clock, which is the floor (`STORE_CLOCK_FLOOR_MS`) and is wider than the +/-15 % of the number, so this row's guard is its 10 ms budget and the ratchet says `cannot classify` (ADR-004 \u00a711.10, `reco-dkr`).",
+   "noise": 3.0,
    "scale": 0.0,
    "scaled": true,
    "spread": 0.0,
    "unit": "ms",
-   "value": 3.9
+   "value": 3.0
   },
   "write.batch_rows/one_batch_at_the_cap": {
    "budget": null,
    "higher_is_better": true,
-   "how": "criterion: one batched transaction at the `write.batch_rows` cap",
+   "how": "criterion: one batched transaction at the `write.batch_rows` cap. Re-blessed by `reco-15wk` (criterion, 20 samples). A throughput, so the runner factor multiplies it into reference-machine units rather than dividing; no budget of its own, regression-gated (\u00a77.3's cap is not a latency).",
+   "noise": 12276.665,
    "scaled": true,
    "unit": "rows/s",
-   "value": 232406.8
+   "value": 245533.3
   }
  },
- "note": "Rewritten only by `make bench-bless`. Every value is a measurement, in reference-machine units (runner factor 1.0); a time budget gets the factor as headroom at gate time and an RSS budget never does (ADR-004 \u00a711.8).",
+ "note": "Rewritten only by `make bench-bless`. Every value is a measurement, in reference-machine units (runner factor 1.0); a time budget gets the factor as headroom at gate time and an RSS budget never does (ADR-004 \u00a711.8). Each value carries the noise it was blessed with: `center` is the statistic the \u00b115 % ratchet compares (the middle of the bless run's samples, because a worst-of-five cannot resolve a 15 % change on a 15 ms verb), `scale` and `spread` what that run said about its own scatter and `noise` the floor it was judged against \u2014 so a later run can say which ids it can resolve and which it cannot (ADR-004 \u00a711.10, `reco-dkr`).",
  "schema": 1
 }

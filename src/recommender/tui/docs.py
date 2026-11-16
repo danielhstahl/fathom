@@ -17,7 +17,7 @@ from . import render as R
 from .views import CHROME_ORDER, LAYOUT_MATRIX, VIEWS
 
 DOC = pathlib.Path(__file__).resolve().parents[3] / "docs" / "adr" / "0006-tui.md"
-#: Block names may contain `-` and `.` (`layout-matrix`, `layout.queue`); a `\w`-only
+#: Block names may contain `-` and `.` (`layout-matrix`, `layout.timeline`); a `\w`-only
 #: class silently fails to match the hyphenated ones, and a silently skipped block is a
 #: block that lies.
 MARK = re.compile(
@@ -100,7 +100,7 @@ def layout(view_id: str) -> str:
 def degradation_ladder() -> str:
     rows = []
     for step in R.LADDER:
-        ex_c, ex_r = step.recover(next(v for v in VIEWS if v.id == "queue"))
+        ex_c, ex_r = step.recover(next(v for v in VIEWS if v.id == "timeline"))
         rows.append(("**%s**" % step.id, step.what,
                      "+%d" % ex_c if ex_c else "—", "+%d" % ex_r if ex_r else "—",
                      step.why, "`%s`" % step.ticket))
@@ -157,7 +157,7 @@ def keymap_table() -> str:
     for mode in K.PRECEDENCE:
         binds = K.DEFAULTS.get(mode, {})
         if not binds:
-            if mode in ("queue", "timeline", "ambient"):
+            if mode in ("timeline", "ambient"):
                 rows.append(("`%s`" % mode, "—", "—",
                              "inherits the shared motion set: no view-local bindings"))
             continue
@@ -190,32 +190,32 @@ def degradation_notices() -> str:
     """The two notices, rendered by the same code the status line uses, so §6.4 cannot
     describe a string `e5.5` will not print. One narrow frame (abbreviated notice, because
     the full one would be clipped) and one refusal (a view that will not draw at all)."""
-    queue = next(v for v in VIEWS if v.id == "queue")
+    rail = next(v for v in VIEWS if v.id == "timeline")
     narrow, wide = 64, 200
-    f_narrow, f_wide = R.fit(queue, narrow, 14), R.fit(queue, wide, 14)
-    line_narrow = R.draw(queue, narrow, 14)[-1]
-    line_wide = R.draw(queue, wide, 14)[-1]
+    f_narrow, f_wide = R.fit(rail, narrow, 14), R.fit(rail, wide, 14)
+    line_narrow = R.draw(rail, narrow, 14)[-1]
+    line_wide = R.draw(rail, wide, 14)[-1]
     return "\n".join([
         "At 64 columns the notice counts the drops and points at `?`, because the full list "
         "would be the thing that got clipped:",
         "",
         "```",
         line_narrow,
-        "  ↑ Queue at %d×14 — %s" % (narrow, f_narrow.summary()),
+        "  ↑ Timeline at %d×14 — %s" % (narrow, f_narrow.summary()),
         "```",
         "",
         "At a width that can afford the list, the same line spells it out:",
         "",
         "```",
         line_wide,
-        "  ↑ Queue at %d×14 — %s" % (wide, f_wide.summary()),
+        "  ↑ Timeline at %d×14 — %s" % (wide, f_wide.summary()),
         "```",
         "",
         "And when a view will not draw at all, it says so instead of drawing badly:",
         "",
         "```",
-        "\n".join(line.rstrip() for line in R.draw(queue, 30, 8)),
-        "  ↑ Queue at 30×8 — %s" % R.fit(queue, 30, 8).summary(),
+        "\n".join(line.rstrip() for line in R.draw(rail, 30, 8)),
+        "  ↑ Timeline at 30×8 — %s" % R.fit(rail, 30, 8).summary(),
         "```",
     ])
 

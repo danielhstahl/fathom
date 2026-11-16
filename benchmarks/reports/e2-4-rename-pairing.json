@@ -154,12 +154,10 @@
   "found": 62,
   "found_ceiling": 0,
   "missed": 0,
-  "ms_mean": 0.0,
-  "ms_total": 0.0,
   "policy": "rename.candidates.copies_harder=true",
   "precision": 0.9394,
   "recall_claimable": 1.0,
-  "seconds": 0.21,
+  "seconds": 0.2,
   "silent_windows": 9,
   "silent_windows_dirty": 0,
   "true_pairs": 67,
@@ -173,7 +171,7 @@
  "corpus": {
   "blessed_storm_claims_checked": 1,
   "blessed_storm_claims_not_applicable": 4,
-  "build_seconds": 0.52,
+  "build_seconds": 0.49,
   "coherence_paths_checked": 158,
   "scenario_names": [
    "bulk_refactor",
@@ -198,106 +196,106 @@
   "windows": 37
  },
  "cost": {
-  "change_1_to_48_shipped": 2.77,
+  "change_1_to_48_shipped": 2.7,
   "change_set_growth": [
    {
     "blobs_read": 1,
-    "build_s": 0.102,
+    "build_s": 0.087,
     "candidates": 1,
     "changed_pairs": 1,
-    "pair_ms": 0.27,
-    "read_ms": 5.2,
+    "pair_ms": 0.26,
+    "read_ms": 5.1,
     "repo_files": 400,
     "scored_pairs": 1,
-    "total_ms": 5.46,
+    "total_ms": 5.39,
     "touches": 2,
     "tree_paths": 400,
     "widened": false
    },
    {
     "blobs_read": 4,
-    "build_s": 0.101,
+    "build_s": 0.09,
     "candidates": 16,
     "changed_pairs": 4,
     "pair_ms": 0.7,
-    "read_ms": 5.3,
+    "read_ms": 5.2,
     "repo_files": 400,
     "scored_pairs": 4,
-    "total_ms": 6.03,
+    "total_ms": 5.88,
     "touches": 8,
     "tree_paths": 400,
     "widened": false
    },
    {
     "blobs_read": 16,
-    "build_s": 0.103,
+    "build_s": 0.097,
     "candidates": 256,
     "changed_pairs": 16,
-    "pair_ms": 2.47,
-    "read_ms": 5.5,
+    "pair_ms": 2.4,
+    "read_ms": 5.1,
     "repo_files": 400,
     "scored_pairs": 16,
-    "total_ms": 8.01,
+    "total_ms": 7.54,
     "touches": 32,
     "tree_paths": 400,
     "widened": false
    },
    {
     "blobs_read": 48,
-    "build_s": 0.102,
+    "build_s": 0.09,
     "candidates": 2304,
     "changed_pairs": 48,
-    "pair_ms": 7.38,
-    "read_ms": 7.8,
+    "pair_ms": 6.91,
+    "read_ms": 7.6,
     "repo_files": 400,
     "scored_pairs": 48,
-    "total_ms": 15.14,
+    "total_ms": 14.55,
     "touches": 96,
     "tree_paths": 400,
     "widened": false
    }
   ],
-  "ratio_small_to_20x_shipped": 2.69,
-  "ratio_small_to_20x_widened": 15.56,
+  "ratio_small_to_20x_shipped": 2.3,
+  "ratio_small_to_20x_widened": 18.73,
   "shipped": [
    {
     "blobs_read": 6,
-    "build_s": 0.062,
+    "build_s": 0.061,
     "candidates": 36,
     "changed_pairs": 6,
-    "pair_ms": 0.99,
-    "read_ms": 4.7,
+    "pair_ms": 1.04,
+    "read_ms": 5.4,
     "repo_files": 200,
     "scored_pairs": 6,
-    "total_ms": 5.72,
+    "total_ms": 6.42,
     "touches": 12,
     "tree_paths": 200,
     "widened": false
    },
    {
     "blobs_read": 6,
-    "build_s": 0.219,
+    "build_s": 0.208,
     "candidates": 36,
     "changed_pairs": 6,
-    "pair_ms": 1.09,
-    "read_ms": 6.5,
+    "pair_ms": 1.4,
+    "read_ms": 6.4,
     "repo_files": 1000,
     "scored_pairs": 6,
-    "total_ms": 7.61,
+    "total_ms": 7.75,
     "touches": 12,
     "tree_paths": 1000,
     "widened": false
    },
    {
     "blobs_read": 6,
-    "build_s": 0.592,
+    "build_s": 0.624,
     "candidates": 36,
     "changed_pairs": 6,
-    "pair_ms": 1.02,
-    "read_ms": 14.4,
+    "pair_ms": 1.06,
+    "read_ms": 13.7,
     "repo_files": 4000,
     "scored_pairs": 6,
-    "total_ms": 15.39,
+    "total_ms": 14.75,
     "touches": 12,
     "tree_paths": 4000,
     "widened": false
@@ -311,42 +309,42 @@
   "widened": [
    {
     "blobs_read": 200,
-    "build_s": 0.06,
+    "build_s": 0.055,
     "candidates": 1200,
     "changed_pairs": 6,
-    "pair_ms": 18.31,
-    "read_ms": 4.9,
+    "pair_ms": 17.15,
+    "read_ms": 5.1,
     "repo_files": 200,
     "scored_pairs": 6,
-    "total_ms": 23.24,
+    "total_ms": 22.22,
     "touches": 12,
     "tree_paths": 200,
     "widened": true
    },
    {
     "blobs_read": 1000,
-    "build_s": 0.21,
+    "build_s": 0.19,
     "candidates": 6000,
     "changed_pairs": 6,
-    "pair_ms": 95.49,
-    "read_ms": 9.8,
+    "pair_ms": 83.37,
+    "read_ms": 6.5,
     "repo_files": 1000,
     "scored_pairs": 6,
-    "total_ms": 105.26,
+    "total_ms": 89.84,
     "touches": 12,
     "tree_paths": 1000,
     "widened": true
    },
    {
     "blobs_read": 4000,
-    "build_s": 0.787,
+    "build_s": 0.605,
     "candidates": 24000,
     "changed_pairs": 6,
-    "pair_ms": 345.88,
-    "read_ms": 15.8,
+    "pair_ms": 401.97,
+    "read_ms": 14.2,
     "repo_files": 4000,
     "scored_pairs": 6,
-    "total_ms": 361.71,
+    "total_ms": 416.14,
     "touches": 12,
     "tree_paths": 4000,
     "widened": true
@@ -580,15 +578,15 @@
    "claim": "AC 4: 20x the repository with the change set fixed costs under 3.0x as much",
    "expected": "<= 3.0",
    "id": "A4a",
-   "observed": 2.69,
+   "observed": 2.3,
    "read_from": "cost.ratio_small_to_20x_shipped",
    "result": "pass"
   },
   {
    "claim": "and the refused O(repo) mode is the one that actually scales with the tree",
-   "expected": ">= 2.69",
+   "expected": ">= 2.0",
    "id": "A4b",
-   "observed": 15.56,
+   "observed": 18.73,
    "read_from": "cost.ratio_small_to_20x_widened",
    "result": "pass"
   },
@@ -681,7 +679,7 @@
    "result": "pass"
   }
  ],
- "measured_in_seconds": 5.58,
+ "measured_in_seconds": 5.28,
  "per_scenario": {
   "bulk_refactor": {
    "ceiling_pairs": 0,
@@ -690,8 +688,6 @@
    "found": 23,
    "found_ceiling": 0,
    "missed": 0,
-   "ms_mean": 5.179,
-   "ms_total": 5.2,
    "precision": 1.0,
    "recall_claimable": 1.0,
    "silent_windows": 0,
@@ -711,8 +707,6 @@
    "found": 5,
    "found_ceiling": 0,
    "missed": 0,
-   "ms_mean": 0.649,
-   "ms_total": 1.3,
    "precision": 1.0,
    "recall_claimable": 1.0,
    "silent_windows": 0,
@@ -732,8 +726,6 @@
    "found": 2,
    "found_ceiling": 0,
    "missed": 0,
-   "ms_mean": 0.271,
-   "ms_total": 0.5,
    "precision": 1.0,
    "recall_claimable": 1.0,
    "silent_windows": 0,
@@ -753,8 +745,6 @@
    "found": 0,
    "found_ceiling": 0,
    "missed": 2,
-   "ms_mean": 0.229,
-   "ms_total": 0.5,
    "precision": null,
    "recall_claimable": 0.0,
    "silent_windows": 0,
@@ -774,8 +764,6 @@
    "found": 2,
    "found_ceiling": 0,
    "missed": 0,
-   "ms_mean": 0.281,
-   "ms_total": 0.6,
    "precision": 1.0,
    "recall_claimable": 1.0,
    "silent_windows": 0,
@@ -795,8 +783,6 @@
    "found": 1,
    "found_ceiling": 0,
    "missed": 0,
-   "ms_mean": 0.242,
-   "ms_total": 0.5,
    "precision": 1.0,
    "recall_claimable": 1.0,
    "silent_windows": 1,
@@ -816,8 +802,6 @@
    "found": 1,
    "found_ceiling": 0,
    "missed": 0,
-   "ms_mean": 0.565,
-   "ms_total": 0.6,
    "precision": 1.0,
    "recall_claimable": 1.0,
    "silent_windows": 0,
@@ -837,8 +821,6 @@
    "found": 3,
    "found_ceiling": 0,
    "missed": 0,
-   "ms_mean": 0.707,
-   "ms_total": 0.7,
    "precision": 1.0,
    "recall_claimable": 1.0,
    "silent_windows": 0,
@@ -858,8 +840,6 @@
    "found": 1,
    "found_ceiling": 0,
    "missed": 0,
-   "ms_mean": 0.155,
-   "ms_total": 0.3,
    "precision": 1.0,
    "recall_claimable": 1.0,
    "silent_windows": 0,
@@ -879,8 +859,6 @@
    "found": 2,
    "found_ceiling": 0,
    "missed": 0,
-   "ms_mean": 0.25,
-   "ms_total": 0.5,
    "precision": 1.0,
    "recall_claimable": 1.0,
    "silent_windows": 0,
@@ -900,8 +878,6 @@
    "found": 1,
    "found_ceiling": 0,
    "missed": 0,
-   "ms_mean": 0.144,
-   "ms_total": 0.4,
    "precision": 1.0,
    "recall_claimable": 1.0,
    "silent_windows": 1,
@@ -921,8 +897,6 @@
    "found": 1,
    "found_ceiling": 0,
    "missed": 0,
-   "ms_mean": 0.386,
-   "ms_total": 0.8,
    "precision": 1.0,
    "recall_claimable": 1.0,
    "silent_windows": 1,
@@ -942,8 +916,6 @@
    "found": 3,
    "found_ceiling": 0,
    "missed": 0,
-   "ms_mean": 1.334,
-   "ms_total": 1.3,
    "precision": 1.0,
    "recall_claimable": 1.0,
    "silent_windows": 0,
@@ -963,8 +935,6 @@
    "found": 7,
    "found_ceiling": 0,
    "missed": 0,
-   "ms_mean": 0.236,
-   "ms_total": 1.9,
    "precision": 1.0,
    "recall_claimable": 1.0,
    "silent_windows": 4,
@@ -984,8 +954,6 @@
    "found": 1,
    "found_ceiling": 0,
    "missed": 0,
-   "ms_mean": 0.648,
-   "ms_total": 0.6,
    "precision": 0.5,
    "recall_claimable": 1.0,
    "silent_windows": 0,
@@ -1005,8 +973,6 @@
    "found": 1,
    "found_ceiling": 0,
    "missed": 0,
-   "ms_mean": 0.144,
-   "ms_total": 0.4,
    "precision": 1.0,
    "recall_claimable": 1.0,
    "silent_windows": 2,
@@ -1026,8 +992,6 @@
    "found": 6,
    "found_ceiling": 0,
    "missed": 0,
-   "ms_mean": 0.601,
-   "ms_total": 1.2,
    "precision": 1.0,
    "recall_claimable": 1.0,
    "silent_windows": 0,
@@ -1084,7 +1048,7 @@
    "emitted": 23,
    "found": 23,
    "found_ceiling": 0,
-   "ms": 5.18,
+   "ms": 4.87,
    "notes": [
     "candidates are window-local: O(changed files), never the whole tree",
     "a copy of a file this window did not touch is not reportable: seeing it costs O(repo files) (`rename.candidates.copies_harder`)"
@@ -1107,7 +1071,7 @@
    "emitted": 4,
    "found": 4,
    "found_ceiling": 0,
-   "ms": 0.91,
+   "ms": 0.94,
    "notes": [
     "candidates are window-local: O(changed files), never the whole tree",
     "a copy of a file this window did not touch is not reportable: seeing it costs O(repo files) (`rename.candidates.copies_harder`)"
@@ -1130,7 +1094,7 @@
    "emitted": 1,
    "found": 1,
    "found_ceiling": 0,
-   "ms": 0.38,
+   "ms": 0.35,
    "notes": [
     "candidates are window-local: O(changed files), never the whole tree",
     "a copy of a file this window did not touch is not reportable: seeing it costs O(repo files) (`rename.candidates.copies_harder`)"
@@ -1176,7 +1140,7 @@
    "emitted": 1,
    "found": 1,
    "found_ceiling": 0,
-   "ms": 0.25,
+   "ms": 0.26,
    "notes": [
     "candidates are window-local: O(changed files), never the whole tree",
     "a copy of a file this window did not touch is not reportable: seeing it costs O(repo files) (`rename.candidates.copies_harder`)"
@@ -1253,7 +1217,7 @@
    "emitted": 1,
    "found": 1,
    "found_ceiling": 0,
-   "ms": 0.31,
+   "ms": 0.3,
    "notes": [
     "candidates are window-local: O(changed files), never the whole tree",
     "a copy of a file this window did not touch is not reportable: seeing it costs O(repo files) (`rename.candidates.copies_harder`)"
@@ -1276,7 +1240,7 @@
    "emitted": 1,
    "found": 1,
    "found_ceiling": 0,
-   "ms": 0.25,
+   "ms": 0.18,
    "notes": [
     "candidates are window-local: O(changed files), never the whole tree",
     "a copy of a file this window did not touch is not reportable: seeing it costs O(repo files) (`rename.candidates.copies_harder`)"
@@ -1299,7 +1263,7 @@
    "emitted": 0,
    "found": 0,
    "found_ceiling": 0,
-   "ms": 0.27,
+   "ms": 0.25,
    "notes": [
     "candidates are window-local: O(changed files), never the whole tree",
     "a copy of a file this window did not touch is not reportable: seeing it costs O(repo files) (`rename.candidates.copies_harder`)"
@@ -1322,7 +1286,7 @@
    "emitted": 1,
    "found": 1,
    "found_ceiling": 0,
-   "ms": 0.21,
+   "ms": 0.22,
    "notes": [
     "candidates are window-local: O(changed files), never the whole tree",
     "a copy of a file this window did not touch is not reportable: seeing it costs O(repo files) (`rename.candidates.copies_harder`)"
@@ -1345,7 +1309,7 @@
    "emitted": 1,
    "found": 1,
    "found_ceiling": 0,
-   "ms": 0.57,
+   "ms": 0.52,
    "notes": [
     "candidates are window-local: O(changed files), never the whole tree",
     "a copy of a file this window did not touch is not reportable: seeing it costs O(repo files) (`rename.candidates.copies_harder`)"
@@ -1368,7 +1332,7 @@
    "emitted": 3,
    "found": 3,
    "found_ceiling": 0,
-   "ms": 0.71,
+   "ms": 0.66,
    "notes": [
     "candidates are window-local: O(changed files), never the whole tree",
     "a copy of a file this window did not touch is not reportable: seeing it costs O(repo files) (`rename.candidates.copies_harder`)"
@@ -1437,7 +1401,7 @@
    "emitted": 1,
    "found": 1,
    "found_ceiling": 0,
-   "ms": 0.3,
+   "ms": 0.28,
    "notes": [
     "candidates are window-local: O(changed files), never the whole tree",
     "a copy of a file this window did not touch is not reportable: seeing it costs O(repo files) (`rename.candidates.copies_harder`)"
@@ -1506,7 +1470,7 @@
    "emitted": 0,
    "found": 0,
    "found_ceiling": 0,
-   "ms": 0.09,
+   "ms": 0.08,
    "notes": [
     "candidates are window-local: O(changed files), never the whole tree",
     "a copy of a file this window did not touch is not reportable: seeing it costs O(repo files) (`rename.candidates.copies_harder`)"
@@ -1529,7 +1493,7 @@
    "emitted": 0,
    "found": 0,
    "found_ceiling": 0,
-   "ms": 0.06,
+   "ms": 0.05,
    "notes": [
     "candidates are window-local: O(changed files), never the whole tree",
     "a copy of a file this window did not touch is not reportable: seeing it costs O(repo files) (`rename.candidates.copies_harder`)"
@@ -1552,7 +1516,7 @@
    "emitted": 0,
    "found": 0,
    "found_ceiling": 0,
-   "ms": 0.41,
+   "ms": 0.4,
    "notes": [
     "candidates are window-local: O(changed files), never the whole tree",
     "a copy of a file this window did not touch is not reportable: seeing it costs O(repo files) (`rename.candidates.copies_harder`)"
@@ -1575,7 +1539,7 @@
    "emitted": 1,
    "found": 1,
    "found_ceiling": 0,
-   "ms": 0.36,
+   "ms": 0.34,
    "notes": [
     "candidates are window-local: O(changed files), never the whole tree",
     "a copy of a file this window did not touch is not reportable: seeing it costs O(repo files) (`rename.candidates.copies_harder`)"
@@ -1598,7 +1562,7 @@
    "emitted": 3,
    "found": 3,
    "found_ceiling": 0,
-   "ms": 1.33,
+   "ms": 1.28,
    "notes": [
     "candidates are window-local: O(changed files), never the whole tree",
     "a copy of a file this window did not touch is not reportable: seeing it costs O(repo files) (`rename.candidates.copies_harder`)"
@@ -1625,7 +1589,7 @@
    "emitted": 2,
    "found": 1,
    "found_ceiling": 0,
-   "ms": 0.65,
+   "ms": 0.69,
    "notes": [
     "candidates are window-local: O(changed files), never the whole tree",
     "a copy of a file this window did not touch is not reportable: seeing it costs O(repo files) (`rename.candidates.copies_harder`)"
@@ -1671,7 +1635,7 @@
    "emitted": 0,
    "found": 0,
    "found_ceiling": 0,
-   "ms": 0.06,
+   "ms": 0.07,
    "notes": [
     "candidates are window-local: O(changed files), never the whole tree",
     "a copy of a file this window did not touch is not reportable: seeing it costs O(repo files) (`rename.candidates.copies_harder`)"
@@ -1694,7 +1658,7 @@
    "emitted": 1,
    "found": 1,
    "found_ceiling": 0,
-   "ms": 0.23,
+   "ms": 0.2,
    "notes": [
     "candidates are window-local: O(changed files), never the whole tree",
     "a copy of a file this window did not touch is not reportable: seeing it costs O(repo files) (`rename.candidates.copies_harder`)"
@@ -1717,7 +1681,7 @@
    "emitted": 3,
    "found": 3,
    "found_ceiling": 0,
-   "ms": 0.61,
+   "ms": 0.59,
    "notes": [
     "candidates are window-local: O(changed files), never the whole tree",
     "a copy of a file this window did not touch is not reportable: seeing it costs O(repo files) (`rename.candidates.copies_harder`)"
@@ -1740,7 +1704,7 @@
    "emitted": 3,
    "found": 3,
    "found_ceiling": 0,
-   "ms": 0.59,
+   "ms": 0.54,
    "notes": [
     "candidates are window-local: O(changed files), never the whole tree",
     "a copy of a file this window did not touch is not reportable: seeing it costs O(repo files) (`rename.candidates.copies_harder`)"
@@ -1763,7 +1727,7 @@
    "emitted": 4,
    "found": 4,
    "found_ceiling": 0,
-   "ms": 0.77,
+   "ms": 0.75,
    "notes": [
     "candidates are window-local: O(changed files), never the whole tree",
     "a copy of a file this window did not touch is not reportable: seeing it costs O(repo files) (`rename.candidates.copies_harder`)"
@@ -1786,7 +1750,7 @@
    "emitted": 1,
    "found": 1,
    "found_ceiling": 0,
-   "ms": 0.3,
+   "ms": 0.28,
    "notes": [
     "candidates are window-local: O(changed files), never the whole tree",
     "a copy of a file this window did not touch is not reportable: seeing it costs O(repo files) (`rename.candidates.copies_harder`)"
@@ -1809,7 +1773,7 @@
    "emitted": 1,
    "found": 1,
    "found_ceiling": 0,
-   "ms": 0.18,
+   "ms": 0.16,
    "notes": [
     "candidates are window-local: O(changed files), never the whole tree",
     "a copy of a file this window did not touch is not reportable: seeing it costs O(repo files) (`rename.candidates.copies_harder`)"
@@ -1832,7 +1796,7 @@
    "emitted": 0,
    "found": 0,
    "found_ceiling": 0,
-   "ms": 0.18,
+   "ms": 0.19,
    "notes": [
     "candidates are window-local: O(changed files), never the whole tree",
     "a copy of a file this window did not touch is not reportable: seeing it costs O(repo files) (`rename.candidates.copies_harder`)"
@@ -1855,7 +1819,7 @@
    "emitted": 0,
    "found": 0,
    "found_ceiling": 0,
-   "ms": 0.15,
+   "ms": 0.14,
    "notes": [
     "candidates are window-local: O(changed files), never the whole tree",
     "a copy of a file this window did not touch is not reportable: seeing it costs O(repo files) (`rename.candidates.copies_harder`)"
@@ -1924,7 +1888,7 @@
    "emitted": 1,
    "found": 1,
    "found_ceiling": 0,
-   "ms": 0.24,
+   "ms": 0.21,
    "notes": [
     "candidates are window-local: O(changed files), never the whole tree",
     "a copy of a file this window did not touch is not reportable: seeing it costs O(repo files) (`rename.candidates.copies_harder`)"
@@ -1978,8 +1942,6 @@
    "found": 40,
    "found_ceiling": 0,
    "missed": 22,
-   "ms_mean": 0.0,
-   "ms_total": 0.0,
    "precision": 1.0,
    "recall_claimable": 0.6452,
    "silent_windows": 9,
@@ -1999,8 +1961,6 @@
    "found": 20,
    "found_ceiling": 0,
    "missed": 18,
-   "ms_mean": 0.0,
-   "ms_total": 0.0,
    "precision": 0.9524,
    "recall_claimable": 0.5263,
    "silent_windows": 0,
@@ -2021,8 +1981,6 @@
   "found": 60,
   "found_ceiling": 0,
   "missed": 2,
-  "ms_mean": 0.468,
-  "ms_total": 17.3,
   "precision": 0.9836,
   "recall_claimable": 0.9677,
   "silent_windows": 9,

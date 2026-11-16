@@ -71,8 +71,8 @@ pub struct Facts {
     /// Live episodes still open — nobody has reviewed them (`reco-zv9`).
     ///
     /// The store's own count over every live episode, which is not the same set as the rows the shell
-    /// happens to hold: a page of a longer index, or a filter, is fewer episodes than the queue is.
-    pub queue_open: Option<u64>,
+    /// happens to hold: a page of a longer index, or a filter, is fewer episodes than the index is.
+    pub unread: Option<u64>,
     /// Commits the index holds rows for and still owes an analysis (`reco-zv9`).
     ///
     /// `fathom stats` calls the same number "commit(s) owed an analysis". `Some(0)` is the warm case;
@@ -104,7 +104,7 @@ impl Facts {
             status: None,
             commits: None,
             episodes: None,
-            queue_open: None,
+            unread: None,
             owed_analysis: None,
         }
     }
@@ -118,7 +118,7 @@ impl Facts {
             status: None,
             commits: None,
             episodes: None,
-            queue_open: None,
+            unread: None,
             owed_analysis: None,
         }
     }
@@ -137,19 +137,19 @@ impl Facts {
             status,
             commits,
             episodes,
-            queue_open: None,
+            unread: None,
             owed_analysis: None,
         }
     }
 
-    /// Hand over the queue's depth (`reco-zv9`): how many live episodes nobody has reviewed.
+    /// Hand over the open work's depth (`reco-zv9`): how many live episodes nobody has reviewed.
     ///
     /// Chainable rather than a fifth argument on [`Self::present`], because a bare `Option<u64>` in a
     /// list of four bare `Option<u64>`s is a call site nobody can read and every caller of `present`
     /// would have to be rewritten to say which one it was passing.
     #[must_use]
-    pub fn with_queue_open(mut self, open: Option<u64>) -> Self {
-        self.queue_open = open;
+    pub fn with_unread(mut self, open: Option<u64>) -> Self {
+        self.unread = open;
         self
     }
 
@@ -170,7 +170,7 @@ impl Facts {
             status: None,
             commits: None,
             episodes: None,
-            queue_open: None,
+            unread: None,
             owed_analysis: None,
         }
     }
@@ -184,7 +184,7 @@ impl Facts {
             status: None,
             commits: None,
             episodes: None,
-            queue_open: None,
+            unread: None,
             owed_analysis: None,
         }
     }
@@ -269,8 +269,8 @@ impl Facts {
     ///
     /// `reco-wzt` moved one sentence here. This used to say *the episode read is `e2.11`'s, not in this
     /// build*, which was the truth right up until the composition root started reading live episodes out
-    /// of the spine: the read exists now, and what is still missing is the delta model behind the ranked
-    /// queue and the card's `delta` row. A remedy has to be something the reviewer can do.
+    /// of the spine: the read exists now, and what is still missing is the delta model behind the rail’s
+    /// risk column and the card's `delta` row. A remedy has to be something the reviewer can do.
     #[must_use]
     pub fn remedy(&self) -> String {
         match self.read {

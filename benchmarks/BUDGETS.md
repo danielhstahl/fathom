@@ -62,7 +62,7 @@ because a budget with no measurement is decoration and the ADR says so (§11.7).
 | `cold.index.ms` | ms | p95 | 1,500.0 | 20,000.0 | 75,000.0 | 240,000.0 | this harness | `fathom index` into a deleted store, 3 samples, p95 |
 | `cold.index.ms_per_commit` | ms | p95 per commit | 10.0 | 10.0 | 10.0 | 10.0 | tools/perf_realrepo.py | cold index into a deleted store, wall time over the commits walked |
 | `cold.index.ms_per_file_row` | ms | p95 per file row | 4.0 | 4.0 | 4.0 | 4.0 | tools/perf_realrepo.py | cold index wall time over the `git_commit_file` rows the run wrote |
-| `cold.queue_visible.ms` | ms | p95 | 3,000.0 | 8,000.0 | 20,000.0 | 45,000.0 | this harness | TUI first paint through the pty, from spawn to first frame |
+| `cold.rail_visible.ms` | ms | p95 | 3,000.0 | 8,000.0 | 20,000.0 | 45,000.0 | this harness | TUI first paint through the pty, from spawn to first frame of the home rail |
 | `graph.materialise_revision.ms` | ms | p95 | 64.0 | 256.0 | 600.0 | 1,200.0 | not measured yet | `s3` measured the prototype floor (204.6 ms p95) and `e3.2` owns the lane that has to clear it |
 | `ingest.file_size_cap.mib` | MiB | cap | 8.0 | 8.0 | 8.0 | 8.0 | `crates/fathom-ingest/tests/memory_cap.rs` | the cap is asserted as a bound, not benched |
 | `prune.batch_rows` | rows | cap | 5,000.0 | 5,000.0 | 5,000.0 | 5,000.0 | not measured yet | retention is `e1.7`'s |
@@ -75,7 +75,7 @@ because a budget with no measurement is decoration and the ADR says so (§11.7).
 | `query.graph_dependents.ms` | ms | p95 | 20.0 | 20.0 | 30.0 | 40.0 | not measured yet | the graph lane is `e3.2`'s and is not built |
 | `query.graph_path.ms` | ms | p95 | 40.0 | 60.0 | 80.0 | 120.0 | not measured yet | `e3.3`'s path query; the lane is not built |
 | `query.metrics.ms` | ms | p95 | 250.0 | 400.0 | 600.0 | 900.0 | this harness | `fathom stats --json`, 5 samples, p95 — the verb the budget names |
-| `query.queue.ms` | ms | p95 | 8.0 | 12.0 | 20.0 | 30.0 | this harness | `j` walking the rail: keystroke written to frame drawn |
+| `query.rail_keystroke.ms` | ms | p95 | 8.0 | 12.0 | 20.0 | 30.0 | this harness | `j` walking the rail: keystroke written to frame drawn |
 | `query.search.ms` | ms | p95 | 30.0 | 50.0 | 80.0 | 120.0 | not measured yet | no scorer ships until `e5.2`; `/` says so out loud |
 | `query.search_degraded.ms` | ms | p95 | 250.0 | 250.0 | 400.0 | 600.0 | not measured yet | the no-FTS5 fallback is `e5.2`'s, with the scorer it degrades from |
 | `query.timeline.ms` | ms | p95 | 8.0 | 12.0 | 20.0 | 30.0 | both | criterion `query.timeline.ms/rail_page`, and `t` through the pty |
@@ -85,7 +85,7 @@ because a budget with no measurement is decoration and the ADR says so (§11.7).
 | `rss.cold_index.peak_mib` | MiB | peak | 300.0 | 500.0 | 800.0 | 1,200.0 | this harness | `VmHWM` of the `fathom index` child, sampled while it runs |
 | `rss.daemon.mib` | MiB | peak | 150.0 | 220.0 | 320.0 | 480.0 | not measured yet | no daemon before `e6.3` |
 | `rss.sqlite_page_cache.mib` | MiB | cap | 8.0 | 8.0 | 16.0 | 16.0 | not measured yet | `fathom-store`'s connection factory applies `PRAGMA cache_size` (ADR-004 §7's pragmas, landed with `e1.2`'s migration); no query path can observe a page cache, so it is a config assertion |
-| `rss.tui.mib` | MiB | peak | 120.0 | 180.0 | 260.0 | 400.0 | this harness | `VmHWM` of the TUI child, sampled after every keystroke |
+| `rss.tui.mib` | MiB | peak | 120.0 | 180.0 | 260.0 | 400.0 | this harness | `VmHWM` of the TUI child, sampled after every keystroke; over half of it is the release binary's own resident pages, so the row is blessed with a 4 MiB machine-spread floor (reco-0zot) |
 | `store.bytes_per_commit_graph` | bytes | p50 | 32,768.0 | 32,768.0 | 32,768.0 | 32,768.0 | this harness | `dbstat` pages of the `graph_*` lane over the revisions the lane holds, so the denominator is the revision `s3` measured (22 335 B/revision, ADR-004 §13.7) and not a commit of history; pages, so it is an upper bound on the payload basis §13.7 quotes |
 | `store.bytes_per_commit_spine` | bytes | p50 | 4,096.0 | 4,096.0 | 4,096.0 | 4,096.0 | this harness | `dbstat` pages of the commit tables (`git_commit`, `git_commit_file`, `ref_tip` and their indexes) over the commit count; the graph lane, the cache and the episode/blob rows are charged elsewhere (`reco-7yq`) |
 | `store.bytes_per_file_row_spine` | bytes | p50 per file row | 3,072.0 | 3,072.0 | 3,072.0 | 3,072.0 | tools/perf_realrepo.py | `dbstat` pages of the commit tables over the file rows they hold (since `reco-7yq`, which took the graph lane out of the numerator) |
@@ -123,10 +123,10 @@ gated twice: against its budget, and against `benchmarks/baselines/perf-gate.jso
 | `store.size.mib.small` | `store.size.mib.small` | the whole `.fathom/index.sqlite3`, cache included |
 | `query.metrics.ms.small` | `query.metrics.ms.small` | `fathom stats --json`, p95 of 5 — the verb the budget names |
 | `query.card.ms.cli.small` | `query.card.ms.small` | `fathom show --json HEAD~7`: the card's read end to end, p95 of 5 |
-| `cold.queue_visible.ms.small` | `cold.queue_visible.ms.small` | TUI spawn to first frame through the pty, median of 3 probes |
+| `cold.rail_visible.ms.small` | `cold.rail_visible.ms.small` | TUI spawn to the home rail's first frame through the pty, median of 3 probes |
 | `query.timeline.ms.small` | `query.timeline.ms.small` | `t` written to the grid changed, through the pty |
-| `query.queue.ms.small` | `query.queue.ms.small` | `j` written to the grid changed, through the pty |
-| `query.queue.ms.visible.small` | — | `q` to the ranked worklist printing `order: ` (trend only; `e1.12` gates that budget) |
+| `query.rail_keystroke.ms.small` | `query.rail_keystroke.ms.small` | `j` written to the grid changed, through the pty |
+| `query.rail_keystroke.ms.visible.small` | — | `t` to the rail repainting with its `order: ` strip (trend only; the letter was `q` and the worklist until `e10.3` deleted them, ADR-006 §5.1.2) |
 | `query.diff_open.ms.small` | `query.diff_open.ms.small` | `d` written to the diff pane painting its tree, through the pty |
 | `query.diff_first_hunk.ms.small` | `query.diff_first_hunk.ms.small` | `d` written to the first `@@` on screen — the streaming rule, timed as it is written |
 | `rss.tui.mib.small` | `rss.tui.mib.small` | `VmHWM` of the TUI child, sampled after every keystroke, worst probe |
@@ -143,8 +143,10 @@ A budget that currently fails is not deleted from the page and is not quietly gr
 listed here with the defect that owns it, the ceiling it may not grow past and the date the
 grace runs out. The gate fails the moment one of these grows beyond its ceiling; the ledger
 in ADR-004 §11.10 is the same table, and `tools/epic7_acceptance.py` fails the epic if a row
-has stopped biting or an expiry has gone by. An entry is removed by hand when the defect
-closes — which is when the budget starts gating again.
+has stopped biting or an expiry has gone by. What each row cost to earn — the bless, the spread
+measured across the fleet, the machine that set the floor — is
+[the perf budget chronicle](reports/perf-budget-chronicle.md). An entry is removed by hand when
+the defect closes — which is when the budget starts gating again.
 
 | measurement | budget | ceiling | owner | expires | why |
 |---|---|---|---|---|---|

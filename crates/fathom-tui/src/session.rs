@@ -48,7 +48,7 @@ use std::collections::BTreeSet;
 use crate::app::{App, Tab};
 use crate::layout::pane_widths;
 use crate::timeline;
-use crate::views::view_for_name;
+use crate::views::{ViewId, view_for_name};
 
 /// The schema this build writes. A stored copy from a *newer* fathom is decoded where it can be and
 /// reported where it cannot; a copy from an older one is read and rewritten at this number.
@@ -404,7 +404,9 @@ pub fn restore(app: &mut App, entries: &[(String, String)]) -> Restored {
     // The rail's half, last: the filter decides which rows exist, then the cursor lands on one.
     if entries.iter().any(|(key, _)| key.starts_with("timeline.")) {
         let said = app.timeline.apply_session(entries);
-        if said != "nothing to restore" {
+        // "nothing to restore" is the silence; everything else — including a stored value this build
+        // had to drop — is a sentence for the resume toast.
+        if !said.starts_with("nothing to restore") {
             out.applied.push(said);
         }
     }
@@ -444,9 +446,21 @@ fn parse_size(text: &str) -> Option<(u16, u16)> {
     Some((span(cols)?, span(rows)?))
 }
 
+/// The views this build no longer has, and the view that answers their question now.
+///
+/// A stored tab is a reviewer's afternoon, not a cache entry. A row naming a view this build deleted
+/// applies as its successor, with a warning that says which view went away and what the row was
+/// carrying, rather than vanishing on upgrade (ADR-006 §5.1.2 §1, session-state §1).
+const RETIRED_VIEWS: &[(&str, ViewId, &str)] = &[(
+    "queue",
+    ViewId::Timeline,
+    "the Queue view is retired (`e10.3`); the timeline is home and its rail lists the same episodes in the order they happened",
+)];
+
 /// Decode `tui.tabs`. A row whose view this build does not know is dropped with a warning; the rest of
 /// the list still comes back, because losing three tabs over one typo is a worse outcome than three
-/// tabs.
+/// tabs. A row naming a view this build **retired** is not a typo: it becomes the view that took the
+/// job, with its selection, and says so.
 fn parse_tabs(text: &str, out: &mut Restored) -> Vec<Tab> {
     let mut tabs: Vec<Tab> = Vec::new();
     for row in text.split(';').take(MAX_TABS) {
@@ -463,12 +477,27 @@ fn parse_tabs(text: &str, out: &mut Restored) -> Vec<Tab> {
             ));
             continue;
         };
-        let Some(view) = view_for_name(name) else {
-            out.warnings
-                .push(format!("stored tab view `{name}` is unknown to this build"));
-            continue;
-        };
         let episode = unescape(episode);
+        let view = match view_for_name(name) {
+            Some(view) => view,
+            None => match RETIRED_VIEWS
+                .iter()
+                .find(|(retired, _, _)| *retired == name.trim())
+            {
+                Some((retired, successor, says)) => {
+                    out.warnings.push(format!(
+                        "stored tab view `{retired}` is retired — it opens as {} instead; {says}",
+                        successor.name()
+                    ));
+                    *successor
+                }
+                None => {
+                    out.warnings
+                        .push(format!("stored tab view `{name}` is unknown to this build"));
+                    continue;
+                }
+            },
+        };
         tabs.push(Tab {
             view,
             scope: crate::app::Scope {

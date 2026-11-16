@@ -88,9 +88,12 @@ message: pi cannot rewrite one after the fact, and a hook that amended a commit 
 go back on every review already keyed to it. So the trailer only appears if the agent puts it there, and a
 repository where nobody put it there says *nothing* about who drove. That is not a cosmetic gap:
 `author_kind` falls through to `human` at `0.50` by `identity` — the git author string, which an agent
-sets like anybody else — and the risk vector's `authorship` axis, which is the axis ADR-001 §7.3 is about,
-then has no measurement to make. It prints as absent, with this recipe as the remedy
-([`fathom why`](../concepts/risk-scoring.md#authorship-and-the-difference-between-a-person-and-nobody)).
+sets like anybody else — so the record cannot tell a person's turn from an agent's, and the one axis that
+used to pretend it could (`reco-0zi` made it refuse this guess, `reco-ydek.5` took it out of the vector
+altogether) is not there to lose. What the unstamped trailer costs is therefore honest and small:
+`attribution` prints its real doubt, `fathom who` says nobody is credited, and ADR-001 §7.3's claim that
+an agent turn is a big deal is carried by the printed identity and the trail rather than by a risk term
+([`fathom why`](../concepts/risk.md#who-wrote-it-the-axis-that-used-to-be-called-authorship)).
 The other three doors are a `Co-authored-by:`/`Generated-with:` naming the agent, `attribution.agents`
 declaring the identity in `fathom.toml`, and `fathom attribution correct <rev> --kind agent`; what none of
 them is is a guess the tool could have made on its own.

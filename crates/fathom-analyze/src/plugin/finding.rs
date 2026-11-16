@@ -239,7 +239,9 @@ fn segment(text: &str, which: &str) -> Result<(), TypeError> {
 /// rule R7 rather than a silent guess.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Jump {
-    /// One of [`view`]'s names: `diff`, `timeline`, `structure`, `queue`, `graph`.
+    /// One of [`view`]'s names: `timeline`, `diff`, `structure`, `graph`. A name the registry does not
+    /// have — `queue` among them since `e10.3` deleted that view — resolves to `None` rather than to a
+    /// guess ([`Jump::resolved`], rule R7).
     pub view: String,
     /// What to open in it: `<episode>` or `<episode>#<path>`.
     pub target: String,

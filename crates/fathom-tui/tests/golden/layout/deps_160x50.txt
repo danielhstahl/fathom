@@ -48,5 +48,5 @@
 │                                                                                                 │                                                            │
 │What does the code now depend on that it did not?                                                │tree · reads resolved dependency graph · owner e2.6         │
 └──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
-⏺ epoch 1 · 48 eps · queue 4 open · idx unknown
+⏺ epoch 1 · 48 eps · 4 unread · idx unknown
 10 episodes from fixture index

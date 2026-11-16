@@ -75,7 +75,7 @@
 //! afternoon, and what lets `fathom review` be tested against a real rewritten history in a temp directory.
 //!
 //! **No disposition machinery.** The four acts, their dismiss vocabulary and their snooze conditions are
-//! [`crate::queue`]'s. This module *renders* the acts a reviewer took into a committable file; it does not
+//! [`crate::review`]'s. This module *renders* the acts a reviewer took into a committable file; it does not
 //! decide what a keystroke means, and there is exactly one place that decides (lint `M02`'s reason for
 //! existing).
 //!

@@ -20,7 +20,7 @@
 //! keeps millis, so whoever maps rows into this type converts; the rail never sees a unit it has to
 //! guess at.
 
-use fathom_analyze::insight::{BlastInput, EpisodeDelta, PageWindow, RiskView};
+use fathom_analyze::insight::{EpisodeDelta, PageWindow, RiskView};
 use fathom_core::time::Timestamp;
 
 use crate::diff::Unavailable;
@@ -28,8 +28,14 @@ use crate::diff::Unavailable;
 use super::days;
 use super::filter::{Filter, GroupBy};
 
-/// Who wrote the episode (ADR-003 §2.6). `unknown` is a value, not a failure: the rail prints `?`
-/// rather than guessing that an unfamiliar identity is a human.
+/// Who wrote the episode (ADR-003 §2.6). `unknown` is a value, not a failure: the rung that found
+/// nothing says so rather than guessing that an unfamiliar identity is a human.
+///
+/// **This is data, not a label.** `e10.4` (`reco-ydek.4`) retired the printed badge everywhere a human
+/// reads it (ADR-006 §5.1.2 §6), and what is left of the type is the vocabulary the store, the re-link
+/// ladder and `fathom analyze --json` speak. `as_str` is the only spelling it prints, and only into a
+/// machine channel: the `?` the rail used to draw for `unknown` was a badge's shorthand, and it went
+/// with the badge.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum AuthorKind {
     /// Written by a coding agent.
@@ -41,9 +47,6 @@ pub enum AuthorKind {
 }
 
 impl AuthorKind {
-    /// Every kind, in the order the filter editor lists them.
-    pub const ALL: [AuthorKind; 3] = [AuthorKind::Agent, AuthorKind::Human, AuthorKind::Unknown];
-
     /// The store's spelling, so a facet read back from the index compares equal.
     #[must_use]
     pub const fn as_str(self) -> &'static str {
@@ -62,17 +65,6 @@ impl AuthorKind {
             "agent" => AuthorKind::Agent,
             "human" => AuthorKind::Human,
             _ => AuthorKind::Unknown,
-        }
-    }
-
-    /// The rail's badge. `unknown` is `?` because a badge that guesses is worse than a badge that says
-    /// it does not know.
-    #[must_use]
-    pub const fn badge(self) -> &'static str {
-        match self {
-            AuthorKind::Agent => "agent",
-            AuthorKind::Human => "human",
-            AuthorKind::Unknown => "?",
         }
     }
 }
@@ -244,15 +236,6 @@ pub struct Episode {
     /// Whether any current commit still belongs to it (ADR-003 §6.3): a dead episode is shown, marked
     /// `gone`, because "your sign-off is on history that is no longer here" must not be silent.
     pub live: bool,
-    /// What depends on this change, as far as anything knows (`e4.5`).
-    ///
-    /// The queue's third factor, and in this build the honest answer is [`BlastInput::Unmeasured`]: blast
-    /// radius needs `e3.1`/`e3.2`'s module graph, and
-    /// [`crate::insight`'s blast section](fathom_analyze::insight) already refuses a path-prefix guess for
-    /// the same reason. The field exists anyway because that is the door: the day `e3.2` lands, the
-    /// composition root fills it in and the ordering already reads it, prints whose number it is, and
-    /// stops saying the factor is idle. Nothing else changes, which is the point of a door.
-    pub blast: BlastInput,
 }
 
 impl Default for Episode {
@@ -281,7 +264,6 @@ impl Default for Episode {
             boundary_confidence: None,
             delta: None,
             live: true,
-            blast: BlastInput::Unmeasured,
         }
     }
 }
@@ -337,6 +319,21 @@ impl Episode {
     #[must_use]
     pub fn risk(&self) -> Option<&RiskView> {
         self.delta.as_ref().and_then(|delta| delta.risk.as_ref())
+    }
+
+    /// What this episode did to the complexity of the files it touched, or `None` when its document
+    /// carries no answer at all.
+    ///
+    /// The rail's complexity column (`e8.6`, ADR-007 §5.3) and nothing else, and it reads the same
+    /// document the card reads for the same reason [`Episode::risk`] does: two surfaces with two
+    /// readings of one figure is the ADR-001 §7.10 fork this model exists to close. `None` is not `?` —
+    /// "the read made no roll-up" prints no cell on the rail and no row on the card, while a roll-up
+    /// that counted nothing prints `?` with its reasons (ADR-007 §7.4's fourth row).
+    #[must_use]
+    pub fn complexity(&self) -> Option<&fathom_analyze::insight::ComplexityView> {
+        self.delta
+            .as_ref()
+            .and_then(|delta| delta.complexity.as_ref())
     }
 
     /// The minimum an episode has to have to be a row: an identity, a date and a subject.

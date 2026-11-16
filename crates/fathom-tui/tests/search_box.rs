@@ -256,7 +256,7 @@ fn a_hit_with_no_view_says_so_instead_of_jumping_somewhere_nearby() {
     );
     assert_eq!(
         app.view,
-        ViewId::Queue,
+        ViewId::Timeline,
         "and the reviewer is not moved somewhere that merely looks related"
     );
 }

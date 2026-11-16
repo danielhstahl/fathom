@@ -2,9 +2,9 @@
 //!
 //! ADR-001 §4.1 promises a pane that "fits 80×12, one keypress drills in", and ADR-006 §5.7 registers it
 //! as a view. This module is the *content* of that pane: the four facts the pane is allowed to read
-//! (`episode.identity`, `risk.score`, `review.state`, queue counts, the index epoch, the caught-up state —
-//! [`crate::views`]'s `ambient` entry names them) and the seven lines that answer the one question the view
-//! asks: *is there anything I need to look at right now?*
+//! (`episode.identity`, `risk.score`, `review.state`, the open-work counts, the index epoch, the
+//! caught-up state — [`crate::views`]'s `ambient` entry names them) and the seven lines that answer the
+//! one question the view asks: *is there anything I need to look at right now?*
 //!
 //! # Why a module and not another view in the shell
 //!
@@ -20,9 +20,9 @@
 //! * **Every fact is handed over, none is computed here.** No store, no clock, no ranking: [`Glance`]
 //!   arrives already read and already ranked (ADR-002 §4.4, §5.2). What *is* decided here is the order the
 //!   reasons to look rank in, because that is a fact about the pane, and the pane owns the copy.
-//! * **Unknown prints as `unknown`.** `0 open` and `unknown open` are different sentences and only one of
-//!   them is a reason to relax (docs/concepts/ambient-mode.md). A [`QueueState`] that was never counted
-//!   says so rather than printing a zero.
+//! * **Unknown prints as `unknown`.** `0 unread` and `unread unknown` are different sentences and only
+//!   one of them is a reason to relax (docs/concepts/ambient-mode.md). An [`OpenWork`] that was never
+//!   counted says so rather than printing a zero.
 //! * **Caught-up is a designed state, not an empty one.** It is dimmed, it names itself, and it says what
 //!   there is nothing of. No animation, no colour strobing, no cursor: this pane sits next to text someone
 //!   is reading ([`Face::Faint`] is the whole palette of a quiet pane).
@@ -31,7 +31,7 @@
 //! function of the facts, which is what lets a caller redraw *only* when the rendered text changed — the
 //! property `fathom ambient`'s second acceptance criterion is about.
 
-use fathom_analyze::insight::{QueueCounts, RiskView, short_id};
+use fathom_analyze::insight::{ReviewCounts, RiskView, short_id};
 use fathom_core::time::Timestamp;
 
 use crate::index::Read;
@@ -60,7 +60,7 @@ pub const LINES: usize = 7;
 /// 2. the index does not know `HEAD` — the newest change is not on screen yet, whatever the screen says;
 /// 3. nothing is keeping the index current and the last run was a while ago;
 /// 4. there is an open episode the ranking calls high-risk;
-/// 5. there is open work nothing scored — a queue of `?`s is not a caught-up queue;
+/// 5. there is open work nothing scored — a pile of `?`s is not a caught-up pile;
 /// 6. there is open work that is merely waiting;
 /// 7. nothing. [`Need::Quiet`] is the resting state, and it is the only one that dims the pane.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -71,12 +71,15 @@ pub enum Need {
     HeadNotIndexed,
     /// No live watcher, and nothing indexed the repository recently.
     NothingWatching,
-    /// An open episode the ranking puts in the high band.
+    /// An open episode the score puts in the high band.
     HighRisk,
     /// Open episodes with no risk score at all.
     Unranked,
-    /// Open episodes, none of them high.
-    OpenQueue,
+    /// Open episodes, none of them high. `Need::OpenWork` is what this variant was called `open_queue`
+    /// until `e10.3` deleted the view the noun named (ADR-006 §5.1.2 §3 part 2); the reason is a claim
+    /// about episodes in review states and always was, so only the spelling moved — and with it the
+    /// published `--json` string, which is why `fathom ambient`'s contract is `/2` (`e10.3`).
+    OpenWork,
     /// Nothing is waiting.
     Quiet,
 }
@@ -91,7 +94,7 @@ impl Need {
             Need::NothingWatching => "nothing_watching",
             Need::HighRisk => "high_risk",
             Need::Unranked => "unranked",
-            Need::OpenQueue => "open_queue",
+            Need::OpenWork => "open_work",
             Need::Quiet => "quiet",
         }
     }
@@ -105,7 +108,7 @@ impl Need {
             Need::NothingWatching => "index stale",
             Need::HighRisk => "look now",
             Need::Unranked => "unscored",
-            Need::OpenQueue => "waiting",
+            Need::OpenWork => "waiting",
             Need::Quiet => "caught up",
         }
     }
@@ -121,7 +124,7 @@ impl Need {
         match self {
             Need::IndexBroken | Need::HeadNotIndexed => Face::Failure,
             Need::NothingWatching | Need::HighRisk => Face::Warning,
-            Need::Unranked | Need::OpenQueue => Face::Text,
+            Need::Unranked | Need::OpenWork => Face::Text,
             Need::Quiet => Face::Faint,
         }
     }
@@ -154,7 +157,10 @@ pub struct Latest {
     pub id: String,
     /// The one-line summary the rail prints.
     pub summary: String,
-    /// `agent`, `human`, `unknown` — the text channel, never an icon alone.
+    /// `agent`, `human`, `unknown` — **data, not a printed fact.** `e10.4` (`reco-ydek.4`) took it off
+    /// the glance line: ADR-006 §5.1.2 §6 retires the verdict wherever a human reads it, because a
+    /// reader handed `agent` with no confidence and no evidence cannot weigh it. The field stays because
+    /// `fathom ambient --json` still ships it to a machine consumer that can.
     pub author: String,
     /// When the episode began; `None` is "the row did not say", which prints `unknown`.
     pub created: Option<Timestamp>,
@@ -167,13 +173,18 @@ pub struct Latest {
     pub risk: Option<RiskView>,
 }
 
-/// The queue's numbers, as counted by whoever read the store.
+/// The open work, as counted by whoever read the store.
+///
+/// It used to be called `QueueState` and printed as `queue  7 open`. `e10.3` deleted the queue's pane and
+/// ADR-006 §5.1.2 §3 part 2 put the reason on the page: this was always a count of *episodes in open
+/// review states*, never a property of a pane, so the number did not move and *caught up* did not become
+/// unfalsifiable when the pane did — it is the same `ReviewCounts` the rail's strip prints.
 #[derive(Debug, Clone, Default)]
-pub struct QueueState {
-    /// Was the queue counted at all? `false` prints `unknown`, which is the whole point of the field.
+pub struct OpenWork {
+    /// Was the open work counted at all? `false` prints `unknown`, which is the whole point of the field.
     pub known: bool,
     /// The counts, when they were counted.
-    pub counts: Option<QueueCounts>,
+    pub counts: Option<ReviewCounts>,
     /// How many open episodes have been sitting unread for more than a day — the number that turns "waiting"
     /// into "overdue". `None` when the caller did not look.
     pub over_day: Option<usize>,
@@ -226,8 +237,8 @@ pub struct Glance {
     pub branch: Option<String>,
     /// The newest episode.
     pub latest: Option<Latest>,
-    /// The queue's numbers.
-    pub queue: QueueState,
+    /// The open work: how much is still asking to be read, and in which bands.
+    pub open_work: OpenWork,
     /// The index's numbers.
     pub index: IndexState,
     /// Who is watching.
@@ -235,10 +246,11 @@ pub struct Glance {
     /// Every reason the caller could find, in any order — [`most_important`] picks.
     pub reasons: Vec<Reason>,
     /// Anything the caller had to say that is not a reason to look: a build with no watcher feature, a
-    /// queue that could not be counted, an episode the store would not describe.
+    /// open work that could not be counted, an episode the store would not describe.
     pub notes: Vec<String>,
-    /// The episode `<Enter>` opens, when there is one: the thing to look at, which is the top of the queue
-    /// and not necessarily the newest row. `None` and the pane says so rather than opening a surprise.
+    /// The episode `<Enter>` opens, when there is one: the thing to look at, which is not necessarily the
+    /// newest row. `None` and the pane says so rather than opening a surprise. Since `e10.3` the drill
+    /// lands on the rail, where the episode gets selected (ADR-006 §5.1.2 §1).
     pub drill: Option<String>,
 }
 
@@ -251,7 +263,7 @@ impl Default for Glance {
             root: String::new(),
             branch: None,
             latest: None,
-            queue: QueueState::default(),
+            open_work: OpenWork::default(),
             index: IndexState::default(),
             watch: WatchState::default(),
             reasons: Vec::new(),
@@ -270,7 +282,7 @@ impl Glance {
     }
 
     /// Is the reviewer caught up? `true` only when nothing is waiting *and* nothing about the pane itself
-    /// needs fixing — a stale index over an empty queue is a broken pane, not a restful one.
+    /// needs fixing — a stale index over an empty rail is a broken pane, not a restful one.
     #[must_use]
     pub fn caught_up(&self) -> bool {
         !self.reasons.iter().any(|reason| reason.kind < Need::Quiet)
@@ -306,7 +318,7 @@ pub struct Mode {
 ///
 /// The ladder is one step long, exactly as ADR-006 §6.5 describes the view's: at [`FLOOR`] or bigger every
 /// line is drawn; below it the pane drops the reason line, then the index line, keeping the newest episode
-/// and the queue count to the last. At fewer than [`FLOOR`] rows or columns there is nothing honest left,
+/// and the open-work count to the last. At fewer than [`FLOOR`] rows or columns there is nothing honest left,
 /// and [`refusal`] is what a caller prints instead of drawing a lie.
 #[must_use]
 pub fn lines(glance: &Glance, mode: Mode, cols: usize, rows: usize) -> Vec<StyledLine> {
@@ -371,7 +383,7 @@ pub fn pane(glance: &Glance, mode: Mode, cols: usize) -> Vec<StyledLine> {
     let need = reason.map_or(Need::Quiet, |reason| reason.kind);
     let mut out: Vec<StyledLine> = vec![
         latest_line(glance, dim),
-        queue_line(glance, dim),
+        open_work_line(glance, dim),
         index_line(glance, dim),
         StyledLine::plain(""),
         reason_line(glance, reason),
@@ -494,7 +506,12 @@ pub fn age_since(now: Timestamp, then: Timestamp) -> String {
     age(secs)
 }
 
-/// The first line: `latest e8f1a2 · agent · 12m · risk 82 ✱ · unread`.
+/// The first line: `latest e8f1a2 · 12m · risk 82 ✱ · unread`.
+///
+/// Four facts, and no fifth: identity, age, risk, review state. The author word used to sit between the
+/// id and the age, and `e10.4` (`reco-ydek.4`) took it out — ADR-006 §5.1.2 §6 retires the verdict
+/// wherever a human reads it, and this line's 40-column budget was already spent on the four facts a
+/// reviewer acts on, so nothing is added in its place.
 fn latest_line(glance: &Glance, dim: bool) -> StyledLine {
     let mut line = StyledLine::new();
     let Some(latest) = &glance.latest else {
@@ -517,8 +534,6 @@ fn latest_line(glance: &Glance, dim: bool) -> StyledLine {
         // Marked distinctly and never folded into a committed count (docs/concepts/episode.md).
         line.push(ink(dim, Face::Marker), " · provisional");
     }
-    line.push(Face::Muted, " · ");
-    line.push(ink(dim, Face::Text), &latest.author);
     line.push(Face::Muted, " · ");
     line.push(
         ink(dim, Face::Text),
@@ -561,29 +576,34 @@ fn push_risk(line: &mut StyledLine, risk: Option<&RiskView>, dim: bool) {
     line.push(ink(dim, face), &format!("{score} {band}"));
 }
 
-/// The second line: `queue  7 open · 2 snoozed · 1 over 24 h`.
-fn queue_line(glance: &Glance, dim: bool) -> StyledLine {
+/// The second line: `open   7 unread of 12 · 2 snoozed · 1 over 24 h`.
+///
+/// The open-work line, not the queue line (ADR-006 §5.1.2 §3 part 2): it counts episodes in open review
+/// states among the rows the caller read, which is exactly what the rail's strip counts, and it is the
+/// line that makes the pane's `caught up` a claim a reviewer can disprove. Its unknown branch blames the
+/// index, not a pane that no longer exists.
+fn open_work_line(glance: &Glance, dim: bool) -> StyledLine {
     let mut line = StyledLine::new();
     let face = if dim { Face::Faint } else { Face::Muted };
-    line.push(face, "queue  ");
-    let state = &glance.queue;
+    line.push(face, "open   ");
+    let state = &glance.open_work;
     if !state.known {
         line.push(
             if dim { Face::Faint } else { Face::Warning },
-            "unknown — the queue could not be read",
+            "unknown — the index would not read",
         );
         return line;
     }
     let counts = state.counts.unwrap_or_default();
     if state.known && counts.open == 0 {
         // Written here rather than borrowed from the full view's counts line, which says "caught up" for the
-        // same state: one claim made in two places is two chances to make it wrongly, and an empty queue can
-        // sit over an index that died an hour ago. This line states the count; the attention line is the only
-        // place in the pane that says "caught up".
+        // same state: one claim made in two places is two chances to make it wrongly, and an empty list of
+        // open work can sit over an index that died an hour ago. This line states the count; the attention
+        // line is the only place in the pane that says "caught up".
         line.push(
             if dim { Face::Faint } else { Face::Text },
             &format!(
-                "0 open · {} dealt with",
+                "0 unread · {} dealt with",
                 counts.total.saturating_sub(counts.open)
             ),
         );
@@ -724,7 +744,7 @@ fn reason_line(glance: &Glance, reason: Option<&Reason>) -> StyledLine {
 /// claim from "caught up" over one that finished three seconds ago, and the pane has the number, so it
 /// prints it instead of letting the reviewer relax for the wrong reason (ADR-001 §7.2).
 fn caught_up_words(glance: &Glance) -> String {
-    let waiting = glance.queue.counts.as_ref().map_or_else(
+    let waiting = glance.open_work.counts.as_ref().map_or_else(
         || "nothing is waiting".to_owned(),
         |counts| {
             format!(

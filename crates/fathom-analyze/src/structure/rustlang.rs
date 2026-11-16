@@ -22,11 +22,12 @@
 //! `use sibling::…` asks the index for a path it does not hold, and was stored as nothing. That is
 //! **reco-842**, and it is why a Cargo workspace could not answer its own layering question until now.
 
+use crate::structure::complexity;
 use crate::structure::engine::{
     self, CorpusView, Draft, Index, Lang, RawImport, follow, origin_key, publish_origin,
 };
 use crate::structure::model::{
-    Complexity, Language, Supertype, SupertypeKind, Symbol, SymbolKind, Visibility, synthetic,
+    Language, StructureProxies, Supertype, SupertypeKind, Symbol, SymbolKind, Visibility, synthetic,
 };
 use crate::structure::policy::ExtractPolicy;
 use crate::structure::util::{
@@ -320,7 +321,7 @@ fn modifiers(node: Node, src: &[u8]) -> Vec<String> {
     out
 }
 
-fn complexity(node: Node, src: &[u8], policy: &ExtractPolicy) -> Complexity {
+fn complexity(node: Node, src: &[u8], policy: &ExtractPolicy) -> StructureProxies {
     let span = span_of(&node);
     let (branches, _) = util::count_kinds(&node, BRANCH_KINDS, policy.max_complexity_nodes);
     let (loops, _) = util::count_kinds(&node, LOOP_KINDS, policy.max_complexity_nodes);
@@ -352,7 +353,7 @@ fn complexity(node: Node, src: &[u8], policy: &ExtractPolicy) -> Complexity {
         })
         .unwrap_or(0);
     let _ = src;
-    Complexity {
+    StructureProxies {
         body_lines: span.lines(),
         branches,
         loops,
@@ -1061,3 +1062,46 @@ fn path_is_public(module: &[String], mod_public: &BTreeSet<String>) -> bool {
     }
     true
 }
+
+/// ADR-007 §4.1 — **Rust's decision-point list.** Basis `mccabe-1`.
+///
+/// Every kind here is emitted by the `tree-sitter-rust` 0.24.2 that `Cargo.lock` pins *and* produced
+/// by a file in `crates/fathom-analyze/complexity/rust/` — that is the ADR's **C-KIND**, and
+/// `examples/complexity_harness.rs --check` re-proves it in CI. Two of the ADR's rows named kinds the
+/// pinned grammar does not emit (a guard as an anonymous `if` under `match_arm`, `let … else` as a
+/// `let_condition` under a `let_declaration`); the rules are implemented on the real nodes —
+/// `match_pattern`'s `condition` field and `let_declaration`'s `alternative` — so the count is what
+/// §4.1 says it is. See [`crate::structure::complexity::RUST_GUARD_AND_LET_ELSE_NOTE`].
+pub(crate) const COMPLEXITY: complexity::Rules = complexity::Rules {
+    language: Language::Rust,
+    units: &["function_item", "function_signature_item"],
+    bodyless: &["function_signature_item"],
+    // Every body a Rust declaration can lack is visible in its kind: a `fn … ;` is a
+    // `function_signature_item`, and an `extern "C" { fn f(); }` produces one too.
+    no_body: |_| false,
+    kinds: &[
+        ("if_expression", "if / else if / if let — one per test"),
+        ("match_arm", "each match arm, the wildcard arm included"),
+        ("for_expression", "for loop"),
+        ("while_expression", "while loop"),
+        ("loop_expression", "loop"),
+        ("try_expression", "`expr?` — a test wearing an exit"),
+    ],
+    conditions: &[
+        (
+            "let_declaration",
+            "`let … else` — a failed pattern is an exit on a test",
+            |node, _| field(node, "alternative").is_some(),
+        ),
+        (
+            "match_pattern",
+            "arm guard — a guarded arm is two tests",
+            |node, _| field(node, "condition").is_some(),
+        ),
+    ],
+    operators: &[(
+        "binary_expression",
+        &[("&&", "short-circuit &&"), ("||", "short-circuit ||")],
+    )],
+    tokens: &[],
+};

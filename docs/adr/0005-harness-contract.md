@@ -422,7 +422,13 @@ on `harness run`, `harness verify` and `harness build`. Six things it establishe
    `dlopen` of it **succeeded** and reported `ok`. Two mechanisms
    catch it, and the probe uses both: an ELF `e_machine` comparison against the host (`float_abi`,
    `libc_machine`), and `ld.so --verify`, the platform's own answer to "does this object belong
-   here" (rc 0 = yes; rc 1/4 = no). `ctypes` exposes neither `RTLD_UNSAFE_ABI` nor
+   here" (rc 0 = yes; rc 1/4 = no). "The platform loader" is *discovered by the object it has to
+   verify* — its `e_machine` and its ELF class, both read in pure Python — because a multilib host has
+   more than one `ld.so` and the wrong one answers "no" about the host's own libc: an x86-64 runner
+   with `libc6-i386` installed was verifying `/usr/lib/x86_64-linux-gnu/libc.so.6` through
+   `/lib/ld-linux.so.2`, the i386 loader, and reporting a mismatch with the machine it was running on
+   (`reco-ghao`). A host with no loader that speaks for the libc gets `abi=not-run`, which is an
+   absence, not a false alarm. `ctypes` exposes neither `RTLD_UNSAFE_ABI` nor
    `RTLD_DONT_LOAD_DEPENDENTS` in a standard CPython build, so a dlopen-mode-based check is not
    available at all.
 6. **Numeric ABI facts are derived, never remembered.** Two traps this closed, both real:

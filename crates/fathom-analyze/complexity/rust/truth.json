@@ -1,0 +1,60 @@
+{
+  "language": "rust",
+  "basis": "mccabe-1",
+  "notes": "Hand-authored against ADR-007 §4.1 by counting the constructs in each file the way the ADR says to count them, then adjudicating every disagreement with the harness dump line by line. A figure of `null` is an *expected unknown*, with the §7.1 reason code beside it; `0` is never a unit's figure, and the two zeros this file does use are file-level (`constants.rs` declares nothing callable) and named as facts. Points are the decision points counted, so a base of 1 that silently moved to 2 could not hide behind a matching total. `worked.rs` is §4.7's example verbatim: two ifs, two short-circuits, three arms, plus one. `awkward.rs` carries the tested exits and the folded scopes: a closure's `if` and a nested `fn`'s `if` are the enclosing function's problem (§3.3), a `match` arm written `1 | 2` is one arm not two (§3.4), a guarded arm is two tests, a `let … else` is one, and `unsafe`, `async`, `.await`, a `panic!` and a `return` are none. `traits.rs` is the body-not-visible case: one third of the file's units has its branches in another file, so the file's figure is a floor with a count, not a clean number and not that unit counted as a zero. `broken.rs` is what a refusal must look like — a `?` with a reason, never a `0` that reads as 'simple'.",
+  "files": {
+    "worked.rs": {
+      "state": "measured",
+      "sum": 8,
+      "max": 8,
+      "reason": "",
+      "functions": [
+        { "n": "classify", "kind": "fn", "v": 8, "points": 7 }
+      ]
+    },
+    "awkward.rs": {
+      "state": "partial",
+      "sum": 16,
+      "max": 14,
+      "reason": "",
+      "functions": [
+        { "n": "Named.named", "kind": "method", "v": null, "r": "body_not_visible" },
+        { "n": "Named.label", "kind": "method", "v": 1, "points": 0 },
+        { "n": "fmt", "kind": "method", "v": 1, "points": 0 },
+        { "n": "awkward", "kind": "fn", "v": 14, "points": 13 }
+      ]
+    },
+    "traits.rs": {
+      "state": "partial",
+      "sum": 3,
+      "max": 2,
+      "reason": "",
+      "functions": [
+        { "n": "Shape.area", "kind": "method", "v": null, "r": "body_not_visible" },
+        { "n": "Shape.name", "kind": "method", "v": 1, "points": 0 },
+        { "n": "f64.area", "kind": "method", "v": 2, "points": 1 }
+      ]
+    },
+    "constants.rs": {
+      "state": "measured",
+      "sum": 0,
+      "max": null,
+      "reason": "no_bodies",
+      "functions": []
+    },
+    "notes.txt": {
+      "state": "unavailable",
+      "sum": null,
+      "max": null,
+      "reason": "language_unknown",
+      "functions": []
+    },
+    "broken.rs": {
+      "state": "unavailable",
+      "sum": null,
+      "max": null,
+      "reason": "parse_failed",
+      "functions": []
+    }
+  }
+}

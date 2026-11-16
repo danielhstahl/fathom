@@ -53,7 +53,8 @@ use super::weights::{Origin, Weights};
 /// numbers CI asserts are read from one place.
 pub const EMBEDDED: &str = include_str!("../../tests/fixtures/risk/calibration.json");
 
-/// The cut: "the top ten percent by score", which is the queue a reviewer actually reads first.
+/// The cut: "the top ten percent by score" — a **set**, not an order, since `e10.3` deleted the ranked
+/// pane that used to make it the first thing a reviewer read.
 pub const DEFAULT_FRACTION: f64 = 0.10;
 
 /// The grid a retune may move a weight to.
@@ -63,7 +64,7 @@ pub const DEFAULT_FRACTION: f64 = 0.10;
 /// review.
 pub const GRID: [f64; 10] = [0.0, 0.02, 0.04, 0.06, 0.08, 0.10, 0.13, 0.16, 0.20, 0.25];
 
-/// How many times a retune sweeps the twelve weights.
+/// How many times a retune sweeps the thirteen weights.
 ///
 /// Four is more than the shipped fixture needs (it converges in two) and bounded, so the retune's cost
 /// is `12 × 10 × 4` scorings of the corpus and never a search that has to be explained by its runtime.
@@ -213,7 +214,8 @@ impl Cut {
 
 /// Score every case with `weights`, cut at the top `fraction`, and measure the cut against the labels.
 ///
-/// The ranking is the queue's ranking: exact total first, then the integer score, then case id, so two
+/// The order is the retired queue's ordering, kept because it is total: exact total first, then the
+/// integer score, then case id, so two
 /// cases that tie land the same way in every run and in every report.
 #[must_use]
 pub fn evaluate(set: &Set, weights: &Weights, fraction: f64) -> Cut {
@@ -345,6 +347,13 @@ pub struct Comparison {
     pub tau_proposed_flags: usize,
     /// Anything the retune refused to claim.
     pub notices: Vec<String>,
+    /// The features this set cannot fit, by id.
+    ///
+    /// Not a refusal: a weight the corpus does not measure simply stays at its built-in value, which is
+    /// what the proposal says it is. What the retune may not do is go quiet about it, because a proposal
+    /// that printed thirteen fitted weights when the set measured eleven would be claiming a test that
+    /// never happened (`reco-l9bz.7`). The report names them, and so does the JSON.
+    pub unfitted: Vec<String>,
 }
 
 /// Measure the shipped weights, retune against the set, and measure again.
@@ -358,7 +367,7 @@ pub fn calibrate(set: &Set, shipped: &Weights, fraction: f64) -> Comparison {
     let mut proposal = retune(set, shipped, fraction);
     let after = evaluate(set, &proposal, fraction);
     // The threshold travels with the weights. A retune that moved the scores and left `risk.tau` where it
-    // was would propose a queue in which nothing is flagged — so the proposal's τ is the retuned cut's own
+    // was would propose a cut in which nothing is flagged — so the proposal's τ is the retuned cut's own
     // floor, the lowest score that is still in the top decile. That is a measured number, not a taste, and
     // `render` prints how many cases each side of it flags.
     if let Some(floor) = after
@@ -392,6 +401,20 @@ pub fn calibrate(set: &Set, shipped: &Weights, fraction: f64) -> Comparison {
         }
     }
     let mut notices = set.notices.clone();
+    // A feature no case measures cannot be fitted, and saying nothing about that is how a weight ends up
+    // looking tested when it never was (`reco-l9bz.7`). The shipped 40-case corpus was authored before the
+    // `complexity` axis existed and never carried a `blast` figure at all, so no grid point can move the
+    // ranking through either of them; the report names the ones it could not fit instead of printing a
+    // proposal that implies it fitted all thirteen.
+    let unfitted: Vec<String> = Feature::ALL
+        .iter()
+        .filter(|feature| {
+            !set.cases
+                .iter()
+                .any(|case| case.features.contains_key(feature.id()))
+        })
+        .map(|feature| feature.id().to_owned())
+        .collect();
     if before.positives == 0 {
         notices.push(
             "no case in the set is labelled must-read, so precision and recall have no denominator \
@@ -418,13 +441,14 @@ pub fn calibrate(set: &Set, shipped: &Weights, fraction: f64) -> Comparison {
         tau_proposed,
         tau_proposed_flags,
         notices,
+        unfitted,
     }
 }
 
 /// Did `candidate` strictly beat `incumbent` on the objective pair?
 ///
 /// Strict on F1 first, and only when F1 is a tie does the mean-rank term decide. Both comparisons carry
-/// an epsilon: float sums over twelve terms are not exact, and a search that "improves" by 1e-16 is a
+/// an epsilon: float sums over thirteen terms are not exact, and a search that "improves" by 1e-16 is a
 /// search that never converges.
 fn better(candidate: (f64, f64), incumbent: (f64, f64)) -> bool {
     if (candidate.0 - incumbent.0).abs() > f64::EPSILON {
@@ -579,6 +603,14 @@ pub fn render(comparison: &Comparison) -> Vec<String> {
         for move_ in &comparison.moves {
             out.push(format!("  · {move_}"));
         }
+    }
+    if !comparison.unfitted.is_empty() {
+        out.push(format!(
+            "not fitted by this set, kept at its built-in weight and untested: {} ({} of {})",
+            comparison.unfitted.join(", "),
+            comparison.unfitted.len(),
+            Feature::ALL.len()
+        ));
     }
     for notice in &comparison.notices {
         out.push(format!("  notice: {notice}"));

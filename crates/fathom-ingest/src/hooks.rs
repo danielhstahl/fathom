@@ -825,6 +825,10 @@ impl Limits {
 /// Absolute paths are accepted only when they are already inside `cwd`; `..`, NUL bytes, control
 /// characters and a `~` prefix are refused outright. No filesystem access happens here — the check is on
 /// the *name*, because resolving a name an untrusted writer chose is the act this clause exists to refuse.
+///
+/// The answer is spelled the way the store spells paths — `/`-separated — which is what makes it usable:
+/// [`attribute`] matches it against a commit's git paths, and a value that came back in some other
+/// spelling matches nothing. See [`normalize_path`].
 pub fn contain_path(cwd: &str, path: &str) -> Result<String, String> {
     if path.is_empty() {
         return Err("empty path".to_owned());
@@ -855,15 +859,42 @@ pub fn contain_path(cwd: &str, path: &str) -> Result<String, String> {
 }
 
 /// Lexical normalization: `a/./b` becomes `a/b`, and a trailing slash goes. Nothing touches the disk.
+///
+/// The rebuild joins with `/`, and **not** with [`std::path::MAIN_SEPARATOR`], because this is the
+/// store's spelling and not the host's: git paths are `/`-separated on every platform, and
+/// [`attribute`] decides which turn a commit belongs to by asking whether the commit's git path is one
+/// of the paths the turn recorded. Windows is where the two spellings part, and there they part completely
+/// — `Path::components` treats `\` as a separator, so joining with `MAIN_SEPARATOR` turned a stream's
+/// `src/rail.rs` (and every path a Windows adapter wrote with `os.path.relpath` or `path.relative`, which
+/// spell the same way) into `src\rail.rs`. Nothing matched, every agent turn on that platform silently
+/// lost its intent, and the intent tally said `no harness events` about a repository that was full of them
+/// (`reco-raz3`).
+///
+/// The fold is therefore a property of the platform, not a translation table: on Windows `\` and `/` name
+/// the same boundary, so `Path::components` splits on both and the rebuild emits one spelling; everywhere
+/// else a backslash is an ordinary character in a file's name and it survives untouched.
 fn normalize_path(path: &str) -> String {
     let parsed = std::path::Path::new(path);
     let mut out = String::new();
     for component in parsed.components() {
         match component {
             std::path::Component::CurDir => {}
+            // A root or a drive prefix arrives with its own separator already on it (`/`, `C:\`), and the
+            // wire spells both with a forward slash. Every other component's text is copied verbatim, so a
+            // POSIX file whose name really ends in a backslash keeps it: `\` is only a separator on the
+            // platform that says it is.
+            std::path::Component::RootDir => out.push('/'),
+            std::path::Component::Prefix(prefix) => {
+                out.push_str(
+                    prefix
+                        .as_os_str()
+                        .to_string_lossy()
+                        .trim_end_matches(['/', '\\']),
+                );
+            }
             other => {
-                if !out.is_empty() && !out.ends_with(std::path::MAIN_SEPARATOR_STR) {
-                    out.push(std::path::MAIN_SEPARATOR);
+                if !out.is_empty() && !out.ends_with('/') {
+                    out.push('/');
                 }
                 out.push_str(&other.as_os_str().to_string_lossy());
             }
@@ -877,7 +908,9 @@ fn normalize_path(path: &str) -> String {
 
 /// Is `target` inside `base`, on a component boundary?
 fn starts_with_component(target: &str, base: &str) -> bool {
-    let base = base.trim_end_matches(std::path::MAIN_SEPARATOR);
+    // Both separators, whatever the host: `base` arrives from [`normalize_path`], which spells with `/`
+    // even where the platform's own separator is `\`.
+    let base = base.trim_end_matches(['/', '\\']);
     if base.is_empty() {
         return true;
     }

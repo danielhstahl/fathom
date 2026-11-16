@@ -38,6 +38,7 @@ from pathlib import Path
 
 from . import json_schema as JS
 from . import schema as S
+from .command import command
 from .errors import (ConfigError, ConfigInvalid, ConfigVersionRejected, NotARepository,
                      UsageError, Warning)
 
@@ -225,7 +226,7 @@ def load_toml(path, layer: str, *, schema: dict | None = None) -> Source:
     except tomllib.TOMLDecodeError as exc:
         raise ConfigInvalid("fathom.toml is not valid TOML: %s" % exc,
                             source="%s:%d" % (display(path), _error_line(text, exc)),
-                            hint="fix the syntax; `fathom config lint` re-checks it") from None
+                            hint="fix the syntax; `%s` re-checks it" % command("lint")) from None
 
     name = display(path)
     lines = key_lines(text)
@@ -253,8 +254,8 @@ def load_toml(path, layer: str, *, schema: dict | None = None) -> Source:
             continue
         raise ConfigInvalid("invalid value for %s: %s" % (err.path, err.message),
                             source=where,
-                            hint="`fathom config schema` prints the schema; "
-                                 "`fathom config explain` shows what is in effect")
+                            hint="`%s` prints the schema; `%s` shows what is in effect"
+                                 % (command("schema"), command("explain")))
 
     for path_key in S.flatten(raw):
         if S.scope_of(path_key) == "user" and layer == S.Layer.REPO:
@@ -299,7 +300,7 @@ def env_source(env=None) -> Source:
                 "unknown_env", "ignoring $%s: there is no config key %r" % (name, path),
                 source="$%s" % name,
                 suggestion=", ".join("$%s" % n for n in near) if near else
-                "see `fathom config schema` for the list", key=path))
+                "see `%s` for the list" % command("schema"), key=path))
             source.present = True
             continue
         try:
@@ -366,7 +367,7 @@ def parse_flags(*, sets=(), extends=(), aliases=None, offline: bool = False) -> 
             near = difflib_close(path, S.concrete_paths())
             raise UsageError("unknown config key %r in %s" % (path, origin), source=origin,
                              hint="did you mean %s?" % ", ".join(repr(n) for n in near)
-                             if near else "see `fathom config schema`")
+                             if near else "see `%s`" % command("schema"))
         try:
             value = S.coerce(key, raw, source=origin, where=path)
         except ConfigError as exc:

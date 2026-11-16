@@ -1,13 +1,23 @@
 # Fuzzing: the readers that take repository content, driven with bytes nobody wrote (`e7.8`, `reco-41a`).
 #
-# Two cadences, because one cadence is always the wrong one:
+# One cadence, since `e11.2` (`reco-374v.2`): **nightly, and on `workflow_dispatch`** — thirty minutes per
+# target, on a matrix so the wall clock stays inside a nightly's budget. That is the "30-minute smoke runs
+# in CI" the ticket asked for, and the run that finds the shape no seed contained.
 #
-# * **pull_request — a smoke.** One minute per target on a seed corpus of ~50 shapes. Long enough to catch
-#   "this change made a parser crash on a shape we already had", short enough that nobody learns to ignore
-#   the job. This is the half of the acceptance criterion that runs on the pull.
-# * **nightly — the 30-minute run.** Thirty minutes per target, on a matrix so the wall clock stays inside
-#   a nightly's budget. This is the "30-minute smoke runs in CI" the ticket asks for, and the run that finds
-#   the shape no seed contained.
+# The per-PR smoke (one minute per target, three targets) is gone, and the measurement is why
+# (`e11.1`, `.plan/ci-triage-reco-374v.md`): 403 measured runner-minutes over 19 runs with a
+# `cargo install cargo-fuzz` and a nightly toolchain in every one of them and no cache at all, and its
+# failures were the two things a pull request cannot act on — nine job-legs that died on a
+# `fuzz/Cargo.toml` with no `cargo-fuzz = true` marker (`reco-com`, `reco-yuk`), and three
+# `One minute per target` legs on the lockfile target that failed on three consecutive runs and then never
+# again, with nothing about fuzzing in between. It is the only job in the fleet whose failure the census
+# could not explain from the tree, which is the definition of a gate people learn to ignore.
+#
+# What a pull request still has to prove about fuzzing is in `contracts.yml`, in seconds and with no nightly
+# toolchain to wait for: `python3 tools/gen_fuzz_corpus.py check` (the committed corpus is the generated
+# one), and `check_workflows.py`'s `P03`/`P04`, which refuse a fuzz step run from inside `fuzz/` and a fuzz
+# manifest cargo-fuzz will not open. Those are the checks that catch a *neutered* fuzzing setup; the
+# minutes are here.
 #
 # The corpus grows in only one direction: a crash artefact becomes a regression test in
 # `crates/fathom-analyze/tests/hardening.rs` (or `…/fathom-ingest/tests/hooks_hardening.rs`) and, if it is a
@@ -18,16 +28,30 @@
 # Nightly toolchain, and only here: libFuzzer is `-Zsanitizer`, which stable cannot pass. The main workspace
 # stays on the pinned stable toolchain precisely so that `cargo build --workspace` remains a promise a clean
 # clone can keep (`fuzz/Cargo.toml` explains the separate workspace).
+#
+# Two things this workflow depends on that no YAML reader can see, both of them paid for by rule `P04` and
+# rule `P03` of `tools/check_workflows.py`:
+#
+# * `fuzz/Cargo.toml` carries `[package.metadata] cargo-fuzz = true`. cargo-fuzz reads that marker first,
+#   before it builds a target, and its whole report when the marker is missing is "Error: manifest
+#   fuzz/Cargo.toml does not look like a cargo-fuzz manifest. Add following lines to override:" — no target,
+#   no compile error, nothing to bisect. That is what every job below printed for a nightly cycle (`reco-com`)
+#   while the marker existed nowhere in this repository, and nothing else here (not `cargo build`, not
+#   `gen_fuzz_corpus.py check`) notices its absence.
+# * `cargo fuzz` runs from the **repository root**, never from inside `fuzz/`. Its fuzz directory is
+#   `<the cargo package it finds from the working directory>/fuzz`; the marker is what lets a run started
+#   inside `fuzz/` walk back up to the root instead of looking for `fuzz/fuzz/Cargo.toml` and reporting a
+#   target that is committed as missing, but every other path a step writes — the seed copy,
+#   `fuzz/artifacts/<target>` below — is written from the root anyway. From the root, cargo-fuzz's default
+#   layout is exactly what this repository commits: manifest `fuzz/Cargo.toml`, targets
+#   `fuzz/fuzz_targets/<target>.rs`, corpus `fuzz/corpus/<target>/` and artefacts `fuzz/artifacts/<target>/`.
+#   The seeds therefore need no moving; what they need is a *copy*, because the fuzzer writes into the
+#   directory it is given (see `Seeding a run` in `fuzz/README.md`).
+#
 
 name: fuzz
 
 on:
-  pull_request:
-    paths:
-      - "crates/fathom-analyze/**"
-      - "crates/fathom-ingest/**"
-      - "fuzz/**"
-      - ".github/workflows/fuzz.yml"
   schedule:
     # 03:17 UTC, every day. A prime-ish minute so the run does not collide with the hour's traffic.
     - cron: "17 3 * * *"
@@ -44,48 +68,24 @@ permissions:
 env:
   RUST_BACKTRACE: 1
 
-jobs:
-  smoke:
-    name: smoke (${{ matrix.target }})
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    timeout-minutes: 25
-    strategy:
-      fail-fast: false
-      matrix:
-        target: [lockfile, hooks, paths]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: rui314/setup-mold@v1
-      - name: Install nightly (libFuzzer needs -Zsanitizer)
-        run: rustup toolchain install nightly --profile minimal --component llvm-tools
-      - name: Install cargo-fuzz
-        run: cargo +nightly install cargo-fuzz --locked
-      - name: The committed corpus is the generated one
-        run: python3 tools/gen_fuzz_corpus.py check
-      - name: Seed the corpus cargo-fuzz will run
-        run: |
-          mkdir -p fuzz/fuzz/corpus
-          cp -R fuzz/corpus/. fuzz/fuzz/corpus/
-      - name: Build the targets
-        working-directory: fuzz
-        run: cargo +nightly fuzz build --debug ${{ matrix.target }}
-      - name: One minute per target
-        working-directory: fuzz
-        run: >-
-          cargo +nightly fuzz run ${{ matrix.target }} -- -max_total_time=60
-          -rss_limit_mb=4096 -timeout=10 -error_exitcode=86
-      - name: Keep the artefact if it crashed
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: fuzz-crash-${{ matrix.target }}
-          path: fuzz/fuzz/artifacts/${{ matrix.target }}
-          if-no-files-found: ignore
+  # The one hand-written cache lever in this file, and the only one `R04` lets anyone pull. It is the
+  # *prefix* of `Swatinem/rust-cache`'s derived key — the action derives the rest from the lock files, the
+  # toolchain in `rustc -Vv`, the cargo env, the workflow and the job, which together are every input a
+  # cargo build reads — so moving it starts a fresh cache family rather than shuffling one job's objects
+  # into a drawer that does not describe them.
+  #
+  # The rule, in one sentence: **bust the prefix when the bytes already in the cache would be wrong, not
+  # merely stale.** Stale is cargo's own job — a source change re-checks its fingerprints and rebuilds what
+  # moved. Wrong is a registry that no longer holds what the lock file names, a cache written under a
+  # toolchain the key does not name, or an upgrade of the action that changes what it stores. And a bump
+  # only stops new runs *writing* the old family: evicting the old bytes is the second half, and the only
+  # eviction that does not wait out the retention period. Date it and name the bead that moved it;
+  # *Cache discipline* in docs/concepts/ci-gate.md is the prose and `R04` is the gate.
+  CACHE_BUST: "2026-11"
 
+jobs:
   nightly:
     name: 30 minutes (${{ matrix.target }})
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 90
     strategy:
@@ -99,28 +99,74 @@ jobs:
         run: rustup toolchain install nightly --profile minimal --component llvm-tools
       - name: Install cargo-fuzz
         run: cargo +nightly install cargo-fuzz --locked
+      - uses: Swatinem/rust-cache@v2
+        with:
+          # The fuzz workspace is its own — its own lock file, its own `fuzz/target`, its own cache — and
+          # until `e11.4` it had no cache step at all: three targets and a nightly toolchain, rebuilt from
+          # scratch every night, which is 403 of the month's runner-minutes (`e11.1` §1). `workspaces:` is
+          # how the action is told which workspace this is, and `R04` refuses a job that builds one it has
+          # not been told about.
+          #
+          # `cache-targets` is off on purpose. The build is `cargo +nightly fuzz`, the nightly moves daily,
+          # and yesterday's objects are not merely useless but rustc-version-mismatched dead weight in the
+          # cache — the registry is the only half worth carrying. The action also hashes `rustc -Vv` as it
+          # finds it, which is why this sits after the toolchain install rather than at the top of the job.
+          workspaces: fuzz
+          cache-targets: "false"
+          prefix-key: ${{ env.CACHE_BUST }}
+          cache-on-failure: "true"
       - name: Minutes per target
         id: minutes
         run: echo "value=${{ inputs.minutes || '30' }}" >> "$GITHUB_OUTPUT"
       - name: The committed corpus is the generated one
         run: python3 tools/gen_fuzz_corpus.py check
       - name: Seed the corpus cargo-fuzz will run
+        # The same scratch copy as the smoke job, for the same reason.
         run: |
-          mkdir -p fuzz/fuzz/corpus
-          cp -R fuzz/corpus/. fuzz/fuzz/corpus/
+          mkdir -p "$RUNNER_TEMP/seeds"
+          cp -R fuzz/corpus/. "$RUNNER_TEMP/seeds/"
       - name: Build the targets
-        working-directory: fuzz
         run: cargo +nightly fuzz build ${{ matrix.target }}
       - name: Fuzz
-        working-directory: fuzz
-        run: >-
-          cargo +nightly fuzz run ${{ matrix.target }} --
-          -max_total_time=${{ steps.minutes.value * 60 }}
-          -rss_limit_mb=4096 -timeout=25 -error_exitcode=86
+        # Two things this had wrong, both of which turn a nightly into a red one with no crash reported.
+        # A step output is `steps.<id>.outputs.<name>`; `steps.<id>.<name>` is not an error in an
+        # expression, it is silently the empty string, and the empty string then reaches `$(( … ))`.
+        # And a `run: >-` block folds onto ONE line, so `total_time=… cargo fuzz run …` was a command
+        # prefix that set `total_time` for `cargo` while `$total_time` still expanded, in the same breath,
+        # to nothing — `-max_total_time=`, which libFuzzer reads as its own default. A `|` block, and the
+        # assignment on its own line, is the spelling that means what it says.
+        run: |
+          total_time=$(( ${{ steps.minutes.outputs.value }} * 60 ))
+          echo "fuzzing ${{ matrix.target }} for ${total_time}s"
+          cargo +nightly fuzz run ${{ matrix.target }} "$RUNNER_TEMP/seeds/${{ matrix.target }}" -- \
+            "-max_total_time=$total_time" -rss_limit_mb=4096 -timeout=25 -error_exitcode=86
+      - name: the artefact budget (fuzz-nightly-crash-${{ matrix.target }})
+        # An artefact that grows past its budget fails the run here, instead of quietly costing the fleet its
+        # storage. The limit, the retention and the paths are this artefact's row in `ARTEFACT_BUDGET` in
+        # `tools/check_workflows.py`; rule `R05` refuses this step and that row to disagree, and refuses an
+        # upload that no row describes. The bytes are printed to the job summary whether the guard passes or
+        # not, because a budget nobody sees being spent is a rumour.
+        if: failure()
+        env:
+          ARTEFACT_NAME: fuzz-nightly-crash-${{ matrix.target }}
+          ARTEFACT_PATH: fuzz/artifacts/${{ matrix.target }}
+          ARTEFACT_MAX_KB: "204800"
+          ARTEFACT_PRODUCER: "the `cargo +nightly fuzz run` step above, only when a target found a crash"
+        run: |
+          set -eu
+          kb=$(du -cks $ARTEFACT_PATH 2>/dev/null | awk '$1 == "total" {print $1}' || true)
+          kb=${kb:-0}
+          printf 'artefact budget · %s: %s KB of %s KB — %s\n' \
+            "$ARTEFACT_NAME" "$kb" "$ARTEFACT_MAX_KB" "$ARTEFACT_PRODUCER" | tee -a "$GITHUB_STEP_SUMMARY"
+          if [ "$kb" -gt "$ARTEFACT_MAX_KB" ]; then
+            echo "::error::$ARTEFACT_NAME is $((kb / 1024)) MB, over its $((ARTEFACT_MAX_KB / 1024)) MB budget. Either it has grown past what it is, or the budget moved: change `ARTEFACT_BUDGET` in `tools/check_workflows.py`, this step and the budget table in docs/concepts/ci-gate.md in one commit."
+            exit 1
+          fi
       - name: Keep the artefacts if it crashed
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: fuzz-nightly-crash-${{ matrix.target }}
-          path: fuzz/fuzz/artifacts/${{ matrix.target }}
+          path: fuzz/artifacts/${{ matrix.target }}
           if-no-files-found: ignore
+          retention-days: 30

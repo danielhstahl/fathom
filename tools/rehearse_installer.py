@@ -14,11 +14,16 @@ repeatedly, and it is the part that breaks silently:
 
 So this is that rehearsal, and `docs/concepts/release.md` §4 is the prose around it:
 
-    dist build --artifacts=local            # the archive for *this* machine's triple
+    dist build --artifacts=local --target=<this machine's triple>   # the archive for *this* machine
     dist build --artifacts=global           # the installers, the source tarball, sha256.sum
     mirror target/distrib/ over http on 127.0.0.1
     FATHOM_CLI_DOWNLOAD_URL=http://127.0.0.1:<port> sh installer.sh
     run what landed in $FATHOM_CLI_INSTALL_DIR, and say what it said
+
+The `--target` on the first line is load-bearing, not tidiness: with no triple named, `--artifacts=local`
+means "the target-specific half of the release, for **every** triple in `dist-workspace.toml`", and one
+machine is not six — `dist` stops at the first macOS triple with `Cross-compilation from … to
+aarch64-apple-darwin is not supported` (`reco-hzr`, which took out the packaging job that way).
 
 `cargo-dist`'s installers take their download URL from the environment for exactly this reason
 (`FATHOM_CLI_DOWNLOAD_URL`; the table is generated into the release document from the captured plan).

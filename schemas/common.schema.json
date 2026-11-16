@@ -85,7 +85,7 @@
           "type": "integer"
         },
         "blobs_left_unreachable": {
-          "description": "Blobs no cache row, `blob_ref` or `graph_chunk` names any more — the count §8.7's retention pass starts from. Eviction leaves them; it does not delete them (`reco-93w`).",
+          "description": "Blobs no cache row, `blob_ref` or `graph_chunk` names any more \u2014 the count \u00a78.7's retention pass starts from. Eviction leaves them; it does not delete them (`reco-93w`).",
           "minimum": 0,
           "type": "integer"
         },
@@ -93,7 +93,7 @@
           "type": "integer"
         },
         "cache_payload_bytes": {
-          "description": "Payload bytes the `cache` table holds now — the number `cache.budget.mib` is the answer to (`reco-93w`).",
+          "description": "Payload bytes the `cache` table holds now \u2014 the number `cache.budget.mib` is the answer to (`reco-93w`).",
           "minimum": 0,
           "type": "integer"
         },
@@ -110,7 +110,7 @@
             "minimum": 0,
             "type": "integer"
           },
-          "description": "Durable cache rows evicted, counted by the analyzer that wrote them — the \"what got evicted\" half of ADR-004 §8.6's observability claim (`reco-93w`).",
+          "description": "Durable cache rows evicted, counted by the analyzer that wrote them \u2014 the \"what got evicted\" half of ADR-004 \u00a78.6's observability claim (`reco-93w`).",
           "type": "object"
         },
         "evicted_bytes": {
@@ -361,6 +361,166 @@
         "dead_unjudged": {
           "description": "Rows that are neither reachable nor provably dead: the store hit a break in the parent chain it holds, or had no ref tip to walk from. Never reported as dead.",
           "type": "integer"
+        },
+        "complexity_column": {
+          "additionalProperties": false,
+          "description": "How much of the `git_commit_file` complexity column the index actually carries (ADR-007 \u00a79.6). A half-filled column is a figure that lies quietly, so the fraction is printed beside the totals it could be confused with, with the reason codes for the rest. Null when the store would not report.",
+          "properties": {
+            "bases": {
+              "description": "The basis tokens in use with their row counts; more than one means a re-count is in flight and the column is really two columns (ADR-007 \u00a79.5).",
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "basis": {
+                    "type": "string"
+                  },
+                  "rows": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "basis",
+                  "rows"
+                ],
+                "type": "object"
+              },
+              "type": "array"
+            },
+            "filled": {
+              "description": "Measurable rows some build has measured - `complexity_basis` is not empty. A row that was looked at and refused (`language_unknown`) counts here and still has no figure.",
+              "type": "integer"
+            },
+            "measurable": {
+              "description": "Rows that could carry a figure: the ones git does not report as binary. The denominator of `percent`.",
+              "type": "integer"
+            },
+            "percent": {
+              "description": "`filled / measurable`, or null when nothing in the index is measurable - null and 0 are different claims.",
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "reasons": {
+              "description": "The head-side reason tally, `column_not_filled` included, most frequent first.",
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "code": {
+                    "type": "string"
+                  },
+                  "rows": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "code",
+                  "rows"
+                ],
+                "type": "object"
+              },
+              "type": "array"
+            },
+            "rows": {
+              "description": "Every `git_commit_file` row the store retains.",
+              "type": "integer"
+            },
+            "unfilled": {
+              "description": "`measurable - filled`: the rows that print `?` with `column_not_filled` until `fathom index` reaches them.",
+              "type": "integer"
+            },
+            "with_figure": {
+              "description": "Measurable rows whose head side holds a figure at all.",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "rows",
+            "measurable",
+            "filled",
+            "with_figure",
+            "unfilled",
+            "percent",
+            "reasons",
+            "bases"
+          ],
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "complexity_pass": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": false,
+          "description": "What the store has ever seen of the index-time complexity pass (ADR-007 \u00a79.7, `e8.4`): the durable counters behind `fathom doctor`'s pass line \u2014 content read, milliseconds spent, refusals by \u00a77.1 reason code, and which ceilings have been spent on this store's life. Absent when no run has filled a complexity figure yet, which is a different statement from a run that read nothing because a ceiling was already spent.",
+          "properties": {
+            "bytes_read": {
+              "type": "integer",
+              "description": "Cumulative bytes of file content inflated for a figure."
+            },
+            "budgets_spent": {
+              "type": "array",
+              "description": "Per-run ceilings that have been spent on this store's life. Non-zero is the store saying its complexity column is incomplete *by budget* and not by anything wrong with the repository.",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "key": {
+                    "type": "string",
+                    "description": "The counter's own suffix: a \u00a77.1 reason code for `refused`, the config key of a ceiling for `budgets_spent`."
+                  },
+                  "value": {
+                    "type": "integer",
+                    "description": "How many: sides of a file row that printed `?` for the code, or runs a ceiling has stopped."
+                  }
+                },
+                "required": [
+                  "key",
+                  "value"
+                ]
+              }
+            },
+            "ms": {
+              "type": "integer",
+              "description": "Cumulative milliseconds the pass itself has spent working, in the same quantity `extract.complexity.max_run_ms` bounds per run."
+            },
+            "refused": {
+              "type": "array",
+              "description": "Refusals by \u00a77.1 reason code, counted over the store's life.",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "key": {
+                    "type": "string",
+                    "description": "The counter's own suffix: a \u00a77.1 reason code for `refused`, the config key of a ceiling for `budgets_spent`."
+                  },
+                  "value": {
+                    "type": "integer",
+                    "description": "How many: sides of a file row that printed `?` for the code, or runs a ceiling has stopped."
+                  }
+                },
+                "required": [
+                  "key",
+                  "value"
+                ]
+              }
+            },
+            "rows_measured": {
+              "type": "integer",
+              "description": "File rows that ended with at least one figure, over the store's life \u2014 the numerator of `fathom doctor`'s coverage line, and larger than it looks because a base side borrowed from a parent counts as answered."
+            }
+          },
+          "required": [
+            "rows_measured",
+            "bytes_read",
+            "ms",
+            "refused",
+            "budgets_spent"
+          ]
         },
         "dead_unjudged_reason": {
           "description": "Why nothing could be judged, when nothing could: the store's own words.",

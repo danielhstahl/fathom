@@ -51,7 +51,7 @@ fn corpus() -> Vec<(&'static str, EpisodeDelta)> {
             EpisodeDelta::sparse(
                 "e-bbbb2222",
                 "make the epoch cache aware of a rebuilt analyzer",
-                Some(RiskView::of(&ranking(), Some(2), Some(9))),
+                Some(RiskView::of(&ranking())),
             ),
         ),
     ];
@@ -85,7 +85,7 @@ fn corpus() -> Vec<(&'static str, EpisodeDelta)> {
     });
     input.episode.intent = Some(recorded_intent());
     input.files = rows();
-    input.risk = Some(RiskView::of(&ranking(), Some(2), Some(9)));
+    input.risk = Some(RiskView::of(&ranking()));
     let measured = insight::compose(&input);
     corpus.push(("measured", measured));
 
@@ -270,8 +270,8 @@ fn ranking() -> fathom_analyze::risk::Risk {
         n_files: 5,
         n_binary: 1,
         n_commits: 4,
-        author: "agent",
         partial_files: false,
+        complexity: None,
     })
 }
 

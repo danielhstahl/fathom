@@ -90,20 +90,18 @@ fn episode(id: &str, first_utc: i64, summary: &str) -> EpisodeInput {
     input.totals.n_add = 572;
     input.totals.n_del = 109;
     input.files = files();
-    input.risk = Some(RiskView::of(
-        &fathom_analyze::risk::rank(&fathom_analyze::risk::Signals {
+    input.risk = Some(RiskView::of(&fathom_analyze::risk::rank(
+        &fathom_analyze::risk::Signals {
             files: &[],
             n_add: 572,
             n_del: 109,
             n_files: 5,
             n_binary: 0,
             n_commits: 2,
-            author: "human",
             partial_files: false,
-        }),
-        Some(1),
-        Some(2),
-    ));
+            complexity: None,
+        },
+    )));
     EpisodeInput {
         delta: insight::compose(&input),
         findings: Vec::new(),

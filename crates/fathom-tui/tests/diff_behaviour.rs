@@ -921,6 +921,7 @@ fn the_view_is_the_one_the_keymap_says_it_is_and_owns_its_own_actions() {
                         | "word_toggle"
                         | "ws_toggle"
                         | "noise_toggle"
+                        | "sort_cycle"
                         | "copy_path"
                         | "copy_hunk"
                         | "open_editor"
@@ -988,3 +989,131 @@ fn pane(name: &str) -> &'static views::Pane {
 use diff as _diff;
 /// Imported here so the `Copy` match arms above read as the enum they are.
 use fathom_tui::diff::Copy;
+
+// --- per-file complexity, and the sort that hunts with it (`e8.6`) ------------------------------
+//
+// ADR-007 §5.1 measures at the path grain, so `d` is where a reviewer goes to see *which* file is the
+// one that got harder, and §5.3 fixes what the sort has to be able to do with it. The fixture carries
+// `X-Fathom-Complexity:` per file — the spine's own per-path roll-up, carried in the patch instead of
+// re-derived here (ADR-001 §7.10) — including one file that could not be counted and one that came out
+// flat, because both of those are states a reviewer has to be able to tell apart from a missing number.
+
+#[test]
+fn the_tree_prints_what_each_file_did_to_its_own_complexity() {
+    let app = corpus::app_with("complexity", (120, 40));
+    let screen = frame(&app);
+    // §10.1: the rows carry the signed figure, the legend carries the word.
+    for cell in ["+8", "+3", "−5", "±0"] {
+        assert!(
+            screen.contains(cell),
+            "no `{cell}` cell in the tree: {screen}"
+        );
+    }
+    assert!(
+        screen.contains("complexity +6"),
+        "the counts row must hold the Σ of the files it drew: {screen}"
+    );
+    assert!(
+        screen.contains("worst 14"),
+        "and the largest single unit, which is the figure §5.3 sorts on second: {screen}"
+    );
+}
+
+#[test]
+fn a_file_that_could_not_be_counted_says_why_beside_the_question() {
+    // §7.4: `?` never stands alone. The reason travels in the patch with the question, in the same
+    // cell, so the tree cannot draw one without the other.
+    let app = corpus::app_with("complexity", (120, 40));
+    let screen = frame(&app);
+    assert!(
+        screen.contains("? generated"),
+        "the docs file's `?` must name its reason: {screen}"
+    );
+    assert!(
+        screen.contains("complexity +6 (1?)"),
+        "and the coverage legend must count it: {screen}"
+    );
+}
+
+#[test]
+fn sorting_by_complexity_moves_the_worst_file_to_the_top_and_says_so() {
+    let mut app = corpus::app_with("complexity", (120, 40));
+    let before = frame(&app);
+    assert!(
+        before.find("cache.rs").unwrap() < before.find("spine.rs").unwrap(),
+        "path order is alphabetical, so cache.rs is first: {before}"
+    );
+    assert!(
+        before.contains("sort: path"),
+        "and the strip says which: {before}"
+    );
+
+    corpus::press(&mut app, "<");
+    let after = frame(&app);
+    assert!(
+        after.find("spine.rs").unwrap() < after.find("cache.rs").unwrap(),
+        "sorted by Δ, the +8 file leads the +3 one: {after}"
+    );
+    assert!(
+        after.contains("sort: complexity"),
+        "the strip names the order: {after}"
+    );
+    assert!(
+        toast(&app).contains("complexity Δ"),
+        "and the toast says what changed: {}",
+        toast(&app)
+    );
+
+    // The sort is a view setting, not a cursor: the file under the cursor is re-found by path, and a
+    // second `<` gives path order back.
+    corpus::press(&mut app, "<");
+    let back = frame(&app);
+    assert!(
+        back.contains("sort: path"),
+        "two presses is a cycle: {back}"
+    );
+    assert!(back.find("cache.rs").unwrap() < back.find("spine.rs").unwrap());
+    // …and the cycle is exactly the orders the type publishes: no order you cannot reach with `<`, and no
+    // order you can sit in without the strip saying so.
+    let names: Vec<&str> = diff::Sort::ALL.iter().map(|sort| sort.name()).collect();
+    assert_eq!(
+        names,
+        vec!["path", "complexity"],
+        "`<` walks this list: {names:?}"
+    );
+}
+
+#[test]
+fn the_sort_orders_the_groups_it_is_given_and_never_dissolves_them() {
+    // ADR-006 §5.3's grouping is the reviewer's first question; the sort is the second one and lives
+    // inside it. `docs/` and `tests/` keep their own class rows however hot the file inside them is.
+    let mut app = corpus::app_with("complexity", (120, 40));
+    corpus::press(&mut app, "<");
+    let screen = frame(&app);
+    for class in ["source", "docs", "test"] {
+        assert!(
+            screen.contains(class),
+            "class row {class:?} vanished: {screen}"
+        );
+    }
+    assert!(
+        screen.find("docs").unwrap() > screen.find("source").unwrap(),
+        "`source` is still the first group: {screen}"
+    );
+}
+
+#[test]
+fn a_patch_with_no_complexity_in_it_draws_no_column_and_no_question() {
+    // e8.3's rule, at file grain: nothing measured prints nothing — a `?` would be a claim about the
+    // files, and the patch made no claim at all.
+    let app = corpus::app_with("mixed", (120, 40));
+    let screen = frame(&app);
+    assert!(
+        !screen.contains(" · complexity "),
+        "a patch with no `X-Fathom-Complexity:` header must not print a complexity legend: {screen}"
+    );
+    assert!(
+        screen.contains("sort: path"),
+        "while the sort is still a thing the strip can say: {screen}"
+    );
+}

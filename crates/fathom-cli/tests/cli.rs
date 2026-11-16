@@ -2,9 +2,17 @@
 //! "`fathom --version` and `fathom --help` work from the built binary", plus the exit-code contract the
 //! scripts in `e6.6` will depend on (ADR-002 §7.3).
 #![allow(clippy::unwrap_used, clippy::expect_used)]
+// Which tests need which feature is stated test by test here, because this file is the one that has both
+// halves: the headless refusals that `--no-default-features --features minimal` really answers, and the
+// verbs that read an index the same build cannot write. A store-backed test is `sqlite-bundled`-gated (ADR-002
+// §6.1); a watcher's, `watch`'s. The two files where every test is store-backed — `tests/check_verb.rs`,
+// `tests/show_trailers.rs` — say so once, at the top, instead.
 
 use std::io::BufRead;
 use std::process::{Command, Output, Stdio};
+
+/// The frame reader shared with `tests/tui_data.rs`; see `tests/frame.rs` for why it is one file.
+mod frame;
 
 fn fathom(args: &[&str]) -> Output {
     Command::new(env!("CARGO_BIN_EXE_fathom"))
@@ -88,6 +96,7 @@ fn check_is_implemented_and_answers_with_an_exit_code() {
     );
 }
 
+#[cfg(feature = "sqlite-bundled")]
 #[test]
 fn export_uses_the_facades_format_list_and_reaches_the_facades_code() {
     // The format list is the facade's (`fathom_analyze::export::Format`), so `--format` here, the TUI's
@@ -279,7 +288,12 @@ fn doctor_json_is_json_and_says_the_same_thing() {
     assert_eq!(parsed["views_ready"].as_bool(), Some(true));
     assert_eq!(
         parsed["schema_version"].as_u64(),
-        Some(1),
+        // The number is a literal on purpose: `e10.3` took `risk.rank`/`risk.ranked` out of the delta
+        // document with the ranked pane, which is a breaking removal and therefore a version bump
+        // (`fathom-delta/2`, ADR-006 §5.1.2 §5). A bump that reads itself out of the façade would let a
+        // removal through this door unnoticed; `tools/check_delta_compat.py check` is the other half of
+        // the same rule.
+        Some(2),
         "doctor is where a bug report names the review model it was built against"
     );
     let features = parsed["features"].as_array().expect("a feature array");
@@ -1350,7 +1364,7 @@ fn index_rebuild_moves_the_epoch_and_watch_hands_over_after_indexing() {
 #[test]
 fn an_empty_frame_names_the_index_it_actually_found() {
     let dir = repository();
-    let frame = |args: &[&str]| {
+    let draw = |args: &[&str]| {
         let out = Command::new(env!("CARGO_BIN_EXE_fathom"))
             .args(args)
             .current_dir(&dir)
@@ -1360,18 +1374,21 @@ fn an_empty_frame_names_the_index_it_actually_found() {
         stdout(&out)
     };
 
-    // Nothing indexed: `fathom index` is the honest remedy, so the frame is allowed to say it.
-    let bare = frame(&["--plain", "--fresh"]);
+    // Nothing indexed: `fathom index` is the honest remedy, so the frame is allowed to say it. The
+    // sentence is read back unwrapped (`tests/frame.rs`): the rail's column is narrower than the
+    // worklist's that used to carry this pane, so the words wrap and the claim is about the words.
+    let bare = draw(&["--plain", "--fresh"]);
+    let bare_text = frame::unfolded(&bare);
     assert!(
-        bare.contains("no index here yet")
-            && bare.contains("run `fathom index` here, then reopen fathom"),
+        bare_text.contains("no index here yet")
+            && bare_text.contains("run `fathom index` here, then reopen fathom"),
         "the unindexed frame should name the verb that works:\n{bare}"
     );
 
     let indexed = fathom(&["index", dir.to_str().expect("utf-8")]);
     assert_eq!(code(&indexed), 0, "{}", stderr(&indexed));
 
-    let filled = frame(&["--plain", "--fresh"]);
+    let filled = draw(&["--plain", "--fresh"]);
     // The index state the caller actually read, printed instead of the command that would do nothing.
     let line = filled
         .lines()
@@ -1381,19 +1398,21 @@ fn an_empty_frame_names_the_index_it_actually_found() {
         });
     assert!(line.contains("eps"), "{line}");
     // `reco-wzt` rewrote this half of the sentence. It used to name the missing episode read; the read
-    // exists now, and so does the queue that lists what it found — so the frame prints the episodes,
-    // the epoch it read them from and the order it put them in, instead of a remedy.
+    // exists now, and so does the rail that lists what it found — so the frame prints the episodes,
+    // the epoch it read them from and the order it put them in, instead of a remedy. Read unwrapped, for
+    // the same reason as the frame above.
+    let filled_text = frame::unfolded(&filled);
     assert!(
-        filled.contains("from index epoch 1 (ready)"),
+        filled_text.contains("from index epoch 1 (ready)"),
         "the indexed frame should say which epoch it listed:\n{filled}"
     );
     assert!(
-        filled.contains("order: queue-1"),
-        "the indexed frame should say what order the queue is in, and name the function that put it there \
-         (`e4.5` replaced `reco-c05`'s spine-only order, so this assertion moved with it):\n{filled}"
+        filled_text.contains("order: newest first"),
+        "the indexed frame should say what order the rail is in, in words the renderer implements \
+         (`e10.3` retired the ranked pane: the named order is the chronology):\n{filled}"
     );
     assert!(
-        !filled.contains("run `fathom index`") && !filled.contains("run fathom index"),
+        !filled_text.contains("run `fathom index`") && !filled_text.contains("run fathom index"),
         "the index is finished; the frame must not send the reviewer to run it again:\n{filled}"
     );
 

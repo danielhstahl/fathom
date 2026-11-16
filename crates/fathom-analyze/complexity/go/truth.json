@@ -1,0 +1,29 @@
+{
+  "language": "go",
+  "basis": "mccabe-1",
+  "notes": "Hand-authored against ADR-007 §4.4. Go is the language where the ADR's refusals do the most work: the `switch`, `switch type` and `select` *headers* count nothing and their arms count one each, so `Route` is 10 because it has nine arms and tests, not because it has three statements; and Go has one loop, so `Loops` is 8 from four `for`s and three `if`s no matter which of the four spellings each one uses. The `defer`, `go`, `return`, `break`, `continue` and `fallthrough` in `Loops` are exits and count 0 — the branches that reach them are already in the figure. `Extern` is a Go declaration with no body at all (an assembly or external implementation), which is `body_not_visible` rather than a unit with one path: the paths are in another file, and a `1` there would be a claim about code this file does not contain. `limited.go` carries a `//go:build` line, so the extractor's `build_constraint` mark makes its figure a floor — both files of a constrained pair are measured and neither may claim to be the whole story (ADR-007 §4.4).",
+  "files": {
+    "worked.go": {
+      "state": "partial",
+      "sum": 26,
+      "max": 10,
+      "reason": "",
+      "functions": [
+        { "n": "Shape.Area", "kind": "method", "v": 8, "points": 7 },
+        { "n": "Route", "kind": "fn", "v": 10, "points": 9 },
+        { "n": "Loops", "kind": "fn", "v": 8, "points": 7 },
+        { "n": "Extern", "kind": "fn", "v": null, "r": "body_not_visible" }
+      ]
+    },
+    "limited.go": {
+      "state": "partial",
+      "sum": 3,
+      "max": 3,
+      "reason": "",
+      "marks": ["build_constraint"],
+      "functions": [
+        { "n": "Init", "kind": "fn", "v": 3, "points": 2 }
+      ]
+    }
+  }
+}

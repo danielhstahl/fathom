@@ -55,16 +55,25 @@ use crate::risk::{self, Surface};
 ///
 /// Same spelling as `e2.10`'s `fathom-card/1` for the same reason — a consumer switches on the shape it got
 /// rather than the shape it hoped for.
-pub const CONTRACT: &str = "fathom-delta/1";
+pub const CONTRACT: &str = "fathom-delta/2";
 
 /// The version of this structure. Bump it in the same commit as a breaking schema change, and no earlier.
-pub const VERSION: u32 = 1;
+///
+/// `e10.3` (`reco-ydek.3`) is v2: the queue's placement figures — `risk.rank` and `risk.ranked`, the
+/// `rank N of M` a ranked set produced — left the document with the pane that printed them. A removal is
+/// breaking under the policy above, however few readers used it, so the number moves and the baseline is
+/// re-blessed in the same commit (`python3 tools/check_delta_compat.py bless`).
+pub const VERSION: u32 = 2;
 
-/// The most figures one section may carry before the remainder is named.
+/// How many figures one section may carry before the remainder is named.
 ///
 /// A cap with a stated remainder, not a truncation: `e2.10`'s card rule that a cut which is not counted is
-/// a lost fact.
-pub const FIGURE_CAP: usize = 8;
+/// a lost fact. Ten is what the `what` section needs now that `e8.5` has put a complexity figure in it —
+/// the four size figures, the complexity figure, the binary row, the capped-read row, the two taxonomy
+/// rows and the noise fold — because a cap that dropped the noise fold to make room for a new figure would
+/// have traded one honest number for another. Raising it is additive: `maxItems` in the published schema
+/// only ever accepts more.
+pub const FIGURE_CAP: usize = 10;
 
 /// How many rows of a rollup (surfaces, directories, classes) one figure's value may list.
 pub const ROLLUP_CAP: usize = 5;
@@ -706,7 +715,7 @@ pub struct Totals {
     pub n_binary: i64,
     /// Churn, `n_add + n_del`. Filled by [`compose`].
     pub churn: i64,
-    /// Churn discounted as noise, by the same rule `spine-1` prices size with. Filled by [`compose`].
+    /// Churn discounted as noise, by the same rule `spine-3` prices size with. Filled by [`compose`].
     pub discounted_churn: i64,
     /// Churn a reviewer is expected to read: `churn - discounted_churn`. Filled by [`compose`].
     pub reviewable_churn: i64,
@@ -722,16 +731,527 @@ pub struct Totals {
 
 impl Totals {
     /// The discount rule's name, printed beside any figure that used it.
+    ///
+    /// It names `spine-1` and keeps naming it after `spine-2` arrived (`reco-l9bz.7`), on purpose. The
+    /// token is *data*, not a version stamp: it is written into every delta document this build has
+    /// already emitted, into the gap sentence beside it and into the goldens that recorded it, and the
+    /// rule it cites — three quarters of noisy churn discounted, by path class — did not change when a
+    /// sixth component joined the ranking. Renaming it would make two documents describe one discount
+    /// under two names, and a reader could not tell that apart from the discount changing.
     pub const DISCOUNT_RULE: &'static str = "spine-1/noisy-path";
 
     /// The fraction of noisy churn still counted, as a percent — printed so the discount is checkable.
     pub const DISCOUNT_KEEP_PERCENT: u64 = 25;
 }
 
+// ---------------------------------------------------------------------------
+// complexity: the figure that lives beside the line counts
+// ---------------------------------------------------------------------------
+
+/// How many columns the narrowest card has, which is how long the one-line form of a gap may be.
+///
+/// ADR-006 §5.1 gives the timeline card thirty-five columns, and `e2.10`'s rule — inherited by this model
+/// along with the rest of the card's discipline — is that the line a card prints is written where the fact
+/// is written. So the width limit belongs to the model that composes the sentence and not to whichever pane
+/// is drawing today, and [`EpisodeDelta::verify`] enforces it on the one line in this document whose whole
+/// sentence has to fit: the complexity gap.
+pub const CARD_COLUMNS: usize = 35;
+
+/// The label of the complexity figure, spelled once (ADR-007 §10.1: one word, in full, lowercase).
+///
+/// The card draws its row under this name, `fathom analyze` prints it under this name and the export
+/// links it under this name. A second spelling in a second surface is exactly the collision §10.2 refuses,
+/// and a pane that matches on a literal copy of the word is a pane that silently stops drawing the row the
+/// day the model rewords it.
+pub const COMPLEXITY_LABEL: &str = "complexity";
+
+/// What one episode did to the complexity of the files it touched, as the document carries it
+/// (`e8.5`, ADR-007 §5.2–§5.4).
+///
+/// This is the same *kind* of thing [`Totals`] is: a roll-up over stored rows, arithmetic rather than a
+/// computation, sitting beside the `+add`/`−del` counters it qualifies so that a surface never has to
+/// decide for itself what "harder to follow" means. The store answers it as a join
+/// ([`fathom_store::spine::Store::episode_complexity`] in the store's words); the document then words
+/// it, because the three things a figure has to travel with — its absolutes, its coverage and the reason
+/// codes for what was never counted — are the model's business, not the read's.
+///
+/// * [`ComplexityView::delta`] is the review number: `head − base` summed over the paths whose two sides
+///   were counted under one basis. It is signed and never bare — `+7`, `−3`, `±0` (ADR-007 §10.1).
+/// * [`ComplexityView::absolute`] is a property of the touched paths at head and nothing wider
+///   (ADR-007 §8.1 refuses the repository-wide total this would otherwise become).
+/// * [`ComplexityView::coverage`] is part of the figure, never a footnote under it (ADR-007 §5.4): a floor
+///   printed without its denominator is a number whose reliability a reader cannot see.
+/// * [`ComplexityView::reasons`] is the §7.1 vocabulary, per path: a file that was never parsed has no
+///   figure, and the code says which kind of never that was.
+///
+/// `measured: false` is the shape ADR-007 §5.4 insists on — "zero coverage is not a zero delta" — and it is
+/// why this block carries its own [`ComplexityView::gap`]: the `what` section has one gap slot and it is
+/// already spent on the noise discount, so the card's thirty-five-column line about *this* silence lives
+/// beside the figure it describes.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct ComplexityView {
+    /// The basis tokens the figures were counted under (`mccabe-1` for anything this build writes).
+    /// More than one is ADR-007 §9.5's `mixed_basis` episode: two rule sets, one episode, no sum.
+    pub basis: Vec<String>,
+    /// Σ(`head − base`) over the paths whose two sides were both counted under one basis. `None` means
+    /// *no* path could be subtracted, which prints `?` and never `0`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub delta: Option<i64>,
+    /// Σ of the head figures over the paths this episode touched. Not a repository figure, and never one
+    /// that can be added down a rail (ADR-007 §8.1).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub absolute: Option<i64>,
+    /// The largest head figure over the episode's paths — a max, never a sum (ADR-007 §5.1).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub max: Option<i64>,
+    /// Paths in scope: the denominator of every coverage number in this block.
+    pub touched: i64,
+    /// Paths whose two sides could be subtracted, and so are inside `delta`.
+    pub measured_paths: i64,
+    /// Paths that could not, each tallied in [`ComplexityView::reasons`].
+    pub unmeasurable_paths: i64,
+    /// Why each unmeasurable path could not be, by ADR-007 §7.1 code, counted once per path.
+    pub reasons: BTreeMap<String, i64>,
+    /// Whether [`ComplexityView::delta`] holds a number. `false` is printed `?` with its reason and never
+    /// as a zero — ADR-007 §5.4's sentence, in a field.
+    pub measured: bool,
+    /// One of the three states, in the same three spellings every section uses.
+    pub state: String,
+    /// `measured_paths / touched`, absent when there is no denominator (ADR-007 §5.4: `None` and `0 %`
+    /// are different claims).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub coverage: Option<f64>,
+    /// The gap for a figure nothing measured: the thirty-five-column line a card prints, the plan key that
+    /// owns the answer, and the command that fills it when one exists. `None` whenever there is a figure.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub gap: Option<Gap>,
+}
+
+impl ComplexityView {
+    /// The dominant refusal: the code that refused the most paths, ties broken by name so two runs over
+    /// one store write one string.
+    #[must_use]
+    pub fn dominant_reason(&self) -> Option<&str> {
+        let mut rows: Vec<(&String, &i64)> = self.reasons.iter().collect();
+        rows.sort_by(|a, b| b.1.cmp(a.1).then(a.0.cmp(b.0)));
+        rows.first().map(|(code, _)| code.as_str())
+    }
+
+    /// The sentence a surface prints instead of the figure: the tally, the dominant code's own wording,
+    /// and the command that would fill it. Built here because every surface that prints `?` owes the same
+    /// sentence (ADR-006 §10.3: a shrug is not a remedy).
+    #[must_use]
+    pub fn unknown_sentence(&self) -> String {
+        if self.reasons.is_empty() {
+            return if self.touched == 0 {
+                "this episode touched no path the complexity pass could see, so there was nothing to \
+                 count"
+                    .to_owned()
+            } else {
+                format!(
+                    "{} path(s) were in scope, none produced a figure, and no reason was recorded for \
+                     any of them",
+                    grouped(self.touched)
+                )
+            };
+        }
+        let mut text = format!(
+            "{} of {} path(s) in this episode had no figure ({}) — {}",
+            grouped(self.unmeasurable_paths),
+            grouped(self.touched),
+            reasons_phrase(&self.reasons),
+            self.dominant_reason()
+                .map_or_else(String::new, |code| refusal_long(code).to_owned())
+        );
+        if self.basis.len() > 1 {
+            text.push_str(&format!(
+                "; this episode carries {} basis tokens ({}), which are not comparable with each other",
+                self.basis.len(),
+                self.basis.join(", ")
+            ));
+        }
+        if let Some(run) = self.gap.as_ref().and_then(|gap| gap.remedy.as_deref()) {
+            text.push_str(&format!("; `{run}` is what fills it"));
+        }
+        text
+    }
+}
+
+/// Every ADR-007 §7.1 code this table words, in one list a test can walk.
+///
+/// The point of naming them is that the vocabulary is closed and shared: `tests/complexity_delta.rs` fails
+/// unless this list and [`crate::structure::UnavailableReason::vocabulary`] hold exactly the
+/// same codes, which is what stops a code from arriving here without a card line of its own.
+pub const REFUSAL_CODES: &[&str] = &[
+    "absent_revision",
+    "binary",
+    "body_not_visible",
+    "column_not_filled",
+    "contents_not_kept",
+    "extractor_not_shipped",
+    "grammar_not_compiled",
+    "language_unknown",
+    "mixed_basis",
+    "no_bodies",
+    "node_budget",
+    "not_utf8",
+    "parse_failed",
+    "parser",
+    "rename_unpaired",
+    "scan_budget",
+    "too_large",
+];
+
+/// The §7.1 table, in the four columns a surface needs: the phrase that fits beside the word
+/// `complexity` on a card, the phrase that explains it, the plan key that owns the answer, and the
+/// command that fills it when a command exists.
+///
+/// The codes are the strings `structure::UnavailableReason` writes and `fathom_store::complexity` stores —
+/// one vocabulary for "this has no figure", as ADR-007 §7.1 demands, not a second one invented here. The
+/// short column is written to a budget: `complexity: <short> (<owner>)` has to fit the narrowest card
+/// ([`CARD_COLUMNS`] columns), and [`EpisodeDelta::verify`] refuses anything longer, so a new code cannot
+/// arrive with a sentence that gets cut.
+fn refusal(
+    code: &str,
+) -> (
+    &'static str,
+    &'static str,
+    &'static str,
+    Option<&'static str>,
+) {
+    match code {
+        "column_not_filled" => (
+            "not measured yet",
+            "this index has not filled the complexity column for these rows yet",
+            "e8.3",
+            Some("fathom index"),
+        ),
+        "scan_budget" => (
+            "over scan budget",
+            "the per-run complexity budget was spent before these paths were reached; the key that ran out \
+             is named by `fathom doctor`",
+            "e8.4",
+            Some("fathom index"),
+        ),
+        "too_large" => (
+            "file too large",
+            "the file is over the byte cap the complexity pass will read",
+            "e8.4",
+            Some("fathom index"),
+        ),
+        "contents_not_kept" => (
+            "bytes not kept",
+            "the object database kept no contents for one side of the comparison, so nothing could be \
+             counted on it",
+            "e8.4",
+            Some("fathom index --refresh"),
+        ),
+        "mixed_basis" => (
+            "two rule sets",
+            "the two sides were counted under different rule sets, so subtracting them would be arithmetic \
+             on unlike units",
+            "e8.5",
+            Some("fathom index --rebuild"),
+        ),
+        "rename_unpaired" => (
+            "rename unpaired",
+            "a rename was guessed rather than asserted, so its two sides were not treated as one file",
+            "e2.4",
+            None,
+        ),
+        "binary" => (
+            "git says binary",
+            "git reports the file as binary, so its contents were never read",
+            "e8.5",
+            None,
+        ),
+        "not_utf8" => (
+            "not text",
+            "the file is not text in the part the extractor would read",
+            "e8.5",
+            None,
+        ),
+        "parse_failed" => (
+            "parse failed",
+            "the parse reported more error than code and returned no structure",
+            "e8.2",
+            None,
+        ),
+        "language_unknown" => (
+            "no grammar",
+            "the file is not one of the grammars fathom reads",
+            "e8.5",
+            None,
+        ),
+        "grammar_not_compiled" => (
+            "no grammar built",
+            "this build was compiled without the grammar that file needs",
+            "e3.1",
+            None,
+        ),
+        "extractor_not_shipped" => (
+            "no extractor yet",
+            "that language's complexity extractor has not shipped yet",
+            "e3.1",
+            None,
+        ),
+        "parser" => (
+            "no parser",
+            "the grammar was there and the parser could not be handed to it",
+            "e8.2",
+            None,
+        ),
+        "body_not_visible" => (
+            "body elsewhere",
+            "the unit is a declaration with no body here, so its branches are in another file",
+            "e8.2",
+            None,
+        ),
+        "node_budget" => (
+            "count cut short",
+            "the per-unit node budget ran out mid-body, so the figure is a floor and a floor does not \
+             print bare",
+            "e8.2",
+            None,
+        ),
+        "no_bodies" => (
+            "nothing callable",
+            "the file has no callable unit in it at all, so there was nothing to count",
+            "e8.2",
+            None,
+        ),
+        "absent_revision" => (
+            "new path",
+            "the path did not exist on the other side of the comparison, so there was nothing to subtract",
+            "e8.3",
+            None,
+        ),
+        _ => (
+            "nothing counted",
+            "the pass recorded neither a figure nor a reason for these paths",
+            "e8.5",
+            None,
+        ),
+    }
+}
+
+/// The explaining phrase for a reason code.
+fn refusal_long(code: &str) -> &'static str {
+    refusal(code).1
+}
+
+/// The reason tally as one value fragment: `too_large 2 · binary 1`, capped, with the cut counted.
+fn reasons_phrase(reasons: &BTreeMap<String, i64>) -> String {
+    if reasons.is_empty() {
+        return "no reason was recorded".to_owned();
+    }
+    let mut rows: Vec<(&String, &i64)> = reasons.iter().collect();
+    rows.sort_by(|a, b| b.1.cmp(a.1).then(a.0.cmp(b.0)));
+    let listed: Vec<String> = rows
+        .iter()
+        .take(ROLLUP_CAP)
+        .map(|(code, count)| format!("{code} {count}"))
+        .collect();
+    let rest = rows.len().saturating_sub(ROLLUP_CAP);
+    if rest > 0 {
+        format!("{} · {rest} more", listed.join(" · "))
+    } else {
+        listed.join(" · ")
+    }
+}
+
+/// The signed spelling ADR-007 §10.1 fixes for a complexity delta: `+7`, `−3`, `±0`.
+///
+/// The sign is a glyph rather than a hue because ADR-006 §10.2 refuses to let colour carry a fact alone,
+/// and `±0` is a different claim from `?` in a monochrome terminal as surely as it is in JSON.
+#[must_use]
+pub fn complexity_signed(value: i64) -> String {
+    match value {
+        0 => "±0".to_owned(),
+        value if value > 0 => format!("+{}", grouped(value)),
+        value => format!(
+            "−{}",
+            grouped(i64::try_from(value.unsigned_abs()).unwrap_or(i64::MAX))
+        ),
+    }
+}
+
+/// The one string every surface prints for a measured complexity figure (ADR-007 §10.1's three states).
+///
+/// `?` is deliberately not produced here: an unmeasured episode is an *unknown figure*, whose `?` and its
+/// reason arrive together through [`Figure::unknown`], and a surface that pasted its own `?` over this
+/// function's empty string would be the second opinion this model exists to forbid.
+#[must_use]
+pub fn complexity_headline(view: &ComplexityView) -> String {
+    let Some(delta) = view.delta else {
+        return String::new();
+    };
+    let signed = complexity_signed(delta);
+    let mut marks: Vec<String> = Vec::new();
+    if view.unmeasurable_paths > 0 {
+        // A floor says what it is a floor of: the mark, the coverage the sum was taken over, and the codes
+        // for the paths that are not in it (ADR-007 §5.4).
+        marks.push(format!(
+            "{} of {} measured · {} unmeasured: {}",
+            grouped(view.measured_paths),
+            grouped(view.touched),
+            grouped(view.unmeasurable_paths),
+            reasons_phrase(&view.reasons),
+        ));
+    }
+    if view.basis.len() > 1 {
+        // §9.5: the two tokens are not comparable with each other, and the sum carries that warning rather
+        // than pretending to be one number.
+        marks.push(format!("mixed basis: {}", view.basis.join(" vs ")));
+    }
+    if marks.is_empty() {
+        signed
+    } else {
+        format!("~{signed} ({})", marks.join(" · "))
+    }
+}
+
+/// The complexity figure for the `what` section: the one `complexity`-labelled claim every surface prints.
+///
+/// It goes through the evidence-carrying constructor like every other figure in this document, and its
+/// pointer resolves into the block beside it, so `verify` can — and does — fail the document when the
+/// printed number and the roll-up disagree.
+fn complexity_figure(view: &ComplexityView) -> Figure {
+    if let (true, Some(delta)) = (view.measured, view.delta) {
+        let mut raw: Vec<(&str, i64)> = vec![
+            ("delta", delta),
+            ("measured", view.measured_paths),
+            ("unmeasurable", view.unmeasurable_paths),
+            ("coverage_measured", view.measured_paths),
+            ("coverage_total", view.touched),
+        ];
+        if let Some(absolute) = view.absolute {
+            raw.push(("absolute", absolute));
+        }
+        if let Some(max) = view.max {
+            raw.push(("max", max));
+        }
+        return Figure::new(
+            COMPLEXITY_LABEL,
+            complexity_headline(view),
+            Evidence::inside("#/complexity"),
+        )
+        .with_raw(&raw);
+    }
+    // The unknown shape, with its owner and its remedy attached to the evidence as well as to the gap, so
+    // a consumer that reads figures and not gaps still gets pointed at the verb that answers.
+    let owner = view.gap.as_ref().map_or_else(
+        || SectionId::What.owner().to_owned(),
+        |gap| gap.owner.clone(),
+    );
+    let evidence = Evidence {
+        pointer: Some("#/complexity".to_owned()),
+        // Only a command that *fills* the figure belongs here. The verb that prints this document is not
+        // evidence of anything, and a `run` the reviewer can run without learning more is a decoration.
+        run: view.gap.as_ref().and_then(|gap| gap.remedy.clone()),
+        owner: Some(owner),
+    };
+    Figure::unknown(COMPLEXITY_LABEL, view.unknown_sentence(), evidence)
+}
+
+/// The gap for a figure nothing measured: the thirty-five-column line, its owner and its remedy.
+fn complexity_gap(view: &ComplexityView) -> Gap {
+    let code = view.dominant_reason().unwrap_or_default();
+    let (short, _, owner, remedy) = refusal(code);
+    Gap {
+        section: SectionId::What.as_str().to_owned(),
+        short: format!("{COMPLEXITY_LABEL}: {short}"),
+        reason: view.unknown_sentence(),
+        owner: owner.to_owned(),
+        remedy: remedy.map(str::to_owned),
+    }
+}
+
+/// Which analysis produced the complexity figures, in the words `provenance.models` uses.
+///
+/// The basis token is part of the answer, not a detail of it: `mccabe-1` and `cc-shannon-1` count different
+/// things and a figure is only comparable with a figure counted under the same token (ADR-007 §9.5).
+fn complexity_model_name(view: &ComplexityView) -> String {
+    let basis = if view.basis.is_empty() {
+        "no basis recorded".to_owned()
+    } else {
+        view.basis.join("+")
+    };
+    format!("structure::complexity ({basis})")
+}
+
+/// The state a complexity roll-up is in — one rule, used both when the document is built and when it is
+/// checked, because two copies of "when is this a partial answer" is two answers (ADR-001 §7.10).
+///
+/// A mixed basis caps the state at `partial` even when every path was counted: two tokens in one sum is
+/// arithmetic on unlike units (ADR-007 §9.5), and a figure that has to be read with a warning is not a
+/// measured one.
+fn complexity_state(view: &ComplexityView) -> &'static str {
+    if view.measured_paths > 0 && view.unmeasurable_paths == 0 && view.basis.len() <= 1 {
+        STATE_MEASURED
+    } else if view.measured_paths > 0 || view.basis.len() > 1 {
+        STATE_PARTIAL
+    } else {
+        STATE_UNAVAILABLE
+    }
+}
+
+/// Fill the fields this model derives from the counted ones: the state, the coverage and the gap.
+///
+/// Split out of [`compose`] because a surface that has a roll-up and no document — `fathom show`, which is
+/// a commit card rather than a delta — has to reach the same three conclusions, and two sets of rules
+/// about when a figure is a floor would be two answers (ADR-001 §7.10).
+fn settle_complexity(view: &mut ComplexityView) {
+    view.measured = view.delta.is_some();
+    view.state = complexity_state(view).to_owned();
+    view.coverage = if view.touched > 0 {
+        Some(
+            f64::from(u32::try_from(view.measured_paths).unwrap_or(u32::MAX))
+                / f64::from(u32::try_from(view.touched).unwrap_or(u32::MAX)),
+        )
+    } else {
+        None
+    };
+    view.gap = if view.measured {
+        None
+    } else {
+        // The gap's own sentence is the same sentence the figure prints, so it is taken *after* the gap
+        // exists: the remedy clause reads the gap's remedy, and a gap written before it would silently
+        // drop the one part of the answer a reviewer can act on (ADR-006 §10.3).
+        let mut gap = complexity_gap(view);
+        gap.reason = view.unknown_sentence();
+        Some(gap)
+    };
+}
+
+/// Hand the document's complexity figure to the ranking (`reco-l9bz.7`).
+///
+/// A translation, not a recomputation: every field comes from the same roll-up the card prints, because
+/// ADR-001 §7.10 allows one figure of an episode's complexity and not one per surface. The ranking's
+/// [`risk::Complexity`] is the same numbers with the ranking's own field names, and the reason codes
+/// arrive tally-ordered so the printed sentence is stable.
+fn risk_complexity(view: &ComplexityView) -> risk::Complexity {
+    let mut reasons: Vec<(String, usize)> = view
+        .reasons
+        .iter()
+        .map(|(code, paths)| (code.clone(), usize::try_from(*paths).unwrap_or(usize::MAX)))
+        .collect();
+    reasons.sort_by(|a, b| b.1.cmp(&a.1).then(a.0.cmp(&b.0)));
+    risk::Complexity {
+        delta: view.delta,
+        absolute: view.absolute,
+        max: view.max,
+        measured: usize::try_from(view.measured_paths.max(0)).unwrap_or(usize::MAX),
+        touched: usize::try_from(view.touched.max(0)).unwrap_or(usize::MAX),
+        reasons,
+        mixed_basis: view.basis.len() > 1,
+    }
+}
+
 /// One term of the ranking, with the sentence that justifies it.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RiskComponent {
-    /// The component name (`surfaces`, `size`, `deletions`, `breadth`, `author`).
+    /// The component name (`surfaces`, `complexity`, `size`, `deletions`, `breadth`).
     pub name: String,
     /// What it contributed.
     pub points: i64,
@@ -743,27 +1263,25 @@ pub struct RiskComponent {
 
 /// The ranking, in the form every surface prints.
 ///
-/// `reco-c05` computes the number; this is the same feature vector with its place in a ranked set and its
-/// blind spots attached, so the card, the queue, the artefact and the MCP tool print one ranking rather
-/// than four close approximations of it.
+/// `reco-c05` computes the number; this is the same feature vector with its blind spots attached, so the
+/// card, the rail, the artefact and the MCP tool print one ranking rather than four close approximations
+/// of it.
+///
+/// It carries no *place* in a ranking. `risk.rank`/`risk.ranked` — the `rank N of M` a card row used to
+/// print — went with the ranked set in `e10.3` (ADR-006 §5.1.2 §5): the CLI scores one episode and a pane
+/// that no longer ranks a set cannot cite a place in one. That removal is why the contract is v2.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RiskView {
-    /// Which ranking produced the number (`spine-1` today; `e4.4`'s scorer replaces the inputs, not this).
+    /// Which ranking produced the number (`spine-3` today; `e4.4`'s scorer replaces the inputs, not this).
     pub model: String,
-    /// 0..=100.
+    /// The score: `0..=92` under `spine-3`, whose caps sum to `risk::SCORE_CEILING`.
     pub score: i64,
-    /// `spine-1 88 = surfaces 50 + size 12 + deletions 14 + breadth 8 + author 4`.
+    /// `spine-3 92 = surfaces 50 + complexity 12 + size 12 + deletions 10 + breadth 8`.
     pub vector: String,
     /// The components that contributed, largest first — the feature vector, in order.
     pub components: Vec<RiskComponent>,
     /// The surfaces touched, most consequential first.
     pub surfaces: Vec<String>,
-    /// This episode's place, and the size of the set it was ranked in, when a set was ranked.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub rank: Option<i64>,
-    /// See [`RiskView::rank`].
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub ranked: Option<i64>,
     /// The caveat when the file list was capped.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub caveat: Option<String>,
@@ -772,10 +1290,9 @@ pub struct RiskView {
 }
 
 impl RiskView {
-    /// The ranking [`crate::risk`] computed, plus the two things only the caller knows: which set it was
-    /// ranked within, and how many rows that set held.
+    /// The ranking [`crate::risk`] computed, in the shape every surface prints.
     #[must_use]
-    pub fn of(ranking: &risk::Risk, rank: Option<i64>, ranked: Option<i64>) -> Self {
+    pub fn of(ranking: &risk::Risk) -> Self {
         RiskView {
             model: risk::MODEL.to_owned(),
             score: i64::from(ranking.score),
@@ -795,9 +1312,7 @@ impl RiskView {
                 .iter()
                 .map(|surface| surface.as_str().to_owned())
                 .collect(),
-            rank,
-            ranked,
-            caveat: ranking.caveat().map(str::to_owned),
+            caveat: ranking.caveat(),
             blind_spots: risk::BLIND_SPOTS
                 .iter()
                 .map(|spot| (*spot).to_owned())
@@ -1194,6 +1709,11 @@ pub struct EpisodeDelta {
     pub episode: EpisodeRef,
     /// The scale, measured and derived.
     pub totals: Totals,
+    /// What the episode did to the complexity of the files it touched, beside the line counts it belongs
+    /// with (`e8.5`, ADR-007 §5.2). `None` means no roll-up was read for this document, which is a
+    /// different claim from a figure of zero and prints differently: no row, rather than a `?`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub complexity: Option<ComplexityView>,
     /// The rows the figures are derived from, in path order.
     pub files: Vec<FileDelta>,
     /// The seven sections, in [`SectionId::ALL`]'s order. A newer producer's extra sections are ignored on
@@ -1225,6 +1745,10 @@ pub struct Input {
     pub files: Vec<FileDelta>,
     /// The spine counts and the read's own caps. The derived fields are recomputed by [`compose`].
     pub totals: Totals,
+    /// The complexity roll-up, when the read had one. `compose` derives its state and its gap; a reader
+    /// that hands over `None` gets no complexity figure, which is the difference between "not read here"
+    /// and "nothing could be counted".
+    pub complexity: Option<ComplexityView>,
     /// The ranking, if anything ranked this episode.
     pub risk: Option<RiskView>,
     /// Where the rows came from.
@@ -1241,6 +1765,7 @@ impl Input {
             episode,
             files: Vec::new(),
             totals: Totals::default(),
+            complexity: None,
             risk: None,
             provenance: Provenance {
                 source: "synthetic".to_owned(),
@@ -1361,7 +1886,7 @@ pub fn compose(input: &Input) -> EpisodeDelta {
     let mut totals = input.totals.clone();
     totals.churn = input.totals.n_add.saturating_add(input.totals.n_del);
 
-    // The discount is `spine-1`'s, applied the same way, so "reviewable churn" means one thing in the score
+    // The discount is `spine-3`'s, applied the same way, so "reviewable churn" means one thing in the score
     // and in the card. A noisy path still counts a quarter of its churn: noise is a view, never a deletion.
     let noisy: i64 = files
         .iter()
@@ -1386,8 +1911,15 @@ pub fn compose(input: &Input) -> EpisodeDelta {
     };
 
     let full = input.provenance.files_detail == Provenance::DETAIL_FULL;
+    // The complexity roll-up arrives counted and leaves worded: the state, the coverage and the gap are
+    // derived here so that the document, not the read, decides what a floor and an absence mean.
+    let complexity = input.complexity.as_ref().map(|view| {
+        let mut view = view.clone();
+        settle_complexity(&mut view);
+        view
+    });
     let sections = vec![
-        what_section(files, &totals, full),
+        what_section(files, &totals, full, complexity.as_ref()),
         where_section(files, &totals, full, &input.supplied),
         dependencies_section(&input.supplied, &input.provenance.files_detail),
         surface_section(files, &input.supplied),
@@ -1399,16 +1931,27 @@ pub fn compose(input: &Input) -> EpisodeDelta {
         .iter()
         .filter_map(|section| section.gap.clone())
         .collect();
+    let mut provenance = input.provenance.clone();
+    if let Some(view) = complexity.as_ref() {
+        // The model map is where a figure's yardstick is named, and a complexity figure's yardstick is its
+        // basis token: the same file counted under a different token is a different number, so the token
+        // belongs with the number rather than in a footnote (ADR-007 §9.5). Written here rather than in the
+        // store bridge so that a document composed from rows, from an artefact, or from a test says it too.
+        provenance
+            .models
+            .insert("complexity".to_owned(), complexity_model_name(view));
+    }
     let mut delta = EpisodeDelta {
         contract: CONTRACT.to_owned(),
         schema_version: VERSION,
         episode: input.episode.clone(),
         totals,
+        complexity,
         files: files.clone(),
         sections,
         risk: input.risk.clone(),
         gaps,
-        provenance: input.provenance.clone(),
+        provenance,
         integrity: Integrity {
             verified: false,
             problems: Vec::new(),
@@ -1456,7 +1999,16 @@ fn gap_for(
 }
 
 /// The `what` section: scale, and what of the scale a review reads.
-fn what_section(files: &[FileDelta], totals: &Totals, full: bool) -> Section {
+///
+/// The complexity figure rides here, beside the line counts, because that is where a reader decides how
+/// much of a change is work: `+552 −105` and `±0` say a large edit made the code no harder to follow, and
+/// `+552 −105` and `+41 (4/5 measured)` say it did (`e8.5`, ADR-007 §5.3).
+fn what_section(
+    files: &[FileDelta],
+    totals: &Totals,
+    full: bool,
+    complexity: Option<&ComplexityView>,
+) -> Section {
     let inside = |pointer: &str| Evidence::inside(format!("#{pointer}"));
     let mut figures = vec![
         Figure::new(
@@ -1493,6 +2045,9 @@ fn what_section(files: &[FileDelta], totals: &Totals, full: bool) -> Section {
             ("discounted", totals.discounted_churn),
         ]),
     ];
+    if let Some(view) = complexity {
+        figures.push(complexity_figure(view));
+    }
     if totals.n_binary > 0 {
         figures.push(
             Figure::new(
@@ -2048,19 +2603,8 @@ fn attention_section(risk_view: Option<&RiskView>, supplied: &Supplied) -> Secti
     let mut figures = Vec::new();
     if let Some(risk_view) = risk_view {
         figures.push(
-            Figure::new(
-                "risk",
-                format!(
-                    "{}{}",
-                    risk_view.vector,
-                    risk_view
-                        .rank
-                        .map(|rank| format!(" · rank {rank} of {}", risk_view.ranked.unwrap_or(0)))
-                        .unwrap_or_default()
-                ),
-                Evidence::inside("#/risk"),
-            )
-            .with_raw(&[("score", risk_view.score)]),
+            Figure::new("risk", risk_view.vector.clone(), Evidence::inside("#/risk"))
+                .with_raw(&[("score", risk_view.score)]),
         );
         for component in &risk_view.components {
             figures.push(Figure::new(
@@ -2122,7 +2666,7 @@ fn attention_section(risk_view: Option<&RiskView>, supplied: &Supplied) -> Secti
         Some(gap_for(
             id,
             "spine-only ranking",
-            "the ranking is the spine-only one: size, surfaces, deletions, breadth and authorship. \
+            "the ranking is the spine-only one: size, surfaces, complexity, deletions and breadth. \
              Findings, staleness and blast radius enter with `e4.4`'s scorer, and until then the \
              blind-spot list above is part of the answer rather than a footnote to it",
             None,
@@ -2161,7 +2705,7 @@ fn cap<T>(rows: Vec<T>, limit: usize) -> (Vec<T>, u64) {
 ///
 /// Printed inside the payload (`integrity.checks`) so that `verified: true` is a claim with a definition
 /// rather than a boolean a reader has to trust.
-pub const CHECKS: [&str; 9] = [
+pub const CHECKS: [&str; 10] = [
     "contract and schema_version are this build's",
     "the seven sections are present, in order, once each",
     "every figure carries evidence, and every evidence pointer resolves inside the document",
@@ -2171,6 +2715,7 @@ pub const CHECKS: [&str; 9] = [
     "the flat gap list is the section gaps, same order, nothing extra",
     "the derived totals are arithmetic, not decoration",
     "no section exceeds the figure cap",
+    "the complexity figure is the roll-up beside it, not a second opinion of it",
 ];
 
 /// Every plan key shape the documents use: `e2.11`, `s4`, `m1`, or a bead id.
@@ -2466,6 +3011,128 @@ impl EpisodeDelta {
                 self.files.len()
             ));
         }
+
+        // 10 — the complexity figure and the roll-up beside it are one answer (`e8.5`). The figure is what
+        // every surface prints, the block is what it was read from, and the two disagreeing is the same
+        // bug ADR-001 §7.10 was written to end — so it is checked here rather than left to a reviewer who
+        // happens to notice that the card's number is not the export's.
+        let figure = self.section(SectionId::What).and_then(|section| {
+            section
+                .figures
+                .iter()
+                .find(|figure| figure.label == COMPLEXITY_LABEL)
+        });
+        match (&self.complexity, figure) {
+            (None, None) => {}
+            (None, Some(_)) => problems.push(
+                "the `what` section prints a `complexity` figure with no `complexity` block to read \
+                 it from"
+                    .to_owned(),
+            ),
+            (Some(view), None) => problems.push(format!(
+                "the document carries a complexity roll-up over {} path(s) and no `{COMPLEXITY_LABEL}` \
+                 figure to print it",
+                grouped(view.touched)
+            )),
+            (Some(view), Some(figure)) => {
+                if figure.known != view.measured {
+                    problems.push(format!(
+                        "complexity: the figure says {} and the roll-up says measured={}",
+                        if figure.known { "a measurement" } else { "nothing" },
+                        view.measured
+                    ));
+                }
+                if figure.raw.get("delta") != view.delta.as_ref() {
+                    problems.push(format!(
+                        "complexity: the figure's `delta` is {:?} and the roll-up's is {:?}",
+                        figure.raw.get("delta"),
+                        view.delta
+                    ));
+                }
+                if view.measured && figure.value != complexity_headline(view) {
+                    problems.push(format!(
+                        "complexity: the figure prints `{}` and this roll-up prints `{}` — one surface \
+                         has formatted the number itself",
+                        figure.value,
+                        complexity_headline(view)
+                    ));
+                }
+                // The block's own arithmetic, re-done rather than trusted.
+                if view.measured_paths + view.unmeasurable_paths != view.touched {
+                    problems.push(format!(
+                        "complexity: {} measured + {} unmeasurable is not the {} paths in scope",
+                        grouped(view.measured_paths),
+                        grouped(view.unmeasurable_paths),
+                        grouped(view.touched)
+                    ));
+                }
+                let expected_state = complexity_state(view);
+                if view.state != expected_state {
+                    problems.push(format!(
+                        "complexity: state `{}` is not what the counts make it (`{expected_state}`)",
+                        view.state
+                    ));
+                }
+                let expected_coverage = if view.touched > 0 {
+                    Some(view.measured_paths as f64 / view.touched as f64)
+                } else {
+                    None
+                };
+                let agrees = match (view.coverage, expected_coverage) {
+                    (Some(got), Some(want)) => (got - want).abs() < 1e-9,
+                    (None, None) => true,
+                    _ => false,
+                };
+                if !agrees {
+                    problems.push(format!(
+                        "complexity: coverage {:?} is not measured_paths/touched ({:?})",
+                        view.coverage, expected_coverage
+                    ));
+                }
+                // The gap contract: no figure means a short line that a 35-column card can print, naming
+                // its owner — never the silence a zero would have been.
+                match (&view.gap, view.measured) {
+                    (Some(gap), false) => {
+                        if gap.short.trim().is_empty() {
+                            problems.push(
+                                "complexity: an unmeasured figure with an unprintable gap is an \
+                                 unmeasured figure with no gap"
+                                    .to_owned(),
+                            );
+                        }
+                        if gap.section != SectionId::What.as_str() {
+                            problems.push(format!(
+                                "complexity: its gap is filed against `{}`",
+                                gap.section
+                            ));
+                        }
+                        if !looks_like_plan_key(&gap.owner) {
+                            problems.push(format!(
+                                "complexity: gap owner `{}` is not a plan key",
+                                gap.owner
+                            ));
+                        }
+                        let printed = format!("{} ({})", gap.short, gap.owner);
+                        if printed.chars().count() > CARD_COLUMNS {
+                            problems.push(format!(
+                                "complexity: the card line `{printed}` is {} columns and the \
+                                 narrowest card has {CARD_COLUMNS}",
+                                printed.chars().count()
+                            ));
+                        }
+                    }
+                    (None, false) => problems.push(
+                        "complexity: an unmeasured figure with no gap is the silent zero ADR-007 §5.4 \
+                         refuses"
+                            .to_owned(),
+                    ),
+                    (Some(_), true) => problems.push(
+                        "complexity: a measured figure has no gap to close".to_owned(),
+                    ),
+                    (None, true) => {}
+                }
+            }
+        }
         // `integrity` itself is not checked here: `compose` runs this before the field can hold its
         // result, and a self-reference that reads as a failure during the only call that matters is a
         // check with a bug in it. The field is filled from this function's return, so it cannot disagree.
@@ -2616,6 +3283,25 @@ impl EpisodeDelta {
                 + bytes(&file.basis);
         }
         total += self.files.capacity() * std::mem::size_of::<FileDelta>();
+        if let Some(complexity) = &self.complexity {
+            total += complexity
+                .basis
+                .iter()
+                .map(|token| bytes(token))
+                .sum::<usize>();
+            total += complexity
+                .reasons
+                .keys()
+                .map(|code| bytes(code))
+                .sum::<usize>();
+            if let Some(gap) = &complexity.gap {
+                total += bytes(&gap.section)
+                    + bytes(&gap.short)
+                    + bytes(&gap.reason)
+                    + bytes(&gap.owner)
+                    + opt_bytes(&gap.remedy);
+            }
+        }
         for section in &self.sections {
             total += bytes(&section.id)
                 + bytes(&section.title)
@@ -2680,21 +3366,23 @@ pub fn short_id(id: &str) -> String {
 // ---------------------------------------------------------------------------
 //
 // This is the only place in the model that names `fathom-store`, and it is gated the same way `index` and
-// `sink` are: a build with no SQLite backend has no rows to bridge. The read is *four* statements at most
-// (episode, members, per-file rows, review state) and the rail path does all four for a whole page at once,
-// because a read whose cost grows with the rows it describes is a read a first frame cannot afford.
+// `sink` are: a build with no SQLite backend has no rows to bridge. The read is *five* statements at most
+// (episode, members, per-file rows, review state, complexity roll-up) and the rail path does each of them
+// for a whole page at once, because a read whose cost grows with the rows it describes is a read a first
+// frame cannot afford.
 
 #[cfg(any(feature = "sqlite-bundled", feature = "sqlite-system"))]
 mod store_bridge {
     use std::collections::BTreeMap;
 
+    use fathom_store::complexity::EpisodeComplexity;
     use fathom_store::episode::{EpisodeFile, EpisodeRow, ReviewState};
     use fathom_store::spine::Store;
 
     use super::{
-        AttributionEvidence, AttributionRef, EpisodeDelta, EpisodeRef, FileDelta, Input,
-        MEMBER_CAP, Provenance, RiskView, Supplied, SuppliedBlock, Totals, compose,
-        dependency_block, short_id,
+        AttributionEvidence, AttributionRef, ComplexityView, EpisodeDelta, EpisodeRef, FileDelta,
+        Input, MEMBER_CAP, Provenance, RiskView, Supplied, SuppliedBlock, Totals, compose,
+        dependency_block, settle_complexity, short_id,
     };
     use crate::error::Error;
     use crate::risk::{self, FileChange};
@@ -2785,6 +3473,9 @@ mod store_bridge {
         }
         let review = store.review_of(&row.id)?;
         let supplied = repo.map_or_else(Supplied::default, |repo| lend(repo, row));
+        // The complexity roll-up is one join over the episode's own file rows — the read ADR-007 §9.2 put
+        // beside `n_add`/`n_del` precisely so that this composition never walks a file a second time.
+        let rollups = store.episode_complexity(std::slice::from_ref(&row.id))?;
         let read = Read {
             row,
             review: review.as_str(),
@@ -2795,8 +3486,51 @@ mod store_bridge {
             detail: Provenance::DETAIL_FULL,
             truncated: false,
             supplied,
+            complexity: rollups.get(&row.id).map(view),
         };
         Ok(compose(&read.input()))
+    }
+
+    /// One episode's complexity roll-up, in the shape the document carries it (`e8.5`).
+    ///
+    /// Published for the surface that has an episode, a store and no delta document — `fathom show` prints
+    /// this figure beside the line counts off its own row — and settled by the same rules the composition
+    /// uses, so a card and a document cannot call the same roll-up a floor and a measurement.
+    ///
+    /// # Errors
+    ///
+    /// [`Error::Store`] when the store refuses.
+    pub fn episode_complexity(store: &Store, id: &str) -> Result<Option<ComplexityView>, Error> {
+        Ok(store
+            .episode_complexity(std::slice::from_ref(&id.to_owned()))?
+            .get(id)
+            .map(view))
+    }
+
+    /// The store's roll-up, worded: the counted numbers across, then the three this model derives.
+    ///
+    /// The store's own `state` is not copied, because the document's `state` has to be re-derivable from
+    /// the fields the document publishes — a state that depended on a row a reader never sees is a state
+    /// [`super::EpisodeDelta::verify`] could not check.
+    fn view(roll: &EpisodeComplexity) -> ComplexityView {
+        let count = |value: usize| i64::try_from(value).unwrap_or(i64::MAX);
+        let mut view = ComplexityView {
+            basis: roll.bases.iter().cloned().collect(),
+            delta: roll.delta,
+            absolute: roll.absolute,
+            max: roll.max,
+            touched: count(roll.paths_total()),
+            measured_paths: count(roll.measured),
+            unmeasurable_paths: count(roll.unmeasured),
+            reasons: roll
+                .reasons
+                .iter()
+                .map(|(code, paths)| (code.clone(), count(*paths)))
+                .collect(),
+            ..ComplexityView::default()
+        };
+        settle_complexity(&mut view);
+        view
     }
 
     /// The analyses a store read cannot answer, read from the clone that owns them.
@@ -2913,11 +3647,18 @@ mod store_bridge {
     ///
     /// The resulting document says so: `provenance.files_detail` is `rollup`, and the `where` section's move
     /// row is an unknown that names the verb that does have moves. One model, two bases, both stated.
+    ///
+    /// `complexity` is that episode's row from [`Store::episode_complexity`], which is a batched read the
+    /// caller makes once for the whole page (ADR-007 §9.2: the roll-up is a join, and a rail that asked per
+    /// episode would be a rail paying per row for one statement). `None` is "this read did not look": the
+    /// document then carries no complexity figure at all, which is a different claim from the `?` a roll-up
+    /// that could not be counted prints.
     pub fn for_rows(
         row: &EpisodeRow,
         files: &[EpisodeFile],
         review: ReviewState,
         truncated: bool,
+        complexity: Option<&EpisodeComplexity>,
     ) -> EpisodeDelta {
         let read = Read {
             row,
@@ -2943,11 +3684,12 @@ mod store_bridge {
             detail: Provenance::DETAIL_ROLLUP,
             truncated,
             supplied: Supplied::default(),
+            complexity: complexity.map(view),
         };
         compose(&read.input())
     }
 
-    /// The four things [`for_rows`] and [`build_one`] have in common, gathered so `input()` is written once.
+    /// What [`for_rows`] and [`build_one`] have in common, gathered so `input()` is written once.
     struct Read<'a> {
         row: &'a EpisodeRow,
         review: &'static str,
@@ -2955,6 +3697,7 @@ mod store_bridge {
         detail: &'static str,
         truncated: bool,
         supplied: Supplied,
+        complexity: Option<ComplexityView>,
     }
 
     impl Read<'_> {
@@ -3020,14 +3763,15 @@ mod store_bridge {
                 n_files: u64::try_from(row.n_files.max(0)).unwrap_or(u64::MAX),
                 n_binary: u64::try_from(row.n_binary.max(0)).unwrap_or(u64::MAX),
                 n_commits: u64::try_from(row.n_commits()).unwrap_or(u64::MAX),
-                author: &row.author_kind,
                 partial_files: self.truncated,
+                complexity: self.complexity.as_ref().map(super::risk_complexity),
             });
             Input {
                 episode,
                 files: self.files.clone(),
                 totals,
-                risk: Some(RiskView::of(&ranking, None, None)),
+                complexity: self.complexity.clone(),
+                risk: Some(RiskView::of(&ranking)),
                 provenance: Provenance {
                     source: "store".to_owned(),
                     store: None,
@@ -3045,7 +3789,9 @@ mod store_bridge {
     /// Which analysis produced which number in this document.
     ///
     /// [`Provenance::models`] is the static answer; a lent section adds its own, because "the card says 12
-    /// transitive packages" has to be traceable to the module that measured it (ADR-004 §5.1).
+    /// transitive packages" has to be traceable to the module that measured it (ADR-004 §5.1). The
+    /// complexity entry is not here on purpose: its basis token is derived from the roll-up itself, so
+    /// [`compose`] writes it and every way of composing a document says the same thing.
     fn models(supplied: &Supplied) -> BTreeMap<String, String> {
         let mut models = Provenance::models();
         if supplied.dependencies.is_some() {
@@ -3134,7 +3880,8 @@ mod store_bridge {
 
 #[cfg(any(feature = "sqlite-bundled", feature = "sqlite-system"))]
 pub use store_bridge::{
-    for_commit, for_commit_with_repo, for_episode, for_episode_with_repo, for_rows,
+    episode_complexity, for_commit, for_commit_with_repo, for_episode, for_episode_with_repo,
+    for_rows,
 };
 
 /// The smallest identity a caller can name.
@@ -3291,8 +4038,6 @@ impl RiskView {
             vector: String::new(),
             components: Vec::new(),
             surfaces: Vec::new(),
-            rank: None,
-            ranked: None,
             caveat: None,
             blind_spots: Vec::new(),
         }
@@ -3313,6 +4058,19 @@ impl RiskView {
         })
     }
 
+    /// What to do with the ceiling, in the model's own voice: the line a surface prints *after* it has
+    /// listed what the ranking cannot see.
+    ///
+    /// [`blind_spot_note`] counts the ceiling for a pane that has room for one row; this is what the
+    /// counted ceiling means, and it belongs beside it rather than in whichever pane expands the list
+    /// (`reco-5js3.3`, ADR-006 §5.1.1 rule 2). `None` when there is no ceiling to explain.
+    ///
+    /// [`blind_spot_note`]: Self::blind_spot_note
+    #[must_use]
+    pub fn ceiling_note(&self) -> Option<String> {
+        (!self.blind_spots.is_empty()).then(|| risk::CEILING_NOTE.to_owned())
+    }
+
     /// The surfaces as a row's badge: `migration+ci`, capped at three with a counted remainder.
     ///
     /// Moved here from `fathom-cli` in `e2.11`: the badge is how the model words its own output, and a
@@ -3328,17 +4086,6 @@ impl RiskView {
             format!("{} +{rest}", shown.join("+"))
         } else {
             shown.join("+")
-        }
-    }
-
-    /// `rank 3 of 212`, or the model name when no set was ranked.
-    #[must_use]
-    pub fn place(&self) -> String {
-        match (self.rank, self.ranked) {
-            (Some(rank), Some(ranked)) => format!("rank {rank} of {ranked}"),
-            (Some(rank), None) => format!("rank {rank}"),
-            (None, _) if self.model.is_empty() => "unranked".to_owned(),
-            (None, _) => self.model.clone(),
         }
     }
 

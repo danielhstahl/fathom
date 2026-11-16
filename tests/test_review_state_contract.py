@@ -262,10 +262,16 @@ def test_a_reword_moves_the_id_and_the_mark_follows_on_the_shape_tier(tmp_path):
     assert _fathom(binary, repo, "index").returncode == 0
 
     # The rail: the mark is on the row that now carries the reworded subject — a row that did not exist
-    # when the key was pressed, and whose id the ledger has never seen.
+    # when the key was pressed, and whose id the ledger has never seen. The frame carries the mark and the
+    # row; the subject it prints is the card's clipped copy of it (`e10.3` took the subject out of the
+    # rail's row), so the whole reworded subject is read where it is printed in full — `fathom episodes`,
+    # which is the rail's row set headless.
     frame = _rail(binary, repo)
-    assert REWORDED_SUBJECT in frame, f"the reworded row is not in the rail:\n{frame}"
     assert "✔ accepted" in frame, f"the mark did not follow the change:\n{frame}"
+    listed = _fathom(binary, repo, "episodes")
+    assert listed.returncode == 0, listed.stderr
+    assert REWORDED_SUBJECT in listed.stdout, \
+        f"no row carries the reworded subject:\n{listed.stdout}"
 
     # The ledger: fresh, and *which rung* it came over is a printed fact, not an inference.
     status = _status(binary, repo)

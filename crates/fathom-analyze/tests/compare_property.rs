@@ -163,6 +163,9 @@ fn contribution(item: &Row) -> Contribution {
         &episode_files(item),
         ReviewState::Unread,
         false,
+        // No complexity roll-up in the fixture corpus: this property is about gaps and totals, and the
+        // bridge's `None` says "not read here" rather than printing a figure the fixture never counted.
+        None,
     );
     if item.gap {
         // Force a gap into the tests section, which is the section `e3.x` has not filled in every

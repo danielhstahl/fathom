@@ -442,7 +442,12 @@ fn the_plain_line_mode_carries_every_fact_the_frame_does() {
     // ADR-006 §6.7: the line mode is the same frame, read in order. The check that makes that a
     // statement rather than a hope is that every visible character of the frame appears in the text
     // render — nothing is dropped because it lived in a column the renderer did not print.
-    for view in [ViewId::Queue, ViewId::Timeline, ViewId::Diff] {
+    for view in [
+        ViewId::Timeline,
+        ViewId::Structure,
+        ViewId::Artefact,
+        ViewId::Diff,
+    ] {
         let size = (100, 30);
         let mut app = app(view, size);
         app.notices.push("a notice worth reading".to_owned());

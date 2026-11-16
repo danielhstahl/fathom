@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Render spike `s6`'s measured tables from the committed report, and fail on drift.
 
-`docs/concepts/episode-relink.md` and ADR-003 §19 carry the numbers that closed ADR-003 §13.1 — the
+`docs/concepts/episode-derivation.md` and ADR-003 §19 carry the numbers that closed ADR-003 §13.1 — the
 missed-relink and false-relink rates of the shipped ladder, the price of every candidate fuzzy rung, and
 the gate results. Every one of them comes from one run of one harness, committed as
 `benchmarks/reports/s6-relink-accuracy.json`, and a table of numbers copied by hand out of a JSON file is
@@ -25,7 +25,7 @@ import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 REPORT = ROOT / "benchmarks" / "reports" / "s6-relink-accuracy.json"
-CONCEPT = ROOT / "docs" / "concepts" / "episode-relink.md"
+CONCEPT = ROOT / "docs" / "concepts" / "episode-derivation.md"
 ADR = ROOT / "docs" / "adr" / "0003-episodes.md"
 
 # The ladders whose rows the documents quote by hand; the rest are census columns.

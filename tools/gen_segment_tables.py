@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Render spike `s2`'s measured tables from the committed report, and fail on drift.
 
-`docs/concepts/episode-segmentation.md` and ADR-003 §18 carry the numbers that closed ADR-003 §4.4 and
+`docs/concepts/episode-derivation.md` and ADR-003 §18 carry the numbers that closed ADR-003 §4.4 and
 §13.7 — the boundary precision and recall of the candidate rule sets, the `episode.time_gap_minutes`
 sweep, the signal census, and the gate results. Every one of them comes from one run of one harness,
 committed as `benchmarks/reports/s2-segmentation-accuracy.json`, and a table of numbers copied by hand
@@ -27,7 +27,7 @@ import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 REPORT = ROOT / "benchmarks" / "reports" / "s2-segmentation-accuracy.json"
-CONCEPT = ROOT / "docs" / "concepts" / "episode-segmentation.md"
+CONCEPT = ROOT / "docs" / "concepts" / "episode-derivation.md"
 ADR = ROOT / "docs" / "adr" / "0003-episodes.md"
 
 STRATA = ("real", "fixture", "authored")

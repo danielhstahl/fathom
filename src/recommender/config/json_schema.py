@@ -37,10 +37,13 @@ import re
 from dataclasses import dataclass
 
 from . import schema as S
+from .command import command
 
 DRAFT = "https://json-schema.org/draft/2020-12/schema"
 SCHEMA_ID = "https://fathom.dev/schemas/fathom.schema.json"
-GENERATOR = "python3 -m recommender.config schema --write"
+#: The remedy every drift message prints. Spelled through :mod:`.command` because the shorter
+#: `fathom config schema --write` names a verb the shipped binary does not have.
+GENERATOR = command("schema", "--write")
 CHECKED_IN = "schemas/fathom.schema.json"
 
 #: The annotation keys this generator emits. Editor tooling ignores `x-*`; our own

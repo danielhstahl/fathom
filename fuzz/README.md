@@ -5,13 +5,13 @@ path names. The threat model — what each target is a stand-in for, and what is
 is [docs/security/threat-model.md](../docs/security/threat-model.md).
 
 ```bash
+# from the repository root
 cargo +nightly install cargo-fuzz
-cd fuzz
-mkdir -p fuzz/corpus && cp -R corpus/. fuzz/corpus/    # seed the run (see "Seeding a run" below)
-cargo +nightly fuzz run lockfile          # fuzz until it crashes or you stop it
-cargo +nightly fuzz run lockfile -- -max_total_time=1800 -rss_limit_mb=4096 -timeout=25
-cargo +nightly fuzz run hooks
-cargo +nightly fuzz run paths
+mkdir -p /tmp/fathom-seeds && cp -R fuzz/corpus/. /tmp/fathom-seeds/   # seed the run; see "Seeding a run"
+cargo +nightly fuzz run lockfile /tmp/fathom-seeds/lockfile   # fuzz until it crashes or you stop it
+cargo +nightly fuzz run lockfile /tmp/fathom-seeds/lockfile -- -max_total_time=1800 -rss_limit_mb=4096 -timeout=25
+cargo +nightly fuzz run hooks /tmp/fathom-seeds/hooks
+cargo +nightly fuzz run paths /tmp/fathom-seeds/paths
 ```
 
 ## Why this is a separate workspace
@@ -21,6 +21,34 @@ cargo +nightly fuzz run paths
 `cargo build --workspace` stays a promise a clean clone can keep. Nothing under `fuzz/` is built by
 `cargo build --workspace`, `cargo test --workspace`, `cargo deny`, or `cargo dist`, and nothing under `fuzz/`
 links into the shipped binary.
+
+## The marker cargo-fuzz reads before it does anything
+
+`Cargo.toml` here carries:
+
+```toml
+[package.metadata]
+cargo-fuzz = true
+```
+
+That is not decoration. cargo-fuzz reads it as the first thing it does — before it compiles a target, before
+it resolves a corpus — and refuses to go on without it:
+
+```text
+Error: manifest fuzz/Cargo.toml does not look like a cargo-fuzz manifest. Add following lines to override:
+[package.metadata]
+cargo-fuzz = true
+```
+
+which is the entire report a red fuzz job leaves: no target, no crash, no compile error, three nightly jobs
+agreeing with each other (`reco-com`).
+
+The marker also drives the directory discovery in the section "Seeding a run" below: cargo-fuzz walks up
+from the working directory to the first manifest that is **not** marked, and takes `<that>/fuzz` as the fuzz
+directory. Nothing else in this repository can see the marker — `cargo build`, `cargo clippy`, `cargo deny`
+and `tools/gen_fuzz_corpus.py check` all read this manifest happily without it, so it can go missing in a
+refactor that leaves nothing else red. `python3 tools/check_workflows.py` rule `P04` reads it the way
+cargo-fuzz does, on every pull.
 
 ## The one rule: a target and a test must call the same function
 
@@ -47,8 +75,8 @@ tested.
 A seed is self-describing so that a crash artefact is replayable with no other context:
 
 ```bash
-cd fuzz
-cargo +nightly fuzz run lockfile corpus/lockfile/Cargo.lock__deep-array
+# from the repository root — `cargo fuzz` finds its fuzz directory as ./fuzz from wherever you stand
+cargo +nightly fuzz run lockfile fuzz/corpus/lockfile/Cargo.lock__deep-array
 ```
 
 ## The corpus
@@ -59,22 +87,28 @@ disagree. Seeds are *shapes* — nesting, repetition, one enormous token, separa
 because plausible lockfiles are already what `crates/fathom-analyze/tests/golden/deps/` holds.
 
 ### Seeding a run
+`cargo fuzz` is run from the **repository root**. Its fuzz directory is `./fuzz` relative to the package it
+finds from the working directory, and the marker above is what makes that land on `fuzz/` from either
+directory: from the root directly, from inside `fuzz/` by walking up past this manifest to the root — without
+it, standing in `fuzz/` sends the run looking for `fuzz/fuzz/`, and the failure reads as a missing target
+rather than a missing level of the path. The root is still where a run belongs, because everything around
+`cargo fuzz` in `.github/workflows/fuzz.yml` — the seed copy, the `fuzz/artifacts/<target>` upload — is
+written from there.
 
-`cargo fuzz` keeps *its* working corpus under `fuzz/fuzz/corpus/<target>` — a different directory from the
-committed seeds, on purpose: the fuzzer appends whatever it discovers, and a discovered byte sequence is not
-something this repository reviews. So a run has to be pointed at the seeds, either by copying them into place
-(which is what CI does, so the committed corpus is never written to):
+Run from the root, its working corpus is `fuzz/corpus/<target>` — **the same directory the generator
+writes**, which is the one thing about this layout worth knowing before you press enter: the fuzzer appends
+everything it discovers to the directory it is pointed at, and a discovered byte sequence is not something
+this repository reviews. So point a real run at a copy:
 
 ```bash
-mkdir -p fuzz/fuzz/corpus && cp -R fuzz/corpus/. fuzz/fuzz/corpus/
-cargo +nightly fuzz run lockfile
+mkdir -p /tmp/fathom-seeds && cp -R fuzz/corpus/. /tmp/fathom-seeds/
+cargo +nightly fuzz run lockfile /tmp/fathom-seeds/lockfile
 ```
 
-or by naming one seed or one directory on the command line:
-
-```bash
-cd fuzz && cargo +nightly fuzz run lockfile corpus/lockfile
-```
+That is what CI does (`.github/workflows/fuzz.yml`, into `$RUNNER_TEMP/seeds`), and it is why
+`gen_fuzz_corpus.py check` can keep treating an unexplained file in `corpus/` as a failure. If you do let a
+run write into `fuzz/corpus/` anyway, `git checkout fuzz/corpus` (or re-running the generator's `write`)
+is the undo.
 
 **A crash artefact is never committed here.** It becomes a regression test in the crate's `tests/`
 (`hardening.rs` / `hooks_hardening.rs`) and, if it generalises, a new shape in

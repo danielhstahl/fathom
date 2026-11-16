@@ -54,7 +54,6 @@
         "view": {
           "description": "One of ADR-006 §4's registry ids.",
           "enum": [
-            "queue",
             "timeline",
             "diff",
             "structure",
@@ -165,7 +164,7 @@
       "export (e5.7) via the delta document"
     ],
     "contract": "fathom-plugin-finding",
-    "delta_contract": "fathom-delta/1",
+    "delta_contract": "fathom-delta/2",
     "owner": "e6.7",
     "reader_ignores_unknown_fields": true,
     "severity_vocabulary": [
@@ -175,7 +174,6 @@
     ],
     "version": 1,
     "views": [
-      "queue",
       "timeline",
       "diff",
       "structure",

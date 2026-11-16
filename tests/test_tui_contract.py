@@ -26,7 +26,7 @@ from recommender.tui import docs as D                                   # noqa: 
 from recommender.tui import keymap as K                                  # noqa: E402
 from recommender.tui import render as R                                  # noqa: E402
 from recommender.tui.views import (AMBIENT, CHROME_ORDER, LAYOUT_MATRIX,  # noqa: E402
-                                   QUEUE, VIEWS, VIEW_KEYS)
+                                   TIMELINE, VIEWS, VIEW_KEYS)
 
 VIEW_IDS = [v.id for v in VIEWS]
 
@@ -34,17 +34,24 @@ VIEW_IDS = [v.id for v in VIEWS]
 # ---------------------------------------------------------------------------
 # §4-§5: the view inventory
 # ---------------------------------------------------------------------------
-def test_the_nine_views_are_exactly_the_nine_in_the_ticket():
-    assert VIEW_IDS == ["queue", "timeline", "diff", "structure", "graph", "deps",
+def test_the_eight_views_are_exactly_the_eight_the_inventory_has():
+    """§4's list, after `e10.3` deleted the Queue view (`reco-ydek.3`, ADR-006 §5.1.2 §1).
+
+    Eight, not nine with a hole where the queue was: the registry renumbered, `t` kept the home
+    letter, and `q` went to §8.2's reserved-for-user set rather than to the next tenant.
+    """
+    assert VIEW_IDS == ["timeline", "diff", "structure", "graph", "deps",
                         "ambient", "search", "artefact"]
 
 
 def test_view_keys_match_the_view_registry():
-    """K3: the eight frame views are one letter each, and the ticket's fixed letters are
-    present. `t` and `o` are this ADR's two additions to the fixed list."""
-    assert VIEW_KEYS == {"q": "queue", "t": "timeline", "d": "diff", "s": "structure",
+    """K3: the seven frame views are one letter each, and the ticket's fixed letters are
+    present bar `q`. `t` and `o` are this ADR's two additions to the fixed list; `q` is the
+    deleted view's letter and is bound by nothing (`e10.3`)."""
+    assert VIEW_KEYS == {"t": "timeline", "d": "diff", "s": "structure",
                          "g": "graph", "p": "deps", "a": "ambient", "o": "artefact"}
-    for key in ("d", "s", "g", "p", "q", "a"):            # the ticket's own list
+    assert "q" not in K.DEFAULTS["global"], "q is the user's byte, not a view switch"
+    for key in ("d", "s", "g", "p", "a"):                # the ticket's own list, less `q`
         assert K.DEFAULTS["global"][key] == "view." + VIEW_KEYS[key]
     for key, action in K.DEFAULTS["global"].items():
         if action.startswith("view."):
@@ -182,8 +189,8 @@ def test_floors_are_the_arithmetic_of_the_ladder():
 def test_growth_above_ideal_goes_to_the_primary_pane_first():
     """§3's growth rule, checked rather than asserted in prose: the list pane gets wider
     first, because widening a list buys rows you can read and widening a card does not."""
-    wide = R.pane_widths(QUEUE, 120, ())
-    assert wide[0][1] > QUEUE.primary.ideal_cols, "spare width must widen the primary pane"
+    wide = R.pane_widths(TIMELINE, 120, ())
+    assert wide[0][1] > TIMELINE.primary.ideal_cols, "spare width must widen the primary pane"
     assert wide[0][1] >= 2 * wide[1][1] - 1, "the secondary pane may not run ahead"
     assert sum(w for _p, w in wide) + 3 <= 120, "growth must not overflow the frame"
 
@@ -242,8 +249,8 @@ def test_nothing_is_clipped_below_a_hard_minimum():
 
 
 def test_refusal_panel_names_the_size_and_the_way_out():
-    view = QUEUE
-    lines = R.draw(view, 30, 8)
+    view = TIMELINE
+    lines = R.draw(view, 26, 8)
     text = " ".join(lines)
     assert "too small" in text
     assert "ambient" in text, "the refusal panel must name the key that gets you out"
@@ -255,11 +262,11 @@ def test_degraded_frame_announces_what_it_dropped():
     """ADR-001 §7.2: never hide silently. The notice leads the status line because the
     status line is the last chrome standing and the first thing to get truncated."""
     for cols in (72, 64, 56):
-        fit = R.fit(QUEUE, cols, 14)
+        fit = R.fit(TIMELINE, cols, 14)
         assert fit.state in ("degraded", "single")
-        status = " ".join(R.draw(QUEUE, cols, 14))
+        status = " ".join(R.draw(TIMELINE, cols, 14))
         assert "LAYOUT" in status and fit.state in status, cols
-    assert R.fit(QUEUE, 80, 24).notice == "", "a complete frame says nothing"
+    assert R.fit(TIMELINE, 80, 24).notice == "", "a complete frame says nothing"
 
 
 # ---------------------------------------------------------------------------
@@ -269,7 +276,7 @@ def test_modes_are_named_ordered_and_acyclic():
     names = [m.name for m in K.MODES]
     assert sorted(names) == sorted(K.PRECEDENCE)
     assert len(set(K.PRECEDENCE)) == len(K.PRECEDENCE)
-    assert K.PRECEDENCE[0] == "prompt", "prompt must win outright, or you cannot type 'queue'"
+    assert K.PRECEDENCE[0] == "prompt", "prompt must win outright, or you cannot type 'timeline'"
     assert K.PRECEDENCE[-1] == "global"
     exclusive = {m.name for m in K.MODES if m.exclusive}
     assert exclusive == {"prompt", "pick"}
@@ -363,10 +370,10 @@ def test_prefix_chords_resolve_and_digits_are_legal_under_them():
 
 
 def test_prompt_mode_suppresses_view_keys_so_text_is_typeable():
-    """The exclusive-mode rule in one test: typing 'queue' must not move anywhere."""
-    chain = K.mode_chain("queue", "prompt")
+    """The exclusive-mode rule in one test: typing 'timeline' must not move anywhere."""
+    chain = K.mode_chain("timeline", "prompt")
     assert chain == ("prompt",)
-    for letter in "queue":
+    for letter in "timeline":
         assert K.resolve(chain, letter) is None, "prompt mode fired a global key"
     assert K.resolve(chain, "<Enter>") == "prompt.submit"
 
@@ -389,8 +396,8 @@ def test_conflicts_are_reported_not_absorbed():
     assert K.conflicts({"global": {"<C-t>": "palette.open"}}) == []
     assert K.conflicts({"graph": {"p": "view.deps"}}), "K4 shadowing must be refused"
     assert K.conflicts({"diff": {"x": "no.such.action"}})
-    assert K.conflicts({"list": {"q": "view.queue"}})
-    assert K.conflicts({"nonsense": {"q": "view.queue"}})
+    assert K.conflicts({"list": {"t": "view.timeline"}})
+    assert K.conflicts({"nonsense": {"t": "view.timeline"}})
 
 
 def test_merging_an_override_reaches_the_help_surface():
@@ -490,9 +497,9 @@ def test_every_cli_verb_runs(capsys):
     surface that lies, and a table nobody can print is a table nobody ships."""
     from recommender.tui.cli import main
     argv = [
-        ["views"], ["keys"], ["keys", "--cheatsheet"], ["layout", "queue"],
-        ["layout", "ambient", "-c", "44", "-r", "4"], ["fit", "queue", "60x12"],
-        ["fit", "queue", "30x8"], ["press", "q j <Enter> d x"], ["tasks"],
+        ["views"], ["keys"], ["keys", "--cheatsheet"], ["layout", "timeline"],
+        ["layout", "ambient", "-c", "44", "-r", "4"], ["fit", "timeline", "60x12"],
+        ["fit", "timeline", "26x8"], ["press", "t j <Enter> d x"], ["tasks"],
         ["matrix"], ["palette"], ["conflicts"], ["conflicts", "--toml",
                                                  str(ROOT / "fathom.toml")],
         ["conflicts", "--set", "global.q=app.quit"], ["probe", "--machine"],

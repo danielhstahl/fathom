@@ -268,7 +268,7 @@ Every threshold is an `e0.8` key, so a repository can disagree with the built-in
 | `non_code.env.declaration_globs` | `.env.example` and friends | where a *declaration* lives |
 | `non_code.env.committed_globs` | `.env`, `**/secrets.yaml` | where a value is a real value, not documentation |
 | `non_code.env.placeholder_values` | `changeme`, `<secret>`, … | values that read as documentation |
-| `non_code.env.secret_name_pattern` | `(?i)…(_KEY|TOKEN|DSN)…` | which names mean "secret store" |
+| `non_code.env.secret_name_pattern` | `(?i)…(_KEY\|TOKEN\|DSN)…` | which names mean "secret store" |
 | `non_code.env.reference_scope` | `episode` | what "nothing reads this" may be claimed about |
 | `non_code.env.rename_similarity` | `0.6` | when a removed+added pair is one rename |
 | `non_code.flags.globs` / `.require_default` | flag files / `true` | where defaults live; whether a fallback is mandatory |

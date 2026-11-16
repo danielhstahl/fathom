@@ -504,18 +504,34 @@ def criterion_mcp(binary: Path, work: Path) -> Criterion:
         risk = session.call("risk_report", {})
         rows = risk.get("items", [])
         top = rows[0] if rows else {}
-        c.add("`risk_report` ranked this change first",
-              top.get("change_id") == what["episode"]["id"],
-              f"top row is {top.get('change_id')} of {len(rows)} row(s)")
+        # Asked-about, not top-row. This clause used to assert that the change the agent asked about was
+        # the report's first row, and `e10.5` (`reco-ydek.5`) is why that is no longer the claim: the
+        # vector spent 8 points on `author`, which on this fixture is what held the agent's turn above
+        # the human roll-up beside it. Authorship left the arithmetic — it is a blind spot now, not a
+        # term — so whether this change is first is a question about the change. What the clause is
+        # actually about is that the agent asks about *its own* change and gets a risk answer about
+        # *that* change, so every check below reads the row for the episode `explain_episode` named,
+        # and the ordering is checked as the report's own claim rather than as a fixture's guess.
+        mine = next((r for r in rows if r.get("change_id") == what["episode"]["id"]), {})
+        c.add("`risk_report` answers about the change that was asked about",
+              bool(mine),
+              f"{what['episode']['id']} is {'in' if mine else 'NOT in'} the report's {len(rows)} row(s); "
+              f"top row is {top.get('change_id')}")
+        c.add("the report is ordered by the scores it prints",
+              bool(rows) and all(a >= b for a, b in
+                                  zip((r.get("score", 0) for r in rows),
+                                      (r.get("score", 0) for r in rows[1:]))),
+              f"top {top.get('change_id')} at {top.get('score')}, {len(rows)} row(s) descending")
         c.add("the risk answer is a number with factors",
-              isinstance(top.get("score"), int) and top.get("score", 0) > 0 and len(top.get("factors", [])) > 0,
-              f"{top.get('vector', '?')} · tier {top.get('risk_tier')}")
+              isinstance(mine.get("score"), int) and mine.get("score", 0) > 0 and len(mine.get("factors", [])) > 0,
+              f"{mine.get('vector', '?')} · tier {mine.get('risk_tier')}")
         c.add("the risky change is called risky",
-              top.get("risk_tier") in ("high", "medium"),
-              f"tier {top.get('risk_tier')} at score {top.get('score')} — a dependency bump, agent-authored, untested")
+              mine.get("risk_tier") in ("high", "medium"),
+              f"tier {mine.get('risk_tier')} at score {mine.get('score')} — a dependency bump, untested, "
+              f"and scored on the change rather than on who signed it (`e10.5`)")
         c.add("the risk answer cites its evidence",
-              len(top.get("evidence", [])) > 0 and bool(top.get("model_version")),
-              ", ".join(top.get("evidence", [])) + f" · model {top.get('model_version')}")
+              len(mine.get("evidence", [])) > 0 and bool(mine.get("model_version")),
+              ", ".join(mine.get("evidence", [])) + f" · model {mine.get('model_version')}")
         c.add("the risk answer says how it was produced",
               bool(risk.get("grounding")) and risk.get("trained") is False,
               str(risk.get("grounding")))

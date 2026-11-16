@@ -207,7 +207,19 @@ impl Span {
     }
 }
 
-/// The complexity proxies one declaration carries.
+/// The structural proxies one declaration carries — **not** the complexity figure.
+///
+/// **Why this type is not called `Complexity`** ([ADR-007 §10.3](../../../../docs/adr/0007-complexity.md#103-the-three-existing-collisions-and-who-fixes-which)):
+/// the bare word belongs to the cyclomatic figure [`e8.2`](../../../../docs/adr/0007-complexity.md) defines in
+/// [`crate::structure::complexity`], and two public types in one crate named for one word is a
+/// collision a reader hits on the first `use`. The ADR assigned this rename to `e8.2`, mechanically,
+/// in the commit that adds the second type — which is that commit.
+///
+/// The *field* on [`Symbol`] stays `complexity`, and so does its JSON key. That is not an oversight:
+/// ADR-007 §9.3 commits this epic to evicting **zero** derived rows, and renaming a key inside a
+/// stored structure row is exactly an eviction — every cached row of every store would re-derive to
+/// prove a label. `e8.3` owns the row schema and `e8.5` owns the delta document; whichever of them
+/// next moves a stored shape takes this key with it, with the eviction it costs written down.
 ///
 /// These are *proxies*, deliberately: nothing here is a cyclomatic-computation claim, it is a
 /// count of the syntactic constructs a reader has to hold. `e4.4`'s scorer and `e5.x`'s ranking
@@ -216,7 +228,7 @@ impl Span {
 /// (see [`crate::structure::ExtractPolicy::max_complexity_nodes`]) so a 40 000-line generated
 /// array cannot make extraction super-linear.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Complexity {
+pub struct StructureProxies {
     /// Lines the declaration spans, header included.
     pub body_lines: usize,
     /// `if` / `match` / `switch` / ternary arms and `catch` blocks: the branches a reader forks over.
@@ -646,6 +658,60 @@ pub enum UnavailableReason {
         /// Which cap ran out: the printed config key, so the fix is in the sentence.
         limit: String,
     },
+    // ---- `e8.2` (`reco-l9bz.2`, ADR-007 §7.1): the nine codes the complexity figure adds.
+    //
+    // The ADR's rule is that there is exactly one closed vocabulary for "this has no figure", and
+    // that the complexity figure *extends* this enum rather than starting a second one. Seventeen
+    // codes is the whole list; a contract test (`tests/complexity.rs::the_reason_vocabulary_is_the
+    // _adrs_table`) fails if this enum, the ADR's table and that list ever disagree. Six of these
+    // are produced by a later child of the epic and are declared here *now* so that no child gets
+    // to invent a parallel spelling: `e8.3` produces `column_not_filled` and `rename_unpaired`,
+    // `e8.4` produces `contents_not_kept`, `e8.5` produces `mixed_basis`, and the spine produces
+    // `binary` and `absent_revision`. A code nothing constructs yet is not dead weight — it is the
+    // reason a second vocabulary cannot appear.
+    /// A declaration the file states without a body: a Rust trait signature or `fn … ;`, a Java
+    /// `abstract`/interface method, a TypeScript overload signature or `.d.ts` `declare function`,
+    /// an `extern` block's entry. It is a unit (ADR-007 §3.1) with no figure: the branches are in
+    /// another file, so the honest answer is *unknown*, never `0`.
+    BodyNotVisible,
+    /// The per-unit node budget (`extract.complexity.max_nodes`) ran out before the body ended, so
+    /// the count is a floor and a floor may not print as an exact figure (ADR-007 §7.2: "a figure
+    /// with a spent bound never prints bare").
+    NodeBudget {
+        /// The bound that was in force, echoed into the data so a stored row says what it cost.
+        limit: usize,
+    },
+    /// The store: this row predates the complexity columns (ADR-007 §9.6). Distinct from every
+    /// other code here because *the fix is to run the indexer*, not to change the file or the build.
+    ColumnNotFilled,
+    /// A rename was guessed rather than asserted, so its two sides were not treated as one file
+    /// (ADR-007 §6.3). Pairs with the `e2.4` fact tier: a fact pairs, a guess pairs nothing.
+    RenameUnpaired {
+        /// The path at the base.
+        old: String,
+        /// The path at head.
+        new_path: String,
+        /// Which `e2.4` tier the pairing came from, verbatim (`guess`, `below_fact_bar`, `grouping`).
+        tier: String,
+    },
+    /// The two sides of a comparison were counted under different basis tokens (ADR-007 §9.5), so
+    /// subtracting them would be arithmetic on unlike units.
+    MixedBasis {
+        /// The tokens involved, comma-joined.
+        bases: String,
+    },
+    /// The path did not exist on that side of the episode (ADR-007 §6.1). **A zero that is a fact:**
+    /// an added file's base figure is `0`, and a deleted file really did take its complexity with it.
+    AbsentRevision,
+    /// The file parsed and declares no callable body (a `mod.rs` of re-exports, a constants module,
+    /// a `.json`). **A zero that is a fact** — the pass read it and found nothing to count.
+    NoBodies,
+    /// Git says the blob is binary, so its contents were never read. Distinct from [`UnavailableReason::NotUtf8`],
+    /// which is what the *parser* says after reading: a different layer knows this one, and the two
+    /// have different fixes (ADR-007 §7.1).
+    Binary,
+    /// The spine kept no blob for that side, so nothing could be counted on it (`e8.4`'s retention cap).
+    ContentsNotKept,
 }
 
 impl UnavailableReason {
@@ -660,37 +726,135 @@ impl UnavailableReason {
             UnavailableReason::ParseFailed { .. } => "parse_failed",
             UnavailableReason::Parser => "parser",
             UnavailableReason::ScanBudget { .. } => "scan_budget",
+            UnavailableReason::BodyNotVisible => "body_not_visible",
+            UnavailableReason::NodeBudget { .. } => "node_budget",
+            UnavailableReason::ColumnNotFilled => "column_not_filled",
+            UnavailableReason::RenameUnpaired { .. } => "rename_unpaired",
+            UnavailableReason::MixedBasis { .. } => "mixed_basis",
+            UnavailableReason::AbsentRevision => "absent_revision",
+            UnavailableReason::NoBodies => "no_bodies",
+            UnavailableReason::Binary => "binary",
+            UnavailableReason::ContentsNotKept => "contents_not_kept",
+        }
+    }
+
+    /// Every code in the vocabulary, one sample value each.
+    ///
+    /// The point is not the samples, it is that this function and
+    /// `tests/complexity.rs`'s copy of ADR-007 §7.1 must agree, so that adding, dropping or
+    /// renaming a code is a decision somebody had to make twice.
+    pub fn vocabulary() -> Vec<UnavailableReason> {
+        vec![
+            UnavailableReason::LanguageUnknown,
+            UnavailableReason::GrammarNotCompiled {
+                feature: "lang-example".to_string(),
+            },
+            UnavailableReason::ExtractorNotShipped,
+            UnavailableReason::TooLarge { limit: 0 },
+            UnavailableReason::NotUtf8,
+            UnavailableReason::ParseFailed { errors: 0 },
+            UnavailableReason::Parser,
+            UnavailableReason::ScanBudget {
+                limit: "extract.ruby.max_bytes_per_run".to_string(),
+            },
+            UnavailableReason::BodyNotVisible,
+            UnavailableReason::NodeBudget { limit: 0 },
+            UnavailableReason::ColumnNotFilled,
+            UnavailableReason::RenameUnpaired {
+                old: String::new(),
+                new_path: String::new(),
+                tier: String::new(),
+            },
+            UnavailableReason::MixedBasis {
+                bases: String::new(),
+            },
+            UnavailableReason::AbsentRevision,
+            UnavailableReason::NoBodies,
+            UnavailableReason::Binary,
+            UnavailableReason::ContentsNotKept,
+        ]
+    }
+
+    /// Whether this code means *a zero that is a fact* rather than an unknown (ADR-007 §7.4's
+    /// second row). `true` is the only case in which a figure of `0` travels with a reason.
+    pub fn is_measured_zero(&self) -> bool {
+        matches!(
+            self,
+            UnavailableReason::AbsentRevision | UnavailableReason::NoBodies
+        )
+    }
+
+    /// The sentence a surface prints, about `subject`.
+    ///
+    /// `"structure"` is what [`UnavailableReason::sentence`] passes; `"complexity"` is what the
+    /// figure passes. One place per reason, so the phrase and the reason arrive together in every
+    /// surface that says either (ADR-001 §7.7).
+    ///
+    /// An **empty** string means "this code is a zero with a reason, not an unknown": print the `0`
+    /// and keep the reason available on demand, never print `?` for it.
+    pub fn phrase(&self, subject: &str) -> String {
+        match self {
+            UnavailableReason::LanguageUnknown => {
+                format!("{subject} unavailable: not one of the grammars fathom reads")
+            }
+            UnavailableReason::GrammarNotCompiled { feature } => format!(
+                "{subject} unavailable: this build was compiled without the `{feature}` grammar"
+            ),
+            UnavailableReason::ExtractorNotShipped => {
+                format!("{subject} unavailable: this language's extractor has not shipped yet")
+            }
+            UnavailableReason::TooLarge { limit } => format!(
+                "{subject} unavailable: the file is larger than the {limit} byte extraction limit"
+            ),
+            UnavailableReason::NotUtf8 => format!("{subject} unavailable: the file is not text"),
+            UnavailableReason::ParseFailed { errors } => format!(
+                "{subject} unavailable: the parse reported {errors} errors and returned no structure"
+            ),
+            UnavailableReason::Parser => {
+                format!("{subject} unavailable: the parser could not be initialised")
+            }
+            UnavailableReason::ScanBudget { limit } => format!(
+                "{subject} unavailable: the per-run scan budget `{limit}` was already spent; \
+                 raise it or reorder `priority` if this file matters"
+            ),
+            UnavailableReason::BodyNotVisible => format!(
+                "{subject} unavailable: this function is declared without a body here — the body, \
+                 and therefore its branches, live in another file"
+            ),
+            UnavailableReason::NodeBudget { limit } => format!(
+                "{subject} unavailable: the body was too large to count within the {limit} node \
+                 budget of `extract.complexity.max_nodes`; raise it and re-index"
+            ),
+            UnavailableReason::ColumnNotFilled => format!(
+                "{subject} has not been measured for this revision yet — `fathom doctor` reports \
+                 coverage; `fathom index` fills it"
+            ),
+            UnavailableReason::RenameUnpaired {
+                old,
+                new_path,
+                tier,
+            } => format!(
+                "a rename was guessed, not asserted, so its before and after were not treated as \
+                 one file (`{old}` → `{new_path}`, {tier})"
+            ),
+            UnavailableReason::MixedBasis { bases } => format!(
+                "the figures in this episode were counted under different rules ({bases}); they \
+                 are not comparable with each other"
+            ),
+            UnavailableReason::AbsentRevision | UnavailableReason::NoBodies => String::new(),
+            UnavailableReason::Binary => {
+                format!("{subject} unavailable: git reports the file as binary")
+            }
+            UnavailableReason::ContentsNotKept => {
+                format!("{subject} unavailable: the file's contents were not kept at this revision")
+            }
         }
     }
 
     /// The sentence a surface prints. Written here rather than in the UI layer so the phrase
     /// "structure unavailable" and the reason arrive together everywhere they are said.
     pub fn sentence(&self) -> String {
-        match self {
-            UnavailableReason::LanguageUnknown => {
-                "structure unavailable: not one of the grammars fathom reads".to_string()
-            }
-            UnavailableReason::GrammarNotCompiled { feature } => format!(
-                "structure unavailable: this build was compiled without the `{feature}` grammar"
-            ),
-            UnavailableReason::ExtractorNotShipped => {
-                "structure unavailable: this language's extractor has not shipped yet".to_string()
-            }
-            UnavailableReason::TooLarge { limit } => format!(
-                "structure unavailable: the file is larger than the {limit} byte extraction limit"
-            ),
-            UnavailableReason::NotUtf8 => "structure unavailable: the file is not text".to_string(),
-            UnavailableReason::ParseFailed { errors } => format!(
-                "structure unavailable: the parse reported {errors} errors and returned no structure"
-            ),
-            UnavailableReason::Parser => {
-                "structure unavailable: the parser could not be initialised".to_string()
-            }
-            UnavailableReason::ScanBudget { limit } => format!(
-                "structure unavailable: the per-run scan budget `{limit}` was already spent; \
-                 raise it or reorder `priority` if this file matters"
-            ),
-        }
+        self.phrase("structure")
     }
 }
 
@@ -869,8 +1033,9 @@ pub struct Symbol {
     pub visibility: Visibility,
     /// Whether the export rule put this name in [`Structure::exports`].
     pub exported: bool,
-    /// The counted proxies of how much a reader has to hold.
-    pub complexity: Complexity,
+    /// The counted proxies of how much a reader has to hold. Not the ADR-007 figure — see
+    /// [`StructureProxies`]'s own doc comment for why this key still spells the word.
+    pub complexity: StructureProxies,
     /// Language spellings worth keeping (`async`, `unsafe`, `abstract`, `static`, `property`,
     /// `classmethod`, `getter`, `overload`), sorted and deduplicated.
     pub modifiers: Vec<String>,

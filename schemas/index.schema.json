@@ -323,6 +323,112 @@
         "object",
         "null"
       ]
+    },
+    "complexity_fill": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "The index-time complexity pass (ADR-007 \u00a79.7, `e8.4`): what it counted, what it refused and why, how much file content it read, and which ceiling stopped it if one did. Not an analyzer in `analyzers`, because its memo is the column it writes rather than a cache lookup \u2014 `rows` is not a lookup count and there is no hit rate to report. A consumer that needs to know whether this index measured complexity has to be able to tell 'nothing owed a figure' from 'the budget ran out', and this is the only place the two differ.",
+      "properties": {
+        "rows": {
+          "type": "integer",
+          "description": "File rows the pass answered, including the ones it declined."
+        },
+        "measured": {
+          "type": "integer",
+          "description": "Rows that ended with at least one figure."
+        },
+        "refused": {
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "description": "One \u00a77.1 reason code and how many sides of a file row refused on it.",
+            "properties": {
+              "code": {
+                "type": "string",
+                "description": "The reason code, as ADR-007 \u00a77.1 spells it."
+              },
+              "rows": {
+                "type": "integer",
+                "description": "Sides of a file row that printed `?` for this code."
+              }
+            },
+            "required": [
+              "code",
+              "rows"
+            ]
+          },
+          "type": "array",
+          "description": "Refusals by reason code, sorted by code. The durable count of the same names lives in the `counter` table as `complexity.refused.<code>`; this is the run's own share of it."
+        },
+        "bytes_read": {
+          "type": "integer",
+          "description": "Bytes of blob content inflated for a figure \u2014 the quantity `extract.complexity.max_run_bytes` bounds."
+        },
+        "base_reused": {
+          "type": "integer",
+          "description": "Base-side figures taken from the first parent's stored row instead of from a read, which is what makes ADR-007 \u00a79.2's telescoping identity a property of the code."
+        },
+        "run_reused": {
+          "type": "integer",
+          "description": "Sides answered from a figure this same run already counted for the path, instead of inflating the blob and parsing it again. The blob id has to equal the one the figure was counted from, so a miss costs a read and nothing else; on a cold index this is the only memo there is, because nothing is stored to borrow yet."
+        },
+        "ms": {
+          "type": "integer",
+          "description": "Milliseconds this pass's own work took, summed over the commits it filled. The same accumulated quantity `extract.complexity.max_run_ms` bounded, so the reported number is the bounded number."
+        },
+        "written": {
+          "type": "integer",
+          "description": "File rows whose complexity columns were written."
+        },
+        "missing": {
+          "type": "integer",
+          "description": "Writes that named no file row \u2014 a fill racing `fathom index --prune`. Counted, not fatal."
+        },
+        "declined": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The config key of the ceiling that stopped the pass, or null when nothing did. Its rows print `?` with `scan_budget` and stay owed, so raising the key and re-indexing fills them."
+        },
+        "ceilings": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "The three ceilings the pass was obeying, spent or not \u2014 the numbers a reader needs in order to judge the ones beside them. Printed as text beside the run report's line, for the same reason.",
+          "properties": {
+            "max_file_bytes": {
+              "type": "integer",
+              "description": "`extract.complexity.max_file_bytes` in force: the largest blob counted for one row."
+            },
+            "max_run_bytes": {
+              "type": "integer",
+              "description": "`extract.complexity.max_run_bytes` in force: the run's byte budget. `0` declines the whole pass."
+            },
+            "max_run_ms": {
+              "type": "integer",
+              "description": "`extract.complexity.max_run_ms` in force: the pass's own clock, in milliseconds. `0` declines the whole pass."
+            }
+          },
+          "required": [
+            "max_file_bytes",
+            "max_run_bytes",
+            "max_run_ms"
+          ]
+        }
+      },
+      "required": [
+        "rows",
+        "measured",
+        "refused",
+        "bytes_read",
+        "base_reused",
+        "run_reused",
+        "ms",
+        "written",
+        "missing",
+        "declined",
+        "ceilings"
+      ]
     }
   },
   "required": [
@@ -342,7 +448,8 @@
     "worktree_skipped",
     "failures",
     "unreadable",
-    "graph"
+    "graph",
+    "complexity_fill"
   ],
   "title": "fathom index --json",
   "type": "object",

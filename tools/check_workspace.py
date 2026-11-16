@@ -218,9 +218,11 @@ def render_teams() -> str:
 
 
 def render_ci() -> str:
-    rows = ["| Required step | Text that must appear in `.github/workflows/*.yml` |", "|---|---|"]
-    for name, needle in M.CI_REQUIRED_STEPS:
-        rows.append("| `%s` | `%s` |" % (name, needle))
+    rows = ["| Required step | Text that must appear in a step that runs (`run:` / `uses:` / `with:`) "
+            "| When it must run | The one workflow that runs it |", "|---|---|---|---|"]
+    for name, needle, cadence, home in M.CI_REQUIRED_STEPS:
+        rows.append("| `%s` | `%s` | %s | %s |" % (
+            name, needle, cadence, "`%s`" % home if home else "any %s workflow" % cadence))
     return "\n".join(rows)
 
 
@@ -416,25 +418,137 @@ def check_ticket_map() -> list[Problem]:
     return problems
 
 
+def workflow_executables(workflow) -> str:
+    """The text a runner actually executes in one workflow: every step's `uses:`, `run:` and `with:`.
+
+    This is what rule `C01` searches, and the exclusion of everything else is the point. The rule used to
+    be a substring test over the whole file, so a header comment naming `cargo deny check` satisfied the
+    rule whose entire purpose is refusing a missing gate while the real check was an action in a different
+    file — measured in `e11.1` §3, and the kind of lie a comment can tell forever. Job-level `uses:` is
+    included because a reusable-workflow call (`fathom-check.yml`) is an execution too.
+
+    A step's *shell* comments are stripped with the YAML's, for the same reason: a `run:` block that names a
+    gate behind a `#` is the same sentence in a different file, and the rule was rewritten precisely so that
+    prose cannot discharge a gate. `e11`'s close found the shape while proving its own deletions stay
+    deleted (`.plan/evidence/reco-374v/dedupe_proofs.py`).
+    """
+    parts: list[str] = []
+    for job in workflow.jobs.values():
+        if job.uses:
+            parts.append(job.uses)
+        for step in job.steps:
+            parts.append(step.uses)
+            parts.extend(line for line in step.run.splitlines() if not line.lstrip().startswith("#"))
+            parts.extend(str(value) for value in step.with_.values())
+    return "\n".join(parts)
+
+
 def check_ci_wiring() -> list[Problem]:
     if not WORKFLOWS.exists():
         return [Problem("C01", ".github/workflows", "no CI workflow exists, so nothing can fail on an "
                         "uphill import; ADR-002 §8 is a hard gate, not a nicety")]
-    text = "\n".join(p.read_text() for p in sorted(WORKFLOWS.glob("*.yml")))
+    files = sorted(WORKFLOWS.glob("*.yml"))
+    text = "\n".join(p.read_text() for p in files)
     problems = []
-    for name, needle in M.CI_REQUIRED_STEPS:
-        if needle not in text:
-            problems.append(Problem("C01", name, "`%s` appears in no workflow: the boundary lint, "
-                                    "cargo-deny, fmt, clippy and the MSRV build must run on every PR"
-                                    % needle))
+
+    # `check_workflows.py` already owns a parser for the YAML these files use, and both tools are
+    # stdlib-only and in the same directory. If that parser cannot load, the wiring is *not* known-good:
+    # a rule that cannot run says so, because the failure this one exists to catch is a silent one.
+    try:
+        import check_workflows as WF
+        workflows = {p.name: WF.Workflow(p) for p in files}
+    except Exception as exc:                                    # pragma: no cover - import guard
+        return [Problem("C01", ".github/workflows", "cannot parse the workflows (%s), so no required step "
+                        "can be confirmed to run" % exc)]
+
+    executables = {name: workflow_executables(wf) for name, wf in workflows.items()}
+
+    for name, needle, cadence, home in M.CI_REQUIRED_STEPS:
+        if cadence not in M.CI_CADENCES:
+            problems.append(Problem("C01", name, "cadence %r is not one of %s — the model itself is "
+                                    "mis-wired" % (cadence, ", ".join(M.CI_CADENCES))))
+            continue
+        trigger = M.CI_CADENCE_TRIGGER[cadence]
+        homes = sorted(n for n, body in executables.items() if needle in body)
+        if not homes:
+            problems.append(Problem("C01", name, "`%s` appears in no workflow's steps (matched against "
+                                    "`run:`, `uses:` and `with:`, never against a comment): the boundary "
+                                    "lint, cargo-deny, fmt, clippy and the MSRV build must run on every PR "
+                                    "— ADR-002 §8.1" % needle))
+            continue
+        runs_at = [n for n in homes if trigger in workflows[n].triggers]
+        if not runs_at:
+            problems.append(Problem("C01", name, "`%s` runs only in %s, and none of those is triggered by "
+                                    "`%s`: a step required at the `%s` cadence cannot live only where it "
+                                    "does not run (ADR-002 §8.1; `e11.2` moved the long tail to the "
+                                    "schedule and this is the rule that keeps the rest of the list where "
+                                    "it belongs)"
+                                    % (needle, ", ".join(homes), trigger, cadence)))
+
+        # The `home` half, which is what `C01` had to grow to say "exactly one job" rather than "somewhere".
+        # The cadence check above cannot see a duplicate: a second copy of a per-PR gate in a second
+        # `pull_request` workflow leaves it green, because the needle is present where it is required *and*
+        # present again somewhere else. That duplicate is the defect `e11.3` (`reco-374v.3`) was written
+        # for — the changelog audit reporting the same missing `[Unreleased]` entry from two jobs, which is
+        # two tickets and two triage threads per mistake (`e11.1` §4, `reco-s6ge`).
+        if home:
+            problems.extend(check_step_home(name, needle, cadence, home, workflows, executables))
+
     declared = re.findall(r'MSRV:\s*"([\d.]+)"', text)
     for value in declared:
         if value != M.MSRV:
             problems.append(Problem("T07", ".github/workflows", "workflow pins MSRV %s but ADR-002 §2 "
                                     "declares %s; there is one number, in the model" % (value, M.MSRV)))
-    if not declared:
-        problems.append(Problem("T07", ".github/workflows", "no `MSRV: ` value in any workflow, so the "
-                                "MSRV build is building whatever the runner feels like"))
+    # The floor has to be pinned where the floor is *built*: an `MSRV:` env line that only exists in a
+    # scheduled workflow leaves the pull-request leg building whatever the runner feels like. `MSRV:` is a
+    # workflow-level `env:` key, so it is read from the file rather than from the steps `C01` scans.
+    pr_pins = [name for name, wf in workflows.items()
+               if "pull_request" in wf.triggers and re.search(r'MSRV:\s*"[\d.]+"', wf.text)]
+    if not pr_pins:
+        problems.append(Problem("T07", ".github/workflows", "no `MSRV: ` value in any pull-request "
+                                "workflow, so the MSRV build is building whatever the runner feels like"))
+    # A matrix that spells the floor out again is a second copy of the number, and a second copy drifts.
+    for value in re.findall(r'toolchain:\s*"([\d.]+)"', text):
+        if value != M.MSRV:
+            problems.append(Problem("T07", ".github/workflows", "workflow matrix names toolchain %s, which "
+                                    "is not the MSRV %s in ADR-002 §2; state it once and let the model own "
+                                    "it" % (value, M.MSRV)))
+    return problems
+
+
+def check_step_home(name: str, needle: str, cadence: str, home: str, workflows: dict,
+                    executables: dict) -> list[Problem]:
+    """`C01`, pinned half: a required step with a home workflow runs there, and runs nowhere else.
+
+    Split out of `check_ci_wiring` because the message has to be long enough to be actionable: the fix for
+    a second copy is either to delete it or to make the duplication deliberate in the model, and the rule
+    has to say which of the two it is refusing.
+    """
+    trigger = M.CI_CADENCE_TRIGGER[cadence]
+    if home not in workflows:
+        return [Problem("C01", name, "names `%s` as its home workflow and no such workflow exists; the "
+                        "model, the table ADR-002 §8.1 prints and `.github/workflows/` are one statement"
+                        % home)]
+    problems: list[Problem] = []
+    if trigger not in workflows[home].triggers:
+        problems.append(Problem("C01", name, "is pinned to `%s`, which has no `%s` trigger, so the step "
+                                "cannot run at the `%s` cadence the same row requires" % (home, trigger,
+                                           cadence)))
+    if needle not in executables[home]:
+        problems.append(Problem("C01", name, "`%s` does not run in `%s`, the one workflow the model pins it "
+                                "to: the gate is not wired to the job that is supposed to report it "
+                                "(ADR-002 §8.1)" % (needle, home)))
+    elsewhere = [n for n in sorted(executables) if needle in executables[n] and n != home]
+    if elsewhere:
+        problems.append(Problem("C01", name, "`%s` also runs in %s, and `%s` is its only home: a required "
+                                "step with a declared home reports from that one workflow, because a gate "
+                                "that runs twice does not guard twice — it only files twice. This is the "
+                                "rule `e11.3` (`reco-374v.3`) added after `gen_changelog.py audit` went red "
+                                "in two jobs on the same commit three runs in a row (`e11.1` §4, "
+                                "`reco-s6ge`); either delete the copy in %s or set this row's home to `\"\"` "
+                                "in `tools/workspace_model.py` and say why the two reports are both wanted"
+                                % (needle, ", ".join("`%s`" % n for n in elsewhere), home,
+                                   " and ".join("`%s`" % n for n in elsewhere))))
     return problems
 
 

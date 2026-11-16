@@ -38,5 +38,5 @@
 │                                                                    │                                                 │
 │no patch is loaded                                                  │no file selected                                 │
 └──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
-⏺ epoch 1 · 48 eps · queue 4 open · idx unknown
+⏺ epoch 1 · 48 eps · 4 unread · idx unknown
 nothing hands this frame patch bytes — `fathom doctor` says whether the index can be read

@@ -185,6 +185,345 @@ The same job is the second half of the decision, and this page used to leave it 
 advisory — flipping that one line to `deny` would have changed the log and not the build. A mode change and
 that tolerance are one edit, and `fathom.toml` says so where the mode is written.
 
+### The fleet: what runs on a pull request, and what runs nightly
+
+![ci](https://img.shields.io/github/actions/workflow/status/danielhstahl/fathom/ci.yml?label=ci)
+![nightly](https://img.shields.io/github/actions/workflow/status/danielhstahl/fathom/nightly.yml?label=nightly)
+![perf](https://img.shields.io/github/actions/workflow/status/danielhstahl/fathom/perf.yml?label=perf)
+![fuzz](https://img.shields.io/github/actions/workflow/status/danielhstahl/fathom/fuzz.yml?label=fuzz)
+
+A gate nobody can locate is a gate that gets deleted twice, so the whole fleet is one table. The split is
+`e11.2`'s (`reco-374v.2`), and the measurement behind it is the thirty-day census in
+`.plan/ci-triage-reco-374v.md`: 3 367 runner-minutes, 83 red runs, and two findings that decided the shape —
+33 of those reds were a gate whose *own inputs* had moved rather than a commit being wrong, and 43 % of the
+minutes went to four hung jobs. What a pull request pays for is what a pull request can inform; a check that
+re-measures a committed report, a pinned corpus or the published crate is a daily fact about the default
+branch, and it runs daily.
+
+| Workflow | When it runs | What it is the gate for |
+|---|---|---|
+| `.github/workflows/ci.yml` | every pull request, and every push to any branch | `fmt`, `clippy`, `cargo-deny`, the workspace build and tests on `stable` and on the MSRV, the headless `minimal` binary, `fathom check` over this repository, the `.deb`/`.rpm`/installer rehearsal, and the release skeleton. The list is written out in the file's header and enforced by rule `C01`. |
+| `.github/workflows/contracts.yml` | every pull request, and every push to any branch | the documents and the ADRs as executable checks, the boundary lint, the 2 343-test contract suite, the **changelog gate** — `gen_changelog.py audit`, `lint` and the draft smoke, and the only place a missing `[Unreleased]` entry is reported since `e11.3` — the demo repository's assembly, and, since `e11.2`, the **cheap proofs about the expensive gates**: `perf_gate.py --self-test`, `gen_budgets.py check`, `gen_adr_tables.py check`, `gen_fuzz_corpus.py check`, none of which needs a build. |
+| `.github/workflows/complexity.yml`, `docs.yml`, `privacy.yml`, `sbom.yml` | every pull request, and every push to any branch — except `complexity.yml`, whose pull-request trigger is narrowed to the corpus it measures (the first also daily) | the complexity corpus, the generated docs pages and the Pages build, the no-egress claim, the SBOM. Zero reds in 56 measured runs and 0.3–1.3 minutes each: these are not the cost and cutting them would be theatre. |
+| `.github/workflows/fathom-check.yml` | called with `workflow_call` by a repository that installs the gate | the reusable gate itself — the recipe on [this page](../recipes/gate-a-pipeline.md). |
+| `.github/workflows/nightly.yml` | daily at 02:37 UTC, and on `workflow_dispatch` | **the long tail.** Spike `s1`, `s2` and `s6` report reproductions, the `e3.1` structure core/tail legs, the Guardrail 3 calibration `--check`, the out-of-tree plugin build, the `beta` toolchain lane, and the daily `workflow_dispatch` of the six-target release matrix in cargo-dist's dry-run mode. |
+| `.github/workflows/perf.yml` | daily at 04:11 UTC, and on `workflow_dispatch` | the ADR-004 §11 budgets measured against `benchmarks/baselines/perf-gate.json`, and the trend artefact. On a shared runner the gate was red on 17 of 19 pull requests and green twice, the second green two runs before going red again on a commit that only edited `ci.yml`; the measurement is a daily statement about the default branch now, and its no-build proofs stayed per-PR in `contracts.yml`. |
+| `.github/workflows/fuzz.yml` | daily at 03:17 UTC, and on `workflow_dispatch` | thirty minutes per target (`lockfile`, `hooks`, `paths`) on the nightly toolchain. The one-minute-per-target per-PR smoke is gone; the corpus proof and the `P03`/`P04` workflow rules are per-PR in `contracts.yml`. |
+| `.github/workflows/dogfood.yml` | weekly, on the default branch | the gate installed the way an outsider installs it, run over the corpus. |
+| `.github/workflows/release.yml` | on `workflow_dispatch`, on a tag, and daily by dispatch from `nightly.yml` | the six-target artifact matrix, on three operating systems ever since `59a0079c60` (`e7.4`) pinned it — three OSes buy three queues, and a platform-specific build is the only place a platform-specific break can be seen. `pr-run-mode = "skip"` since `e11.2`: it ran 18 times on pull requests in thirty days, went green zero times, and cost 451.5 runner-minutes doing it. |
+| `.github/workflows/publish.yml` | after a green `ci` on the default branch, and on `workflow_dispatch` | the version-bump-to-release cutter. It dispatches `release.yml`; it never publishes anything itself. |
+| `.github/workflows/self-review.yml` | on `release: published` | what a release publishes about itself. |
+
+Three things about the scheduled half are worth saying where a reader will meet them.
+
+**A schedule runs on the default branch, so the work has to reach it.** GitHub fires `schedule:` on the
+repository's default branch only, and the census found the default branch here had not moved in three weeks
+while the work was on a branch that is not on the remote at all. `reco-kwg6` fixed the half of that a
+workflow file can fix — every merge gate now runs on a push to *any* branch, see *Which branch a gate runs
+on* below — but no workflow file can move a default branch. Until somebody with repository settings moves
+it, every daily job here — this page's, `fuzz`'s, `perf`'s, `complexity`'s and `dogfood`'s — is measuring a
+frozen commit, and `publish.yml` is waiting for a green `ci` on a commit nobody is editing. The four badges
+at the top of this section are default-branch badges for the same reason, so they report that frozen commit
+too — none of them is pinned to a branch name, so they follow the branch whenever it moves.
+`workflow_dispatch` is the way to run them against the tree you are actually standing on, and it is the way
+to test a change to one of these files.
+
+**The split is enforced, not remembered.** `tools/workspace_model.py::CI_REQUIRED_STEPS` lists every required
+invocation with the cadence it owes and the one workflow allowed to run it, and rule `C01` fails a required
+step that disappears, *or* that survives only at the cadence it does not belong to, *or* that turns up in a
+second workflow when its row names a home — so a per-PR gate cannot drift onto the nightly, a nightly
+reproduction cannot be deleted, and one question cannot be asked twice, all without a red build saying which
+one. ADR-002 §8.1 prints the same list, home column included.
+
+**How the needle is looked for, because a substring test is not the rule.** `C01` matches a required step
+against the steps that *execute* — a step's `run:`, `uses:` or `with:` value — and never against prose. A
+substring test over the concatenated YAML was satisfied by the words `cargo deny check` in a file's header
+comment while the real licence and advisory gate lived in another file: the rule that exists to refuse a
+vanished gate could be fed a sentence. Comments now satisfy nothing, which is why the cargo-deny row names
+the action (`EmbarkStudios/cargo-deny-action`) rather than the command. The stripping reaches one level
+down: the `#` lines inside a `run:` block are removed before the needle is looked for, because a shell
+comment is prose wearing a command's clothes, and that shape was found by `e11`'s close while it was
+proving its own deletions stay deleted (`.plan/evidence/reco-374v/dedupe_proofs.py` runs the case eight
+ways). ADR-002 §8.1's generated table is the same list, and its four rule statements — needle, cadence,
+home, and match-against-execution — are the four ways a gate goes missing.
+
+The third clause is `e11.3`'s (`reco-374v.3`), and it was bought by the changelog audit, which was asking the
+same question in `ci.yml`'s beta-loop step and in `contracts.yml`'s contract suite: three consecutive commits
+with one missing release-note paragraph and two red jobs per commit — two tickets, two triage threads, no
+extra safety. The gate is not the problem; the second copy is. It lives in `contracts.yml` now, the job that
+compiles nothing and already fetches the history the audit reads, and a duplicate is a `C01` failure rather
+than a plausible-looking addition. A gate nobody can locate is a gate that gets deleted twice; a gate that
+reports from two jobs is a mistake that gets filed twice.
+
+The same clause then emptied the rest of the census's duplicate table, four gates at a time, each survivor
+named in `tools/workspace_model.py` so the deleted copy cannot grow back: the default build's egress closure
+(`cargo tree -p fathom-cli … --features minimal`) was byte-identical in `ci.yml` and `privacy.yml` and now
+runs only in the workflow whose name says what it protects; the demo repository's assembly needs `git` and the
+committed pack rather than a build, so `contracts.yml` answers it and `ci.yml` no longer does; the
+generated-page check ran in `contracts.yml` *above* the `check_docs_site.py` that calls the same generator
+check internally, with `docs.yml` asking it again as a named step, and the named step is the one kept; and the
+packager's negative controls ran in `ci.yml`'s `release-skeleton` and again four minutes of archive build
+later in `packaging`, so the cheap job keeps it — a home names a workflow, not a job, so that last pair is
+refused at job level by `tests/test_workspace_contract.py`. Two rows of that table were re-read and left
+alone, which is the part of the exercise worth writing down: `check_ci_gate.py` and `check_docs_site.py` each
+run in `ci.yml` *and* `contracts.yml` because half of each needs a compiled binary — the verb-and-flag rules,
+and the documented-command check — and print that they skipped when there is none. A duplicate is one question
+asked twice; a repeated file name is not, and `e11.1` §3's table could not tell them apart because it was
+built from workflow text rather than from what a step can prove with no compiler in front of it.
+
+## What a job owes the runner
+
+Fourteen files in `.github/workflows/`, and eleven of them are about this repository rather than about
+`fathom`. The thirty-day census behind `e11.1` measured what they cost when nothing budgeted it: 3 367
+runner-minutes, of which **43 % went to four jobs that had run to GitHub's six-hour default** because no job
+in the fleet declared a timeout; 110 minutes spent finishing runs whose only fault was being superseded by a
+push nobody had cancelled; 102 cargo-cache saves that never happened because the job was red when the cache
+would have been written; 658 MB of artefacts kept for a retention nobody chose; and 778 minutes in a job
+whose red could not matter to anyone, because it had been `continue-on-error` for as long as anyone could
+remember and nobody had read it. `e11.4` (`reco-374v.4`) put a number beside each of those, and a rule. All
+six rules live in `tools/check_workflows.py` — the same lint that already reads the workflows against the
+tree, so a workflow change is checked by the same job that checks a `Cargo.toml` change — and `self-test`
+makes each of them fire on a workflow written to break it. A seventh, `R07`, is the census's §5.2 rather
+than `e11.4`'s money, and it is about *which branch* a gate runs on rather than what a job owes the runner;
+it lives in the same lint and is self-tested the same way. (The rule ids are per-tool, as they already were
+for `R01`–`R06`: `check_release.py` has its own `R07`, the one that refuses a hand edit of the generated
+release workflow.)
+
+### Timeouts
+
+Every job declares `timeout-minutes`, and none of them declares six hours: the ceiling the lint refuses above
+is **120 minutes**, and the floor is the point. The number to write is not a guess — the census left a
+per-job `dur_min_p95` in `.plan/ci-triage-reco-374v.md`, and the rule of thumb in the rule's own message is
+**five times the p95**, because a timeout tighter than the work is a new class of red and a job that flakes
+on its own deadline teaches people to re-run the pipeline. So `check-gate`, which re-indexes this
+repository's history and measured 17.7 minutes, gets 45; the packaging job at 10.6 gets 45; the two-minute
+style gates get 15 each; the beta lane, which hung for 12 hours twice, gets 60.
+
+The ceiling matters as much as the floor. A job that legitimately wants hours is a job whose *shape* is the
+news, and that sentence belongs in a document rather than in a YAML key — the census found `timeout-minutes:
+600` would have been a perfectly legal answer to a hang and would have changed nothing except the number in
+the log. The one exemption is `.github/workflows/release.yml`: it is cargo-dist's own output, `dist generate
+--check` refuses a hand edit (`check_release.py`'s `R07` requires that gate precisely so the file cannot
+quietly become hand-maintained), so a timeout added there is a red build on the next `dist` bump rather than
+a fix.
+
+### Queues
+
+Six of the fourteen files trigger on `pull_request`. Each one now declares the same three lines:
+
+```yaml
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+```
+
+`github.workflow` keeps two workflows out of one queue — a `docs` run must not be able to cancel a
+`build+test` run, which is the shape `docs.yml`'s old shared `pages-deploy` group had — and the second
+keeps two pull requests, or two branches, out of cancelling each other. `R02` requires that shape from
+every `pull_request` workflow, and refuses a `cancel-in-progress` that is neither `true` nor excused below.
+
+Two files keep a tolerance and pay for it in prose. `docs.yml` cancels on a pull request and not on a push,
+because two Pages deploys of the same site in flight can publish half of each build; `publish.yml` never
+cancels, because a release cut torn down between the tag and the dispatch leaves a version tagged with no
+release and no run to resume from. Both state that in the comment shape below, which is what makes the
+exception checkable rather than a line a reviewer skims.
+
+### Which branch a gate runs on
+
+`R07` is older news than any of the six rules above, and it is the one a fleet needs first, because a gate
+that never runs costs nothing and proves nothing. `e11.1` §5.2 read thirty days of run history and found
+172 runs of which **not one** had been started by the work: `master` had been frozen at `e194a63d9d` since
+2026-10-26, the branch the loop actually worked on had never been pushed, and every gate file said the same
+three lines —
+
+```yaml
+on:
+  pull_request:
+  push:
+    branches: [master]
+```
+
+— which is a true statement about where merges happen that goes false the day the work moves, silently,
+with nothing left in CI to notice. The shape the rule refuses is therefore *the list of names*, and it
+refuses it two ways: a `push:` trigger may not narrow by branch, and a workflow that gates every pull
+request may not be reachable only by a pull request.
+
+* **`branches: ["**"]`, or no filter at all.** A list of names is a claim about where the work *was*. `*`
+  is not a catch-all and the rule says so in as many words: GitHub's branch globs stop at a `/`, so
+  `branches: [*]` matches `master` and refuses `feature/more_functionality` — which is the shape of branch
+  name the work happens on here, and the reason a permissive-looking filter can be the same hole wearing a
+  hat. A file that genuinely must not run on every branch says which branches and why in its own header and
+  raises the rule in the same commit, which is what every rule here asks of a decision.
+* **A gate that fires on every `pull_request` also fires on a pushed branch.** A branch with no open pull
+  request otherwise reaches nothing at all, which is the shape a loop working on an un-merged branch is
+  stuck in forever. A `pull_request:` trigger narrowed by `paths:` is exempt — that file is a specialist
+  whose cost was already decided by a decision about which files it is about (`complexity.yml` is the only
+  one here), and `R06` and `C01` hold it to its cadence.
+
+The cost is named rather than hidden. A branch that *does* have an open pull request now runs both the push
+run and the pull-request run, and the two land in different `concurrency` groups (`github.ref` versus
+`github.event.pull_request.number`), so neither cancels the other and the branch pays for both. That is
+accepted: the alternative is `e11.1`'s month of work with no run at all, the per-ref queue `R02` requires
+still cancels a superseded push of the same branch, and the fleet's expensive half is already off the
+per-push path (`e11.2`).
+
+`docs.yml` needed one more edit for the same reason, and it is the kind of second half a widened trigger
+always has: its `build` job was gated on `github.ref == 'refs/heads/master'`, so on any other branch the
+widened trigger produced a run in which every job silently skipped. It builds on every event now — a broken
+page is red on the branch that broke it — and the two halves that genuinely cannot follow a branch, the
+Pages artefact upload and the deploy, say `github.event.repository.default_branch` instead of a name, so a
+future default-branch move takes them with it rather than leaving them frozen.
+
+Ask the question before pushing rather than after. It answers from the checkout — no token, no `gh`, no
+network — and it is the thing nobody could ask during the census window:
+
+```console
+$ python3 tools/check_workflows.py triggers
+branch: `feature/more_functionality` — not visible as `origin/feature/more_functionality` in this clone, so
+no run of any kind will start for it — `git push -u origin feature/more_functionality` (or `git fetch origin`
+first, if it is pushed and this clone is merely stale)
+
+| Workflow | Triggers              | A push of this branch | A pull request |
+|---|---|---|---|
+| `ci.yml` | pull_request; push | yes | yes, every path |
+| `contracts.yml` | pull_request; push | yes | yes, every path |
+| `complexity.yml` | pull_request; schedule; workflow_dispatch | no `push:` trigger | only its `paths:` filter |
+| `nightly.yml` | schedule; workflow_dispatch | no `push:` trigger | n/a — no `pull_request` trigger |
+
+5 merge-gate workflow(s) — the ones that fire on every pull request — and 5 of them reach
+`feature/more_functionality`. A gate that reaches the branch is a gate whose verdict you can read; a file
+below that does not is scheduled or dispatch-only by design.
+```
+
+That transcript is the honest state of this repository at the time `reco-kwg6` closed, and it exits
+non-zero: the triggers reach the branch now, and the branch is still not on the remote, because pushing it
+takes a credential this checkout does not have. *Triggers are half of a run; a branch nobody pushes is the
+other half.* The command says which half is missing and prints the `git push` that fixes it, and it is the
+piece of this ticket that a workflow file could never do on its own.
+
+### Tolerated failures
+
+The convention, and the only shape `R02` and `R03` will read:
+
+```yaml
+# tolerates: a Pages deploy that is midway, because tearing one down under the runner can leave
+# half a merge published on the site
+cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+```
+
+A note has to name a *why* — the line has to reach `because`, `since` or `so that` and carry more than a
+shrug — and a note whose tolerance has since been deleted is itself a failure, which is the same lie pointing
+the other way. The rule reads the file's own text, so a commented-out tolerance no longer counts: that is
+how a deleted exception leaves an explanation behind, looking like the thing it explains.
+
+`continue-on-error` is gone from the fleet. The two that were there are the argument for the rule:
+`nightly.yml`'s beta job spent 778 minutes under the flag with its failures written nowhere a human looks,
+and `fathom-check.yml`'s gate step carried the flag *and* swallowed the exit code into a step output two
+lines later, so the flag was not even the mechanism that was letting the failure through — it was a rumour
+about one. What replaced them is stated where it is taken. The beta lane's two steps each name the one thing
+they let pass (a build or a test break on a toolchain ADR-002 §2 does not ship on), write the verdict and the
+log tail to `$GITHUB_STEP_SUMMARY`, and end with a step that prints the two verdicts as a sentence. The
+reusable gate publishes its exit code as an output and lets `the verdict` step at the end of the job turn it
+back into a red with one of three sentences about which answer happened — because the reporters run under
+`if: always()` and a step that raises before they run deletes the only evidence anyone wanted.
+
+### Cache discipline
+
+Seven files, seventeen cache restores, one caching action. `e11.1` §3 counted 400 cargo saves against 113
+misses, and the misses had three boring causes, each of which is now a clause of `R04`:
+
+* **every job that compiles restores the cache before its first compiling step.** `self-review` built the
+  release's own binary from source with no cache at all, and `fuzz` rebuilt three targets and a nightly
+  toolchain every night for the same reason: a cache restored late, or not at all, saves nothing;
+* **nobody writes a cache key.** `Swatinem/rust-cache` derives one from the lock files, the toolchain in
+  `rustc -Vv`, the cargo env, the workflow and the job, which covers every input a cargo build reads. A
+  hand-written key is a key that will not be updated the semester the derivation grows an input, and a second
+  `actions/cache` over `~/.cargo` or `target/` is two keys over the same bytes, which is how a warm cache
+  starts lying about what it holds;
+* **`cache-on-failure: "true"`**, because a red job's compiled objects are still correct objects: 102 of
+  `ci.yml`'s 233 saves never happened for no other reason than that the job was red.
+
+The one hand-written lever is the *prefix*, taken from a dated `CACHE_BUST` in the file's `env:` block, and it
+carries a comment because a lever nobody can explain gets pulled at random:
+
+```yaml
+env:
+  # Bust this when the bytes already in the cache would be *wrong*, not merely stale — the registry, or the
+  # action's own layout. Stale is cargo's job: a source change re-checks its fingerprints and rebuilds what
+  # moved. Date it and name the bead that moved it. `gh cache list` before, `gh cache delete --all` after.
+  CACHE_BUST: "2026-11"
+```
+
+Two places where the honest setting is *not* to cache the build products, written down because they look like
+oversights otherwise: the fuzz workspace passes `cache-targets: "false"`, because the nightly moves daily and
+yesterday's objects are rustc-version-mismatched dead weight — the registry is the only half worth carrying;
+and a job that builds a second workspace (`fuzz`, the out-of-tree plugin example) has to name it under
+`workspaces:`, or that workspace's `target/` is rebuilt every run and cached under a key that does not
+describe it.
+
+### The artefact budget
+
+Seven artefacts, one row each, and the row is the budget: what the artefact *is*, how large it may get, how
+long it is kept, and which paths it is made of. `python3 tools/check_workflows.py budgets` prints this table
+out of the same dictionary `R05` reads, so an artefact and its row cannot disagree without a red build; the
+table below is that output, and a budget that moves moves in `tools/check_workflows.py` and here in one
+commit:
+
+| Artefact | What it is | Limit | Kept | Where it is uploaded |
+|---|---|---|---|---|
+| `fathom-check-sarif` | `fathom check` over one range, as SARIF; read once, by whoever the gate objected to | 10 MB | 14 days | `ci.yml`, `fathom-check.yml` |
+| `docs-site-preview` | the rendered docs site, kept as a pull-request preview | 50 MB | 7 days | `docs.yml` |
+| `privacy-offline` | one JSON document: the egress probe's verdict on the default binary | 2 MB | 14 days | `privacy.yml` |
+| `fathom-dogfood-corpus` | the weekly gate's reports and SARIF, one pair per repository in the pinned corpus | 60 MB | 30 days | `dogfood.yml` |
+| `fathom-perf-trend` | the perf trend files; `trend.jsonl` grows one row a day, which is what the 30 days pays for | 20 MB | 30 days | `perf.yml` |
+| `fuzz-nightly-crash-*` | a crash input and its reproducer, uploaded only when a target found one | 200 MB | 30 days | `fuzz.yml` |
+| `fathom-self-review-*` | what a release published about itself; kept as long as the release it is attached to | 30 MB | 90 days | `self-review.yml` |
+
+Nine uploads, and every one of them has a step in front of it that measures it. That step is five lines, it
+declares its numbers through `env:` so the lint can read them without parsing shell, it prints the spend to
+the job summary whether it passes or not, and it fails past the limit:
+
+```yaml
+      - name: the artefact budget (fathom-perf-trend)
+        if: always()
+        env:
+          ARTEFACT_NAME: fathom-perf-trend
+          ARTEFACT_PATH: benchmarks/trend/latest.json benchmarks/trend/trend.jsonl benchmarks/trend/trend.md benchmarks/trend/latest-summary.txt
+          ARTEFACT_MAX_KB: "20480"
+          ARTEFACT_PRODUCER: "the perf gate step above, which writes the trend it then uploads"
+        run: |
+          set -eu
+          kb=$(du -cks $ARTEFACT_PATH 2>/dev/null | awk '$1 == "total" {print $1}' || true)
+          kb=${kb:-0}
+          printf 'artefact budget · %s: %s KB of %s KB — %s\n' \
+            "$ARTEFACT_NAME" "$kb" "$ARTEFACT_MAX_KB" "$ARTEFACT_PRODUCER" | tee -a "$GITHUB_STEP_SUMMARY"
+          if [ "$kb" -gt "$ARTEFACT_MAX_KB" ]; then
+            echo "::error::$ARTEFACT_NAME is $((kb / 1024)) MB, over its $((ARTEFACT_MAX_KB / 1024)) MB budget."
+            exit 1
+          fi
+```
+
+Four things `R05` refuses, all of them the way a budget quietly stops being one: an artefact no row budgets;
+a row that budgets an artefact nothing uploads (a table allowed to accrete ghosts is a table nobody believes);
+upload paths the row does not describe, which is how an artefact grows a second artefact under one name; and a
+guard whose `if:` is not the upload's, whose limit is above the row's, that cannot fail, or that does not name
+which step produced the bytes — because "the artefact is empty" and "the producer stopped producing" are
+different work, and a reader has to be able to tell them apart from the log.
+
+The release matrix's artefacts (`artifacts-*`, `cargo-dist-cache`) are deliberately not in the table: they
+live in the generated file, they are the shipped product rather than a report about it, and their retention is
+the GitHub release they are attached to ([release.md](release.md) §1.2 covers what a release publishes).
+
+### Cadence
+
+One rule here is not `e11.4`'s measurement but `e11.2`'s precondition: `R06` refuses a step the required-step
+model calls `scheduled` inside a workflow that triggers on `pull_request`. `C01` already refuses a required
+step that disappears, or that survives only at the cadence it does not belong to; it cannot see the opposite
+accident, which is a spike reproduction added back onto the pull-request path, where it is read, and where it
+costs every push. That addition keeps `C01` green, because the needle still appears in a scheduled file too.
+This is the rule that keeps the long tail off the queue `e11.2` cut it off, and it is `C01`'s mirror rather
+than a copy of it.
+
 ## No silent passes
 
 Four invariants, each one tested, because "it did not fail" and "it did not look" look identical from the
@@ -381,5 +720,5 @@ Three smaller things came out of the same ticket, because a gate that is debugga
   is the only thing that loads `tests/test_x.py`, so renaming a test is maintenance and the gate declines to
   read it — with the declined count named in the run's notes, because "no API change" has to say how much of
   the repository it did not look at.
-* **the risk model is features-1** and does not yet use the co-change lane, so `sign-off` flags what looks
+* **the risk model is `features-3`** and does not yet use the co-change lane, so `sign-off` flags what looks
   risky by shape rather than what this repository's history says is risky.

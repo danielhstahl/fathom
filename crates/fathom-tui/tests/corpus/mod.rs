@@ -39,6 +39,7 @@ pub fn patch(name: &str) -> &'static str {
         "file_unavailable" => include_str!("../fixtures/file_unavailable.diff"),
         "submodule" => include_str!("../fixtures/submodule.diff"),
         "states" => include_str!("../fixtures/states.diff"),
+        "complexity" => include_str!("../fixtures/complexity.diff"),
         "empty" => include_str!("../fixtures/empty.diff"),
         "not_a_diff" => include_str!("../fixtures/not_a_diff.diff"),
         other => panic!("no fixture named {other:?} — add it to corpus::patch and tests/fixtures/"),
@@ -65,6 +66,7 @@ pub fn corpus() -> Vec<(&'static str, &'static str)> {
         "file_unavailable",
         "submodule",
         "states",
+        "complexity",
         "empty",
         "not_a_diff",
     ]

@@ -11,6 +11,11 @@
 //! is a hint line that stays on for anyone who guesses wrong, which is why the refusal is a notice and
 //! the line stays up.
 #![allow(clippy::unwrap_used, clippy::expect_used)]
+// Every test in this file drives `fathom tui`, which ADR-002 §6.1 compiles only with the `tui` feature, so
+// the headless `minimal` binary answers `FEATURE_ABSENT` (9) and there is no frame, no notice and no exit
+// code left for these assertions to read. Gated in the spelling `tests/check_verb.rs` and
+// `tests/show_trailers.rs` use; on every build with the shell the whole suite still runs.
+#![cfg(feature = "tui")]
 
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
@@ -67,7 +72,7 @@ fn the_hint_line_is_there_until_the_reviewer_turns_it_off() {
     });
     // The line is the palette's own vocabulary, not a fixed string: the actions a reviewer is most
     // likely to press next, with the key each one currently has.
-    for wanted in ["Queue", "Search", "Help"] {
+    for wanted in ["Timeline", "Search", "Help"] {
         assert!(
             hint.contains(wanted),
             "`{wanted}` is one of the next likely actions: {hint}"
@@ -83,19 +88,20 @@ fn the_hint_line_is_there_until_the_reviewer_turns_it_off() {
     );
 
     // And it is the hint line that went, not the frame: what the second render prints is the first
-    // render minus the hint line and the blank line that separated it from the panes.
+    // render minus the hint line — plus the row it freed, which the pane takes as padding, and a blank
+    // row is not a sentence the frame added. Since `e10.3` the freed row lands inside the rail's body
+    // rather than after the last pane, so the comparison is over printed content, in order.
     let shown = stdout(&before);
     let printed = stdout(&after);
-    let mut expected: Vec<&str> = shown
-        .lines()
-        .filter(|line| !line.starts_with("hint ·"))
-        .collect();
-    while expected.last().is_some_and(|line| line.is_empty()) {
-        expected.pop();
+    /// The frame's printed content: every non-blank line that is not the hint line itself.
+    fn content(text: &str) -> Vec<&str> {
+        text.lines()
+            .filter(|line| !line.trim().is_empty() && !line.starts_with("hint ·"))
+            .collect()
     }
-    let hidden: Vec<&str> = printed.lines().collect();
     assert_eq!(
-        expected, hidden,
+        content(&shown),
+        content(&printed),
         "turning the hint line off costs the frame the hint line and its separator, nothing else"
     );
     assert!(

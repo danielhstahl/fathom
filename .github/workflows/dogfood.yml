@@ -213,6 +213,28 @@ jobs:
           done
           exit $rc_collect
 
+      - name: the artefact budget (fathom-dogfood-corpus)
+        if: always()
+        # An artefact that grows past its budget fails the run here, instead of quietly costing the fleet its
+        # storage. The limit, the retention and the paths are this artefact's row in `ARTEFACT_BUDGET` in
+        # `tools/check_workflows.py`; rule `R05` refuses this step and that row to disagree, and refuses an
+        # upload that no row describes. The bytes are printed to the job summary whether the guard passes or
+        # not, because a budget nobody sees being spent is a rumour.
+        env:
+          ARTEFACT_NAME: fathom-dogfood-corpus
+          ARTEFACT_PATH: fathom-*.check.json fathom-*.sarif
+          ARTEFACT_MAX_KB: "61440"
+          ARTEFACT_PRODUCER: "the gate run over the pinned corpus, one step above"
+        run: |
+          set -eu
+          kb=$(du -cks $ARTEFACT_PATH 2>/dev/null | awk '$1 == "total" {print $1}' || true)
+          kb=${kb:-0}
+          printf 'artefact budget · %s: %s KB of %s KB — %s\n' \
+            "$ARTEFACT_NAME" "$kb" "$ARTEFACT_MAX_KB" "$ARTEFACT_PRODUCER" | tee -a "$GITHUB_STEP_SUMMARY"
+          if [ "$kb" -gt "$ARTEFACT_MAX_KB" ]; then
+            echo "::error::$ARTEFACT_NAME is $((kb / 1024)) MB, over its $((ARTEFACT_MAX_KB / 1024)) MB budget. Either it has grown past what it is, or the budget moved: change `ARTEFACT_BUDGET` in `tools/check_workflows.py`, this step and the budget table in docs/concepts/ci-gate.md in one commit."
+            exit 1
+          fi
       - name: the artefacts
         if: always()
         uses: actions/upload-artifact@v4
@@ -222,6 +244,7 @@ jobs:
             fathom-*.check.json
             fathom-*.sarif
           if-no-files-found: warn
+          retention-days: 30
 
       - name: the corpus, as a sentence
         if: always()

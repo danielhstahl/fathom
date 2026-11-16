@@ -35,7 +35,7 @@ THRESHOLDS = ROOT / "crates" / "fathom-analyze" / "spike" / "s6" / "thresholds.j
 CORPUS = ROOT / "crates" / "fathom-fixtures" / "corpus" / "relinks"
 TURNS = ROOT / "crates" / "fathom-fixtures" / "corpus" / "turns"
 ADR = ROOT / "docs" / "adr" / "0003-episodes.md"
-CONCEPT = ROOT / "docs" / "concepts" / "episode-relink.md"
+CONCEPT = ROOT / "docs" / "concepts" / "episode-derivation.md"
 HARNESS = ROOT / "crates" / "fathom-analyze" / "examples" / "s6_spike.rs"
 
 BOARDS = ("signed-off", "sparse")
@@ -286,9 +286,9 @@ def test_the_thresholds_file_states_its_boards_and_its_price(thresholds: dict) -
 def test_the_documents_are_registered_and_agree_with_the_report(report: dict) -> None:
     assert CONCEPT.exists()
     readme = (ROOT / "README.md").read_text()
-    assert "episode-relink.md" in readme, "the concept document must be reachable from the index"
+    assert "episode-derivation.md" in readme, "the concept document must be reachable from the index"
     adr = ADR.read_text()
-    assert "episode-relink.md" in adr, "ADR-003 §19 must point at the spike's prose"
+    assert "episode-derivation.md" in adr, "ADR-003 §19 must point at the spike's prose"
     assert "reco-f5a" in adr and "reco-f5a" in readme
     for sentence in ("393", "1562"):
         assert sentence in adr or sentence in CONCEPT.read_text(), (

@@ -2,7 +2,7 @@
 //!
 //! `reco-glv`'s acceptance step (b) — "find and read the three riskiest episodes" — is a question
 //! about a screen, so it is tested as a screen: this file builds a repository, runs `fathom index`,
-//! and asks `fathom --plain` (the same renderer the terminal gets, ADR-006 §6.7) what its queue looks
+//! and asks `fathom --plain` (the same renderer the terminal gets, ADR-006 §6.7) what its rail looks
 //! like. Nothing here hands a fixture to a view: the rows, the order, the numbers and the reasons all
 //! come out of the store the indexer wrote, through the same read `fathom tui` uses.
 //!
@@ -14,7 +14,8 @@
 //! addition in the fixture and must not outrank any of them.
 //!
 //! The view is chosen through `session_state` (`tui.view`, `e1.11`), the same row `fathom tui` writes
-//! when a reviewer presses `q` and quits, because `--plain` has no keystrokes.
+//! when a reviewer presses a view key and quits, because `--plain` has no keystrokes. Since `e10.3`
+//! the home view is the timeline, so most of these tests seed nothing at all.
 #![allow(clippy::unwrap_used, clippy::expect_used)] // a test that cannot fail loudly is not a test
 
 use std::collections::BTreeMap;
@@ -320,10 +321,9 @@ fn stderr(out: &Output) -> String {
 fn code(out: &Output) -> Option<i32> {
     out.status.code()
 }
-
-/// The queue pane's body out of a drawn frame: the first column below the pane rule.
+/// The rail's column out of a drawn frame: the first pane's body, rule and chrome taken out.
 #[cfg(feature = "sqlite-bundled")]
-fn worklist(frame: &str) -> Vec<String> {
+fn rail(frame: &str) -> Vec<String> {
     frame
         .lines()
         .skip_while(|line| !line.starts_with('┌'))
@@ -339,169 +339,92 @@ fn worklist(frame: &str) -> Vec<String> {
         .collect()
 }
 
-/// `(rank, id, risk)` for every row the queue drew, in the order it drew them.
+/// The short id of every episode row the rail drew, in the order it drew them.
+///
+/// A row is `▸ ep-c5d 2y +26 −0 ●●●○○○ ? 22 ⚑`; a group rule is `Wed 15 Nov ── 19 episodes`, the strip is
+/// `order: newest first · …` and the pane rule is a row of dashes — none of them has an `ep-` first field,
+/// so the id is what tells the rows apart.
 #[cfg(feature = "sqlite-bundled")]
-fn ranked_rows(frame: &str) -> Vec<(Option<u32>, String, Option<u32>)> {
-    let mut rows: Vec<(Option<u32>, String, Option<u32>)> = Vec::new();
-    for line in worklist(frame) {
-        let Some(body) = line.strip_prefix('▸').or_else(|| line.strip_prefix(' ')) else {
-            continue;
-        };
-        let mut fields = body.split_whitespace();
-        let (Some(rank), Some(id)) = (fields.next(), fields.next()) else {
-            continue;
-        };
-        // A row is `  1 ep-bdc agent …`; a reason line is `     · …`, and the pane's rule and strip
-        // have no episode id in the second field at all.
-        if id.len() != 6 || !id.starts_with("ep-") {
-            continue;
-        }
-        let risk = body
-            .split("risk ")
-            .nth(1)
-            .and_then(|rest| rest.split_whitespace().next())
-            .and_then(|value| value.parse::<u32>().ok());
-        rows.push((rank.parse::<u32>().ok(), id.to_owned(), risk));
-    }
-    rows
+fn drawn_rows(frame: &str) -> Vec<String> {
+    rail(frame)
+        .iter()
+        .filter_map(|line| {
+            let body = line.trim_start_matches(['▸', ' ']);
+            let first = body.split_whitespace().next()?;
+            let is_row = first.starts_with("ep-")
+                && first.len() == 6
+                && first["ep-".len()..].bytes().all(|b| b.is_ascii_hexdigit());
+            is_row.then(|| first.to_owned())
+        })
+        .collect()
 }
 
-/// The acceptance question, asked of the binary: the queue is a ranked worklist, and its first three
-/// rows are an answer a reviewer can act on.
+/// The figure, asked of the shipped binary (`reco-c05`, re-hosted on the rail by `e10.3`,
+/// `reco-ydek.3`).
+///
+/// This test used to ask "which three episodes are the riskiest" and read the answer off a ranked pane.
+/// `e10.1` decided the reviewer works the chronology (ADR-006 §5.1.2 §5) and `e10.3` deleted the ranking,
+/// so what is asserted now is the half that survived and the half the ticket's language is about: every
+/// row prints its own score, the strip names the order the renderer actually implements — chronology, not
+/// a score — and the count line keeps *caught up* a claim a reviewer can disprove. The fixture is kept
+/// whole for the same reason: it is a set of episodes whose scores disagree with each other, which is the
+/// only fixture that can show a rail declining to sort by them.
 #[cfg(feature = "sqlite-bundled")]
 #[test]
-fn the_queue_answers_which_three_episodes_are_the_riskiest() {
+fn the_rail_draws_every_episode_once_and_names_the_order_it_drew() {
     let dir = repository();
     let indexed = fathom_in(&dir, &["index", "."]);
     assert_eq!(code(&indexed), Some(0), "{}", stderr(&indexed));
-    seed(&dir, &[("tui.view", "queue"), ("tui.size", "140x60")]);
+    // No `tui.view` is seeded: the home view is the timeline now, so the shell gets there on its own
+    // (`e10.3`, ADR-006 §5.1.2 §1). The size is a user's own last-read size, as `e1.11` stores it.
+    seed(&dir, &[("tui.size", "140x46")]);
     let frame = stdout(&fathom_in(&dir, &["--plain"]));
-    let rows = ranked_rows(&frame);
-    let text = worklist(&frame).join("\n");
+    let rows = drawn_rows(&frame);
+    let text = rail(&frame).join("\n");
 
-    // One row per episode, and every one of them carries a number: the shipped build printed `?`.
+    // One row per episode, on one screen, in the order they happened.
     assert_eq!(
         rows.len(),
         SHAPES.len(),
-        "one row per shape, all of them on one screen — the queue drew {} rows for {} commits:\n{frame}",
+        "one row per shape, all of them on one screen — the rail drew {} rows for {} commits:\n{frame}",
         rows.len(),
         SHAPES.len()
     );
-    for (_, id, risk) in &rows {
-        assert!(
-            risk.is_some(),
-            "{id} drew no risk number — every episode here touched files:\n{text}"
-        );
-    }
-    let scored: Vec<u32> = rows.iter().filter_map(|(_, _, risk)| *risk).collect();
-    assert!(
-        !scored.contains(&0),
-        "every episode here touched files, so nothing is unranked:\n{text}"
-    );
     assert!(
         !frame.contains("risk ?"),
-        "the rail's `?` column is answered now:\n{frame}"
-    );
-    // What the rows are ordered by changed in `e4.5`: the queue orders by risk × staleness × blast, so
-    // the risk numbers down the pane are close to descending and no longer exactly so — a stale medium
-    // belongs above a fresh high, which is the whole ticket. The queue's own column is the invariant now,
-    // and the risk number each row carries is still `spine-1`'s, unchanged and printed beside it.
-    let points: Vec<u32> = text
-        .lines()
-        .filter(|line| line.contains(" risk "))
-        .filter_map(|line| {
-            line.split("queue ")
-                .nth(1)
-                .and_then(|rest| rest.split_whitespace().next())
-                .and_then(|value| value.parse::<u32>().ok())
-        })
-        .collect();
-    assert_eq!(
-        points.len(),
-        SHAPES.len(),
-        "every row carries the queue's own number as well as its risk:\n{text}"
-    );
-    let mut descending = points.clone();
-    descending.sort_unstable_by(|left, right| right.cmp(left));
-    assert_eq!(
-        points, descending,
-        "the pane is in the queue's order, highest points first:\n{text}"
-    );
-    // The rank column agrees with the order, which is the only way "which three" is readable.
-    let ranks: Vec<Option<u32>> = rows.iter().map(|(rank, _, _)| *rank).collect();
-    assert_eq!(
-        ranks,
-        (1..=u32::try_from(SHAPES.len()).unwrap())
-            .map(Some)
-            .collect::<Vec<_>>(),
-        "rank 1, 2, 3 … down the pane"
+        "an episode that touched files is never printed as unscored:\n{text}"
     );
 
-    // The three that matter are at the top, and each one's reason cites the file that put it there.
-    // Seven lines, because `e4.5` put a count line above the rows: the pane now opens with "queue 21 open"
-    // and the first three episodes start one line lower than they did when this test was written.
-    let top_three = text.lines().take(7).collect::<Vec<_>>().join("\n");
-    let line_of = |needle: &str| {
-        text.lines()
-            .position(|line| line.contains(needle))
-            .unwrap_or_else(|| panic!("nothing on the queue mentions {needle}:\n{text}"))
-    };
+    // The strip names the order the pane is in, in the words the renderer implements (ADR-006 §5.1.2 §3).
+    // It used to name a ranking function; what it names now is the chronology the rows are actually in.
     assert!(
-        top_three.contains("release.yml"),
-        "the three-line CI change is in the first three rows:\n{text}"
+        frame.contains("order: newest first"),
+        "the strip names the order, and the order is the chronology:\n{frame}"
     );
     assert!(
-        top_three.contains("0038_drop_email_backup.sql"),
-        "and so is the twelve-line migration:\n{text}"
-    );
-    assert!(
-        top_three.contains("test surface shrank"),
-        "and the turn that deleted 300 lines of tests behind a 520-line rewrite:\n{text}"
-    );
-    // The 400-line documentation edit is the largest addition in the fixture and is not in the top
-    // three — which is the whole distinction this ticket was filed to make.
-    assert!(
-        !top_three.contains("onboarding.md"),
-        "a 400-line documentation edit does not belong in the top three:\n{text}"
-    );
-    assert!(
-        line_of("release.yml") < line_of("+400"),
-        "the three-line workflow change is ahead of the 400-line documentation edit — that is the          whole distinction this ticket was filed to make:\n{text}"
+        !frame.contains("risk × staleness"),
+        "the ranking function is gone from the screen with the ranking:\n{frame}"
     );
 
-    // And the screen says what the screen is: the ranking named, its ceiling, and what it is not.
-    // `e4.5` replaced `reco-c05`'s spine-only order in this pane, so the strip names `queue-1` now — and
-    // names the three factors beside it, which is the part a reviewer can check with a calculator.
+    // And the same strip counts the open work, which is what makes the pane's “caught up” falsifiable
+    // now that no queue count exists to make it (`e10.3`, ADR-006 §5.1.2 §3 part 2).
     assert!(
-        frame.contains("order: queue-1") && frame.contains("risk × staleness × blast"),
-        "the strip names the ranking function and its factors:\n{frame}"
-    );
-    assert!(
-        frame.contains(&format!("{} of {} open", SHAPES.len(), SHAPES.len())),
-        "and how many rows carry it — `e4.5` counts what is open in the queue rather than what the spine
-         held back, because every row here is asking to be read:\n{frame}"
-    );
-    assert!(
-        frame.contains("cannot see 7 things"),
-        "and how much of the question it cannot answer:\n{frame}"
-    );
-    assert!(
-        frame.contains(&format!("queue {} open", SHAPES.len())),
-        "the status line counts the queue:\n{frame}"
+        frame.contains(&format!("{} unread", SHAPES.len())),
+        "the strip counts the episodes still asking to be read:\n{frame}"
     );
 }
 
 /// The same numbers on the timeline: the rail's risk column is the ranking's, not a placeholder.
 ///
-/// `reco-glv` named both panes — the queue had no rows and the rail printed `?`. The rail is the view
-/// a reviewer presses `t` for, so the column has to be filled there too, and the ordering of the
-/// *rail* stays chronological on purpose (`e1.6`): the rail is a calendar, the queue is the triage.
+/// `reco-glv` named two panes — one had no rows and the other printed `?`. Since `e10.3` there is one:
+/// the rail is the view a reviewer presses `t` for, the column has to be filled there, and the ordering
+/// of the *rail* is chronology on purpose (`e1.6`) — the rail is a calendar that prints a score per row.
 #[cfg(feature = "sqlite-bundled")]
 #[test]
 fn the_rail_prints_the_number_instead_of_the_placeholder() {
     let dir = repository();
     assert_eq!(code(&fathom_in(&dir, &["index", "."])), Some(0));
-    seed(&dir, &[("tui.view", "timeline"), ("tui.size", "140x46")]);
+    seed(&dir, &[("tui.size", "140x46")]);
     let frame = stdout(&fathom_in(&dir, &["--plain"]));
     assert!(!frame.contains("?  ⚑"), "no `?` risk column:\n{frame}");
     let numbered = frame

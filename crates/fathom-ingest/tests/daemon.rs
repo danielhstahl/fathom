@@ -14,8 +14,14 @@
 //! The store is deliberately absent — `fathom-ingest` is uphill of nothing that opens one — so "the store is
 //! consistent" is asserted here as *the worker was asked to settle and the lease went back*, and the SQL half
 //! is `crates/fathom-cli/tests/daemon_verb.rs`.
+//!
+//! Why the whole file is `cfg(unix)`: not the loop — the transport. Every test here asks the daemon
+//! something over its socket, and off Unix there is no socket to ask over: [`socket::bind`] answers
+//! `Unsupported` because binding a named pipe needs the FFI this workspace forbids (that crate's own
+//! header names the gap). A daemon nobody can ask is not a loop under test, so these are gated rather than
+//! left to fail on a platform that cannot host one — which is what `reco-wgcj` found.
 #![allow(clippy::unwrap_used, clippy::expect_used)]
-#![cfg(any(feature = "watch", feature = "watch-poll"))]
+#![cfg(all(unix, any(feature = "watch", feature = "watch-poll")))]
 
 mod common;
 

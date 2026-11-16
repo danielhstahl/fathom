@@ -28,10 +28,11 @@ mod schema;
 use crate::error::Error;
 
 pub use delta::{
-    AttributionEvidence, AttributionRef, BriefRow, EpisodeDelta, EpisodeRef, Evidence, Figure,
-    FileDelta, Finding, Gap, INTENT_DIGEST_ONLY, INTENT_NONE, INTENT_RECORDED, Input, Integrity,
-    Provenance, RiskComponent, RiskView, STATE_ALL, STATE_MEASURED, STATE_PARTIAL,
-    STATE_UNAVAILABLE, Section, SectionId, Supplied, SuppliedBlock, Totals, brief, compose,
+    AttributionEvidence, AttributionRef, BriefRow, CARD_COLUMNS, COMPLEXITY_LABEL, ComplexityView,
+    EpisodeDelta, EpisodeRef, Evidence, Figure, FileDelta, Finding, Gap, INTENT_DIGEST_ONLY,
+    INTENT_NONE, INTENT_RECORDED, Input, Integrity, Provenance, REFUSAL_CODES, RiskComponent,
+    RiskView, STATE_ALL, STATE_MEASURED, STATE_PARTIAL, STATE_UNAVAILABLE, Section, SectionId,
+    Supplied, SuppliedBlock, Totals, brief, complexity_headline, complexity_signed, compose,
     dependency_block, glyph_of, intent_block, render, short_id,
 };
 pub use schema::{
@@ -40,7 +41,10 @@ pub use schema::{
 };
 
 #[cfg(any(feature = "sqlite-bundled", feature = "sqlite-system"))]
-pub use delta::{for_commit, for_commit_with_repo, for_episode, for_episode_with_repo, for_rows};
+pub use delta::{
+    episode_complexity, for_commit, for_commit_with_repo, for_episode, for_episode_with_repo,
+    for_rows,
+};
 
 /// The version of the shapes this façade publishes.
 ///
@@ -165,7 +169,7 @@ pub struct Page {
 ///
 /// The window is clamped here and nowhere else; the count and the page come from one query pair, so the
 /// "3 of 5 000" a strip prints is the same denominator the store gave the page. Rows are read with the
-/// summed per-path rollup — the rail's basis — so a page of five hundred deltas costs four statements,
+/// summed per-path rollup — the rail's basis — so a page of five hundred deltas costs five statements,
 /// not fifteen hundred. A caller that wants the per-commit detail for one episode uses [`delta::for_episode`],
 /// which says so in its own `provenance.files_detail`.
 ///
@@ -185,6 +189,9 @@ pub fn episodes(
     let ids: Vec<String> = rows.iter().map(|row| row.id.clone()).collect();
     let files = store.episode_files(&ids)?;
     let states = store.review_states()?;
+    // One statement for the page's complexity roll-ups, for the same reason the file rollup is one
+    // statement: a rail page pays per query, not per row (ADR-007 §9.2).
+    let complexity = store.episode_complexity(&ids)?;
     let deltas = rows
         .iter()
         .map(|row| {
@@ -195,6 +202,7 @@ pub fn episodes(
                 rows.unwrap_or_default(),
                 review,
                 files.truncated || rows.is_none(),
+                complexity.get(&row.id),
             )
         })
         .collect();
@@ -214,26 +222,29 @@ pub fn episodes(
 // from the frame while `e4.4`'s feature vector is still on the other side of epic 2.
 //
 // `e2.11` did not change the ranking; it gave it a place to travel. The same [`Risk`] that ranks the rail is
-// copied into every delta's `risk` section, so the card, the queue, the artefact and the MCP tool print one
+// copied into every delta's `risk` section, so the card, the rail, the artefact and the MCP tool print one
 // number rather than four close approximations of it.
 pub use crate::risk::FileChange;
-pub use crate::risk::{BLIND_SPOTS, COMPONENTS, MODEL, Risk, Signals, Surface, classify, rank};
+pub use crate::risk::{
+    BLIND_SPOTS, CEILING_NOTE, COMPONENTS, MODEL, Risk, Signals, Surface, classify, rank,
+};
 
 // ---------------------------------------------------------------------------
-// the attention queue, through the same door (`e4.5`, `reco-wsj`)
+// the review ledger, through the same door (`e4.5` `reco-wsj`; renamed by `e10.3` `reco-ydek.3`)
 // ---------------------------------------------------------------------------
 //
-// The queue's ordering, its four triage acts and its retrospective are computed in
-// [`crate::queue`] — the façade computes nothing, as its own doc insists — but every surface that *shows*
+// The four triage acts, the open-work counts and the retrospective are computed in
+// [`crate::review`] — the façade computes nothing, as its own doc insists — but every surface that *shows*
 // them has to name them, and `fathom-tui` may not reach past this module (ADR-002 §5.3, lint `M02`). Same
-// arrangement as the risk block above: the door is the façade, the arithmetic is `queue`'s.
+// arrangement as the risk block above: the door is the façade, the arithmetic is `review`'s.
 //
-// The functions come through too, and that is deliberate rather than leakage: the queue re-ranks itself
-// after every keystroke, and a shell that re-derived the order locally would be a second ranking — the
-// same argument `e2.11` made about a second copy of `RiskView`. `rank` is the spine's ([`crate::risk::rank`]),
-// so the queue's arrives as `rank_queue` and nobody has to remember which is which.
-pub use crate::queue::{
-    BlastInput, CONDITIONS, DismissReason, Disposition, QueueCounts, QueuePlacement, QueuePolicy,
-    QueueRanking, QueueRetrospective, QueueRow, QueueWindow, REASONS, ReasonVocabulary, Severity,
-    SnoozeSituation, SnoozeUntil, TriageAct, TriageRecord, rank_queue, retrospect,
+// The functions come through too, and that is deliberate rather than leakage: the rail re-counts its open
+// work after every keystroke, and a shell that re-derived the tally locally would be a second count — the
+// same argument `e2.11` made about a second copy of `RiskView`. What the retired queue's ordering used to
+// ship (`rank_queue`, `QueuePolicy`, `QueueRanking`, `QueuePlacement`, `BlastInput`) is gone rather than
+// renamed: a place in a ranked set nothing ranks is not a fact (ADR-006 §5.1.2 §5).
+pub use crate::review::{
+    CONDITIONS, DismissReason, Disposition, REASONS, ReasonVocabulary, ReviewCounts,
+    ReviewRetrospective, ReviewRow, ReviewWindow, SEVERITY_HIGH, SEVERITY_MEDIUM, Severity,
+    SnoozeSituation, SnoozeUntil, TriageAct, TriageRecord, count_rows, retrospect,
 };

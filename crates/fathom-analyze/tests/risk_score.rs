@@ -1,4 +1,4 @@
-//! `features-1`: the explainable score, its arithmetic, its tunable weights and its calibration set
+//! `features-3`: the explainable score, its arithmetic, its tunable weights and its calibration set
 //! (`e4.4`, `reco-884`).
 //!
 //! The acceptance criteria this file is built around:
@@ -50,7 +50,7 @@ fn names_a_plan_key(line: &str) -> bool {
 }
 
 /// A case the way the collector would hand it over: a destructive migration with a high-severity
-/// finding, an agent author, no tests, and no graph to say what depends on it.
+/// finding, a confident attribution, no tests, and no graph to say what depends on it.
 fn destructive_migration() -> Vector {
     Vector::new(
         "ep-0038",
@@ -102,12 +102,6 @@ fn destructive_migration() -> Vector {
                 0.95,
                 "author_confidence",
                 "credited to agent by trailer at confidence 0.95",
-            ),
-            Measurement::measured(
-                Feature::Authorship,
-                0.7,
-                "author_kind",
-                "claude wrote this (ADR-001 §7.3)",
             ),
         ],
     )
@@ -161,18 +155,12 @@ fn documentation_edit() -> Vector {
                 "author_confidence",
                 "credited to human by author at confidence 0.99",
             ),
-            Measurement::measured(
-                Feature::Authorship,
-                0.0,
-                "author_kind",
-                "a person wrote this",
-            ),
         ],
     )
 }
 
-/// The eight identity-direction features — the ones whose ruler is the unit — as a full vector.
-fn identity_vector(values: [(Feature, f64); 8]) -> Vector {
+/// The seven identity-direction features — the ones whose ruler is the unit — as a full vector.
+fn identity_vector(values: [(Feature, f64); 7]) -> Vector {
     Vector::new(
         "ep-prop",
         values
@@ -193,7 +181,7 @@ fn identity_vector(values: [(Feature, f64); 8]) -> Vector {
 /// property stated in values. The two inverted axes (`test_ratio`, `attribution`) and the two whose unit
 /// is a count with its own denominator (`size`, `blast`) are covered by the `normalise` property instead —
 /// the composition of the two is the whole path, and each half is checked on its own terms.
-const IDENTITY: [Feature; 8] = [
+const IDENTITY: [Feature; 7] = [
     Feature::Migration,
     Feature::Dependency,
     Feature::Deletions,
@@ -201,7 +189,6 @@ const IDENTITY: [Feature; 8] = [
     Feature::Breadth,
     Feature::Findings,
     Feature::Surface,
-    Feature::Authorship,
 ];
 
 // --- criterion 1: every feature prints its weight and its contribution -------------------------
@@ -327,7 +314,7 @@ fn the_reasons_are_ordered_by_contribution_and_quote_something() {
     assert_eq!(points, sorted, "the reasons are not printed worst-first");
     for line in score::render(&scored) {
         // Every printed reason names something: a digit, a path, or an explicit refusal. The point is
-        // that no reason is an adjective (`risk-ranking.md` §2).
+        // that no reason is an adjective (`docs/concepts/risk.md`, *The scale*).
         if line.starts_with(" 1. ") || line.starts_with(" 2. ") {
             assert!(
                 line.chars().any(char::is_numeric) || line.contains("no "),
@@ -391,8 +378,8 @@ fn a_feature_with_no_collector_is_absent_rather_than_zero() {
         "measured plus absent is the whole vector, always"
     );
     assert_eq!(
-        scored.measured, 9,
-        "this fixture measures nine of the twelve"
+        scored.measured, 8,
+        "this fixture measures eight of the twelve"
     );
     // The denominator is what was measured, and the print says so: a hidden renormalisation is a second
     // model.
@@ -608,7 +595,6 @@ fn pair_differing_only_in(findings_a: f64, findings_b: f64) -> (Vector, Vector) 
                 (Feature::Dependency, 0.0),
                 (Feature::TestRatio, 0.5),
                 (Feature::Attribution, 0.95),
-                (Feature::Authorship, 0.7),
             ]
             .into_iter()
             .map(|(feature, raw)| Measurement::measured(feature, raw, "fixture", "one line each"))
@@ -730,9 +716,9 @@ mod monotonic {
 
         #[test]
         fn adding_to_a_feature_never_lowers_the_score(
-            base in prop::array::uniform8(0.0f64..=1.0),
+            base in prop::array::uniform7(0.0f64..=1.0),
             bump in 0.0f64..=1.0,
-            index in 0usize..8,
+            index in 0usize..7,
             weight in 0.05f64..=1.0,
         ) {
             let low: Vec<(Feature, f64)> = IDENTITY.iter().copied().zip(base.into_iter()).collect();
@@ -764,9 +750,9 @@ mod monotonic {
 
         #[test]
         fn a_dominating_episode_stays_ahead_under_any_weights(
-            low in prop::array::uniform8(0.0f64..=1.0),
-            deltas in prop::array::uniform8(0.0f64..=1.0),
-            weights in prop::array::uniform8(0.0f64..=1.0),
+            low in prop::array::uniform7(0.0f64..=1.0),
+            deltas in prop::array::uniform7(0.0f64..=1.0),
+            weights in prop::array::uniform7(0.0f64..=1.0),
         ) {
             let a: Vec<(Feature, f64)> = IDENTITY.iter().copied().zip(low.into_iter()).collect();
             let b: Vec<(Feature, f64)> = IDENTITY
@@ -786,7 +772,7 @@ mod monotonic {
         }
 
         #[test]
-        fn the_score_is_byte_stable(values in prop::array::uniform8(0.0f64..=1.0)) {
+        fn the_score_is_byte_stable(values in prop::array::uniform7(0.0f64..=1.0)) {
             let vector = identity_vector(array_of(&values.iter().copied().enumerate().map(|(index, value)| (IDENTITY[index], value)).collect::<Vec<_>>()));
             let first = score::score(&vector, &Weights::defaults());
             let second = score::score(&vector, &Weights::defaults());
@@ -796,9 +782,9 @@ mod monotonic {
     }
 
     /// Put a list back into the fixed-length array [`identity_vector`] wants.
-    fn array_of(values: &[(Feature, f64)]) -> [(Feature, f64); 8] {
-        let mut out = [(Feature::Noise, 0.0); 8];
-        for (index, pair) in values.iter().enumerate().take(8) {
+    fn array_of(values: &[(Feature, f64)]) -> [(Feature, f64); 7] {
+        let mut out = [(Feature::Noise, 0.0); 7];
+        for (index, pair) in values.iter().enumerate().take(7) {
             out[index] = *pair;
         }
         out
@@ -868,8 +854,11 @@ fn calibration_meets_its_bar() {
         "the shipped default, confirmed against three real repositories"
     );
     assert_eq!(
-        comparison.tau_shipped_flags, 6,
-        "and this corpus says what that value does here: six of forty, which is the decile plus ties"
+        comparison.tau_shipped_flags, 4,
+        "and this corpus says what that value does here: four of forty, down from six — every case \
+         here credited an agent or a person at full confidence, so every one of them was carrying \
+         `authorship`'s share of the denominator, and on a cut this coarse that was worth about a \
+         point and a half each"
     );
     assert!(
         comparison.tau_proposed >= 1 && comparison.tau_proposed <= 100,
@@ -918,6 +907,16 @@ fn calibration_meets_its_bar() {
     if let Some(notice) = comparison.notices.first() {
         panic!("the calibration set refused something: {notice}");
     }
+    // A feature no case measures cannot have its weight fitted, and the report names the ones it could not
+    // fit instead of printing a proposal that implies thirteen tested weights (`reco-l9bz.7`). `blast` has
+    // never been carried by a case in this set; `complexity` arrived with the axis and this 40-case corpus
+    // has not been re-authored to measure it. That is a fact about the corpus, not about the axis: what
+    // measures the axis is the G3 corpus over real history, and its numbers are blessed elsewhere.
+    assert_eq!(
+        comparison.unfitted,
+        vec!["blast".to_owned(), "complexity".to_owned()],
+        "these are the weights this corpus cannot fit, and the report has to name them"
+    );
 }
 
 #[test]
@@ -1069,25 +1068,31 @@ fn a_worked_example_adds_up_by_hand() {
             (Feature::Dependency, 0.0),
             (Feature::TestRatio, 1.0),
             (Feature::Attribution, 1.0),
-            (Feature::Authorship, 0.0),
         ]
         .into_iter()
         .map(|(feature, raw)| Measurement::measured(feature, raw, "hand check", "one line each"))
         .collect(),
     );
     let scored = score::score(&vector, &Weights::defaults());
-    // Eleven of the twelve are measured, so the denominator is the shipped sum without `blast`:
-    // 1.00 − 0.09 = 0.91, and every term is `100 · w · x / 0.91`.
+    // Ten of the twelve are measured, so the denominator is the shipped sum without `blast` and without
+    // the `complexity` axis this fixture has no figure for: 1.00 − 0.09 − 0.07 = 0.84, and every term is
+    // `100 · w · x / 0.84`. An episode the index has no complexity figure for is not scored as having
+    // added no complexity — it is divided out, exactly like a missing `blast`.
     assert!(
-        (scored.denominator - 0.91).abs() < 1e-9,
-        "denominator {} is not the eleven measured weights' sum",
+        (scored.denominator - 0.84).abs() < 1e-9,
+        "denominator {} is not the ten measured weights' sum",
         scored.denominator
     );
+    for absent in [Feature::Blast, Feature::Complexity] {
+        assert!(
+            !scored.terms.iter().any(|term| term.feature == absent),
+            "{:?} is not measured here and must not be a term",
+            absent
+        );
+    }
     assert!(
-        !scored
-            .terms
-            .iter()
-            .any(|term| term.feature == Feature::Blast)
+        scored.absent.iter().any(|entry| entry.name == "complexity"),
+        "and the absence is printed, with who owns the input"
     );
     let migration = scored
         .terms
@@ -1096,15 +1101,15 @@ fn a_worked_example_adds_up_by_hand() {
         .unwrap();
     assert_eq!(
         migration.points,
-        Points((10_000.0_f64 * 0.09 / 0.91).round() as i64),
-        "a 0.09 weight at full value is 9.89 points once the missing axis is divided out"
+        Points((10_000.0_f64 * 0.09 / 0.84).round() as i64),
+        "a 0.09 weight at full value is 10.71 points once the two missing axes are divided out"
     );
     let expected: i64 = Feature::ALL
         .iter()
-        .filter(|feature| feature.id() != "blast")
+        .filter(|feature| feature.id() != "blast" && feature.id() != "complexity")
         .map(|feature| {
             (10_000.0 * feature.default_weight() * feature.normalise(value_of(&vector, *feature))
-                / 0.91)
+                / 0.84)
                 .round() as i64
         })
         .sum();
@@ -1117,10 +1122,17 @@ fn a_worked_example_adds_up_by_hand() {
     assert!(
         scored
             .vector()
-            .starts_with(&format!("features-1 {} = ", scored.score))
+            .starts_with(&format!("{MODEL} {} = ", scored.score))
     );
-    // …and the number itself, quoted by `docs/concepts/risk-scoring.md` §4.
-    assert_eq!(scored.score, 33, "\n{}", score::render(&scored).join("\n"));
+    // …and the number itself, quoted by `docs/concepts/risk.md` (*A worked example*). `reco-ydek.5` took
+    // `authorship` out and put its 0.04 on `findings` and `surface`, so the same ten measurements now
+    // add to 39.28 rather than the 35.71 `features-2` printed: the denominator is unchanged at 0.84 and
+    // the two axes that were paid moved from 9.52 and 15.48 to 10.71 and 17.86.
+    assert_eq!(
+        scored.total.0, 3_928,
+        "the hand sum, in hundredths: 17.86 + 10.71 + 10.71"
+    );
+    assert_eq!(scored.score, 39, "\n{}", score::render(&scored).join("\n"));
 }
 
 fn value_of(vector: &Vector, feature: Feature) -> f64 {
@@ -1130,9 +1142,9 @@ fn value_of(vector: &Vector, feature: Feature) -> f64 {
         .unwrap_or(0.0)
 }
 
-/// The façade re-exports what `spine-1` published; this says so loudly if it ever stops.
+/// The façade re-exports the spine ranking the rail reads; this says so loudly if it ever stops.
 #[test]
-fn the_spine_ranking_is_still_the_one_the_queue_reads() {
+fn the_spine_ranking_is_still_the_one_the_rail_reads() {
     use fathom_analyze::risk::{Risk, Signals, rank};
     let ranking: Risk = rank(&Signals {
         files: &[],
@@ -1141,12 +1153,14 @@ fn the_spine_ranking_is_still_the_one_the_queue_reads() {
         n_files: 0,
         n_binary: 0,
         n_commits: 1,
-        author: "unknown",
         partial_files: false,
+        complexity: None,
     });
-    // Nothing was measured except authorship, and an uncredited author is worth 6 in `spine-1`.
-    assert_eq!(ranking.score, 6, "spine-1's own arithmetic changed");
-    assert_eq!(fathom_analyze::risk::MODEL, "spine-1");
+    // Nothing was measured at all, so nothing contributed. Under `spine-2` this same empty episode scored
+    // 6 for "nobody is credited", which is the number `reco-ydek.5` removed: an author label is not a
+    // claim about the change, and the reviewer is no longer shown it.
+    assert_eq!(ranking.score, 0, "spine-3's own arithmetic changed");
+    assert_eq!(fathom_analyze::risk::MODEL, "spine-3");
     let _ = BTreeMap::<u8, u8>::new();
     let _: Option<Score> = None;
 }

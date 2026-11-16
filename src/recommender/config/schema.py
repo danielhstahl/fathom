@@ -43,6 +43,7 @@ import difflib
 import re
 from dataclasses import dataclass
 
+from .command import command
 from .errors import ConfigInvalid
 
 #: Version of *this key layout*. A file may declare it (`meta.config_version`); a newer
@@ -1106,6 +1107,48 @@ KEY_LIST: list[Key] = [
            "bounded per definition and a truncated count is a note rather than a wrong number. "
            "`e3.1`.",
        analyzer="structure.extract", ticket="e3.1"),
+    # --- extract: the index-time complexity budget (`e8.4`) -----------------
+    # Three ceilings over the one pass that reads file *contents* to count decision points. The
+    # spine keeps no contents, so this pass runs inside `fathom index` while the bytes are in
+    # hand; what it declines has to be a stated absence, which is what the ceilings below buy.
+    # None of them is declared by a cached analyzer: the figures land in `git_commit_file`'s
+    # complexity columns, so no cache key moves when one changes value.
+    _k(path="extract.complexity.max_file_bytes", kind="integer", default=2_000_000,
+       minimum=1, units="bytes",
+       doc="Largest blob the index-time complexity pass will inflate for one file row. The size is "
+           "read from the object header, so a file over this cap is refused without being inflated at "
+           "all and comes back `too_large` - a stated absence, not a lost file. It is its own key "
+           "rather than a borrow of `ingest.size_cap_mib` because that cap (8 MiB) is what a line "
+           "count is worth inflating, and past 2 MiB the structural extractor refuses the file anyway. "
+           "`e8.4`.",
+       ticket="e8.4"),
+    _k(path="extract.complexity.max_run_bytes", kind="integer", default=128_000_000,
+       minimum=0, maximum=4 * 1024 * 1024 * 1024, units="bytes per run",
+       doc="How many bytes of file content one index run may read to count decision points. Bytes, "
+           "not files, because a parse costs what a file weighs: spike `s1` priced the six grammars at "
+           "0.6-16 MiB/s, so this is also the run's parse-time budget in machine-independent units. "
+           "The default is measured, not round: reading 512 MB for one cold index of a 5 501-commit "
+           "generated-Go history cost the pass 60.9 s of its own clock — 8.4 MB/s, about spike `s1`'s "
+           "worst grammar — so half that shipped, which puts the byte ceiling's worst case at about 30 s "
+           "added to that run and leaves `max_run_ms` to catch a slower machine. Spent, every remaining "
+           "row prints `?` with `scan_budget` and stays owed, so raising this key and re-indexing fills "
+           "what the earlier run declined. `0` declines the whole pass — the baseline arm of "
+           "`tools/complexity_cost.py` asks for it that way, which is the only honest way to price what the "
+           "pass costs. `e8.4`.",
+       ticket="e8.4"),
+    _k(path="extract.complexity.max_run_ms", kind="integer", default=60_000,
+       minimum=0, maximum=3_600_000, units="milliseconds per run",
+       doc="How long one index run may spend counting complexity, whatever its byte budget still has "
+           "room for. It is the pass's own clock, summed over the commits it filled: time the run spends "
+           "on other analyzers is not charged to it, because a budget that bounds somebody else's work is "
+           "a budget nobody can reproduce. Two minutes is the longest wait a first index should add to a "
+           "run a person is "
+           "watching; the time ceiling sits beside the byte one because bytes bound the work and time "
+           "bounds the wait, and on a loaded machine only one of the two is what the reviewer felt. "
+           "Spent, the outcome is the byte budget's — `?` with `scan_budget`, owed, fillable by raising "
+           "the key. `0` declines the whole pass, which is what `tools/complexity_cost.py` measures "
+           "against. `e8.4`.",
+       ticket="e8.4"),
     _k(path="extract.resolution.max_passes", kind="integer", default=4, minimum=1,
        units="passes",
        doc="How many times the corpus may be re-resolved to close a re-export chain. Resolution is "
@@ -2572,13 +2615,19 @@ def _check_range(key: Key, value, source: str, where: str) -> None:
         _one_range(key, value, where, source)
 
 
+#: The hint printed with a rejected value: the command that lists the range, spelled so it runs
+#: (see :mod:`.command` — `fathom config schema` is the design's name for the verb, and no
+#: binary answers to it yet).
+_SEE_SCHEMA = "see `%s`" % command("schema")
+
+
 def _one_range(key: Key, value, where: str, source: str) -> None:
     if key.minimum is not None and value < key.minimum:
         raise ConfigInvalid("%s=%s is below the minimum %s" % (where, value, key.minimum),
-                            source=source, hint="see `fathom config schema`")
+                            source=source, hint=_SEE_SCHEMA)
     if key.maximum is not None and value > key.maximum:
         raise ConfigInvalid("%s=%s is above the maximum %s" % (where, value, key.maximum),
-                            source=source, hint="see `fathom config schema`")
+                            source=source, hint=_SEE_SCHEMA)
 
 
 def _example(key: Key) -> str:

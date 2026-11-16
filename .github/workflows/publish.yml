@@ -71,6 +71,10 @@ permissions:
 
 concurrency:
   group: publish-release
+  # tolerates: a queued release cut keeping its runner instead of being cancelled, because a cut torn down
+  # between the tag and the dispatch leaves a version tagged with no release and no run to resume from, and
+  # because the `workflow_run` that put it in the queue has already fired for a ci run that will not come
+  # again
   cancel-in-progress: false
 
 jobs:
@@ -78,6 +82,8 @@ jobs:
     # A green `ci` on the default branch, or a person who asked. `workflow_run` fires for runs on any
     # branch; only the default branch's tip is releasable.
     if: ${{ github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == github.event.repository.default_branch) }}
+    # a version check, a tag and a dispatch; the `dist` invocation that prints the next version is the only toolchain work in it
+    timeout-minutes: 20
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -40,12 +40,12 @@ shipped feature without a doc".
 | `watch` | `fathom watch` and `fathom index --watch`: index as commits land. | — | — | [run-beside-the-agent.md](../recipes/run-beside-the-agent.md) |
 | `sqlite-bundled` | the store: SQLite compiled into the binary rather than found on the host. | — | — | [0004-storage.md](../adr/0004-storage.md) |
 | `langs-all` | all six tree-sitter grammars, so structure extraction covers the tree. | — | — | [structure-extraction.md](../concepts/structure-extraction.md) |
-| `deps-all` | every dependency ecosystem, so a lockfile is never silently unread. | — | — | [dependency-surface.md](../concepts/dependency-surface.md) |
+| `deps-all` | every dependency ecosystem, so a lockfile is never silently unread. | — | — | [dependencies.md](../concepts/dependencies.md) |
 | `minimal` | the headless build for a CI gate: no terminal, no store, no grammars. | — | — | [0002-workspace.md](../adr/0002-workspace.md) |
-| `net-advisories` | outbound advisory lookups, and only with `privacy.advisories`. | `privacy.advisories` | `e2.7` | [dependency-risk.md](../concepts/dependency-risk.md) |
+| `net-advisories` | outbound advisory lookups, and only with `privacy.advisories`. | `privacy.advisories` | `e2.7` | [dependencies.md](../concepts/dependencies.md) |
 | `net-llm` | an outbound model call. **Not shipped** — `e4.3a` measured it and it lost. | `privacy.llm` | `e4.7` | [narrative-polish.md](../concepts/narrative-polish.md) |
 | `net-http-transport` | MCP over HTTP instead of stdio, gated the same way. | `privacy.mcp_http_transport` | `e6.4` | [0005-harness-contract.md](../adr/0005-harness-contract.md) |
-| `schema-gen` | `--schema --write`, which is how the checked-in schemas are made. | — | — | [delta-model.md](../concepts/delta-model.md) · [cli.md](cli.md) |
+| `schema-gen` | `--schema --write`, which is how the checked-in schemas are made. | — | — | [delta.md](../concepts/delta.md) · [cli.md](cli.md) |
 <!-- END GENERATED: features -->
 
 ## The `net-*` set, and what consent means
@@ -67,7 +67,7 @@ Three consequences worth knowing before you trust a "clean" report:
 * **The default build makes zero network calls.** Not "does not by default": advisory lookup is behind
   three keys that must all agree (`deps.advisories.enabled`, its `mode`, and the user-scoped
   `privacy.advisories`), the endpoint is fixed in code with no key to redirect it, and tests trap
-  `socket.socket` and then run every verb ([dependency risk](../concepts/dependency-risk.md)).
+  `socket.socket` and then run every verb ([dependency risk](../concepts/dependencies.md#the-risk-who-asked-for-this-and-should-i-be-worried)).
 * **`net-llm` is not shipped.** The narrative polish path was measured and refused; the decision is a
   queryable fact (`narrative::llm::{SHIPPED, GATES}`) plus a scanner that fails the build if an HTTP
   client ever appears in that crate ([the polish decision](../concepts/narrative-polish.md)).
@@ -90,4 +90,4 @@ shipped" has exactly one answer.
 
 **Next**: [the CLI reference](cli.md) for the verbs those features gate ·
 [privacy](../concepts/privacy.md) for what the `net-*` promise is checked by ·
-[the delta model](../concepts/delta-model.md) for the schema `schema-gen` writes.
+[the delta](../concepts/delta.md) for the schema `schema-gen` writes.

@@ -40,7 +40,7 @@ Every fact you may assert, with the id you must cite for it. Nothing else is evi
 [g5] gap (tests): case names are e2.9's — not answered here, it is e2.9's
 [g6] gap (blast): no module graph in this build — not answered here, it is e3.2's
 [g7] gap (attention): spine-only ranking — not answered here, it is e4.4's
-[m1] author: danielhstahl (human author, identity at 0.5 confidence)
+[m1] author: danielstahl (human author, identity at 0.5 confidence)
 [m2] boundary: boundary rule author at 0.75 confidence
 [m3] totals: 8 file(s), +3659 -5, 1 commit(s), 0 binary
 [m4] window: 0 minute(s) long
