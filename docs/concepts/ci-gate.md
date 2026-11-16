@@ -210,7 +210,7 @@ branch, and it runs daily.
 | `.github/workflows/perf.yml` | daily at 04:11 UTC, and on `workflow_dispatch` | the ADR-004 §11 budgets measured against `benchmarks/baselines/perf-gate.json`, and the trend artefact. On a shared runner the gate was red on 17 of 19 pull requests and green twice, the second green two runs before going red again on a commit that only edited `ci.yml`; the measurement is a daily statement about the default branch now, and its no-build proofs stayed per-PR in `contracts.yml`. |
 | `.github/workflows/fuzz.yml` | daily at 03:17 UTC, and on `workflow_dispatch` | thirty minutes per target (`lockfile`, `hooks`, `paths`) on the nightly toolchain. The one-minute-per-target per-PR smoke is gone; the corpus proof and the `P03`/`P04` workflow rules are per-PR in `contracts.yml`. |
 | `.github/workflows/dogfood.yml` | weekly, on the default branch | the gate installed the way an outsider installs it, run over the corpus. |
-| `.github/workflows/release.yml` | on `workflow_dispatch`, on a tag, and daily by dispatch from `nightly.yml` | the six-target artifact matrix. `pr-run-mode = "skip"` since `e11.2`: it ran 18 times on pull requests in thirty days, went green zero times, and cost 451.5 runner-minutes doing it. |
+| `.github/workflows/release.yml` | on `workflow_dispatch`, on a tag, and daily by dispatch from `nightly.yml` | the six-target artifact matrix, on three operating systems ever since `59a0079c60` (`e7.4`) pinned it — three OSes buy three queues, and a platform-specific build is the only place a platform-specific break can be seen. `pr-run-mode = "skip"` since `e11.2`: it ran 18 times on pull requests in thirty days, went green zero times, and cost 451.5 runner-minutes doing it. |
 | `.github/workflows/publish.yml` | after a green `ci` on the default branch, and on `workflow_dispatch` | the version-bump-to-release cutter. It dispatches `release.yml`; it never publishes anything itself. |
 | `.github/workflows/self-review.yml` | on `release: published` | what a release publishes about itself. |
 
@@ -229,6 +229,18 @@ step that disappears, *or* that survives only at the cadence it does not belong 
 second workflow when its row names a home — so a per-PR gate cannot drift onto the nightly, a nightly
 reproduction cannot be deleted, and one question cannot be asked twice, all without a red build saying which
 one. ADR-002 §8.1 prints the same list, home column included.
+
+**How the needle is looked for, because a substring test is not the rule.** `C01` matches a required step
+against the steps that *execute* — a step's `run:`, `uses:` or `with:` value — and never against prose. A
+substring test over the concatenated YAML was satisfied by the words `cargo deny check` in a file's header
+comment while the real licence and advisory gate lived in another file: the rule that exists to refuse a
+vanished gate could be fed a sentence. Comments now satisfy nothing, which is why the cargo-deny row names
+the action (`EmbarkStudios/cargo-deny-action`) rather than the command. The stripping reaches one level
+down: the `#` lines inside a `run:` block are removed before the needle is looked for, because a shell
+comment is prose wearing a command's clothes, and that shape was found by `e11`'s close while it was
+proving its own deletions stay deleted (`.plan/evidence/reco-374v/dedupe_proofs.py` runs the case eight
+ways). ADR-002 §8.1's generated table is the same list, and its four rule statements — needle, cadence,
+home, and match-against-execution — are the four ways a gate goes missing.
 
 The third clause is `e11.3`'s (`reco-374v.3`), and it was bought by the changelog audit, which was asking the
 same question in `ci.yml`'s beta-loop step and in `contracts.yml`'s contract suite: three consecutive commits

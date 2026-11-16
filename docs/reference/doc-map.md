@@ -1,9 +1,10 @@
 # The documentation merge map: one page per noun, and what each merge must keep
 
-- **Status**: **accepted, and four-fifths executed** — [e12.2](#41-m1--risk-three-pages-into-one-e122--done)
-  and [e12.3](#42-m2--the-delta-the-noun-and-the-artefact-become-one-page-e123--done) are done: **M1, M2, M3
-  and M4** have landed, their pointer pages are in the tree and their links are rewritten. M5 (the ADR
-  slimming) is the merge left. A merge that contradicts this page is a change to this page, made first and in
+- **Status**: **accepted, and executed** — [e12.2](#41-m1--risk-three-pages-into-one-e122--done),
+  [e12.3](#42-m2--the-delta-the-noun-and-the-artefact-become-one-page-e123--done) and
+  [e12.4](#45-m5--slim-the-adrs-to-decisions-in-place-e124) are done: **M1 through M5** have landed, their
+  pointer pages are in the tree, their links are rewritten, and the three fat ADRs are slimmer where they
+  stand. A merge that contradicts this page is a change to this page, made first and in
   the same commit, and every contradiction this one met is recorded in the merge's own section.
 - **Ticket / plan key**: `reco-msv1.1` (`e12.1`), under `reco-msv1` (`e12`) — *half the documentation,
   none of the truth lost*.
@@ -15,6 +16,8 @@
   written), plus **8 pointer pages** — 60 files in the directory, and a pointer is a page a reader may still
   arrive at, not a page with claims in it. `docs/concepts/episode-derivation.md` (843 lines, 13 generated
   blocks) and `docs/concepts/rename.md` (777 lines, 16 blocks) are the two new ones.
+- **Census re-taken after M5**: `docs/adr/` is **9 373 lines** across its seven ADRs and its index (was 9 750), because 002, 004 and 006 gave up **408** lines between them — 6 520 → 6 112 — while their 40
+  generated blocks (2 226 lines) did not move and no path or section number changed.
 - **Read this if**: you are about to merge, rename, split or delete a documentation page. Read §1 before
   you touch a file, §4 for the family you are in, §6 for what has to keep resolving.
 
@@ -164,11 +167,11 @@ place, in the shape `0001` already shows.
 | File | Decision it records | What owns the description afterwards | gen / test / pin |
 |---|---|---|---|
 | 0001-product-thesis.md (13 lines) | the product thesis | `docs/concepts/thesis.md` (already) | pin `check_docs.py` |
-| 0002-workspace.md (1 120) | crate boundaries, feature floor, CI-required steps | itself for the decisions; `docs/reference/features.md` and `concepts/config.md` for the descriptive halves (M5) | gen `check_workspace.py` from `workspace_model.py` (9 blocks); test `test_workspace_contract.py` |
+| 0002-workspace.md (1 081, was 1 119) | crate boundaries, feature floor, CI-required steps | itself for the decisions; `concepts/ci-gate.md` + `concepts/privacy.md` took the CI-fleet prose in M5; `reference/features.md` and `concepts/config.md` keep theirs | gen `check_workspace.py` from `workspace_model.py` (9 blocks, 369 lines); test `test_workspace_contract.py` |
 | 0003-episodes.md (1 204) | episode identity, the boundary cascade, relink tiers | itself; §18/§19 keep the generated `s2`/`s6` tables where they are (M5 touches prose only) | gen `gen_segment_tables`, `gen_relink_tables` (4 blocks); test `test_episode_identity_contract.py` |
-| 0004-storage.md (2 638) | storage, indexing, cache and durability strategy | itself for the policy; `concepts/graph-storage.md` and `concepts/materialization.md` for the walkthroughs (M5) | gen `gen_adr_tables` (7 blocks); test `test_storage_contract.py`, `test_graph_spike_contract.py` |
+| 0004-storage.md (2 318, was 2 637) | storage, indexing, cache and durability strategy | itself for the policy; `concepts/graph-storage.md`/`materialization.md`/`memory.md` own the walkthroughs; the perf chronicle moved to `benchmarks/reports/perf-budget-chronicle.md` in M5 | gen `gen_adr_tables` (7 blocks, 892 lines); test `test_storage_contract.py`, `test_graph_spike_contract.py`; `tools/epic7_acceptance.py` parses §11.9 and §11.10 |
 | 0005-harness-contract.md (555) | hook wire formats, canonical events, the MCP surface | itself — its descriptive half *is* the contract, and `recommender.harness` executes it | test `test_hooks_contract.py`, `test_adapter_contract.py` |
-| 0006-tui.md (2 767) | view inventory, layout contract, keymap | itself for §5.1's binding notes; the per-view ASCII layouts and the degradation tables are generator-owned and duplicated in the screen pages (M5) | gen `recommender.tui doc` (23 blocks); test `test_tui_contract.py` + five `fathom-tui` tests; pin `check_docs.py` `RETIRED_TOKENS` |
+| 0006-tui.md (2 713, was 2 764) | view inventory, layout contract, keymap | itself for §5.1's binding notes and §5.1.1's bands (machine-read); the per-view screen descriptions are on `timeline.md`, `diff-viewer.md`, `ambient-mode.md`, `theming.md` and `summary-card.md`, which M5 pointed at instead of restating | gen `recommender.tui doc` (23 blocks, 965 lines); test `test_tui_contract.py` + five `fathom-tui` tests; pin `check_docs.py` `RETIRED_TOKENS` |
 | 0007-complexity.md (1 390) | per-language decision points, the aggregation, the one word | itself — the decision-point lists are normative and pinned to grammar versions | test `test_epic8_contract.py`, `test_complexity_fill_contract.py`; pin `complexity.yml` + seven crate files |
 | README.md | the ADR index, and which ADRs are generated | itself; every §-move below is recorded here in the same commit | pin `gen_docs.py`, `check_docs.py` |
 
@@ -183,7 +186,7 @@ Scheduled by epic 12 — these five merges are the deliverable:
 | **M2** delta | `delta-model.md` | `concepts/delta.md` | 2 → 1 — **done** (`e12.3`) |
 | **M3** episode | `episode-segmentation.md`, `episode-relink.md` | `concepts/episode.md` + **`concepts/episode-derivation.md`** (new) | 3 → 2 — **done** (`e12.3`) |
 | **M4** renames | `rename-detection.md`, `rename-pairing.md` | **`concepts/rename.md`** (new) | 2 → 1 — **done** (`e12.3`) |
-| **M5** ADR slimming | none — paths are fixed | `adr/0002`, `adr/0004`, `adr/0006` slimmed in place | 0 |
+| **M5** ADR slimming | none — paths are fixed | `adr/0002`, `adr/0004`, `adr/0006` slimmed in place | 0 — **done** (`e12.4`) |
 
 Recorded here and **not scheduled** — no bead owns them, and that is the point: they are decided so that
 nobody rediscovers them independently and merges the same family a second time. Open a bead citing this
@@ -658,6 +661,41 @@ to every ticket that cited it); `check_docs.py`'s `ADR-00N` reference rule again
 `docs/adr/README.md`, whose whole page is an index of what each ADR decides and which of them are generated
 — it gets a row-updating pass in the same commit. **Record the line count before and after in the bead**, as
 its acceptance criteria ask; the before numbers are in §2.2 above.
+
+**What `e12.4` (`reco-msv1.4`) actually did, and where the map was wrong.** Measured after: **6 520 → 6 112
+lines** across the three ADRs (0002 1 119 → 1 081, 004 2 637 → 2 318, 006 2 764 → 2 712), and every one of the
+40 generated blocks — 2 226 lines, 36 % of what is left — is where it was.
+
+* **Two of 0002's three pointer candidates were generator output.** §6.2 *is* the `features` block, and rule
+  `R11` ("the feature list in this ADR is the published list") plus `test_every_crate_and_feature_is_published_in_the_adr`
+  make the ADR the published list; `docs/reference/features.md` is a *different* rendering, of
+  `features.rs`'s user-facing prose, generated by `gen_docs.py`. The crate-graph "duplicate" was
+  `architecture-graph.md`, which is about the graph of a repository fathom analyses, not of this Cargo
+  workspace. What 0002 did shed is §8's description of the CI fleet — the `C01` needle rules (including the
+  "comments satisfy nothing" half, which was nowhere outside the ADR) to `concepts/ci-gate.md`, and the matrix
+  and privacy-job narrative to `concepts/ci-gate.md` and `concepts/privacy.md`.
+* **0004's descriptive half was bigger than "the store walkthrough"**: the perf chronicle. §11.10's 390 lines
+  of bless-by-bless record (`reco-r3x`, `reco-7yq`, `reco-dkr`, `reco-axp`, `reco-0zot`, `reco-3h82`,
+  `reco-15wk`, `reco-xsog`) are now `benchmarks/reports/perf-budget-chronicle.md`, and §11.9's `e7.2`
+  run-and-fixes narrative points at `benchmarks/reports/e7-2-real-repos.md`, which already carried it. What
+  stays in the ADR is what those findings *decided* — `graph.window` is a coverage window, a store-size
+  denominator names the lane, a ratchet floor is a measurement, a bless is one machine's number, a register row
+  comes off by measurement — plus the two tables `tools/epic7_acceptance.py` parses.
+* **0006's screen descriptions had mostly moved already; the ADR had simply not given up its copies.** §5.2's
+  rail columns (`timeline.md` §2–§3 own them), §5.7's ambient-as-process (`ambient-mode.md`), §10.2's colour
+  contract (`theming.md`), §10.3's empty-state chronicles (`CHANGELOG.md`, `onboarding.md`) and §5.1.1's
+  duplication audit and deleted-symbol list (`CHANGELOG.md`'s `reco-5js3.1`/`e9.3` entries) are pointers now.
+  §5.1.1 and §5.1.2 stayed: they are the pages epic 9 and epic 10 exist to implement, cited 15 and 63 times,
+  and `episode_card.rs` reads the band table out of the file.
+* **The normativity decision, made once as §4.5 required: option (a).** The ADR's generated layout blocks are
+  the only normative drawing of a shipped frame, and §5 says so in its own header. The re-sweep found no
+  concept page drawing a competing frame — the box-drawing on the screen pages is row-, strip- and pane-level
+  — so nothing had to be deleted from them; the rule is written down for the next page that wants to.
+* **Nothing was deleted that is not somewhere else.** `.plan/evidence/reco-msv1.4/surviving_claims.py` takes
+  every content line of the three ADRs as they were before the slim and looks for it in the slimmed ADR, in
+  `docs/**`, in `README.md`, in `CHANGELOG.md` and in `benchmarks/`; the residue is printed as a list, the
+  same way `e12.3` proved its merges.
+
 
 ### 4.6 M6 — the dependency family (recorded, not scheduled)
 

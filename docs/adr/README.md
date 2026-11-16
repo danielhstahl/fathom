@@ -23,6 +23,37 @@ same change rather than redefine it locally.
 **002–007 are filled** — by `reco-a54` (`e0.2`), `reco-ubw` (`e0.3`), `reco-79b` (`e0.4`), `reco-3pu`
 (`e0.5`), `reco-e0e` (`e0.6`) and `reco-l9bz.1` (`e8.1`).
 
+**An ADR keeps four things and only four** — the decision, the constraints it imposes on later work, the
+alternatives considered and the consequences — and `e12.4` (`reco-msv1.4`) took 002, 004 and 006 back to that
+shape without moving a path or renumbering a section. Three rules came out of doing it, and they bind the next
+person who tries:
+
+* **A generated block is not descriptive prose that happens to be in an ADR.** All 40 of them stay exactly
+  where they are: `check_workspace.py` (0002, nine), `gen_adr_tables.py` + `gen_graph_tables.py` (0004,
+  seven), `recommender.tui doc` (0006, twenty-three). Some of those contracts reach past the document —
+  ADR-002 §8.1's required-step list is what `check_workspace.py check` (rules `C01`, `C07`) refuses a second
+  copy of, and ADR-006 §5.1.1's band table is parsed by `crates/fathom-tui/tests/episode_card.rs`. So what
+  got slimmed is the hand-written prose *between* the blocks, and two of the merge map's three pointer
+  candidates for 0002 turned out to be generated tables, which is written up in
+  [the merge map](../reference/doc-map.md) rather than quietly dropped.
+* **A section number is an API.** Every surviving section keeps its number and its heading, because `ADR-00N
+  §x.y` is how the Rust sources, the schemas, the workflows and ~40 documents cite this folder — over 500
+  such citations, and `check_ticket_claims.py` does not scan `docs/adr/` at all because a decision record is
+  dated on purpose. The sections CI and other tickets cite stay in full and in place: **ADR-002 §8.1** (the
+  gate list), **ADR-004 §9.5** (the migration policy) and **§11.9/§11.10** (the budget dispositions and the
+  relaxation ledger, both parsed by `tools/epic7_acceptance.py`), **ADR-006 §5.1**'s binding note about the
+  vector string, **§5.1.1**'s bands and **§5.1.2**'s retirement with its parts in drop order, and **§7.6**'s
+  key-retirement rule.
+* **Description has one home, and it is usually a concept page.** What moved: ADR-002 §8's CI-fleet prose to
+  [ci-gate.md](../concepts/ci-gate.md) and [privacy.md](../concepts/privacy.md); ADR-004's `e7.2`
+  real-repository narrative to [the e7.2 report](../../benchmarks/reports/e7-2-real-repos.md) and its perf
+  chronicle to [perf-budget-chronicle.md](../../benchmarks/reports/perf-budget-chronicle.md); ADR-006's rail
+  columns to [timeline.md](../concepts/timeline.md), its ambient-as-process description to
+  [ambient-mode.md](../concepts/ambient-mode.md), its colour contract to
+  [theming.md](../concepts/theming.md) and its dated execution narratives to `CHANGELOG.md`. Measured: 0002
+  1 119 → 1 081, 004 2 637 → 2 318, 006 2 764 → 2 713 lines — **6 520 → 6 112, −408**, with the 2 226 lines
+  of generated tables in those three files (36 % of what is left) untouched by design.
+
 ADR-007 is the one written to be read before the code that obeys it: epic 8's six tickets all cite it and
 none of them may define the metric, aggregate it or name it independently, so it fixes the per-language
 decision-point lists against the *pinned* grammars (audited, not recalled: §11.1 finds fourteen node kinds

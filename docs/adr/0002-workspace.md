@@ -126,10 +126,11 @@ graph TD
 Arrows are `[dependencies]`; every arrow points to a strictly lower layer (R1). `fathom-fixtures` is dashed because it is a `[dev-dependencies]` crate and nothing else (R7) — no production crate depends on it. There is no arrow from `fathom-tui` or `fathom-mcp` to `fathom-store` even though the layering would allow it (§5.2), and the two arrows that do exist from those crates are narrowed to `insight`/`export` by §5.3.
 <!-- END GENERATED: diagram -->
 
-Read the picture by what is *missing*: there is no arrow from `fathom-tui` or `fathom-mcp` to
-`fathom-store`, even though the layering would allow it (§5.2); there is no arrow from
-`fathom-fixtures` into anything (it is a leaf nobody ships, §4.4); and there is no crate called
-`fathom-config` (§4.5).
+Read the picture by what is *missing* — the paragraph inside the generated block names the three absences
+(`fathom-tui`/`fathom-mcp` never reach `fathom-store`, `fathom-fixtures` is a leaf, and there is no
+`fathom-config` crate), and each has its own section: §5.2, §4.4 and §4.5. This page describes the *shipped*
+workspace graph; the graph of a repository fathom is analysing is a different noun and lives on
+[architecture-graph.md](../concepts/architecture-graph.md).
 
 ---
 
@@ -703,57 +704,28 @@ criterion is *"cargo-deny + module-boundary lint in CI"*, and a lint that exists
 the most common way such a criterion is quietly missed. So the presence of the invocation is itself a
 test.
 
-Four sharpnesses the rule has acquired, each one added after a measurement (`e11.1` §3, then `e11.2`,
-then `e11.3`, then the epic's own close):
+Four rule statements, each one added after a measurement (`e11.1` §3, `e11.2`, `e11.3`, then the epic's own
+close), and each one a separate way for a gate to go missing:
 
-* **the match is against the steps that execute** — a step's `run:`, `uses:` or `with:` value — and never
-  against prose. A substring test over the concatenated YAML was satisfied by the words `cargo deny check`
-  in a file's header comment while the real licence and advisory gate was
-  `EmbarkStudios/cargo-deny-action` in another file: the rule that exists to refuse a vanished gate could
-  be fed a sentence. Comments now satisfy nothing, which is also why the cargo-deny needle above names the
-  action. The same stripping reaches one level down: the `#` lines inside a `run:` block are removed before
-  the needle is looked for, because a shell comment is prose wearing a command's clothes, and that shape was
-  found by `e11`'s close while it was proving its own deletions stay deleted
-  (`.plan/evidence/reco-374v/dedupe_proofs.py` runs the case).
-* **every step carries a cadence.** `pull_request` means the needle must live in a workflow with a
-  `pull_request` trigger; `scheduled` means it must live in one with a `schedule:` trigger. When `e11.2`
-  moved the long tail — the spike-report reproductions, the Guardrail 3 calibration `--check`, the
-  out-of-tree plugin, the six-target package matrix, the fuzzing campaigns, the perf measurement and the
-  `beta` build — into the daily schedule, a list that only asked "does this string appear somewhere" would
-  have been equally content with the new arrangement, and would have been just as content a month later
-  when a *per-PR* gate had drifted the same way by accident. The cadence column is the decision, written
-  down where a lint can enforce it: `C01` fails a required step that survives only at the cadence it does
-  not belong to.
-* **a step can name the one workflow that runs it.** The fourth column is `e11.3`'s (`reco-374v.3`) and one
-  row is why it exists: `tools/gen_changelog.py audit` ran in `ci.yml`'s `e7.7` beta-loop step *and* inside
-  `contracts.yml`'s pytest mirror, and `e11.1` §4 found three consecutive commits where one `C03` finding — a
-  commit with no `[Unreleased]` entry — reddened both jobs, so a paragraph nobody wrote cost two tickets, two
-  triage threads and two "which check was that?" detours. A cadence-only list cannot refuse that: the needle
-  was present where it was required to be, and again somewhere else. So a row may name a home, and `C01` then
-  refuses both halves of the accident — the needle missing from its home, and the needle turning up in a
-  second workflow. Rows where two copies are deliberate stay unpinned (the boundary lint answers a question
-  two jobs ask; the release matrix is dispatched from two files), and the model comments each one so the
-  duplication is written down rather than inferred. The column also answers the question a red actually asks,
-  *where do I look* — which is the same reason §8.1 prints the list at all.
-* **the homes are how the duplicate table gets emptied instead of re-litigated.** Four rows joined the list
-  when `e11` closed, one per duplicated gate its close deleted: the egress-closure `cargo tree` query (ran in
-  `ci.yml` *and* `privacy.yml`, byte for byte — `privacy.yml` keeps it, because it is the workflow whose name
-  says what it protects and it asks on a runner with no network); the demo repository's assembly (ran in
-  `ci.yml` and `contracts.yml`; it needs `git` and the committed pack rather than a build, so `contracts.yml`
-  keeps it); the generated-page check (ran in `contracts.yml` *above* the `check_docs_site.py` that calls the
-  same check internally, and again in `docs.yml`, which keeps the named step); and the packager's negative
-  controls (ran twice inside `ci.yml` — in `release-skeleton`, which needs no toolchain, and again in
-  `packaging`, four minutes of archive build later). A home names a workflow, not a job, so that last one is
-  pinned to the file here and refused at job level by `tests/test_workspace_contract.py`. Working the table
-  the other way round was the finding: two rows `e11.1` §3 proposed as duplicates turned out to be *halves*
-  rather than copies — `check_ci_gate.py`'s verb-and-flag rules, and the documented-command check inside
-  `check_docs_site.py`, need a compiled binary and print that they skipped when there is none, so they run in
-  `ci.yml`'s built leg precisely because `contracts.yml` cannot answer them. A duplicate is one question asked
-  twice; a repeated file name is not.
+* **The needle is matched against the steps that execute** — a step's `run:`, `uses:` or `with:` value —
+  and never against prose, comments stripped at both levels. How that came to be a rule, and the sentence
+  that satisfied it, is on [the CI gate page](../concepts/ci-gate.md).
+* **Every step carries a cadence.** `pull_request` steps must live in a `pull_request` workflow,
+  `scheduled` ones in a `schedule:` workflow, so the long tail `e11.2` moved to the nightly cannot drift
+  back and a per-PR gate cannot leave.
+* **A step may name the one workflow that runs it**, and then `C01` refuses both halves of the accident:
+  the needle missing from its home, and the needle turning up in a second workflow. The changelog audit is
+  the row that bought the column — one missing paragraph, two red jobs, two tickets.
+* **A duplicate is one question asked twice, not a repeated file name.** Two rows the census proposed as
+  duplicates turned out to be halves: `check_ci_gate.py`'s verb-and-flag rules and
+  `check_docs_site.py`'s documented-command check need a compiled binary, print that they skipped when
+  there is none, and so belong in `ci.yml`'s built leg as well as in `contracts.yml`.
 
-The prose list of what a pull request actually pays for is the header of `.github/workflows/ci.yml`; the
-scheduled half explains itself in `.github/workflows/nightly.yml`, `perf.yml` and `fuzz.yml`, and
-[the CI gate](../concepts/ci-gate.md) and [release](../concepts/release.md) pages say when each fleet runs.
+The list of what a pull request actually pays for is the header of `.github/workflows/ci.yml`; the
+scheduled half explains itself in `.github/workflows/nightly.yml`, `perf.yml` and `fuzz.yml`; and
+[the CI gate](../concepts/ci-gate.md) and [release](../concepts/release.md) are the pages that describe the
+fleet, the census behind it and what each job owes the runner.
+
 
 ### 8.2 The boundary lint, in three sentences
 
@@ -788,27 +760,19 @@ python3 tools/check_privacy.py check          # V01-V07: closure, consent table,
 python3 tools/gen_sbom.py check                # the committed SBOM and licence report match the lockfile
 ```
 
-Matrix: `linux` × {`stable`, the MSRV}, per `C01`'s needles. The macOS and Windows legs went in `e7.4`
-(`59a0079c60`): three operating systems bought three queues to answer a question the same source answers
-once, and the platform-specific build is where a platform-specific break can only be seen — the
-six-target release matrix, which builds all three on a tag, on `workflow_dispatch`, and once a day
-(`e11.2`: `pr-run-mode = "skip"`, `nightly.yml` dispatching `release.yml` in cargo-dist's dry-run mode).
-`beta` builds on the same daily schedule and is allowed to fail, so a regression is known before it ships
-rather than in the week after; a lane that cannot fail a run cannot gate a merge either, which is why it no
-longer buys a fourth toolchain build on every push. The
-headless `minimal` build is built and tested on every PR because `e6.6`'s CI-gate binary is what users
-put inside pipelines, and a TUI-only test suite would never notice that `fathom check` had grown a
-dependency on a terminal.
+**The matrix is `linux` × {`stable`, the MSRV}, per `C01`'s needles, and the headless `minimal` binary is
+built and tested on every PR** — `e6.6`'s CI-gate binary is what users put inside pipelines, and a
+TUI-only test suite would never notice that `fathom check` had grown a dependency on a terminal. The
+macOS, Windows and `beta` legs are daily rather than per-PR, and [the CI gate page](../concepts/ci-gate.md)
+carries the queue-cost argument for each.
 
-The privacy job (`e6.8`, `reco-h7p`) runs the shipped binary in a network-less namespace and asserts
-zero connection attempts, and additionally runs `cargo tree -e normal -p fathom-cli --no-default-features
---features minimal` and fails if any crate on §6's network-capable list appears. Per ADR-005's habit of
-marking claims by how they were established: that assertion was `e6.8`'s to write, and it is now
-measured rather than promised — `.github/workflows/privacy.yml` builds the default binary, proves its
-egress trap actually traps (`python3 tools/check_privacy.py selftest`), then runs the binary's verbs and
-a cold index with egress refused and requires byte-identical output. Where a runner provides no user
-namespaces the job falls back to an `LD_PRELOAD` tripwire that also *counts* attempts, and the report
-names the trap it used. The page is [docs/concepts/privacy.md](../concepts/privacy.md).
+The privacy job (`e6.8`, `reco-h7p`) is named here because it is the measurable half of §6.3: it runs the
+shipped binary in a network-less namespace and asserts zero connection attempts, and it runs
+`cargo tree -e normal -p fathom-cli --no-default-features --features minimal` and fails if any crate on
+§6's network-capable list appears. Measured rather than promised, in ADR-005's habit of marking claims by
+how they were established; how the trap is chosen and proved is
+[docs/concepts/privacy.md](../concepts/privacy.md).
+
 
 ### 8.4 `cargo-deny`, and why an ignore needs a signature
 
@@ -1087,9 +1051,7 @@ mutations are not hypothetical: every one of them is something a reasonable, in-
 | `cargo --version` | 1.99.0 | `resolver = "3"` (MSRV-aware, cargo ≥ 1.84) is available and used |
 | C toolchain | `gcc` and `cc` **present**, `make` absent | `sqlite-bundled` and the tree-sitter grammars can build here, so the heavy-feature policy is about build *time*, not about a missing compiler |
 | `cargo deny` | **not installed**, and installing it needs a network fetch the ADR does not need | `deny.toml` is written and its own discipline (`D01`–`D08`) is checked in Python today; `cargo deny check` becomes live the moment `e0.7` lands `Cargo.lock` and the runner has the tool — recorded as deferred, not silently claimed |
-| `clippy`, `rustfmt` | present in the toolchain | §8.3's two clippy invocations are runnable as written |
-| `crates.io` reachability | reachable from this container (`cargo search` resolves) | nothing in the checker depends on it; the lint is offline by construction |
-| Registry cache | empty | the scaffold uses `"0.0.0"` placeholder versions on purpose: it is a *shape*, and pinning is `e0.7`'s (§10.1) |
+| `crates.io` reachability, registry cache | reachable, cache empty | nothing in the checker depends on either: the lint is offline by construction, and the scaffold uses `"0.0.0"` placeholder versions on purpose — it is a *shape*, and pinning is `e0.7`'s (§10.1) |
 
 ---
 
