@@ -567,8 +567,8 @@ SOURCE_RULES: tuple[SourceRule, ...] = (
     # `fathom-analyze` is IO-free by ADR-002 §3, and three shipped surfaces of it are the documented
     # exception: the review ledger, the notes, and the ratchet baseline. Each is class M — a committed
     # markdown file that is the authoritative copy (ADR-004 D12) — and `e4.6`, `e6.5` and `e3.10` put
-    # the reader and writer of each one in this crate, which `docs/concepts/review-ledger.md`,
-    # `docs/concepts/review-memory.md` and `docs/concepts/ratchet.md` all describe as this module's
+    # the reader and writer of each one in this crate, which `docs/concepts/review-ledger.md` — one page
+    # for both records since `reco-lpuj` — and `docs/concepts/ratchet.md` both describe as this module's
     # job. Everything else in the crate is still a pure function of (input, config), which is
     # what the rule is for: a *fact* arriving by `std::fs` in an analysis module is the accident the
     # rule catches, and a golden file's reader is not.

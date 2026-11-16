@@ -1,15 +1,30 @@
-# The review ledger: sign-offs that outlive the history they were written about
+# The review ledger and the review memory: sign-offs and notes that outlive the history they were written about
 
-- **Status**: shipped (`e4.6`, **reco-rlf**).
+- **Status**: shipped — two pages' worth of it, and in one page. The ledger shipped in `e4.6` (**reco-rlf**)
+  and the memory in `e6.5` (**reco-552**), and each of the two pages re-introduced the same apparatus to
+  itself: class **M** because committed, keyed to episode identity, a digest on every block, mirrored into
+  the store, auditable with no index. `reco-lpuj` merged them under
+  [the documentation merge map](../reference/doc-map.md)'s M7 — a row that already said which sections went
+  where, and did not re-derive them. The retired path is a signpost now, and nothing was dropped: every
+  claim, table row, refusal, measured number and rendered sample from both pages is here, each in exactly
+  one place.
+- **Merged from**: `review-ledger.md` (`reco-rlf`, `e4.6` — the sign-offs) and `review-memory.md`
+  (`reco-552`, `e6.5` — the decisions, questions, follow-ups and annotations). One directory is the reason
+  they are one page: `.fathom/reviews/`, and one question — *what did a human say about this change, and
+  where does it go when the pull request closes*.
 - **In code**: `crates/fathom-analyze/src/ledger/` (`entry`, `format`, `relink`, `collect`) and
-  `crates/fathom-cli/src/review.rs`; the store mirror is `crates/fathom-store/src/ledger.rs`.
-- **Decided by**: ADR-004 §10 (durability classes — class **M** is must-survive *because it is committed*)
-  and [ADR-003](../adr/0003-episodes.md) (identity, which is what a sign-off is keyed to). The acts' host
-  and the retrospective's home changed in [ADR-006 §5.1.2](../adr/0006-tui.md) (`e10.1`); **the ledger did
-  not change at all**, which is what
+  `crates/fathom-cli/src/review.rs` for the sign-offs; `crates/fathom-analyze/src/notes/` (`entry`,
+  `format`, `collect`) and `crates/fathom-cli/src/notes.rs` for the notes. The store mirrors are
+  `crates/fathom-store/src/ledger.rs` and `crates/fathom-store/src/notes.rs`; the agent door is
+  `review_memory` / `add_review_note` in `crates/fathom-mcp/`.
+- **Decided by**: [ADR-004 §10](../adr/0004-storage.md) (durability classes — class **M** is must-survive
+  *because it is committed*) and [ADR-003](../adr/0003-episodes.md) (identity, which is what a sign-off and
+  a note are each keyed to), and ADR-004 Appendix A (the `decision_note` table the memory mirrors). The
+  acts' host and the retrospective's home changed in [ADR-006 §5.1.2](../adr/0006-tui.md) (`e10.1`); **the
+  ledger did not change at all**, which is what
   [the last section](#what-a-retired-view-does-not-take-with-it) is on the record for.
-- **Read this if**: you have signed something off and want to know what that actually did, or you want a CI
-  gate that means "a human looked".
+- **Read this if**: you have signed something off and want to know what that actually did, you want a CI gate
+  that means "a human looked", or you have a question a review left open and want it to stop being open.
 
 The **review ledger** is the durable, human-readable, committable record of what human beings decided:
 sign-offs, notes, dismissals with their reasons, and flags. It is markdown under `.fathom/reviews/`, keyed
@@ -27,6 +42,25 @@ reviewed it") would keep counting it.
 | travels in the pull request | no | no | **yes** |
 | says what was reviewed *and what it was* | a state | a state | four digests and the member set |
 | can be edited silently | in the store, out of sight | same | **no: every entry hashes itself** |
+
+A review produces more than a verdict. It produces *"we deliberately allow this cycle because the port is
+the boundary"*, *"does anything still call the old entry point?"*, *"follow up on this once the migration
+lands"*. That knowledge is the part that normally dies in a pull-request thread. The **review memory** is
+where it goes instead: the same markdown, under `.fathom/reviews/notes.md`, committed and reviewable in the
+same pull request as the change it describes, and mirrored into the index for the same reason.
+
+One page now, and the two files stay two nouns on purpose: **the ledger is a gate** — four dispositions, one
+per reviewer per change, and the north-star metric counts it — and **the memory is a record**: plentiful,
+free-text, opened by a question and closed by an answer. A note never counts as a review, and a sign-off
+never carries a paragraph of reasoning — each says what it says.
+
+| | the ledger | the review memory |
+|---|---|---|
+| file | `.fathom/reviews/ledger.md` | `.fathom/reviews/notes.md` |
+| unit | a disposition by a named human | a decision, question, follow-up or annotation |
+| answered by | a later disposition | a later note with `about:` naming it |
+| counts as a review | **yes** (`accepted` only) | no |
+| volume | one block per (episode, reviewer) | as many as the review produced |
 
 ## What a sign-off says
 
@@ -95,6 +129,56 @@ That objection is not a bug in the miniature: the bundled repository ignores `.f
 sign-off nobody can commit is a claim, not a record. Your own repository should carry the un-ignore line ADR-004
 §12 specifies — `!.fathom/reviews/` — and `fathom review status` will keep telling you until it does.
 
+## What a note says
+
+```markdown
+## nt-725876132d326f08 | decision | 2026-10-23T09:47:14Z | Ana Dev <ana@example.com>
+
+- kind: decision
+- episode: ep-f041c51ecf0e8f3ace87
+- author: Ana Dev <ana@example.com>
+- author-kind: human
+- written: 2026-01-04T10:05:00Z
+- text: we allow the cycle between m1 and m2 because the port is the boundary
+- target: src/m1.rs:1
+- fingerprint: f041c51e…      <!-- author+subject: the strong identity -->
+- fallback: c99b26f4…         <!-- author+subject, the weaker form -->
+- shape: d5371b6e…            <!-- author+paths: what a reword rides on -->
+- content: 4d6c788d…          <!-- the content it was written against -->
+- members: 289d49b8, 5caf3a4e
+- paths: src/m1.rs@fd63fdcbf8f1
+- via: fathom note add
+- digest: sha256:2be40d4e…
+```
+
+Four kinds, and the vocabulary is ADR-004 Appendix A's, not a new one:
+
+| kind | means | open until |
+|---|---|---|
+| `decision` | why the code is the way it is, written down | answered, if somebody answers it |
+| `question` | what a reviewer did not understand, or did not accept | a later note names it in `about:` |
+| `followup` | work somebody owes | a later note names it in `about:` |
+| `annotation` | a remark attached to a line or a change, with no ask in it | — |
+
+A note is attached to an **episode** (by its identity digests, exactly like a
+[sign-off](#what-a-sign-off-says)) or to a **path**. A path-anchored note is a real anchor, not a failure: the
+ladder reports it as `anchored` and `fathom context <path>` finds it.
+
+### Appending, never editing
+
+The file is append-only, and every block ends with a `digest:` line hashing its own lines. So:
+
+* **answering** a question appends a new note with `about: nt-…`. The question's block is not touched, and
+  its status becomes `answered` because a later block names it.
+* **withdrawing** a note appends a new one with `withdraws: nt-…`. Nothing is deleted; a retracted
+  decision is still a fact about the review.
+* **editing** a committed block is the tampering case, and it is checked the same way the ledger's entries
+  are: [Tampering, and why `verify` needs no index](#tampering-and-why-verify-needs-no-index) owns that rule
+  for both files, and `fathom note verify` is the memory's copy of it.
+
+Unknown fields are *reported*, never dropped: a note written by a newer build and read by an older one
+tells the older one what it could not understand, in the same way the ledger does.
+
 ## What the file says
 
 `.fathom/reviews/ledger.md` after that one sign-off, with its header comment trimmed (the header is the
@@ -143,7 +227,7 @@ verdict   NOT ALL REVIEWED
           `fathom review verify` for the line numbers
 ```
 
-(The long digests are elided in the second block so the lines fit; the real output prints them in full.)
+(The long digests are elided in that block so the lines fit; the real output prints them in full.)
 
 The stamp is to the whole second, and that is a rule rather than a rounding: `entry_id` and `digest` are derived
 from the text of the file, so a sub-second remainder would make the entry an act read from the act log and a
@@ -201,43 +285,85 @@ prose.
 Every entry hashes itself, so editing an entry's text after the fact is detectable
 (`fathom review verify`, exit `7` on anything wrong). `verify` reads only the ledger files — no episodes, no
 store — which is the case the check exists for: a fresh clone that has never been indexed can still learn that
-a sign-off was edited.
+a sign-off was edited. The entry it re-hashes, and the `sed -i` that gets caught, are printed in
+[What the file says](#what-the-file-says); what is worth saying twice is only the boundary — the check needs
+nothing but the file, so it never waits on an index.
 
-What an entry actually is, from the miniature after one sign-off (the whole file, minus the header comment):
+The memory sits under the same rule and has its own verb. `fathom note verify` re-hashes every note block and
+names the ones whose text no longer matches, and it needs no index and no store either, so a fresh clone can
+audit the memory before it builds anything. It is the check
+[*Appending, never editing*](#appending-never-editing) exists to make decidable: the file is append-only, so a
+block whose text no longer matches its own `digest:` was rewritten rather than added to.
 
-```text
-## sg-a11885f50b78cc97 | accepted | 2026-10-20T01:58:47Z | Dana Stahl <dana@example.com>
+## Surviving a rebase
 
-- episode: ep-06cf9f46eaf35e6b071c
-- decision: accepted
-- actor: Dana Stahl <dana@example.com>
-- actor-kind: human
-- signed: 2026-10-20T01:58:47Z
-- fingerprint: 06cf9f46eaf35e6b071cf15cf2d8bf6549505f9d7ac6d7ea1a973b258e407483
-- fallback: 86a37980e28ff91a54b16da0e887382290116cecd2e36cce07f92740677353a7
-- shape: 1e87b4547e438d66febb1eac284d262256aa4a7a9ecc9642d99f5a4455593421
-- content: f69ca480f4c1132ba2b9a580b48043723f24aae27a6860df18d5b1a1c2239eab
-- members: d367b98d
-- paths: Cargo.toml@0c0881be7651
-- scale: 1 commit(s), 1 file(s), +1 -0
-- note: read the diff; the retry ceiling is what the pager budget needs
-- digest: sha256:b5d11e24a16e6d3777f1a625de5e0b1cd2818a83b6debfce88f713f93fc694de
+A note keyed to a commit id is worth nothing after a rebase, and a note that silently disappears is worse
+than one that never existed: the reader cannot tell a deleted decision from a rewritten history. So a note
+carries the same four digests a sign-off does and goes through the
+[same re-link ladder](#the-verdict-and-the-three-states-that-are-not-reviewed), rung by rung: exact id →
+fingerprint → shape → member-set. What the ladder could not place is reported as `ORPHAN` with the reason,
+and stays in the file and in every report.
+
+That is the acceptance criterion, measured in `crates/fathom-analyze/tests/notes.rs`: notes written against
+a twelve-turn branch, the tail rebased under new subjects and new commit ids, and every note still attached
+— the ones whose episode identity is gone re-linked on a weaker rung, with `relinked_from` and the rung's
+name printed so a reader can see how sure it is.
+
+## The store is a mirror
+
+`decision_note` (migration 10) holds the file's content plus the verdicts: the link's method and score, the
+state, the derived status, and the tamper flag. It is class **R** by copy — delete it and `fathom note list`
+rebuilds it from the markdown, which is why the write path is file-first: append, fsync, then mirror. A crash
+between the two loses a row, never a note. The ledger's `ledger_entry` mirror is the same arrangement, and
+its recovery action is stated in [How it is stored, and why markdown](#how-it-is-stored-and-why-markdown).
+
+## Asking what the repository knows
+
+```console
+$ fathom context src/payments/ledger.rs
+context   src/payments/ledger.rs · 2 episode(s) touched this path
+  episode ep-f041c51ecf0e8f3ace87 · 2 note(s) · feat: payment boundary
+decisions
+  [decision] 2026-01-04T10:05:00Z · Ana Dev <ana@example.com> · we allow the cycle because the port is the boundary
+      · episode ep-f041c51ecf0e8f3ace87 — feat: payment boundary
+      · fingerprint f041c51ecf0e
+      · members 289d49b8, 5caf3a4e
+      · target src/m1.rs:1
+      · .fathom/reviews/notes.md#nt-725876132d326f08
+      · digest 8fb90a2926fc
+memory    1 open question(s) or follow-up(s) of 2 note(s) here
 ```
 
-Four digests, one member line, one path line per touched path, and the entry's own hash last. Editing the
-note by hand is caught, and `fathom review status` treats the whole sign-off as unverified when it is:
+One query answers *"why did we do X"*, *"who said so, and when"*, and *"what is still unanswered"* — for a
+path (every episode that touched it, newest first) or for an episode id. The same structure backs
+`fathom context --json`, the MCP tool `review_memory`, and the [export artefact](export-artefact.md)'s
+review-memory block, so the three cannot disagree.
 
-```text
-$ sed -i 's/read the diff/read the whole diff/' .fathom/reviews/ledger.md
-$ fathom review verify; echo "exit=$?"
-checked   1 ledger entry
-  · .fathom/reviews/ledger.md:32: entry `sg-a11885f50b78cc97`: its `digest:` is sha256:b5d1… and its lines
-    hash to sha256:da51… — the text changed after it was written
-verdict   the ledger does not match itself — treat these entries as unverified
-exit=7
-```
+The notes are also in the search corpus, so `/` and `fathom search kind:note` find them by their words:
+that is what makes a recorded decision findable by someone who does not know it was recorded.
 
-(The digests are truncated here so the line breaks stay readable; the real line prints them in full.)
+The library tests (`crates/fathom-analyze/tests/notes.rs`) hold the rules; the verbs are driven as a binary
+in `crates/fathom-cli/tests/notes_verb.rs`, which is where the exit codes, the `--json` contract ids, the
+refusals that leave the file byte-identical and the search corpus are actually checked. `fathom review`
+does the same job for the sign-offs, tested in `crates/fathom-cli/tests/review_verb.rs`.
+
+## Through the agent door
+
+`add_review_note` appends to the same file `fathom note add` appends to, with `via: fathom mcp
+add_review_note` and the author recorded as an agent (or as the human named in `reviewer`, which the file
+then says). `review_memory` reads it back with the evidence lines attached, and is a **read** tool, so a
+read-only session can answer *"why did we do X"* — which is the question that used to have no answer.
+
+| field | means |
+|---|---|
+| `status` | `open`, `answered`, `withdrawn` |
+| `link_state` | `fresh`, `stale`, `orphan`, `anchored` |
+| `relinked_from` | the episode it was written against, when a rewrite moved it |
+| `evidence` | the citation lines: episode, digests, member commits, target, file anchor, digest |
+
+The write half is gated like every write: `mcp.allow_writes`, an audit line per call, and a body bounded and
+redacted on the way in — the file is committed, so a secret pasted by an agent would otherwise ship in a
+pull request.
 
 ---
 
@@ -320,6 +446,7 @@ a fixture complaining about itself.
 ```text
 .fathom/reviews/
   ledger.md            # appended, fsynced before the mirror transaction commits
+  notes.md             # the review memory: same class, same rules, a different noun
   <topic>.md           # more files are allowed; every file under here is the truth
 ```
 
@@ -331,8 +458,25 @@ the rule ADR-004 §9.6 states for every class-M file, and the shipped binary sho
 status` objects in as many words when the ledger is git-ignored (the miniature's own output is quoted above),
 because a must-survive file no clone can fetch is not must-survive.
 
+## The ratchet still owes this a write
+
+The ticket pairs the memory with the ratchet: granting an allowance should write *both* the `[[allowance]]`
+in `.fathom/ratchet.toml` and a `decision` note saying why, because "we deliberately allow this cycle because
+the port is the boundary" is the sentence a TOML row cannot hold and a later reader cannot recompute. The
+ratchet (`e3.10`, **reco-5ht**) is built — `fathom ratchet` reads the file, the allowances and the digest —
+but nothing writes a `[[allowance]]` from a granted cycle yet, so that paired write does not exist either;
+when it is wired, it
+belongs to its verb — which owns the owner, the expiry and the digest of the loosening — and it appends
+through the same door `fathom note add` uses. The memory will not become the ratchet file in the meantime: an
+allowance is a dated permission with a matcher, a note is a dated claim with an author.
+
 ---
 
-**Next**: [episode](episode.md) for what a sign-off is keyed to ·
-[plan drift](plan-drift.md) for the case where signed-off work gets re-opened ·
-[the pipeline recipe](../recipes/gate-a-pipeline.md) for the `7`.
+## Related
+
+* [The export artefact](export-artefact.md) — where the memory is printed for a pull request
+* [Paths and files](paths.md) — what is committed, what is disposable
+* [Storage](../adr/0004-storage.md) — the classes, and Appendix A's `decision_note`
+* [episode](episode.md) — what a sign-off and a note are each keyed to
+* [plan drift](plan-drift.md) — the case where signed-off work gets re-opened
+* [the pipeline recipe](../recipes/gate-a-pipeline.md) — what the exit `7` is for

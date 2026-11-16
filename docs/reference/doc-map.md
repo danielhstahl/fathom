@@ -15,6 +15,11 @@
   rewritten and `tests/test_deprisk_contract.py` repointed in the same commit. `docs/concepts/` measures
   **50** content pages and **11** pointer pages, 61 files. [§10](#10-how-epic-12-closed) stays the epic's own
   dated close record; the merge is written where this map keeps merges — §2.1, §3, §4.6 and §6.2.
+- **M7 landed after it too**: `reco-lpuj` executed
+  [§4.7](#47-m7--the-committed-review-record-bead-reco-lpuj--done) and the two committed review records are one
+  page now — [../concepts/review-ledger.md](../concepts/review-ledger.md), one retired path, 5 inbound links
+  rewritten and both of the tests §4.7 names still green against the surviving page. `docs/concepts/` measures
+  **49** content pages and **12** pointer pages, 61 files — the number §3 predicted for M7.
 - **Ticket / plan key**: `reco-msv1.1` (`e12.1`), under `reco-msv1` (`e12`) — *half the documentation,
   none of the truth lost*.
 - **Census taken at**: `master` @ `064856d`. **57** pages under `docs/concepts/` (18 352 lines, 1.34 MB),
@@ -158,8 +163,8 @@ link/plan-key rules, which is not repeated per row.
 | release.md | release and distribution | itself | gen `check_release.py write`; test `test_release_contract.py` + three more; pin nine tools, five workflows |
 | rename-detection.md | which pairing method is a fact (spike `s4`) | **rename.md** — done (`e12.3`) | was: gen `gen_rename_tables`; test `test_rename_spike_contract.py`; pin `contracts.yml` |
 | rename-pairing.md | what the shipped card asserts about a pairing | **rename.md** — done (`e12.3`) | was: gen `gen_rename_pairing_tables`; test `test_rename_pairing_contract.py`; pin `rename/eval.py`. It also carried two stale copies of its own generated tables inside a code fence; the merge deleted them (§4.4) |
-| review-ledger.md | the review ledger: sign-offs | itself, absorbs review-memory.md (M7, unscheduled) | test `test_queue_era_fixture_contract.py`, `test_release_contract.py`; pin `VERB_DOCS["review"]`, `store/ledger.rs` |
-| review-memory.md | the review memory: notes, questions | **review-ledger.md** (M7, unscheduled) | pin `VERB_DOCS["note"]`, `VERB_DOCS["context"]` |
+| review-ledger.md | the review ledger, with the review memory beside it | itself, absorbs review-memory.md — done (`reco-lpuj`) | test `test_queue_era_fixture_contract.py` (reads this page, and still does); `test_release_contract.py` was listed against this row and names no page in this merge — §4.7 records that; pin `VERB_DOCS["review"]`, `store/ledger.rs` |
+| review-memory.md | the review memory: notes, questions | **review-ledger.md** — done (`reco-lpuj`) | was: pin `VERB_DOCS["note"]` and `VERB_DOCS["context"]`, both moved, and `docs/reference/cli.md` regenerated off them |
 | risk-ranking.md | the `spine-3` ranking, and the retired `queue-1` record | **risk.md** — done (`e12.2`) | was: `check_docs.py` `RETIRED_TOKENS` (seven tokens, now held by `risk.md`), `risk.rs`, `risk_score.rs` |
 | risk-score.md | how to read the number | **risk.md** — done (`e12.2`) | was: `VERB_DOCS["why"]`, `epic7_acceptance.py`, `test_docs_site_contract.py` (all three moved) |
 | risk-scoring.md | `features-3`: twelve axes, the arithmetic, the calibration set | **risk.md** — done (`e12.2`) | was: `VERB_DOCS["why"]`, `risk/feature.rs`, `risk_score.rs` |
@@ -211,7 +216,7 @@ and merges the same family a second time. At the epic's close M6 and M7 became b
 | Merge | Retires | Target | Why it waits |
 |---|---|---|---|
 | **M6** dependencies — **bead `reco-48qd`** — **done** | `dependency-surface.md`, `dependency-delta.md`, `dependency-risk.md` | **`concepts/dependencies.md`** — landed | it waited only for a bead: one crate (`fathom-analyze/src/deps/`), three pages split by question rather than by noun; largest of the unscheduled set (685 lines), and `test_deprisk_contract.py` is needle-tested |
-| **M7** the committed review record — **bead `reco-lpuj`** | `review-memory.md` | `concepts/review-ledger.md` | the two pages restate the same durability-class, digest, append-only and `verify` claims; the glossary keeps both nouns in `thesis.md` either way |
+| **M7** the committed review record — **bead `reco-lpuj`** — **done** | `review-memory.md` | **`concepts/review-ledger.md`** — landed | it waited only for a bead: the two pages restate the same durability-class, digest, append-only and `verify` claims; the glossary keeps both nouns in `thesis.md` either way |
 | **M8** the declared architecture — **refused at the close** | `cycle-detection.md`, `layering.md` | **`concepts/architecture-rules.md`** — *proposed, never accepted* | they share the ratchet plug and the news-versus-debt line, but they are two engines with two grammars; merging them is worth less than M6 and drags `architecture-graph.md` into scope, and no bead was ever asking |
 
 Pages that must **not** be merged, with the reason recorded so the question is not re-litigated (§4.9).
@@ -219,7 +224,9 @@ Pages that must **not** be merged, with the reason recorded so the question is n
 After M1–M4, as measured: **52** content pages under `docs/concepts/` (57 − 8 retired + 3 new — the map's
 first arithmetic said 51 and counted two new pages where three landed, because `risk.md`,
 `episode-derivation.md` and `rename.md` are all new paths). Re-taken after M6 (`reco-48qd`): **50** content
-pages and **11** pointer pages, 61 files (52 − 3 retired + 1 new). With M7 taken as well: **49**. After M5 the
+pages and **11** pointer pages, 61 files (52 − 3 retired + 1 new). Re-taken after M7 (`reco-lpuj`): **49**
+content pages and **12** pointer pages, 61 files — one path retired and left in the directory as a pointer,
+which is the number this table predicted for M7. After M5 the
 count does not move, because an ADR is slimmed where it stands. The census and this line are re-taken
 measurements, and the map's own rule is that a measurement which disagrees with the map changes the map.
 
@@ -770,7 +777,7 @@ and the deps test suite (`deps_golden.rs`, `deps_tolerance.rs`, `deps_monorepo.r
   where `deps-all` and `net-advisories` are separated, so the page says which gate and which consent key
   covers which half.
 
-### 4.7 M7 — the committed review record (**bead `reco-lpuj`**)
+### 4.7 M7 — the committed review record (**bead `reco-lpuj`**) — **done**
 
 `review-ledger.md` (339) keeps its path and absorbs `review-memory.md` (167). Both are class-M committed
 markdown, both keyed to episode identity, both carry digests, both are mirrored into the store, both are
@@ -784,6 +791,57 @@ Path pins to move: `VERB_DOCS["note"]`, `VERB_DOCS["context"]`, `tests/test_queu
 `tests/test_release_contract.py`, `tools/freeze_queue_era_store.py`, `workspace_model.py`'s comment.
 Nothing generated. Do not merge `summary-card.md` or `plan-drift.md` into this: a card is a rendering and a
 drift finding is a finding, neither of which is a committed record.
+
+**Done by `reco-lpuj`, in one commit, and measured the way §10 says a merge is measured.**
+
+* **What landed.** [`concepts/review-ledger.md`](../concepts/review-ledger.md) (482 lines, two pages' worth of
+  claims and 44 table rows in and 44 out) holds the twelve sections in the order above, and
+  `review-memory.md` is a pointer page the front door alone links. `RELOCATIONS` gained one row and
+  `check_docs_site.py --self-test` still bites four ways.
+* **Four sections §4.7's row did not name**, because the row named the shared claims rather than the whole
+  page, and rule 1 does not let them be dropped for absence: *Appending, never editing* went in one level
+  under *what a note says*, *Asking what the repository knows* went between *the store is a mirror* and
+  *through the agent door* because both are read surfaces, *The frozen store* stayed a third level under
+  *what a retired view does not take with it*, and *The ratchet still owes this a write* stayed after *why
+  markdown*. The proof names all four as `EXTRAS` rows, so the twelve are checked in order and the four are
+  declared rather than smuggled.
+* **The inbound links §6.2 predicted, found: 5.** One in `docs/concepts/export-artefact.md`, one in
+  `docs/concepts/cycle-detection.md` — whose `§5` pointed at a section number the page had never carried, and
+  now points at *The ratchet still owes this a write* by name — and three in `docs/reference/cli.md`, two of
+  them regenerated out of the two `VERB_DOCS` rows and one hand-written under *`fathom context`*. The link the
+  census did not count is the retired page's own link to the ledger: it cannot survive a merge into that page,
+  and it became the page.
+* **The pins, checked one by one, and two that were never there.** `VERB_DOCS["note"]` and
+  `VERB_DOCS["context"]` moved and `docs/reference/cli.md` was regenerated rather than retyped;
+  `workspace_model.py`'s comment named both paths and now names one, and `check_workspace.py check` is green
+  with ADR-002's nine generated blocks unmoved. `tests/test_queue_era_fixture_contract.py` reads
+  `docs/concepts/review-ledger.md` — the surviving page, which is why its path did not move and why it is the
+  test that asserts against the merged half. **`tests/test_release_contract.py` names no page in this merge**:
+  §2.1 listed it against `review-ledger.md`, and what it reads is `docs/concepts/release.md`, with
+  `check_docs.py` shelled out as one of its own assertions. Six more places quote
+  `docs/concepts/review-ledger.md` and needed nothing for the same reason — `tools/freeze_queue_era_store.py`,
+  `tools/freeze_queue_era_store.rs`, `crates/fathom-store/tests/queue_era_store.rs`,
+  `crates/fathom-cli/tests/queue_era_review.rs`, `crates/fathom-mcp/src/tools.rs` and
+  `check::Check::SignOff`'s doc anchor. Recorded here because §1 rule 7 is only worth anything if a pin that
+  turns out to be air is said out loud rather than edited out of the map.
+* **The proof is `.plan/evidence/reco-lpuj/surviving_claims.py`, and it reads the merge's parent**, derived
+  from history (the first commit whose copy of `review-memory.md` is the pointer, one step back) rather than a
+  sha typed in. Of **166** lines, **100** content lines, **78** verbatim, **3** normalised, **19** residue —
+  one heading (the retired title, which the pointer page now carries), three front-matter lines folded into
+  the surviving page's front matter, two list items (the *editing* bullet, which belongs to *tampering*, and
+  the retired page's *Related* link to the ledger), and thirteen re-flowed or re-pointed lines — **0** facts
+  lost and **0** names lost. It also checks §4.7's shared claims as eight named rows and the section order as
+  a check that can fail.
+* **A merge into a page that keeps its path can subtract, and this one did.** The ledger half printed one
+  sample twice — the sign-off block and the `sed -i` that gets caught, once with the digests in full and once
+  elided — so the second copy went and *tampering* now points at the first instead of repeating it, which is
+  the restatement this merge existed to end. The proof is a count: four needles from that sample appear
+  **twice** in the merge's parent and **once** in the merged page, and every other ledger line whose count
+  reached zero is named in `LEDGER_HALF_MOVED` beside the sentence that took it. Rule 1, aimed at the page
+  that survived rather than the one retired.
+* **The two headings §6.3 cites crossed unchanged** — `#who-signed` and `#the-dismiss-vocabulary-is-closed` —
+  so `docs/recipes/ask-an-agent.md`, `docs/recipes/silence-a-finding.md` and `docs/concepts/risk.md` needed
+  nothing, and no fragment link pointed into `review-memory.md`, so §6.3 gained no row either.
 
 ### 4.8 M8 — the declared architecture (**refused at the epic's close**)
 
@@ -886,7 +944,8 @@ site or a dead relative link in the repository.
 
 ### 6.2 The list
 
-**Scheduled (epic 12).** `Links` is the number of inbound markdown links inside `README.md` + `docs/**` that
+**Scheduled by epic 12, plus the one row this map recorded for a later bead.** `Links` is the number of
+inbound markdown links inside `README.md` + `docs/**` that
 must be rewritten to the target; the pointer page is linked only from `docs/index.md`.
 
 | Retired path | Target | Links | Fragment links into it |
@@ -902,14 +961,15 @@ must be rewritten to the target; the pointer page is linked only from `docs/inde
 | `docs/concepts/dependency-surface.md` | `concepts/dependencies.md` | 5 ✓ | — |
 | `docs/concepts/dependency-delta.md` | `concepts/dependencies.md` | 7 ✓ | — |
 | `docs/concepts/dependency-risk.md` | `concepts/dependencies.md` | 7 ✓ | — |
-| **total** | | **119** ✓ | 5 |
+| `docs/concepts/review-memory.md` | `concepts/review-ledger.md` | 5 ✓ | — |
+| **total** | | **124** ✓ | 5 |
 
-All eleven rows are done: M1's 58 in `e12.2`, M2–M4's 42 in `e12.3`, M6's 19 in `reco-48qd`, counted the same
+All twelve rows are done: M1's 58 in `e12.2`, M2–M4's 42 in `e12.3`, M6's 19 in `reco-48qd`, M7's 5 in
+`reco-lpuj`, counted the same
 way (markdown links whose target resolves to the retired path, inside `README.md` + `docs/**`, excluding the
 retired page's own links and this map's prose). The counts the map predicted are the counts the merge found —
-16, 10, 2, 4, 10, and for M6, 5, 7 and 7 — which is the only sense in which a pre-merge census can be checked.
-
-**Recorded for M7 (not scheduled):** `review-memory.md` (5) → `concepts/review-ledger.md`.
+16, 10, 2, 4, 10, and for M6, 5, 7 and 7, and for M7, 5 — which is the only sense in which a pre-merge census
+can be checked.
 
 **No ADR path is ever retired.** 0002, 0004 and 0006 are slimmed in place; a reader's `ADR-004 §9.5` citation
 must keep resolving to the same section number, which is why §4.5 treats renumbering as a breaking change.
@@ -925,7 +985,9 @@ and `#5-filters` (from `episode.md`, `session-state.md`), `ci-gate.md#the-fleet-
 `review-ledger.md#the-dismiss-vocabulary-is-closed` and `#who-signed`, `episode.md#provisional-episodes-…`
 and `#author-kind-is-a-label-you-can-overrule`, and seven into `thesis.md`. Rule 3 of §1 exists for them:
 **do not retitle a heading another page cites**, and where the merged page genuinely restructures, the
-pointer page lists the new anchor so nobody guesses.
+pointer page lists the new anchor so nobody guesses. `reco-lpuj` is the case that check was written for and
+passed: both `review-ledger.md` anchors crossed unchanged, and the page it retired carried no fragment link
+pointing into it.
 
 ---
 

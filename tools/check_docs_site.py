@@ -349,6 +349,9 @@ RELOCATIONS = {
     "docs/concepts/dependency-surface.md": "docs/concepts/dependencies.md",
     "docs/concepts/dependency-delta.md": "docs/concepts/dependencies.md",
     "docs/concepts/dependency-risk.md": "docs/concepts/dependencies.md",
+    # M7 (`reco-lpuj`): the two committed review records — one directory, one durability class, one ladder —
+    # are one page now. The map's §6.2 predicted 5 inbound links, and the merge found 5.
+    "docs/concepts/review-memory.md": "docs/concepts/review-ledger.md",
 }
 
 #: How long a pointer page may be, counted in non-empty lines. `doc-map.md` §6.1 wrote "five to fifteen"

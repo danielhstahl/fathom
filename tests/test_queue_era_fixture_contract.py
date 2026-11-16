@@ -22,6 +22,11 @@ gate exists — a check listed as owed forever is indistinguishable from a check
 is how the original gap survived being named twice. The pages must instead name the artefact and the tool that
 makes it, so a reader can reproduce it.
 
+And the fourth thing is that the page is still the whole page. `reco-lpuj` merged the review memory into
+`docs/concepts/review-ledger.md`, and a merge that keeps its target's path has no gate of its own — a retired
+path is what `check_relocations` watches — so the assertions that the surviving page still carries both
+records live here.
+
 Run: python3 -m pytest tests/test_queue_era_fixture_contract.py -q
 """
 
@@ -271,6 +276,25 @@ def test_the_pages_stop_calling_the_check_owed(manifest) -> None:
         assert not re.search(r"(?i)owed, and named as owed", text), (
             f"{page} still carries the `owed` bullet for this check"
         )
+
+
+def test_the_merged_page_still_carries_the_half_it_absorbed() -> None:
+    """`reco-lpuj` merged the review memory into this page, and the page's path never changed.
+
+    A retired path is guarded by `check_docs_site.py`'s `check_relocations`; a *surviving* one is guarded by
+    nothing, so a merge that keeps its target's path can quietly lose the half it absorbed. This page is the
+    surviving half of doc-map.md §4.7's M7, so it is required to name both records: the memory's verbs, file,
+    store mirror and agent door, beside the ledger's own verbs, mirror and closed dismiss vocabulary.
+    """
+    page = ROOT / "docs" / "concepts" / "review-ledger.md"
+    text = page.read_text(encoding="utf-8")
+    for needle in ("## What a note says", "`fathom note add`", "`fathom note verify`",
+                   ".fathom/reviews/notes.md", "`decision_note`", "`add_review_note`",
+                   "`review_memory`", "## Through the agent door"):
+        assert needle in text, f"{page.name} lost the memory half: {needle!r} is gone"
+    for needle in ("## What a sign-off says", "`fathom review verify`", "`ledger_entry`",
+                   "## The dismiss vocabulary is closed", "## Who signed"):
+        assert needle in text, f"{page.name} lost the ledger half: {needle!r} is gone"
 
 
 def test_the_freeze_tool_is_runnable_and_agrees_with_the_manifest() -> None:

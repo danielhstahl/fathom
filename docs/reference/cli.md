@@ -57,8 +57,8 @@ not a wall, and the reason it appears here rather than being quietly hidden unti
 | **[`search`](#fathom-search)** | Search the whole index from one box, in the shell's own ranking (e5.2) | shipped | [*0006-tui*](../adr/0006-tui.md) · [*timeline*](../concepts/timeline.md) |
 | **[`architecture`](#fathom-architecture)** | The architecture scorecard: five dimensions, one number, and the drift since your last review (e3.9) | shipped | [*scorecard*](../concepts/scorecard.md) · [*cli*](cli.md) |
 | **[`ratchet`](#fathom-ratchet)** | The ratchet: the committed allowance ledger, which tightens on its own and widens only when told to (e3.10) | shipped | [*ratchet*](../concepts/ratchet.md) · [*cycle-detection*](../concepts/cycle-detection.md) |
-| **[`context`](#fathom-context)** | What this repository knows about a path or an episode: the recorded decisions and the open questions (e6.5) | shipped | [*review-memory*](../concepts/review-memory.md) · [*review-ledger*](../concepts/review-ledger.md) |
-| **[`note`](#fathom-note)** | The review memory: notes, decisions, questions and follow-ups, committed under .fathom/reviews/ (e6.5) | shipped | [*review-memory*](../concepts/review-memory.md) · [*cli*](../concepts/cli.md) |
+| **[`context`](#fathom-context)** | What this repository knows about a path or an episode: the recorded decisions and the open questions (e6.5) | shipped | [*review-ledger*](../concepts/review-ledger.md) |
+| **[`note`](#fathom-note)** | The review memory: notes, decisions, questions and follow-ups, committed under .fathom/reviews/ (e6.5) | shipped | [*review-ledger*](../concepts/review-ledger.md) · [*cli*](../concepts/cli.md) |
 | **[`completions`](#fathom-completions)** | Print the shell's own copy of this grammar: completion scripts and man pages (e7.4) | shipped | [*release*](../concepts/release.md) · [*cli*](../concepts/cli.md) |
 | **[`events`](#fathom-events)** | Read the analysis event stream a run wrote: what happened, in order (e6.7) | shipped | [*extensibility*](../concepts/extensibility.md) · [*pathology-detectors*](../concepts/pathology-detectors.md) |
 <!-- END GENERATED: verbs -->
@@ -1826,7 +1826,7 @@ Options:
 Answer *"what does this repository already know about this?"* for a path or an episode: the recorded
 decisions with their reasons, the questions and follow-ups still open, and the ledger's dispositions over
 the same episodes — each with its author, its date and the evidence it cites. See
-[the review memory](../concepts/review-memory.md).
+[the review ledger and the review memory](../concepts/review-ledger.md).
 
 <!-- BEGIN GENERATED: help.context -->
 ```text

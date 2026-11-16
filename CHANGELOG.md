@@ -17,6 +17,52 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
+### The committed review record is one page: `review-memory.md` moved into `review-ledger.md`, and the merge map's M7 closes (`reco-lpuj`)
+
+`review-ledger.md` (338 lines) and `review-memory.md` (166) were one noun told twice: class **M** markdown
+under `.fathom/reviews/` because it is committed, keyed to episode identity, digested block by block, mirrored
+into the store, auditable with no index — and each page re-derived all of that for itself.
+[docs/concepts/review-ledger.md](docs/concepts/review-ledger.md) is now both halves (482 lines) in the section
+order §4.7 gives, `review-memory.md` is a pointer page the front door alone links, and
+[the merge map](docs/reference/doc-map.md) records the merge it had already planned — it executes §4.7 rather
+than re-deriving it.
+
+* **"Nothing was dropped" is a measurement, and it has a second half here.**
+  `.plan/evidence/reco-lpuj/surviving_claims.py` reads the retired page out of the merge's own parent — the rev
+  is derived from history, not typed in — and reports **166** lines, **100** content lines, **78** verbatim,
+  **3** normalised, **19** residue (one heading, three merged front-matter bullets, two list items and
+  thirteen re-flowed or re-pointed lines), **0** facts lost and **0** names lost. It also checks §4.7's shared
+  claims as eight named rows and the section order as a check that can fail. Because `review-ledger.md` keeps
+  its path, the script counts its losses too: **18** lines reached a count of zero and every one is named
+  beside the sentence that took it, and the one thing the ledger page printed twice — the sign-off sample and
+  the `sed -i` that gets caught — is proved a duplicate by four needles that appear twice in the parent and
+  once in the merged page. 44 table rows came in and 44 came out.
+* **5 links rewritten, not redirected** — exactly the §6.2 census: two in concept pages (one of which,
+  `cycle-detection.md`'s `§5`, pointed at a section number the page never carried and now names its heading),
+  and three in `cli.md`, two of them regenerated out of the `VERB_DOCS` rows that moved. `RELOCATIONS` gained
+  a row and `check_docs_site.py --self-test` still bites four ways; `docs/index.md` links the pointer.
+* **Two headings other pages cite crossed unchanged** — `#who-signed`, `#the-dismiss-vocabulary-is-closed` —
+  which is §1 rule 3 doing its job, and no fragment link pointed into the retired page.
+* **The pins, checked one by one, and two that were never there.** `VERB_DOCS["note"]` and
+  `VERB_DOCS["context"]` moved with `cli.md` regenerated off them, and `workspace_model.py`'s source-rule
+  comment now names one page where it named two. `tests/test_queue_era_fixture_contract.py` reads the
+  surviving page, so its path did not move — and it gains the one assertion a merge that *keeps* its target's
+  path otherwise lacks, that the page still names the memory's verbs, file, store mirror and agent door next to
+  its own, because `check_relocations` watches a retired path and nothing else watches a surviving one.
+  **`tests/test_release_contract.py` names no page in this merge** — the map said it tested
+  `review-ledger.md`, and it reads `release.md` and shells out
+  to `check_docs.py` — so the map now says that too, in §2.1 and §4.7, because rule 7 is worthless if a pin
+  that turns out to be air is edited out of the list instead of admitted.
+* **What the merge refused**: `summary-card.md` and `plan-drift.md` stayed out, for §4.7's reason — a card is a
+  rendering and a drift finding is a finding, and neither is a committed record. `docs/concepts/` measures
+  **49** content pages and **12** pointer pages, 61 files, which is the number the map predicted.
+* **Gates, all green in the branch:** `check_docs.py`, `check_docs_site.py` (94 pages, 1 333 fragment links, 12
+  relocations) and its `--self-test`, `check_ticket_claims.py`, `check_docs_commands.py` (130 invocations parsed
+  by clap), `gen_docs.py check`, `check_workspace.py check` and this audit, plus the whole
+  `python3 -m pytest -q` suite: **2 337 passed, 2 skipped, 4 failed**, and the four are the machine's — the
+  same timing-and-release-binary failures `reco-48qd` recorded on this checkout, none of them reading a
+  `docs/**` path, all four written down in `.plan/evidence/reco-lpuj/surviving-claims.md`.
+
 ### Three pages about one crate became one page, and the merge map's M6 is closed (`reco-48qd`)
 
 `dependency-surface.md` (248 lines), `dependency-delta.md` (154) and `dependency-risk.md` (283) were one crate

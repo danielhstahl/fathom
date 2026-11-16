@@ -5,8 +5,9 @@
   offence (`ratchet::inventory` walks the same partition this page is about), and
   `fathom ratchet --update-baseline --reason "…"` is the one path that writes a `[[allowance]]`, so a
   cycle that is allowed becomes a signed line with an owner and an expiry rather than a quiet exception.
-  That write belongs to the verb that keeps the ledger, and [review-memory.md](review-memory.md) §5 says
-  why it is not the note store instead. The trend line that consumes the exported metric — `fathom
+  That write belongs to the verb that keeps the ledger, and
+  [the review ledger](review-ledger.md#the-ratchet-still-owes-this-a-write) says why it is not the note store
+  instead. The trend line that consumes the exported metric — `fathom
   architecture --json`, with acyclicity as one of its five dimensions — is **reco-al1** and it is built:
   `fathom architecture` prints that dimension.
 - **Decided by**: [the architecture graph](architecture-graph.md) (the rows this reads and the lane it

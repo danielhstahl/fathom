@@ -148,7 +148,8 @@ says `0 of 2 … · 1 undecided · 1 refused or deferred` rather than rounding a
 
 The sign-off says a person accepted a change; the memory says what they wrote down while doing it — the
 decision and its reason, the question nobody has answered, the follow-up somebody owes
-([the review memory](review-memory.md)). Each note prints its kind, its status, its author and author kind,
+([the review ledger and the review memory](review-ledger.md)). Each note prints its kind, its status, its
+author and author kind,
 the instant the file holds, its text as written, and the evidence: the episode it is about *after* the re-link
 ladder, the rung that placed it, the episode it was written against when a rebase moved it, its four identity
 digests, its own tamper digest and the file-and-anchor a reader can open.

@@ -29,7 +29,7 @@ first; each links down to the deeper reference page that owns the detail.
 | [**Episode**](concepts/episode.md) | the change one agent turn produced — the unit everything is keyed to, and the reason a sign-off survives a rebase | [episode derivation](concepts/episode-derivation.md), [ADR-003](adr/0003-episodes.md) |
 | [**Delta**](concepts/delta.md) | a claim with citations: seven sections, evidence behind every figure, and a gap that names its owner instead of printing zero | [the episode](concepts/episode.md), [the summary card](concepts/summary-card.md) |
 | [**Risk score**](concepts/risk.md) | `0..=100` as an auditable sum of twelve axes, with the axes it could not measure printed beside it — and the spine-only `spine-3` figure the rail prints, in the same page | [the scorecard](concepts/scorecard.md), [false-positive calibration](concepts/false-positive-calibration.md) |
-| [**Review ledger**](concepts/review-ledger.md) | sign-offs as committed markdown with four digests, so "a human reviewed this" outlives the history it was written about | [ADR-004](adr/0004-storage.md), [the recipe](recipes/gate-a-pipeline.md) |
+| [**Review ledger**](concepts/review-ledger.md) | sign-offs as committed markdown with four digests, so "a human reviewed this" outlives the history it was written about — and the decisions, questions and follow-ups written beside them, in the same page | [ADR-004](adr/0004-storage.md), [the recipe](recipes/gate-a-pipeline.md) |
 | [**Ratchet**](concepts/ratchet.md) | the committed baseline of what the codebase already owed, so only *new* violations alarm — and it only tightens | [config](concepts/config.md), [perf budgets](../benchmarks/BUDGETS.md) |
 | [**CI gate**](concepts/ci-gate.md) | `fathom check`: six checks over a range, one threshold that exits 7, and the one sentence that says why the run is red | [the recipe](recipes/gate-a-pipeline.md), [ratchet](concepts/ratchet.md), [config](concepts/config.md) |
 | [**Ambient mode**](concepts/ambient-mode.md) | the second-terminal display: same model, no chrome, fits 80×12, goes quiet when you are caught up | [ADR-006 §5.7](adr/0006-tui.md), [the recipe](recipes/run-beside-the-agent.md) |
@@ -121,6 +121,8 @@ pointers, and every other link in this tree was rewritten to the page that owns 
   [dependency risk](concepts/dependency-risk.md) →
   [Dependencies: what a revision declares, what an episode changed, and whether to be worried](concepts/dependencies.md)
   (`reco-48qd`)
+- [the review memory](concepts/review-memory.md) →
+  [The review ledger and the review memory](concepts/review-ledger.md) (`reco-lpuj`)
 
 ## Decisions, and how it attaches to an agent
 
