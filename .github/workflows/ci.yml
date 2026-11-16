@@ -644,6 +644,7 @@ jobs:
       - name: "m2 the five-minute demo runs, is inside its budget, and the page says so"
         if: matrix.channel == 'stable' && matrix.os == 'ubuntu-latest'
         run: |
+          cargo build --locked -p fathom-cli
           python3 tools/five_minute_demo.py self-test
           python3 tools/five_minute_demo.py check
 

@@ -135,7 +135,7 @@ jobs:
         # `--check` compares figures, and a figure is not a timing (ADR-007 §10.1 refuses throughput
         # as a gate for the same reason `s1` and `e3.1` do).
         run: >
-          cargo run --locked -p fathom-analyze --features langs-all
+          cargo run --locked -p fathom-analyze --features langs-all sqlite-bundled
           --example complexity_harness -- --repo .
           --report benchmarks/reports/e8-2-complexity-core.json --check
       - name: "e8.2: the ADR, the reason vocabulary and the six rule tables agree, and the budget bites"
