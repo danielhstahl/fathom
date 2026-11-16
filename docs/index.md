@@ -73,8 +73,8 @@ Everything under [docs/concepts/](concepts/), grouped by what you are trying to 
 
 **What a change is** — [change classification](concepts/change-classification.md) ·
 [noise suppression](concepts/noise-suppression.md) · [folder structure](concepts/folder-structure.md) ·
-[dependency surface](concepts/dependency-surface.md) · [dependency delta](concepts/dependency-delta.md) ·
-[dependency risk](concepts/dependency-risk.md) · [non-code surfaces](concepts/noncode-surfaces.md) ·
+[dependencies: surface, delta and risk](concepts/dependencies.md) ·
+[non-code surfaces](concepts/noncode-surfaces.md) ·
 [test surface](concepts/test-surface.md) ·
 [rename: did this file become that file](concepts/rename.md) ·
 [structure extraction](concepts/structure-extraction.md) ·
@@ -116,6 +116,11 @@ pointers, and every other link in this tree was rewritten to the page that owns 
   [Episode derivation](concepts/episode-derivation.md) (`reco-msv1.3`)
 - [rename detection](concepts/rename-detection.md) · [rename pairing](concepts/rename-pairing.md) →
   [Rename and copy: did this file become that file](concepts/rename.md) (`reco-msv1.3`)
+- [the dependency surface](concepts/dependency-surface.md) ·
+  [the dependency delta](concepts/dependency-delta.md) ·
+  [dependency risk](concepts/dependency-risk.md) →
+  [Dependencies: what a revision declares, what an episode changed, and whether to be worried](concepts/dependencies.md)
+  (`reco-48qd`)
 
 ## Decisions, and how it attaches to an agent
 

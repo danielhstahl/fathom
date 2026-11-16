@@ -97,7 +97,7 @@ and the same assertion runs over every shipped trace in
 `tests/test_adapter_contract.py::test_no_content_prompt_or_secret_crosses_the_boundary`. The prompt
 text does not cross either — only `prompt_sha256` and `prompt_chars` do, which is what
 [ADR-005 §2.1](../../docs/adr/0005-harness-contract.md) says a `turn_start` carries and what
-`docs/concepts/dependency-risk.md`'s "a prompt digest is a partial, never a quote" is written against.
+`docs/concepts/dependencies.md`'s "a prompt digest is a partial, never a quote" is written against.
 
 ### 1.5 …and it reaches the TUI
 

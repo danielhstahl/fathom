@@ -12,7 +12,7 @@
   `compose.py`, `render.py`, `verify.py`, `explain.py`, `eval.py`, `corpus.py`, `cli.py`), built out
   of the analyses it summarizes — [noise](noise-suppression.md) (`e2.2`),
   [paths](change-classification.md) (`e2.1`), [folder structure](folder-structure.md) (`e2.3`),
-  [the dependency delta](dependency-delta.md) (`e2.6`),
+  [the dependency delta](dependencies.md#the-delta-what-the-episode-did-to-the-graph-and-what-proves-it) (`e2.6`),
   [non-code surfaces](noncode-surfaces.md) (`e2.8`), [the test surface](test-surface.md) (`e2.9`)
   and [the risk page](risk.md) (`e4.4`) — plus `fathom_graph::blast` (`e3.2`) for the reach
   figure, whose Rust home is planned at `crates/fathom-analyze/src/card/` and whose Python package

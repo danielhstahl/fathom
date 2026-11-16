@@ -9,6 +9,12 @@
   the same commit, and every contradiction this one met is recorded in the merge's own section.
   [§10](#10-how-epic-12-closed) is the close record: what was re-measured, the one repair the re-measurement
   found in M1, and what the map hands to whom.
+- **M6 landed after this page closed**: `reco-48qd` executed [§4.6](#46-m6--the-dependency-family-bead-reco-48qd--done)
+  and the dependency family is one page now —
+  [../concepts/dependencies.md](../concepts/dependencies.md), three retired paths for one, 19 inbound links
+  rewritten and `tests/test_deprisk_contract.py` repointed in the same commit. `docs/concepts/` measures
+  **50** content pages and **11** pointer pages, 61 files. [§10](#10-how-epic-12-closed) stays the epic's own
+  dated close record; the merge is written where this map keeps merges — §2.1, §3, §4.6 and §6.2.
 - **Ticket / plan key**: `reco-msv1.1` (`e12.1`), under `reco-msv1` (`e12`) — *half the documentation,
   none of the truth lost*.
 - **Census taken at**: `master` @ `064856d`. **57** pages under `docs/concepts/` (18 352 lines, 1.34 MB),
@@ -120,9 +126,9 @@ link/plan-key rules, which is not repeated per row.
 | cycle-detection.md | cycles, cycle debt, the allowance | itself (M8, proposed) | pin `VERB_DOCS["ratchet"]`, `cycles/debt.rs`, `tests/layers.rs` |
 | delta-model.md | the versioned `EpisodeDelta` document | **delta.md** — done (`e12.3`) | was: pin `VERB_DOCS["analyze"]` and `FEATURE_DOCS["schema-gen"]`, both moved, and `gen_docs.py check` regenerated `cli.md` and `features.md` |
 | delta.md | the delta: a claim with citations | itself, absorbs delta-model.md — done (`e12.3`) | test `test_docs_html_contract.py`; pin `VERB_DOCS["analyze"]` (now one page, not two), `VERB_DOCS["cmp"]` |
-| dependency-delta.md | what an episode did to the resolved graph | **dependencies.md** (M6, unscheduled) | — |
-| dependency-risk.md | who asked for a dependency, and whether to worry | **dependencies.md** (M6, unscheduled) | test `test_deprisk_contract.py` |
-| dependency-surface.md | what a revision declares and resolved | **dependencies.md** (M6, unscheduled) | pin `VERB_DOCS["stats"]` neighbour set |
+| dependency-delta.md | what an episode did to the resolved graph | **dependencies.md** — done (`reco-48qd`) | was: nothing pinned this page but the map; its two hand-off links became links into sections of one page |
+| dependency-risk.md | who asked for a dependency, and whether to worry | **dependencies.md** — done (`reco-48qd`) | test `test_deprisk_contract.py` — moved in the same commit, and its needles are now cut to the risk section so a neighbour cannot satisfy them |
+| dependency-surface.md | what a revision declares and resolved | **dependencies.md** — done (`reco-48qd`) | was: pin `VERB_DOCS["stats"]` neighbour set, which the census guessed; what actually moved was `FEATURE_DOCS["deps-all"]`, `FEATURE_DOCS["net-advisories"]` and `check::Check::Dependencies`'s doc anchor |
 | diff-viewer.md | the diff viewer | itself | pin `VERB_DOCS["open"]`, `VERB_DOCS["difftool"]`, five `fathom-tui/src/diff/*` files |
 | episode-narrative.md | the episode narrative (template, audited) | itself | pin `VERB_DOCS["narrative"]`, `workspace_model.py` |
 | episode-relink.md | does a decision survive a rewrite (spike `s6`) | **episode-derivation.md** — done (`e12.3`) | was: gen `gen_relink_tables`; test `test_relink_spike_contract.py`; pin `s6_spike.rs` — all three moved in the merge |
@@ -200,11 +206,11 @@ Scheduled by epic 12 — these five merges are the deliverable:
 
 Recorded here, and **not part of epic 12** — they were decided so that nobody rediscovers them independently
 and merges the same family a second time. At the epic's close M6 and M7 became beads (`reco-48qd`,
-`reco-lpuj`); M8 was refused. Each of them cites this page instead of re-deriving it.
+`reco-lpuj`); M8 was refused. Each of them cites this page instead of re-deriving it. `reco-48qd` has landed.
 
 | Merge | Retires | Target | Why it waits |
 |---|---|---|---|
-| **M6** dependencies — **bead `reco-48qd`** | `dependency-surface.md`, `dependency-delta.md`, `dependency-risk.md` | **`concepts/dependencies.md`** | one crate (`fathom-analyze/src/deps/`), three pages split by question rather than by noun; largest of the unscheduled set (685 lines), and `test_deprisk_contract.py` is needle-tested |
+| **M6** dependencies — **bead `reco-48qd`** — **done** | `dependency-surface.md`, `dependency-delta.md`, `dependency-risk.md` | **`concepts/dependencies.md`** — landed | it waited only for a bead: one crate (`fathom-analyze/src/deps/`), three pages split by question rather than by noun; largest of the unscheduled set (685 lines), and `test_deprisk_contract.py` is needle-tested |
 | **M7** the committed review record — **bead `reco-lpuj`** | `review-memory.md` | `concepts/review-ledger.md` | the two pages restate the same durability-class, digest, append-only and `verify` claims; the glossary keeps both nouns in `thesis.md` either way |
 | **M8** the declared architecture — **refused at the close** | `cycle-detection.md`, `layering.md` | **`concepts/architecture-rules.md`** — *proposed, never accepted* | they share the ratchet plug and the news-versus-debt line, but they are two engines with two grammars; merging them is worth less than M6 and drags `architecture-graph.md` into scope, and no bead was ever asking |
 
@@ -212,8 +218,9 @@ Pages that must **not** be merged, with the reason recorded so the question is n
 
 After M1–M4, as measured: **52** content pages under `docs/concepts/` (57 − 8 retired + 3 new — the map's
 first arithmetic said 51 and counted two new pages where three landed, because `risk.md`,
-`episode-derivation.md` and `rename.md` are all new paths). With M6 and M7 taken: **49**. After M5 the count
-does not move, because an ADR is slimmed where it stands. The census and this line are re-taken
+`episode-derivation.md` and `rename.md` are all new paths). Re-taken after M6 (`reco-48qd`): **50** content
+pages and **11** pointer pages, 61 files (52 − 3 retired + 1 new). With M7 taken as well: **49**. After M5 the
+count does not move, because an ADR is slimmed where it stands. The census and this line are re-taken
 measurements, and the map's own rule is that a measurement which disagrees with the map changes the map.
 
 ---
@@ -709,7 +716,7 @@ said 40 blocks; `gen_docs.MARK` finds nine, seven and twenty-three).
   same way `e12.3` proved its merges.
 
 
-### 4.6 M6 — the dependency family (**bead `reco-48qd`**)
+### 4.6 M6 — the dependency family (**bead `reco-48qd`**) — **done**
 
 `dependency-surface.md` (249), `dependency-delta.md` (155) and `dependency-risk.md` (284) are one crate
 (`fathom-analyze/src/deps/` — or `src/recommender/deps/` for the reference implementation) split by
@@ -725,6 +732,43 @@ that a cloned repository cannot grant network permission (ADR-001 §7.5), and th
 `net-advisories` is not compiled in. `tests/test_deprisk_contract.py` reads `dependency-risk.md` by path and
 must move in the same commit. Guarded by `check_docs_site.py`, `check_docs.py`, `check_ticket_claims.py`,
 and the deps test suite (`deps_golden.rs`, `deps_tolerance.rs`, `deps_monorepo.rs`, `deps_repository.rs`).
+
+**Done by `reco-48qd`, in one commit, and measured the way §10 says a merge is measured.**
+
+* **What landed.** [`concepts/dependencies.md`](../concepts/dependencies.md) (712 lines) holds *the surface* →
+  *the delta* → *the risk* in the order above; `dependency-surface.md`, `dependency-delta.md` and
+  `dependency-risk.md` are pointer pages, and the retired list in `docs/index.md` is the only thing that links
+  them. `RELOCATIONS` gained three rows and `check_docs_site.py --self-test` still bites four ways.
+* **The inbound links §6.2 predicted, found.** 5 + 7 + 7 = **19** markdown links inside `README.md` + `docs/**`
+  were rewritten to the new page — eleven of them to an *anchor* on it (a family heading, or *Who asked for
+  this*), five as a plain page link (three from `docs/index.md`, two out of the regenerated `features.md`
+  table), and the three that had been the retired pages' links to each other became links from one section of
+  one page to another. Two more mentions were not links at all and moved anyway: a path quoted in prose in
+  `docs/harness/verification.md` and a comment in `adapters/fathom-hook.py`. No fragment link pointed into the
+  three retired pages, so §6.3 grew no row.
+* **The proof is `.plan/evidence/reco-48qd/surviving_claims.py`, and it reads the merge's parent**, derived
+  from history (the commit that added `dependencies.md`) rather than a sha typed in. Of **685** lines, **467**
+  content lines, **419** verbatim, **4** normalised, **44** residue — twenty headings, seven front-matter
+  bullets, seventeen wrapped lines of merged front matter and three hand-off sentences re-pointed from a
+  neighbouring file to a section of one page — **0** facts lost and **0** names lost. §4.6's six must-not-be-
+  lost claims are checked as six named rows, not as a feeling. Two headings — `## 6. Diffs` and `## Model` —
+  are under the proof's 12-character content-line floor, so the measurement cannot see them and the pointer
+  pages are what map them.
+* **Two `Verbs`/`Configuration`-shaped collisions and one retitle.** A page cannot carry a heading twice, so
+  the retired pages' `§N.` numbers went and five headings were retitled to say which half they belong to
+  (*What the surface decides*, *The shape of the surface*, *Where the surface's tests are*, *What the graph
+  delta will not claim*, *What the risk answer decides*, *How the risk answer is checked*); each pointer page
+  maps its old `§N` to the heading that took it, which is what §1 rule 3 asks for instead of a silent rename.
+* **Three tensions, each resolved against the code rather than smoothed.** The surface's *Diffs* and the delta
+  are not the same object: `deps::scan::delta` and `deps::delta_repository` answer per changed **file** with
+  both sides parsed, while `deps::diff::DependencyDelta` answers per **package** in the resolved graph — so
+  both sections stayed, and *the surface*'s `Diffs` is labelled as the delta's front door rather than merged
+  into it. The delta's "asked for by" edge path and the risk's provenance ladder both answer "who asked", at
+  two grains — one package asked for another package, an episode asked for a direct dependency — and the two
+  sections now say so at their own heads instead of averaging into one sentence. And the surface's flat "no
+  network" refusal sits beside a risk half that can fetch: the front matter's **Feature gates** bullet is
+  where `deps-all` and `net-advisories` are separated, so the page says which gate and which consent key
+  covers which half.
 
 ### 4.7 M7 — the committed review record (**bead `reco-lpuj`**)
 
@@ -855,15 +899,17 @@ must be rewritten to the target; the pointer page is linked only from `docs/inde
 | `docs/concepts/episode-relink.md` | `concepts/episode-derivation.md` | 2 ✓ | — |
 | `docs/concepts/rename-detection.md` | `concepts/rename.md` | 4 ✓ | — |
 | `docs/concepts/rename-pairing.md` | `concepts/rename.md` | 10 ✓ | — |
-| **total, scheduled** | | **100** ✓ | 5 |
+| `docs/concepts/dependency-surface.md` | `concepts/dependencies.md` | 5 ✓ | — |
+| `docs/concepts/dependency-delta.md` | `concepts/dependencies.md` | 7 ✓ | — |
+| `docs/concepts/dependency-risk.md` | `concepts/dependencies.md` | 7 ✓ | — |
+| **total** | | **119** ✓ | 5 |
 
-All eight rows are done as of `e12.3`: M1's 58 in `e12.2`, M2–M4's 42 in `e12.3`, counted the same way
-(markdown links whose target resolves to the retired path, inside `README.md` + `docs/**`, excluding the
+All eleven rows are done: M1's 58 in `e12.2`, M2–M4's 42 in `e12.3`, M6's 19 in `reco-48qd`, counted the same
+way (markdown links whose target resolves to the retired path, inside `README.md` + `docs/**`, excluding the
 retired page's own links and this map's prose). The counts the map predicted are the counts the merge found —
-16, 10, 2, 4, 10 — which is the only sense in which a pre-merge census can be checked.
+16, 10, 2, 4, 10, and for M6, 5, 7 and 7 — which is the only sense in which a pre-merge census can be checked.
 
-**Recorded for M6/M7 (not scheduled):** `dependency-surface.md` (5), `dependency-delta.md` (7),
-`dependency-risk.md` (7) → `concepts/dependencies.md`; `review-memory.md` (5) → `concepts/review-ledger.md`.
+**Recorded for M7 (not scheduled):** `review-memory.md` (5) → `concepts/review-ledger.md`.
 
 **No ADR path is ever retired.** 0002, 0004 and 0006 are slimmed in place; a reader's `ADR-004 §9.5` citation
 must keep resolving to the same section number, which is why §4.5 treats renumbering as a breaking change.

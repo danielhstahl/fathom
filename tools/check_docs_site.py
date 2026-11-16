@@ -344,6 +344,11 @@ RELOCATIONS = {
     "docs/concepts/episode-relink.md": "docs/concepts/episode-derivation.md",
     "docs/concepts/rename-detection.md": "docs/concepts/rename.md",
     "docs/concepts/rename-pairing.md": "docs/concepts/rename.md",
+    # M6 (`reco-48qd`): three pages about one crate, split by question, merged into one in the order the
+    # questions are asked. The map's §6.2 predicted 5 + 7 + 7 inbound links, and the merge found 19.
+    "docs/concepts/dependency-surface.md": "docs/concepts/dependencies.md",
+    "docs/concepts/dependency-delta.md": "docs/concepts/dependencies.md",
+    "docs/concepts/dependency-risk.md": "docs/concepts/dependencies.md",
 }
 
 #: How long a pointer page may be, counted in non-empty lines. `doc-map.md` §6.1 wrote "five to fifteen"

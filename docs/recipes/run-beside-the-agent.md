@@ -77,7 +77,7 @@ Ambient's `look now` line and the rail's risk figures both come from
 Fathom knows *why* a change was asked for. With a harness wired up, an episode carries a recorded intent, and
 you get three more things: the narrative's "Why it was asked for" section stops saying
 `no recorded intent`, [plan drift](../concepts/plan-drift.md) becomes able to contradict the plan, and the
-[provenance ladder](../concepts/dependency-risk.md) can answer "who asked for this dependency" instead of
+[provenance ladder](../concepts/dependencies.md#who-asked-for-this) can answer "who asked for this dependency" instead of
 printing `not recorded`.
 
 ```bash

@@ -17,6 +17,49 @@ body — see [docs/concepts/release.md](docs/concepts/release.md).
 
 ## [Unreleased]
 
+### Three pages about one crate became one page, and the merge map's M6 is closed (`reco-48qd`)
+
+`dependency-surface.md` (248 lines), `dependency-delta.md` (154) and `dependency-risk.md` (283) were one crate
+— `fathom-analyze/src/deps/` — cut by question instead of by noun: what a revision declares, what an episode
+changed, whether to be worried. [docs/concepts/dependencies.md](docs/concepts/dependencies.md) is now all
+three, in that order, and the three old paths are pointer pages. The merge map recorded M6 as a row
+(`docs/reference/doc-map.md` §4.6); this executes it, adds it to §6.2's redirect list with the counts it
+predicted, and moves every pin §1 rule 7 says must move in the same commit.
+
+* **"Nothing was dropped" is a measurement at three grains.**
+  `.plan/evidence/reco-48qd/surviving_claims.py` reads the three pages out of the merge's own parent commit —
+  the rev is derived from history, not typed in — and follows `e12`'s `no_loss.py` method: **685** lines,
+  **467** content lines, **419** verbatim, **4** normalised, **44** residue (20 headings, 7 merged
+  front-matter bullets, 17 wrapped lines and three hand-off sentences re-pointed from a neighbouring file to
+  a section of one page), **0** facts lost and **0** names lost, the names grain being the one the epic's own
+  close had to add after a line-grain proof waved a bullet through with its middle cut out. The script also
+  checks §4.6's six must-not-be-lost claims as six named rows: the format/ecosystem table, the "twenty-five
+  formats" claim, the installed-copy refusal, ADR-004 §6.6 R2/R7's O(changed paths) warm path, ADR-001 §7.5's
+  consent a clone cannot grant, and the tense an expired advisory cache is forced into. 75 table rows came in
+  and 75 came out; nothing in the family is generated, and `features.md`'s two rows are the generator's.
+* **19 links rewritten, not redirected** — the §6.2 census said 5 + 7 + 7 and the merge found 19: eleven now
+  land on an anchor (a family heading, or *Who asked for this*), five are plain page links, and three were the
+  retired pages linking each other and became links from one section to another. `RELOCATIONS` gained three
+  rows and `check_docs_site.py --self-test` still bites four ways.
+* **The pins moved in the same commit, because a test that reads a retired page stops asserting instead of
+  failing.** `tests/test_deprisk_contract.py` reads `dependencies.md` now, and its needles are cut to the risk
+  section so a neighbour cannot satisfy them; `FEATURE_DOCS["deps-all"]` and `["net-advisories"]` moved and
+  `docs/reference/features.md` was regenerated rather than retyped; `check::Check::Dependencies`'s doc anchor
+  — a SARIF `helpUri` — now points at the new page; `adapters/fathom-hook.py` and
+  `docs/harness/verification.md` stopped quoting a retired path. The one place that keeps the old paths is
+  `crates/fathom-fixtures/corpus/turns/fathom-self.json`, a recorded turn's file list: that is history, like
+  a `CHANGELOG.md` line, and a pointer page is what serves it.
+* **Two "who asked" questions, and they are not the same one.** The delta's edge path answers which **package**
+  asked for a package; the risk's provenance ladder answers which **episode** asked for a direct dependency.
+  Averaging them into one sentence would have been the smoothest possible way to lose both, so each section says
+  at its own head which grain it answers — and the surface's *Diffs* stayed a separate section too, because
+  `scan::delta` answers per changed file while `diff::DependencyDelta` answers per package.
+* **Gates, all green in the branch:** `check_docs.py`, `check_docs_site.py` (94 pages, 1 313 fragment links,
+  11 relocations, the Pages render) and its `--self-test`, `check_ticket_claims.py`,
+  `check_docs_commands.py` (131 invocations parsed by clap), `gen_docs.py check`, this audit, `pytest
+  tests/test_deprisk_contract.py` (292) and the deps suite — `deps_golden`, `deps_tolerance`, `deps_monorepo`,
+  `deps_repository` — 27 tests.
+
 ### Every gate now runs on a branch the work reaches: `push:` names no branches, and a new rule refuses a list of them (`reco-kwg6`)
 
 Epic 11's census (§5.2, the item none of its four children owned) measured a fleet that

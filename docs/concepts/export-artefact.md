@@ -5,7 +5,7 @@
 - **Depends on**: [the delta](delta.md) (`e2.11`) for every figure,
   [the episode narrative](episode-narrative.md) (`e4.7`) for the prose,
   the review ledger of `e4.6` (crates/fathom-analyze/src/ledger/) for the sign-offs,
-  [the dependency delta](dependency-delta.md) (`e2.6`) and
+  [the dependency delta](dependencies.md#the-delta-what-the-episode-did-to-the-graph-and-what-proves-it) (`e2.6`) and
   [the folder-structure delta](folder-structure.md) (`e2.3`) for the two range-wide comparisons
 - **Implements**: the plan's `e5.7` acceptance criteria — markdown that renders in a GitHub PR preview with
   nested evidence links, two consecutive exports of the same range that are byte-identical, one

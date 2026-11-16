@@ -1,7 +1,8 @@
 """`reco-yxi`'s acceptance criteria, as tests (`e2.7`: dependency risk signals).
 
-This file is the executable form of
-[docs/concepts/dependency-risk.md](../docs/concepts/dependency-risk.md). The ticket asks one
+This file is the executable form of the risk section of
+[docs/concepts/dependencies.md](../docs/concepts/dependencies.md) — `dependency-risk.md` until
+`reco-48qd` merged the dependency family into one page. The ticket asks one
 question — *who asked for this, and should I be worried?* — and its four criteria map to the four
 sections below, in order:
 
@@ -1185,9 +1186,15 @@ def test_the_explanation_verbs_quote_the_numbers_in_force():
 
 
 def test_the_feature_is_documented_and_linked():
-    doc = ROOT / "docs" / "concepts" / "dependency-risk.md"
+    doc = ROOT / "docs" / "concepts" / "dependencies.md"
     assert doc.exists(), "the ticket's answer must be prose somewhere"
-    text = doc.read_text("utf-8")
+    page = doc.read_text("utf-8")
+    # `reco-48qd` merged the family into one page, so the needles are cut to the risk section: searched
+    # across the whole page, a phrase could be satisfied from the surface or the delta half, and a needle
+    # that passes because of a neighbour has stopped asserting.
+    section = "## The risk: who asked for this, and should I be worried?"
+    assert section in page, "the merged page must keep the risk answer under its own heading"
+    text = page[page.index(section):]
     for phrase in ("who asked for this", "privacy.advisories", "not checked recently",
                    "edge path", "reco-yxi"):
         assert phrase in text, "%s missing from the concept doc" % phrase
@@ -1195,7 +1202,7 @@ def test_the_feature_is_documented_and_linked():
         assert "deprisk %s" % verb in text, "the doc must name the verb %s" % verb
     readme = (ROOT / "README.md").read_text("utf-8")
     assert "reco-yxi" in readme
-    assert "dependency-risk.md" in readme
+    assert "concepts/dependencies.md" in readme
     changelog = (ROOT / "CHANGELOG.md").read_text("utf-8")
     assert "reco-yxi" in changelog
 

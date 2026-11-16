@@ -119,7 +119,7 @@ impl Check {
         match self {
             Check::Layering | Check::Cycles => "docs/concepts/layering.md",
             Check::Api => "docs/concepts/api-surface.md",
-            Check::Dependencies => "docs/concepts/dependency-risk.md",
+            Check::Dependencies => "docs/concepts/dependencies.md",
             Check::Tests => "docs/concepts/ci-gate.md",
             Check::SignOff => "docs/concepts/review-ledger.md",
         }
